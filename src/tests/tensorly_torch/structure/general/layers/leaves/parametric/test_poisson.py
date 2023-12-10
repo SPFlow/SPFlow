@@ -348,9 +348,54 @@ def test_update_backend(do_for_all_backends):
                 )
             )
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    poisson_default = PoissonLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])
+    tc.assertTrue(poisson_default.dtype == tl.float32)
+    tc.assertTrue(poisson_default.l.dtype == tl.float32)
+
+    # change to float64 model
+    poisson_updated = PoissonLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])
+    poisson_updated.to_dtype(tl.float64)
+    tc.assertTrue(poisson_updated.dtype == tl.float64)
+    tc.assertTrue(poisson_updated.l.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([*poisson_default.get_params()]),
+            np.array([*poisson_updated.get_params()]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    poisson_default = PoissonLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])
+    poisson_updated = PoissonLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, poisson_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    poisson_updated.to_device(cuda)
+
+    tc.assertTrue(poisson_default.device.type == "cpu")
+    tc.assertTrue(poisson_updated.device.type == "cuda")
+
+    tc.assertTrue(poisson_default.l.device.type == "cpu")
+    tc.assertTrue(poisson_updated.l.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([*poisson_default.get_params()]),
+            np.array([*poisson_updated.get_params()]),
+        )
+    )
+
 
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

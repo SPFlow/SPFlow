@@ -302,13 +302,13 @@ class CondMultivariateGaussianLayer(Module):
         if isinstance(mean, list):
             # can be a list of values specifying a single mean (broadcast to all nodes)
             if all([isinstance(m, float) or isinstance(m, int) for m in mean]):
-                mean = [torch.tensor(mean) for _ in range(self.n_out)]
+                mean = [torch.tensor(mean, dtype=self.dtype, device=self.device) for _ in range(self.n_out)]
             # can also be a list of different means
             else:
-                mean = [m if isinstance(m, torch.Tensor) else torch.tensor(m) for m in mean]
+                mean = [m if isinstance(m, torch.Tensor) else torch.tensor(m, dtype=self.dtype, device=self.device) for m in mean]
         elif isinstance(mean, torch.Tensor) or isinstance(mean, np.ndarray):
             if isinstance(mean, np.ndarray):
-                mean = torch.tensor(mean)
+                mean = torch.tensor(mean, dtype=self.dtype, device=self.device)
             # can be a one-dimensional numpy array specifying single mean (broadcast to all nodes)
             if mean.ndim == 1:
                 mean = [mean for _ in range(self.n_out)]
@@ -321,13 +321,13 @@ class CondMultivariateGaussianLayer(Module):
         if isinstance(cov, list):
             # can be a list of lists of values specifying a single cov (broadcast to all nodes)
             if all([all([isinstance(c, float) or isinstance(c, int) for c in l]) for l in cov]):
-                cov = [torch.tensor(cov) for _ in range(self.n_out)]
+                cov = [torch.tensor(cov, dtype=self.dtype, device=self.device) for _ in range(self.n_out)]
             # can also be a list of different covs
             else:
-                cov = [c if isinstance(c, torch.Tensor) else torch.tensor(c) for c in cov]
+                cov = [c if isinstance(c, torch.Tensor) else torch.tensor(c, dtype=self.dtype, device=self.device) for c in cov]
         elif isinstance(cov, torch.Tensor) or isinstance(cov, np.ndarray):
             if isinstance(cov, np.ndarray):
-                cov = torch.tensor(cov)
+                cov = torch.tensor(cov, dtype=self.dtype, device=self.device)
             # can be a two-dimensional numpy array specifying single cov (broadcast to all nodes)
             if cov.ndim == 2:
                 cov = [cov for _ in range(self.n_out)]
@@ -395,6 +395,16 @@ class CondMultivariateGaussianLayer(Module):
             node_ids = list(range(self.n_out))
 
         return torch.concat([self.nodes[i].check_support(data) for i in node_ids], dim=1)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        for node in self.nodes:
+            node.dtype = self.dtype
+
+    def to_device(self, device):
+        self.device = device
+        for node in self.nodes:
+            node.device = self.device
 
 
 @dispatch(memoize=True)  # type: ignore

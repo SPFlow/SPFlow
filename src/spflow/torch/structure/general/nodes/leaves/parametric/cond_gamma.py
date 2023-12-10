@@ -199,9 +199,9 @@ class CondGamma(LeafNode):
             beta = params["beta"]
 
         if isinstance(alpha, float):
-            alpha = torch.tensor(alpha)
+            alpha = torch.tensor(alpha, dtype=self.dtype, device=self.device)
         if isinstance(beta, float):
-            beta = torch.tensor(beta)
+            beta = torch.tensor(beta, dtype=self.dtype, device=self.device)
 
         # check if values for 'alpha', 'beta' are valid
         if alpha <= 0.0 or not torch.isfinite(alpha):
@@ -209,7 +209,7 @@ class CondGamma(LeafNode):
         if beta <= 0.0 or not torch.isfinite(beta):
             raise ValueError(f"Value of 'beta' for 'CondGamma' must be greater than 0, but was: {beta}")
 
-        return alpha, beta
+        return alpha.type(self.dtype).to(self.device), beta.type(self.dtype).to(self.device)
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -248,13 +248,15 @@ class CondGamma(LeafNode):
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
         valid[~nan_mask] = self.dist(alpha=torch.tensor(1.0), beta=torch.tensor(1.0)).support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
         valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
+
+
 
 
 @dispatch(memoize=True)  # type: ignore

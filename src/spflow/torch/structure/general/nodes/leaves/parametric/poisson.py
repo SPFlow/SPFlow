@@ -160,7 +160,7 @@ class Poisson(LeafNode):
         if l < 0:
             raise ValueError(f"Value of l for Poisson distribution must be non-negative, but was: {l}")
 
-        self.l_aux.data = proj_bounded_to_real(torch.tensor(float(l)), lb=0.0)
+        self.l_aux.data = proj_bounded_to_real(torch.tensor(float(l), dtype=self.dtype, device=self.device), lb=0.0)
 
     def get_trainable_params(self) -> Tuple[float]:
         """Returns the parameters of the represented distribution.
@@ -216,7 +216,7 @@ class Poisson(LeafNode):
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check if all values are valid integers
@@ -226,6 +226,14 @@ class Poisson(LeafNode):
         valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.l.data)
+
+    def to_device(self, device):
+        self.device = device
+        self.set_params(self.l.data)
 
 
 @dispatch(memoize=True)  # type: ignore

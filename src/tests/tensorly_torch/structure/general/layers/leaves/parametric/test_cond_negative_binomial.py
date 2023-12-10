@@ -124,7 +124,7 @@ def test_retrieve_params(do_for_all_backends):
 
     for n_layer_node, p_layer_node in zip(l.n, l.retrieve_params(tl.tensor([[1]]), DispatchContext())):
         tc.assertTrue(tl.all(n_layer_node == n_value))
-        tc.assertTrue(tl.all(p_layer_node == p_value))
+        tc.assertTrue(np.allclose(p_layer_node, p_value))
 
     # ----- list parameter values -----
     n_values = [3, 2, 7]
@@ -460,8 +460,102 @@ def test_update_backend(do_for_all_backends):
                 )
             )
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    n_value = 5
+    p_value = 0.13
+    cond_binomial_default = CondNegativeBinomialLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        n=n_value,
+        cond_f=lambda data: {"p": p_value},
+    )
+
+    cond_binomial_updated = CondNegativeBinomialLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        n=n_value,
+        cond_f=lambda data: {"p": p_value},
+    )
+    tc.assertTrue(cond_binomial_default.dtype == tl.float32)
+    p = cond_binomial_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    tc.assertTrue(p.dtype == tl.float32)
+    tc.assertTrue(cond_binomial_default.n.dtype == tl.float32)
+
+    # change to float64 model
+    cond_binomial_updated.to_dtype(tl.float64)
+    p_up = cond_binomial_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    tc.assertTrue(cond_binomial_updated.dtype == tl.float64)
+    tc.assertTrue(p_up.dtype == tl.float64)
+    tc.assertTrue(cond_binomial_updated.n.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array(p),
+            np.array(p_up),
+        )
+    )
+    tc.assertTrue(
+        np.allclose(
+            np.array(cond_binomial_default.n),
+            np.array(cond_binomial_updated.n),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    n_value = 5
+    p_value = 0.13
+    cond_binomial_default = CondNegativeBinomialLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        n=n_value,
+        cond_f=lambda data: {"p": p_value},
+    )
+
+    cond_binomial_updated = CondNegativeBinomialLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        n=n_value,
+        cond_f=lambda data: {"p": p_value},
+    )
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, cond_binomial_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    cond_binomial_updated.to_device(cuda)
+
+    tc.assertTrue(cond_binomial_default.device.type == "cpu")
+    tc.assertTrue(cond_binomial_updated.device.type == "cuda")
+
+    p = cond_binomial_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    p_up = cond_binomial_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+
+
+    tc.assertTrue(p.device.type == "cpu")
+    tc.assertTrue(p_up.device.type == "cuda")
+
+    tc.assertTrue(cond_binomial_default.n.device.type == "cpu")
+    tc.assertTrue(cond_binomial_updated.n.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array(p),
+            np.array(p_up.cpu()),
+        )
+    )
+    tc.assertTrue(
+        np.allclose(
+            np.array(cond_binomial_default.n),
+            np.array(cond_binomial_updated.n.cpu()),
+        )
+    )
+
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

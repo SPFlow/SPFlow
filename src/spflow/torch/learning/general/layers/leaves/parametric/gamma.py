@@ -67,7 +67,7 @@ def maximum_likelihood_estimation(
             raise ValueError("Encountered values outside of the support for 'GammaLayer'.")
 
     if weights is None:
-        weights = torch.ones(data.shape[0], layer.n_out)
+        weights = torch.ones(data.shape[0], layer.n_out).type(layer.dtype).to(layer.device)
 
     if (
         (weights.ndim == 1 and weights.shape[0] != data.shape[0])
@@ -136,7 +136,7 @@ def maximum_likelihood_estimation(
     # mean, log_mean and mean_log already calculated above
 
     # start values
-    alpha_prev = torch.zeros(scope_data.shape[1])
+    alpha_prev = torch.zeros(scope_data.shape[1], dtype=layer.dtype, device=layer.device)
     alpha_est = 0.5 / (log_mean - mean_log)
 
     # iteratively compute alpha estimate
@@ -165,8 +165,8 @@ def maximum_likelihood_estimation(
     # TODO: bias correction?
 
     # edge case: if alpha/beta 0, set to larger value (should not happen, but just in case)
-    alpha_est[torch.allclose(alpha_est, torch.tensor(0.0))] = 1e-8
-    beta_est[torch.allclose(beta_est, torch.tensor(0.0))] = 1e-8
+    alpha_est[torch.allclose(alpha_est, torch.tensor(0.0, dtype=layer.dtype))] = 1e-8
+    beta_est[torch.allclose(beta_est, torch.tensor(0.0, dtype=layer.dtype))] = 1e-8
 
     # set parameters of leaf node
     layer.set_params(alpha=alpha_est, beta=beta_est)

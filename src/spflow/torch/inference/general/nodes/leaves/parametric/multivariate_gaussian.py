@@ -65,7 +65,7 @@ def log_likelihood(
     scope_data = data[:, leaf.scope.query]
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, 1).to(leaf.mean.device)
+    log_prob: torch.Tensor = torch.empty(batch_size, 1).type(leaf.dtype).to(leaf.device)
 
     # create copy of the data where NaNs are replaced by zeros
     # TODO: alternative for initial validity checking without copying?
@@ -110,10 +110,10 @@ def log_likelihood(
             marg_dist = D.MultivariateNormal(loc=marg_mean, covariance_matrix=marg_cov)
 
             # compute probabilities for values inside distribution support
-            log_prob[marg_ids, 0] = marg_dist.log_prob(marg_data.type(torch.get_default_dtype()))
+            log_prob[marg_ids, 0] = marg_dist.log_prob(marg_data)
         # no random variables are marginalized over
         else:
             # compute probabilities for values inside distribution support
-            log_prob[marg_ids, 0] = leaf.dist.log_prob(marg_data.type(torch.get_default_dtype()))
+            log_prob[marg_ids, 0] = leaf.dist.log_prob(marg_data)
 
     return log_prob

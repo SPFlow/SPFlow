@@ -199,7 +199,7 @@ def test_support(do_for_all_backends):
     tc.assertRaises(ValueError, log_likelihood, hypergeometric, tl.tensor([[5.5]]))
 
 def test_update_backend(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     backends = ["numpy", "pytorch"]
     N = 15
     M = 10
@@ -220,7 +220,40 @@ def test_update_backend(do_for_all_backends):
             # check conversion from torch to python
             tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
+def test_change_dtype(do_for_all_backends):
+    N = 15
+    M = 10
+    n = 10
+
+    node = Hypergeometric(Scope([0]), N, M, n)
+    dummy_data = tl.tensor(np.array([[5], [10]]), dtype=tl.float32)
+    layer_ll = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll.dtype == tl.float32)
+    node.to_dtype(tl.float64)
+    dummy_data = tl.tensor(np.array([[5], [10]]), dtype=tl.float64)
+    layer_ll_up = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll_up.dtype == tl.float64)
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    N = 15
+    M = 10
+    n = 10
+
+    node = Hypergeometric(Scope([0]), N, M, n)
+    dummy_data = tl.tensor(np.array([[5], [10]]), dtype=tl.float32)
+    layer_ll = log_likelihood(node, dummy_data)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, node.to_device, cuda)
+        return
+    tc.assertTrue(layer_ll.device.type == "cpu")
+    node.to_device(cuda)
+    dummy_data = tl.tensor(np.array([[5], [10]]), device=cuda)
+    layer_ll = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll.device.type == "cuda")
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

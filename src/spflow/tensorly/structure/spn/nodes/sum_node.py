@@ -11,7 +11,6 @@ import tensorly as tl
 from ....utils.helper_functions import tl_isclose, T
 
 from spflow.tensorly.structure.general.nodes.node import Node
-from spflow.tensorly.structure.module import Module
 from spflow.meta.structure import MetaModule
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -76,7 +75,7 @@ class SumNode(Node):
         self.n_in = sum(child.n_out for child in children)
 
         if weights is None:
-            weights = tl.random.random_tensor(self.n_in) + 1e-08  # avoid zeros
+            weights = tl.random.random_tensor(self.n_in, dtype=self.dtype, device=self.device) + 1e-08  # avoid zeros
             weights /= tl.sum(weights)
 
         if self.backend == "pytorch":
@@ -105,7 +104,7 @@ class SumNode(Node):
             ValueError: Invalid values.
         """
         if isinstance(values, list):
-            values = tl.tensor(values)
+            values = tl.tensor(values, dtype=self.dtype, device=self.device)
         if tl.ndim(values) != 1:
             raise ValueError(
                 f"Numpy array of weight values for 'SumNode' is expected to be one-dimensional, but is {values.ndim}-dimensional."
@@ -117,9 +116,23 @@ class SumNode(Node):
         if not (len(values) == self.n_in):
             raise ValueError("Number of weights for 'SumNode' does not match total number of child outputs.")
         if self.backend == "pytorch":
-            self._weights.data = proj_convex_to_real(values)
+            self._weights.data = proj_convex_to_real(values).type(self.dtype).to(self.device)
         else:
-            self._weights = proj_convex_to_real(values)
+            self._weights = proj_convex_to_real(values).astype(self.dtype)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.weights = self.weights
+        for child in self.children:
+            child.to_dtype(dtype)
+
+    def to_device(self, device):
+        if self.backend == "numpy":
+            raise ValueError("it is not possible to change the device of models that have a numpy backend")
+        self.device = device
+        self.weights = self.weights
+        for child in self.children:
+            child.to_device(device)
 
 
     def parameters(self):

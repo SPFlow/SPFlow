@@ -255,6 +255,7 @@ class HypergeometricLayer(Module):
                 raise ValueError("All values of 'n' for 'HypergeometricLayer' over the same scope must be identical.")
 
         for node_N, node_M, node_n, node in zip(N, M, n, self.nodes):
+            node.dtype = self.dtype
             node.set_params(node_N, node_M, node_n)
 
     def get_params(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -314,6 +315,10 @@ class HypergeometricLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+
 
 
 @dispatch(memoize=True)  # type: ignore

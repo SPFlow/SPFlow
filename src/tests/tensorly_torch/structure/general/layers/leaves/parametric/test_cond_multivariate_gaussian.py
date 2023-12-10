@@ -550,8 +550,113 @@ def test_update_backend(do_for_all_backends):
             tc.assertTrue(np.all(mutlivariateGaussian.scopes_out == mutlivariateGaussian_updated.scopes_out))
             # check conversion from torch to python
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    mean_value = [0.0, -1.0, 2.3]
+    cov_value = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    cond_mv_gaussian_default = CondMultivariateGaussianLayer(
+        scope=Scope([1, 0, 2], [3]),
+        n_nodes=3,
+        cond_f=lambda data: {"mean": mean_value, "cov": cov_value},
+    )
+
+    cond_mv_gaussian_update = CondMultivariateGaussianLayer(
+        scope=Scope([1, 0, 2], [3]),
+        n_nodes=3,
+        cond_f=lambda data: {"mean": mean_value, "cov": cov_value},
+    )
+    tc.assertTrue(cond_mv_gaussian_default.dtype == tl.float32)
+    params = cond_mv_gaussian_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    mean = params[0]
+    cov = params[1]
+    tc.assertTrue(mean[0].dtype == tl.float32)
+    tc.assertTrue(cov[0].dtype == tl.float32)
+
+    # change to float64 model
+    cond_mv_gaussian_update.to_dtype(tl.float64)
+    params_up = cond_mv_gaussian_update.retrieve_params(np.array([[1.0]]), DispatchContext())
+    mean_up = params_up[0]
+    cov_up = params_up[1]
+
+    tc.assertTrue(cond_mv_gaussian_update.dtype == tl.float64)
+    tc.assertTrue(mean_up[0].dtype == tl.float64)
+    tc.assertTrue(cov_up[0].dtype == tl.float64)
+    for m, m_up in zip(mean, mean_up):
+        tc.assertTrue(
+            np.allclose(
+                m,
+                m_up,
+            )
+        )
+
+    for c, c_up in zip(cov, cov_up):
+        tc.assertTrue(
+            np.allclose(
+                c,
+                c_up,
+            )
+        )
+
+
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    mean_value = [0.0, -1.0, 2.3]
+    cov_value = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    cond_mv_gaussian_default = CondMultivariateGaussianLayer(
+        scope=Scope([1, 0, 2], [3]),
+        n_nodes=3,
+        cond_f=lambda data: {"mean": mean_value, "cov": cov_value},
+    )
+
+    cond_mv_gaussian_update = CondMultivariateGaussianLayer(
+        scope=Scope([1, 0, 2], [3]),
+        n_nodes=3,
+        cond_f=lambda data: {"mean": mean_value, "cov": cov_value},
+    )
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, cond_mv_gaussian_update.to_device, cuda)
+        return
+
+    # put model on gpu
+    cond_mv_gaussian_update.to_device(cuda)
+
+    tc.assertTrue(cond_mv_gaussian_default.device.type == "cpu")
+    tc.assertTrue(cond_mv_gaussian_update.device.type == "cuda")
+
+    params = cond_mv_gaussian_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    mean = params[0]
+    cov = params[1]
+    params_up = cond_mv_gaussian_update.retrieve_params(np.array([[1.0]]), DispatchContext())
+    mean_up = params_up[0]
+    cov_up = params_up[1]
+
+
+    tc.assertTrue(mean[0].device.type == "cpu")
+    tc.assertTrue(mean_up[0].device.type == "cuda")
+    tc.assertTrue(cov[0].device.type == "cpu")
+    tc.assertTrue(cov_up[0].device.type == "cuda")
+
+    for m, m_up in zip(mean, mean_up):
+        tc.assertTrue(
+            np.allclose(
+                m,
+                m_up.cpu(),
+            )
+        )
+
+    for c, c_up in zip(cov, cov_up):
+        tc.assertTrue(
+            np.allclose(
+                c,
+                c_up.cpu(),
+            )
+        )
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

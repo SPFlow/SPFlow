@@ -5,7 +5,7 @@ from typing import Optional
 import numpy as np
 import torch
 import tensorly as tl
-from spflow.tensorly.utils.helper_functions import T, tl_unsqueeze, tl_logsumexp
+from spflow.tensorly.utils.helper_functions import T, tl_unsqueeze, tl_logsumexp, get_device
 
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (

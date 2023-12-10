@@ -87,19 +87,18 @@ def sample(
         instance_ids_mask = torch.zeros(data.shape[0])
         instance_ids_mask[torch.tensor(instances)] = 1
 
-        sampling_mask = marg_ids & instance_ids_mask.bool().to(layer.N.device)
+        sampling_mask = marg_ids & instance_ids_mask.bool().to(layer.device)
         sampling_ids = torch.where(sampling_mask)[0]
 
         # TODO: may be inefficient
         # create random permutations of N elements
-        rand_perm = torch.argsort(torch.rand(sampling_ids.shape[0], layer.N[node_id]), dim=1)
+        rand_perm = torch.argsort(torch.rand(sampling_ids.shape[0], layer.N[node_id],), dim=1).type(layer.dtype).to(layer.device)
 
         # assuming that first M indices are the M objects of interest, count how many of these indices were "drawn" in the first n draws (with replacement since all indices are unique per row)
-        data[torch.meshgrid(sampling_ids, torch.tensor(node_scope.query), indexing="ij")] = (
+        data[torch.meshgrid(sampling_ids, torch.tensor(node_scope.query, device=layer.device), indexing="ij")] = (
             (rand_perm[:, : layer.n[node_id]] < layer.M[node_id])
             .sum(dim=1)
-            .type(torch.get_default_dtype())
             .unsqueeze(1)
-        )
+        ).type(layer.dtype)
 
     return data

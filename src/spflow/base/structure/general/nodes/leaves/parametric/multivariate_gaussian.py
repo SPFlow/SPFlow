@@ -224,8 +224,8 @@ class MultivariateGaussian(LeafNode):
         if np.any(np.linalg.eigvalsh(cov) < 0):
             raise ValueError("Value of 'cov' for 'MultivariateGaussian' must be positive semi-definite.")
 
-        self.mean = mean
-        self.cov = cov
+        self.mean = mean.astype(self.dtype)
+        self.cov = cov.astype(self.dtype)
 
     def get_params(
         self,
@@ -281,6 +281,11 @@ class MultivariateGaussian(LeafNode):
         valid[~nan_mask] &= ~np.isinf(scope_data[~nan_mask])
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.mean, self.cov)
+
 
 
 @dispatch(memoize=True)  # type: ignore

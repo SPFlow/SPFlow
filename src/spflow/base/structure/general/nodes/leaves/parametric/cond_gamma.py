@@ -189,6 +189,13 @@ class CondGamma(LeafNode):
         if beta <= 0.0 or not np.isfinite(beta):
             raise ValueError(f"Value of 'beta' for 'CondGamma' must be greater than 0, but was: {beta}")
 
+        # adapt dtype
+        if isinstance(alpha, np.ndarray):
+            alpha = alpha.astype(self.dtype)
+
+        if isinstance(beta, np.ndarray):
+            beta = beta.astype(self.dtype)
+
         return alpha, beta
 
     def dist(self, alpha: float, beta: float) -> rv_frozen:

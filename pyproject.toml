@@ -59,7 +59,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-addopts = " --color=yes --doctest-modules --cov=spflow"
+addopts = " --color=yes --doctest-modules" #--cov=spflow"
 testpaths = [
     # for the doctests:
     "src/spflow",

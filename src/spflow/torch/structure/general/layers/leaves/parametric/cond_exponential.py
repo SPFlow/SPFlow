@@ -251,14 +251,14 @@ class CondExponentialLayer(Module):
         if l is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                l = torch.tensor([f(data)["l"] for f in cond_f])
+                l = torch.tensor([f(data)["l"] for f in cond_f], dtype=self.dtype, device=self.device)
             else:
                 l = cond_f(data)["l"]
 
         if isinstance(l, int) or isinstance(l, float):
-            l = torch.tensor([l for _ in range(self.n_out)], dtype=torch.float64)
+            l = torch.tensor([l for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(l, list) or isinstance(l, np.ndarray):
-            l = torch.tensor(l, dtype=torch.float64)
+            l = torch.tensor(l, dtype=self.dtype, device=self.device)
         if l.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'l' values for 'CondExponentialLayer' is expected to be one-dimensional, but is {l.ndim}-dimensional."

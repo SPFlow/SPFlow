@@ -201,9 +201,9 @@ class CondLogNormal(LeafNode):
             std = params["std"]
 
         if isinstance(mean, float):
-            mean = torch.tensor(mean)
+            mean = torch.tensor(mean, dtype=self.dtype, device=self.device)
         if isinstance(std, float):
-            std = torch.tensor(std)
+            std = torch.tensor(std, dtype=self.dtype, device=self.device)
 
         # check if values for 'mean', 'std' are valid
         if not (torch.isfinite(mean) and torch.isfinite(std)):
@@ -211,7 +211,7 @@ class CondLogNormal(LeafNode):
         if std <= 0.0:
             raise ValueError(f"Value for 'std' for 'CondLogNormal' must be greater than 0.0, but was: {std}")
 
-        return mean, std
+        return mean.type(self.dtype).to(self.device), std.type(self.dtype).to(self.device)
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -250,7 +250,7 @@ class CondLogNormal(LeafNode):
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
         valid[~nan_mask] = self.dist(torch.tensor(0.0), torch.tensor(1.0)).support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values

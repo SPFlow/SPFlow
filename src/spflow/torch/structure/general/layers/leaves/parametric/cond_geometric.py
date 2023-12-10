@@ -250,14 +250,14 @@ class CondGeometricLayer(Module):
         if p is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                p = torch.tensor([f(data)["p"] for f in cond_f])
+                p = torch.tensor([f(data)["p"] for f in cond_f], dtype=self.dtype, device=self.device)
             else:
                 p = cond_f(data)["p"]
 
         if isinstance(p, int) or isinstance(p, float):
-            p = torch.tensor([p for _ in range(self.n_out)])
+            p = torch.tensor([p for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(p, list) or isinstance(p, np.ndarray):
-            p = torch.tensor(p)
+            p = torch.tensor(p, dtype=self.dtype, device=self.device)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'CondGeometricLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."

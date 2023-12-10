@@ -455,7 +455,110 @@ def test_update_backend(do_for_all_backends):
         # check conversion from torch to python
 
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    alpha_value = 0.73
+    beta_value = 1.9
+    cond_gamma_default = CondGammaLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        cond_f=lambda data: {"alpha": alpha_value, "beta": beta_value},
+    )
+
+    cond_gamma_updated = CondGammaLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        cond_f=lambda data: {"alpha": alpha_value, "beta": beta_value},
+    )
+    tc.assertTrue(cond_gamma_default.dtype == tl.float32)
+    params = cond_gamma_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    alpha = params[0]
+    beta = params[1]
+    tc.assertTrue(alpha.dtype == tl.float32)
+    tc.assertTrue(beta.dtype == tl.float32)
+
+    # change to float64 model
+    cond_gamma_updated.to_dtype(tl.float64)
+    params_up = cond_gamma_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    alpha_up = params_up[0]
+    beta_up = params_up[1]
+
+    tc.assertTrue(cond_gamma_updated.dtype == tl.float64)
+    tc.assertTrue(alpha_up.dtype == tl.float64)
+    tc.assertTrue(beta_up.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array(alpha),
+            np.array(alpha_up),
+        )
+    )
+
+    tc.assertTrue(
+        np.allclose(
+            np.array(beta),
+            np.array(beta_up),
+        )
+    )
+
+
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    alpha_value = 0.73
+    beta_value = 1.9
+    cond_gamma_default = CondGammaLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        cond_f=lambda data: {"alpha": alpha_value, "beta": beta_value},
+    )
+
+    cond_gamma_updated = CondGammaLayer(
+        scope=Scope([1], [0]),
+        n_nodes=3,
+        cond_f=lambda data: {"alpha": alpha_value, "beta": beta_value},
+    )
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, cond_gamma_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    cond_gamma_updated.to_device(cuda)
+
+    tc.assertTrue(cond_gamma_default.device.type == "cpu")
+    tc.assertTrue(cond_gamma_updated.device.type == "cuda")
+
+    params = cond_gamma_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    alpha = params[0]
+    beta = params[1]
+    params_up = cond_gamma_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    alpha_up = params_up[0]
+    beta_up = params_up[1]
+
+
+    tc.assertTrue(alpha.device.type == "cpu")
+    tc.assertTrue(alpha_up.device.type == "cuda")
+    tc.assertTrue(beta.device.type == "cpu")
+    tc.assertTrue(beta_up.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array(alpha),
+            np.array(alpha_up.cpu()),
+        )
+    )
+
+    tc.assertTrue(
+        np.allclose(
+            np.array(beta),
+            np.array(beta_up.cpu()),
+        )
+    )
+
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

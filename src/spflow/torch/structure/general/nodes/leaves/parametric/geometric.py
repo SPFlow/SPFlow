@@ -157,7 +157,7 @@ class Geometric(LeafNode):
                 f"Value of p for Geometric distribution must to be greater than 0.0 and less or equal to 1.0, but was: {p}"
             )
 
-        self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)
+        self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p), dtype=self.dtype, device=self.device), lb=0.0, ub=1.0)
 
     def get_trainable_params(self) -> Tuple[float]:
         """Returns the parameters of the represented distribution.
@@ -213,7 +213,7 @@ class Geometric(LeafNode):
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
         # data needs to be offset by -1 due to the different definitions between SciPy and PyTorch
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask] - 1).squeeze(-1)  # type: ignore
 
@@ -221,6 +221,14 @@ class Geometric(LeafNode):
         valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.p.data)
+
+    def to_device(self, device):
+        self.device = device
+        self.set_params(self.p.data)
 
 
 @dispatch(memoize=True)  # type: ignore

@@ -15,10 +15,10 @@ from spflow.torch.structure.general.nodes.leaves.parametric.cond_multivariate_ga
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_cond_multivariate_gaussian import CondMultivariateGaussian
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_gaussian import CondGaussian as CondGaussianTorch
 from spflow.base.structure.general.nodes.leaves.parametric.cond_gaussian import CondGaussian as CondGaussianBase
-
 from spflow.torch.structure.general.nodes.leaves.parametric.cond_multivariate_gaussian import (
     marginalize,
 )
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 tc = unittest.TestCase()
 
@@ -28,7 +28,7 @@ def test_initialization(do_for_all_backends):
     tc.assertTrue(multivariate_gaussian.cond_f is None)
     multivariate_gaussian = CondMultivariateGaussian(
         Scope([0, 1], [2]),
-        lambda x: {"mean": torch.zeros(2), "cov": torch.eye(2)},
+        lambda x: {"mean": tl.zeros(2), "cov": tl.eye(2)},
     )
     tc.assertTrue(isinstance(multivariate_gaussian.cond_f, Callable))
 
@@ -398,6 +398,112 @@ def test_update_backend(do_for_all_backends):
             tc.assertTrue(np.all(cond_multivariate_gaussian.scopes_out == cond_multivariate_gaussian_updated.scopes_out))
 
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    model_default = CondMultivariateGaussian(
+        Scope([0, 1], [2]),
+        lambda x: {"mean": tl.zeros(2), "cov": tl.eye(2)},
+    )
+    param = model_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param1 = param[0]
+    param2 = param[1]
+
+    tc.assertTrue(model_default.dtype == tl.float32)
+    if do_for_all_backends == "numpy":
+        if (isinstance(param1, np.ndarray)):
+                tc.assertTrue(param1.dtype==tl.float32)
+                tc.assertTrue(param2.dtype == tl.float32)
+        else:
+            tc.assertTrue(isinstance(param1, float))
+            tc.assertTrue(isinstance(param2, float))
+    else:
+        tc.assertTrue(param1.dtype == tl.float32)
+        tc.assertTrue(param2.dtype == tl.float32)
+
+    # change to float64 model
+    model_updated = CondMultivariateGaussian(
+        Scope([0, 1], [2]),
+        lambda x: {"mean": tl.zeros(2), "cov": tl.eye(2)},
+    )
+    model_updated.to_dtype(tl.float64)
+    param_up = model_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param_up1 = param_up[0]
+    param_up2 = param_up[1]
+    tc.assertTrue(model_updated.dtype == tl.float64)
+    if do_for_all_backends == "numpy":
+        if (isinstance(param_up1, np.ndarray)):
+            tc.assertTrue(param_up1.dtype == tl.float64)
+            tc.assertTrue(param_up2.dtype == tl.float64)
+        else:
+            tc.assertTrue(isinstance(param_up1, float))
+            tc.assertTrue(isinstance(param_up2, float))
+    else:
+        tc.assertTrue(param_up1.dtype == tl.float64)
+        tc.assertTrue(param_up2.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            tl_toNumpy(param1),
+            tl_toNumpy(param_up1),
+        )
+    )
+    tc.assertTrue(
+        np.allclose(
+            tl_toNumpy(param2),
+            tl_toNumpy(param_up2),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    model_default = CondMultivariateGaussian(
+        Scope([0, 1], [2]),
+        lambda x: {"mean": tl.zeros(2), "cov": tl.eye(2)},
+    )
+    model_updated = CondMultivariateGaussian(
+        Scope([0, 1], [2]),
+        lambda x: {"mean": tl.zeros(2), "cov": tl.eye(2)},
+    )
+    # put model on gpu
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, model_updated.to_device, cuda)
+        return
+
+    model_updated.to_device(cuda)
+    param = model_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param1 = param[0]
+    param2 = param[1]
+    param_up = model_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param_up1 = param_up[0]
+    param_up2 = param_up[1]
+
+
+
+    tc.assertTrue(model_default.device.type == "cpu")
+    tc.assertTrue(model_updated.device.type == "cuda")
+
+    tc.assertTrue(param1.device.type == "cpu")
+    tc.assertTrue(param_up1.device.type == "cuda")
+
+    tc.assertTrue(param2.device.type == "cpu")
+    tc.assertTrue(param_up2.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            tl_toNumpy(param1),
+            tl_toNumpy(param_up1),
+        )
+    )
+    tc.assertTrue(
+        np.allclose(
+            tl_toNumpy(param2),
+            tl_toNumpy(param_up2),
+        )
+    )
+
+
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

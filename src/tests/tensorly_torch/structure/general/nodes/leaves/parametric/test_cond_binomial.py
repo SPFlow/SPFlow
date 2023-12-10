@@ -198,7 +198,73 @@ def test_update_backend(do_for_all_backends):
             # check conversion from torch to python
             tc.assertTrue(np.all(cond_binomial.scopes_out == cond_binomial_updated.scopes_out))
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    p = random.random()
+    n = random.randint(2, 10)
+    model_default = CondBinomial(Scope([0], [1]), n)
+    model_default.set_cond_f(lambda data: {"p": p})
+    param = model_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+
+    tc.assertTrue(model_default.dtype == tl.float32)
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(param, float))
+    else:
+        tc.assertTrue(param.dtype == tl.float32)
+
+    # change to float64 model
+    model_updated = CondBinomial(Scope([0], [1]), n)
+    model_updated.set_cond_f(lambda data: {"p": p})
+    model_updated.to_dtype(tl.float64)
+    param_up = model_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    tc.assertTrue(model_updated.dtype == tl.float64)
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(param_up, float))
+    else:
+        tc.assertTrue(param_up.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([param]),
+            np.array([param_up]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    p = random.random()
+    n = random.randint(2, 10)
+    torch.set_default_dtype(torch.float32)
+    model_default = CondBinomial(Scope([0], [1]), n)
+    model_default.set_cond_f(lambda data: {"p": p})
+    model_updated = CondBinomial(Scope([0], [1]), n)
+    model_updated.set_cond_f(lambda data: {"p": p})
+    # put model on gpu
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, model_updated.to_device, cuda)
+        return
+
+    model_updated.to_device(cuda)
+    param = model_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param_up = model_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+
+
+
+    tc.assertTrue(model_default.device.type == "cpu")
+    tc.assertTrue(model_updated.device.type == "cuda")
+
+    tc.assertTrue(param.device.type == "cpu")
+    tc.assertTrue(param_up.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([param]),
+            np.array([param_up.cpu()]),
+        )
+    )
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

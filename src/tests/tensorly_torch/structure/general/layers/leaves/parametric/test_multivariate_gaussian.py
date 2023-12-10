@@ -22,7 +22,7 @@ tc = unittest.TestCase()
 
 
 def test_layer_initialization(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     # ----- check attributes after correct initialization -----
 
@@ -44,8 +44,8 @@ def test_layer_initialization(do_for_all_backends):
     l = MultivariateGaussianLayer(scope=Scope([1, 0, 2]), n_nodes=3, mean=mean_value, cov=cov_value)
 
     for node in l.nodes:
-        tc.assertTrue(tl.all(node.mean == tl.tensor(mean_value, dtype=tl.float64)))
-        tc.assertTrue(tl.all(node.cov == tl.tensor(cov_value, dtype=tl.float64)))
+        tc.assertTrue(np.allclose(tl_toNumpy(node.mean), tl.tensor(mean_value)))
+        tc.assertTrue(np.allclose(tl_toNumpy(node.cov), tl.tensor(cov_value)))
 
     # ----- multiple mean/cov list parameter values -----
     mean_values = [[0.0, -1.0, 2.3], [1.0, 5.0, -3.0], [-7.1, 3.2, -0.9]]
@@ -57,8 +57,8 @@ def test_layer_initialization(do_for_all_backends):
     l = MultivariateGaussianLayer(scope=Scope([0, 1, 2]), n_nodes=3, mean=mean_values, cov=cov_values)
 
     for node, node_mean, node_cov in zip(l.nodes, mean_values, cov_values):
-        tc.assertTrue(tl.all(node.mean == tl.tensor(node_mean, dtype=tl.float64)))
-        tc.assertTrue(np.allclose(tl_toNumpy(node.cov), tl.tensor(node_cov, dtype=tl.float64)))
+        tc.assertTrue(np.allclose(tl_toNumpy(node.mean), tl.tensor(node_mean)))
+        tc.assertTrue(np.allclose(tl_toNumpy(node.cov), tl.tensor(node_cov)))
 
     # wrong number of values
     tc.assertRaises(
@@ -105,8 +105,8 @@ def test_layer_initialization(do_for_all_backends):
     )
 
     for node, node_mean, node_cov in zip(l.nodes, mean_values, cov_values):
-        tc.assertTrue(tl.all(node.mean == tl.tensor(node_mean, dtype=tl.float64)))
-        tc.assertTrue(np.allclose(tl_toNumpy(node.cov), tl.tensor(node_cov, dtype=tl.float64)))
+        tc.assertTrue(np.allclose(tl_toNumpy(node.mean), tl.tensor(node_mean)))
+        tc.assertTrue(np.allclose(tl_toNumpy(node.cov), tl.tensor(node_cov)))
 
     # wrong number of values
     tc.assertRaises(
@@ -523,7 +523,96 @@ def test_update_backend(do_for_all_backends):
                 )
             )
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    mean_values = [[0.0, -1.0, 2.3], [1.0, 5.0, -3.0], [-7.1, 3.2, -0.9]]
+    cov_values = [
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+        [[0.5, 0.0, 0.0], [0.0, 1.3, 0.0], [0.0, 0.0, 0.7]],
+        [[3.1, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 0.3]],
+    ]
+    multivariateGaussian_default = MultivariateGaussianLayer(scope=[Scope([0, 1, 2]), Scope([1, 2, 3]), Scope([0, 1, 2])],
+                                                     mean=mean_values,
+                                                     cov=cov_values)
+    tc.assertTrue(multivariateGaussian_default.dtype == tl.float32)
+    tc.assertTrue(multivariateGaussian_default.mean[0].dtype == tl.float32)
+    tc.assertTrue(multivariateGaussian_default.cov[0].dtype == tl.float32)
+
+    # change to float64 model
+    mean_values = [[0.0, -1.0, 2.3], [1.0, 5.0, -3.0], [-7.1, 3.2, -0.9]]
+    cov_values = [
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+        [[0.5, 0.0, 0.0], [0.0, 1.3, 0.0], [0.0, 0.0, 0.7]],
+        [[3.1, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 0.3]],
+    ]
+    multivariateGaussian_updated = MultivariateGaussianLayer(scope=[Scope([0, 1, 2]), Scope([1, 2, 3]), Scope([0, 1, 2])],
+                                                     mean=mean_values,
+                                                     cov=cov_values)
+    multivariateGaussian_updated.to_dtype(tl.float64)
+    tc.assertTrue(multivariateGaussian_updated.dtype == tl.float64)
+    tc.assertTrue(multivariateGaussian_updated.mean[0].dtype == tl.float64)
+    tc.assertTrue(multivariateGaussian_updated.cov[0].dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([*multivariateGaussian_default.get_params()[0]]),
+            np.array([*multivariateGaussian_updated.get_params()[0]]),
+        )
+    )
+
+    tc.assertTrue(
+            np.allclose(
+                np.array([*multivariateGaussian_default.get_params()[1]]),
+                np.array([*multivariateGaussian_updated.get_params()[1]]),
+            )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    mean_values = [[0.0, -1.0, 2.3], [1.0, 5.0, -3.0], [-7.1, 3.2, -0.9]]
+    cov_values = [
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+        [[0.5, 0.0, 0.0], [0.0, 1.3, 0.0], [0.0, 0.0, 0.7]],
+        [[3.1, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 0.3]],
+    ]
+    multivariateGaussian_default = MultivariateGaussianLayer(scope=[Scope([0, 1, 2]), Scope([1, 2, 3]), Scope([0, 1, 2])],
+                                                     mean=mean_values,
+                                                     cov=cov_values)
+    multivariateGaussian_updated = MultivariateGaussianLayer(scope=[Scope([0, 1, 2]), Scope([1, 2, 3]), Scope([0, 1, 2])],
+                                                     mean=mean_values,
+                                                     cov=cov_values)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, multivariateGaussian_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    multivariateGaussian_updated.to_device(cuda)
+
+    tc.assertTrue(multivariateGaussian_default.device.type == "cpu")
+    tc.assertTrue(multivariateGaussian_updated.device.type == "cuda")
+
+    tc.assertTrue(multivariateGaussian_default.mean[0].device.type == "cpu")
+    tc.assertTrue(multivariateGaussian_updated.mean[0].device.type == "cuda")
+    tc.assertTrue(multivariateGaussian_default.cov[0].device.type == "cpu")
+    tc.assertTrue(multivariateGaussian_updated.cov[0].device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([*multivariateGaussian_default.get_params()[0]]),
+            np.array([*multivariateGaussian_updated.get_params()[0]]),
+        )
+    )
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([*multivariateGaussian_default.get_params()[1]]),
+            np.array([*multivariateGaussian_updated.get_params()[1]]),
+        )
+    )
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

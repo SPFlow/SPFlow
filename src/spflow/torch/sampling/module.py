@@ -89,7 +89,7 @@ def sample(
     """
     combined_module_scope = reduce(lambda s1, s2: s1.join(s2), module.scopes_out)
 
-    data = torch.full((n, max(combined_module_scope.query) + 1), float("nan"))
+    data = torch.full((n, max(combined_module_scope.query) + 1), float("nan"), dtype=module.dtype, device=module.device)
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])

@@ -219,7 +219,78 @@ def test_update_backend(do_for_all_backends):
                 tc.assertTrue(np.allclose(N_em, N_em_updated, atol=1e-2, rtol=1e-1))
                 tc.assertTrue(np.allclose(n_em, n_em_updated, atol=1e-2, rtol=1e-1))
 
+def test_change_dtype(do_for_all_backends):
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = HypergeometricLayer(scope=[Scope([0]), Scope([1])], N=[10, 4], M=[7, 2], n=[3, 2])
+    prod_node = ProductNode([layer])
+
+    # simulate data
+    data = np.hstack(
+        [
+            np.random.hypergeometric(ngood=7, nbad=10 - 7, nsample=3, size=(1000, 1)),
+            np.random.hypergeometric(ngood=2, nbad=4 - 2, nsample=2, size=(1000, 1)),
+        ]
+    )
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, tl.tensor(data, dtype=tl.float32))
+
+    layer.to_dtype(tl.float64)
+
+    dummy_data = tl.tensor(data, dtype=tl.float64)
+    maximum_likelihood_estimation(layer, dummy_data)
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(NotImplementedError, expectation_maximization, prod_node, tl.tensor(data, dtype=tl.float64), max_steps=10)
+    else:
+        # test if em runs without error after dype change
+        expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float64), max_steps=10)
+
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = HypergeometricLayer(scope=[Scope([0]), Scope([1])], N=[10, 4], M=[7, 2], n=[3, 2])
+    prod_node = ProductNode([layer])
+
+    # simulate data
+    data = np.hstack(
+        [
+            np.random.hypergeometric(ngood=7, nbad=10 - 7, nsample=3, size=(1000, 1)),
+            np.random.hypergeometric(ngood=2, nbad=4 - 2, nsample=2, size=(1000, 1)),
+        ]
+    )
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, layer.to_device, cuda)
+        return
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, tl.tensor(data, dtype=tl.float32))
+
+    tc.assertTrue(layer.N.device.type == "cpu")
+    tc.assertTrue(layer.M.device.type == "cpu")
+    tc.assertTrue(layer.n.device.type == "cpu")
+
+    layer.to_device(cuda)
+
+    dummy_data = tl.tensor(data, dtype=tl.float32, device=cuda)
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, dummy_data)
+    tc.assertTrue(layer.N.device.type == "cuda")
+    tc.assertTrue(layer.M.device.type == "cuda")
+    tc.assertTrue(layer.n.device.type == "cuda")
+
+    # test if em runs without error after device change
+    expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float32, device=cuda), max_steps=10)
+
 
 if __name__ == "__main__":
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

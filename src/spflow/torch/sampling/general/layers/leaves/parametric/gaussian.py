@@ -87,11 +87,11 @@ def sample(
         instance_ids_mask = torch.zeros(data.shape[0])
         instance_ids_mask[torch.tensor(instances)] = 1
 
-        sampling_mask = marg_ids & instance_ids_mask.bool().to(layer.mean.device)
+        sampling_mask = marg_ids & instance_ids_mask.bool().to(layer.device)
         sampling_ids = torch.where(sampling_mask)[0]
 
-        data[torch.meshgrid(sampling_ids, torch.tensor(node_scope.query, dtype=torch.int64), indexing="ij")] = (
-            layer.dist([node_id]).sample((sampling_mask.sum(),)).to(layer.mean.device)
+        data[torch.meshgrid(sampling_ids, torch.tensor(node_scope.query, device=layer.device), indexing="ij")] = (
+            layer.dist([node_id]).sample((sampling_mask.sum(),)).to(layer.device)
         )
 
     return data

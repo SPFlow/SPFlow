@@ -59,7 +59,7 @@ def log_likelihood(
     mean, std = node.retrieve_params(data, dispatch_ctx)
 
     # initialize probabilities
-    probs = np.zeros((data.shape[0], 1))
+    probs = np.zeros((data.shape[0], 1), dtype=node.dtype)
 
     # select relevant data based on node's scope
     data = data[:, node.scope.query]

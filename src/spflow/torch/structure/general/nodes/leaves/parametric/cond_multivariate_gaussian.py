@@ -275,17 +275,17 @@ class CondMultivariateGaussian(LeafNode):
             # cast lists to torch tensors
             if isinstance(mean, list):
                 # convert float list to torch tensor
-                mean = torch.tensor([float(v) for v in mean])
+                mean = torch.tensor([float(v) for v in mean], dtype=self.dtype, device=self.device)
             elif isinstance(mean, np.ndarray):
                 # convert numpy array to torch tensor
-                mean = torch.from_numpy(mean).type(torch.get_default_dtype())
+                mean = torch.from_numpy(mean).type(self.dtype).to(self.device)
 
             if isinstance(cov, list):
                 # convert numpy array to torch tensor
-                cov = torch.tensor([[float(v) for v in row] for row in cov])
+                cov = torch.tensor([[float(v) for v in row] for row in cov], dtype=self.dtype, device=self.device)
             elif isinstance(cov, np.ndarray):
                 # convert numpy array to torch tensor
-                cov = torch.from_numpy(cov).type(torch.get_default_dtype())
+                cov = torch.from_numpy(cov).type(self.dtype).to(self.device)
 
             # check mean vector for nan or inf values
             if torch.any(torch.isinf(mean)):
@@ -333,9 +333,9 @@ class CondMultivariateGaussian(LeafNode):
                 )
 
         if specified_tril:
-            return mean, None, cov_tril
+            return mean.type(self.dtype).to(self.device), None, cov_tril.type(self.dtype).to(self.device)
         else:
-            return mean, cov, None
+            return mean.type(self.dtype).to(self.device), cov.type(self.dtype).to(self.device), None
 
     def check_support(self, data: torch.Tensor, is_scope_data: bool = False) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -372,7 +372,7 @@ class CondMultivariateGaussian(LeafNode):
             )
 
         # different to univariate distributions, cannot simply check via torch distribution's support due to possible incomplete data in multivariate case; therefore do it ourselves (not difficult here since support is R)
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
 
         # check for infinite values (may return NaNs despite support)
         valid &= ~scope_data.isinf().sum(dim=1, keepdim=True).bool()

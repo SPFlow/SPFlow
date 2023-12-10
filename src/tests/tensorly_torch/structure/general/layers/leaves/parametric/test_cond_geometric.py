@@ -348,8 +348,60 @@ def test_update_backend(do_for_all_backends):
             tc.assertTrue(np.all(geometric.scopes_out == geometric_updated.scopes_out))
         # check conversion from torch to python
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    p_value = 0.73
+    cond_geometric_default = CondGeometricLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"p": p_value})
+    tc.assertTrue(cond_geometric_default.dtype == tl.float32)
+    p = cond_geometric_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    tc.assertTrue(p.dtype == tl.float32)
+
+    # change to float64 model
+    cond_geometric_updated = CondGeometricLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"p": p_value})
+    cond_geometric_updated.to_dtype(tl.float64)
+    p_up = cond_geometric_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    tc.assertTrue(cond_geometric_updated.dtype == tl.float64)
+    tc.assertTrue(p_up.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array(p),
+            np.array(p_up),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    p_value = 0.13
+    torch.set_default_dtype(torch.float32)
+    cond_geometric_default = CondGeometricLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"p": p_value})
+    cond_geometric_updated = CondGeometricLayer(scope=Scope([1], [0]), n_nodes=3, cond_f=lambda data: {"p": p_value})
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, cond_geometric_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    cond_geometric_updated.to_device(cuda)
+
+    tc.assertTrue(cond_geometric_default.device.type == "cpu")
+    tc.assertTrue(cond_geometric_updated.device.type == "cuda")
+
+    p = cond_geometric_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    p_up = cond_geometric_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+
+    tc.assertTrue(p.device.type == "cpu")
+    tc.assertTrue(p_up.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array(p),
+            np.array(p_up.cpu()),
+        )
+    )
+
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

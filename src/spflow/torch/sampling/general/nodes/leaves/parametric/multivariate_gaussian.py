@@ -56,14 +56,14 @@ def sample(
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
     # compute nan_mask for specified instances
-    instances_mask = torch.zeros(data.shape[0]).bool()
+    instances_mask = torch.zeros(data.shape[0], device=leaf.device).bool()
     instances_mask[torch.tensor(sampling_ctx.instance_ids)] = True
 
     nan_data = torch.isnan(
         data[
             torch.meshgrid(
                 torch.where(instances_mask)[0],
-                torch.tensor(leaf.scope.query),
+                torch.tensor(leaf.scope.query, device=leaf.device),
                 indexing="ij",
             )
         ]
@@ -72,15 +72,15 @@ def sample(
     # group by scope rvs to sample
     for nan_mask in torch.unique(nan_data, dim=0):
 
-        cond_rvs = torch.tensor(leaf.scope.query)[torch.where(~nan_mask)[0]]  # ids for evidence RVs
-        non_cond_rvs = torch.tensor(leaf.scope.query)[torch.where(nan_mask)[0]]  # RVs to be sampled
+        cond_rvs = torch.tensor(leaf.scope.query, device=leaf.device)[torch.where(~nan_mask)[0]]  # ids for evidence RVs
+        non_cond_rvs = torch.tensor(leaf.scope.query, device=leaf.device)[torch.where(nan_mask)[0]]  # RVs to be sampled
 
         # no 'NaN' values (nothing to sample)
         if torch.sum(nan_mask) == 0:
             continue
         # sample from full distribution
         elif torch.sum(nan_mask) == len(leaf.scope.query):
-            sampling_ids = torch.tensor(sampling_ctx.instance_ids)[
+            sampling_ids = torch.tensor(sampling_ctx.instance_ids, device=leaf.device)[
                 (nan_data == nan_mask).sum(dim=1) == nan_mask.shape[0]
             ]
 
@@ -90,7 +90,7 @@ def sample(
         # sample from conditioned distribution
         else:
             # note: the conditional sampling implemented here is based on the algorithm described in Arnaud Doucet (2010): "A Note on Efficient Conditional Simulation of Gaussian Distributions" (https://www.stats.ox.ac.uk/~doucet/doucet_simulationconditionalgaussian.pdf)
-            sampling_ids = torch.tensor(sampling_ctx.instance_ids)[
+            sampling_ids = torch.tensor(sampling_ctx.instance_ids, device=leaf.device)[
                 (nan_data == nan_mask).sum(dim=1) == nan_mask.shape[0]
             ]
 
@@ -105,7 +105,7 @@ def sample(
 
             data[torch.meshgrid(sampling_ids, non_cond_rvs, indexing="ij")] = joint_samples[:, nan_mask] + (
                 (data[torch.meshgrid(sampling_ids, cond_rvs, indexing="ij")] - joint_samples[:, ~nan_mask])
-                @ (marg_cov_inv @ cond_cov).double()
+                @ (marg_cov_inv @ cond_cov)
             )
 
     return data

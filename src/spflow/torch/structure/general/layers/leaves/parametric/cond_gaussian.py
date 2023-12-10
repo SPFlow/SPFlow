@@ -268,17 +268,17 @@ class CondGaussianLayer(Module):
                     mean.append(args["mean"])
                     std.append(args["std"])
 
-                mean = torch.tensor(mean, dtype=torch.float64)
-                std = torch.tensor(std, dtype=torch.float64)
+                mean = torch.tensor(mean, dtype=self.dtype, device=self.device)
+                std = torch.tensor(std, dtype=self.dtype, device=self.device)
             else:
                 args = cond_f(data)
                 mean = args["mean"]
                 std = args["std"]
 
         if isinstance(mean, int) or isinstance(mean, float):
-            mean = torch.tensor([mean for _ in range(self.n_out)], dtype=torch.float64)
+            mean = torch.tensor([mean for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(mean, list) or isinstance(mean, np.ndarray):
-            mean = torch.tensor(mean, dtype=torch.float64)
+            mean = torch.tensor(mean, dtype=self.dtype, device=self.device)
         if mean.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'mean' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {mean.ndim}-dimensional."
@@ -292,9 +292,9 @@ class CondGaussianLayer(Module):
             raise ValueError(f"Values of 'mean' for 'CondGaussianLayer' must be finite, but was: {mean}")
 
         if isinstance(std, int) or isinstance(std, float):
-            std = torch.tensor([std for _ in range(self.n_out)], dtype=torch.float64)
+            std = torch.tensor([std for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(std, list) or isinstance(std, np.ndarray):
-            std = torch.tensor(std, dtype=torch.float64)
+            std = torch.tensor(std, dtype=self.dtype, device=self.device)
         if std.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'std' values for 'CondGaussianLayer' is expected to be one-dimensional, but is {std.ndim}-dimensional."

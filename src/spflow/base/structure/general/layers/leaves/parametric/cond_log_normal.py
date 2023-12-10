@@ -90,6 +90,8 @@ class CondLogNormalLayer(Module):
 
         super().__init__(children=[], **kwargs)
 
+        self.backend = "numpy"
+
         # create leaf nodes
         self.nodes = [CondLogNormal(s) for s in scope]
 
@@ -245,9 +247,9 @@ class CondLogNormalLayer(Module):
                 std = args["std"]
 
         if isinstance(mean, int) or isinstance(mean, float):
-            mean = np.array([mean for _ in range(self.n_out)])
+            mean = np.array([mean for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(mean, list):
-            mean = np.array(mean)
+            mean = np.array(mean, dtype=self.dtype)
         if mean.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'mean' values for 'CondLogNormalLayer' is expected to be one-dimensional, but is {mean.ndim}-dimensional."
@@ -258,9 +260,9 @@ class CondLogNormalLayer(Module):
             )
 
         if isinstance(std, int) or isinstance(std, float):
-            std = np.array([float(std) for _ in range(self.n_out)])
+            std = np.array([float(std) for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(std, list):
-            std = np.array(std)
+            std = np.array(std, dtype=self.dtype)
         if std.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'std' values for 'CondLogNormalLayer' is expected to be one-dimensional, but is {std.ndim}-dimensional."
@@ -325,6 +327,11 @@ class CondLogNormalLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype=dtype
+        for node in self.nodes:
+            node.dtype = self.dtype
 
 
 @dispatch(memoize=True)  # type: ignore

@@ -87,7 +87,7 @@ class SumLayer(NestedModule):
 
         # parse weights
         if weights is None:
-            weights = tl.random.random_tensor((self.n_out, self.n_in)) + 1e-08  # avoid zeros
+            weights = tl.random.random_tensor((self.n_out, self.n_in), dtype=self.dtype, device=self.device) + 1e-08  # avoid zeros
             weights /= tl.sum(weights, axis=-1, keepdims=True)
 
         if self.backend == "pytorch":
@@ -96,12 +96,7 @@ class SumLayer(NestedModule):
             self._weights = None
         self.weights = weights
 
-        #if weights is not None:
-        #    self.weights = weights
-
-
-        # compute scope
-        #self.scope = self.nodes[0].scope
+        # compute scopee
         self.scope = Scope([int(x) for x in self.nodes[0].scope.query], self.nodes[0].scope.evidence)
 
     @property
@@ -135,7 +130,7 @@ class SumLayer(NestedModule):
             ValueError: Invalid values.
         """
         if isinstance(values, list):
-            values = tl.tensor(values)
+            values = tl.tensor(values, dtype=self.dtype, device=self.device)
         if tl.ndim(values) != 1 and tl.ndim(values) != 2:
             raise ValueError(
                 f"Numpy array of weight values for 'SumLayer' is expected to be one- or two-dimensional, but is {values.ndim}-dimensional."
@@ -158,16 +153,16 @@ class SumLayer(NestedModule):
             if tl.shape(values)[0] == 1:
                 for node in self.nodes:
                     if self.backend == "pytorch":
-                        node._weights.data = tl.copy(tl_squeeze(proj_convex_to_real(values), axis=0))
+                        node._weights.data = tl.copy(tl_squeeze(proj_convex_to_real(values), axis=0)).type(self.dtype).to(self.device)
                     else:
-                        node._weights = tl.copy(tl_squeeze(proj_convex_to_real(values), axis=0))
+                        node._weights = tl.copy(tl_squeeze(proj_convex_to_real(values), axis=0)).astype(self.dtype)
             # different weights for all sum nodes
             elif values.shape[0] == self.n_out:
                 for node, node_values in zip(self.nodes, values):
                     if self.backend == "pytorch":
-                        node._weights.data = tl.copy(proj_convex_to_real(node_values))
+                        node._weights.data = tl.copy(proj_convex_to_real(node_values)).type(self.dtype).to(self.device)
                     else:
-                        node._weights = tl.copy(proj_convex_to_real(node_values))
+                        node._weights = tl.copy(proj_convex_to_real(node_values)).astype(self.dtype)
             # incorrect number of specified weights
             else:
                 raise ValueError(
@@ -181,6 +176,24 @@ class SumLayer(NestedModule):
         for node in self.nodes:
             params.insert(0,node._weights)
         return params
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.weights = self.weights
+        for node in self.nodes:
+            node.dtype = dtype
+        for child in self.children:
+            child.to_dtype(dtype)
+
+    def to_device(self, device):
+        if self.backend == "numpy":
+            raise ValueError("it is not possible to change the device of models that have a numpy backend")
+        self.device = device
+        self.weights = self.weights
+        for node in self.nodes:
+            node.device = device
+        for child in self.children:
+            child.to_device(device)
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
@@ -254,13 +267,13 @@ def updateBackend(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] =
         return SumLayer(
             n_nodes=sum_layer.n_out,
             children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
-            weights=tl.tensor(sum_layer.weights.data)
+            weights=tl.tensor(sum_layer.weights.data, dtype=sum_layer.dtype, device=sum_layer.device)
         )
     elif isinstance(sum_layer.weights, np.ndarray):
         return SumLayer(
             n_nodes=sum_layer.n_out,
             children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
-            weights=tl.tensor(sum_layer.weights)
+            weights=tl.tensor(sum_layer.weights, dtype=sum_layer.dtype, device=sum_layer.device)
         )
 
     else:
@@ -302,10 +315,3 @@ def toLayerBased(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = 
         children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
         weights= sum_layer.weights
     )
-
-
-@dispatch(memoize=True)  # type: ignore
-def test(sum_layer: SumLayer):
-    print("sum_layer")
-    for child in sum_layer.children:
-        test(child)

@@ -50,20 +50,20 @@ def randomized_dependency_coefficients(
     ecdf = empirical_cdf(data)
 
     # bring ecdf values into correct shape and pad with ones (for biases)
-    ecdf_features = tl.stack([ecdf.T, tl.ones(ecdf.T.shape)], axis=-1)
+    ecdf_features = tl.stack([ecdf.T, tl.ones(ecdf.T.shape, dtype=data.dtype)], axis=-1)
 
     # compute random weights (and biases) generated from normal distribution
-    rand_gaussians = tl.random.random_tensor((tl.shape(data)[1], 2, k), dtype=data.dtype)  # 2 for weight (of size 1) and bias
+    rand_gaussians = tl.random.random_tensor((tl.shape(data)[1], 2, k), dtype=float)  # 2 for weight (of size 1) and bias
 
     # compute linear combinations of ecdf feature using generated weights
     features = tl.stack([tl.dot(features, weights) for features, weights in zip(ecdf_features, rand_gaussians)])
-    features *= tl.sqrt(tl.tensor(s))  # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
+    features *= tl.sqrt(tl.tensor(s, data.dtype))  # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
 
     # apply non-linearity phi
     features = phi(features)
 
     # create matrix holding the pair-wise dependency coefficients
-    rdcs = tl.eye(tl.shape(data)[1])
+    rdcs = tl.eye(tl.shape(data)[1], dtype=data.dtype)
 
     cca = CCA(n_components=1)
 

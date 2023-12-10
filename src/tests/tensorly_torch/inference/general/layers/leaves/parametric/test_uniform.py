@@ -36,7 +36,7 @@ def test_layer_likelihood(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(nodes_ll)))
 
 def test_gradient_computation(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     if do_for_all_backends == "numpy":
         return
@@ -90,7 +90,7 @@ def test_support(do_for_all_backends):
     pass
 
 def test_update_backend(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     backends = ["numpy", "pytorch"]
     layer = UniformLayer(
         scope=[Scope([0]), Scope([1]), Scope([0])],
@@ -110,7 +110,40 @@ def test_update_backend(do_for_all_backends):
             # check conversion from torch to python
             tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(log_probs_updated)))
 
+def test_change_dtype(do_for_all_backends):
+    layer = UniformLayer(
+        scope=[Scope([0]), Scope([1]), Scope([0])],
+        start=[0.2, -1.0, 0.3],
+        end=[1.0, 0.3, 0.97],
+    )
+    dummy_data = tl.tensor([[1, 0], [0, 0], [1, 1]], dtype=tl.float32)
+    layer_ll = log_likelihood(layer, dummy_data)
+    tc.assertTrue(layer_ll.dtype == tl.float32)
+    layer.to_dtype(tl.float64)
+    dummy_data = tl.tensor([[1, 0], [0, 0], [1, 1]], dtype=tl.float64)
+    layer_ll_up = log_likelihood(layer, dummy_data)
+    tc.assertTrue(layer_ll_up.dtype == tl.float64)
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    layer = UniformLayer(
+        scope=[Scope([0]), Scope([1]), Scope([0])],
+        start=[0.2, -1.0, 0.3],
+        end=[1.0, 0.3, 0.97],
+    )
+    dummy_data = tl.tensor([[1, 0], [0, 0], [1, 1]])
+    layer_ll = log_likelihood(layer, dummy_data)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, layer.to_device, cuda)
+        return
+    tc.assertTrue(layer_ll.device.type == "cpu")
+    layer.to_device(cuda)
+    dummy_data = tl.tensor([[1, 0], [0, 0], [1, 1]], device=cuda)
+    layer_ll = log_likelihood(layer, dummy_data)
+    tc.assertTrue(layer_ll.device.type == "cuda")
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

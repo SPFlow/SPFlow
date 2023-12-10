@@ -183,9 +183,9 @@ class BernoulliLayer(Module):
             ValueError: Invalid arguments.
         """
         if isinstance(p, float) or isinstance(p, int):
-            p = torch.tensor([p for _ in range(self.n_out)], dtype=torch.float64)
+            p = torch.tensor([p for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(p, list) or isinstance(p, np.ndarray):
-            p = torch.tensor(p, dtype=torch.float64)
+            p = torch.tensor(p, dtype=self.dtype, device=self.device)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'BernoulliLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
@@ -302,6 +302,14 @@ class BernoulliLayer(Module):
 
         return valid
 
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.p_aux.data = self.p_aux.data.type(dtype)
+
+    def to_device(self, device):
+        self.device = device
+        self.p_aux.data = self.p_aux.data.to(device)
+
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
@@ -394,3 +402,5 @@ def updateBackend(leaf_node: BernoulliLayer, dispatch_ctx: Optional[DispatchCont
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return GeneralBernoulli(scope=leaf_node.scopes_out, p=leaf_node.p.data)
+
+

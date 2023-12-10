@@ -20,7 +20,7 @@ from spflow.base.structure.general.nodes.leaves.parametric.cond_multivariate_gau
 tc = unittest.TestCase()
 
 def test_likelihood_module_cond_f(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     cond_f = lambda data: {"mean": tl.zeros(2), "cov": tl.eye(2)}
 
@@ -129,7 +129,7 @@ def test_gradient_computation(do_for_all_backends):
     tc.assertTrue(cov.grad is not None)
 
 def test_likelihood_marginalization(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     # ----- full marginalization -----
 
@@ -256,7 +256,44 @@ def test_update_backend(do_for_all_backends):
             # check conversion from torch to python
             tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
+def test_change_dtype(do_for_all_backends):
+    mean = np.arange(3)
+    cov = np.array([[2, 2, 1], [2, 3, 2], [1, 2, 3]])
+
+    node = CondMultivariateGaussian(
+        Scope([0, 1, 2], [3]),
+        cond_f=lambda data: {"mean": mean, "cov": cov},
+    )
+    dummy_data = tl.tensor(np.random.rand(3, 3), dtype=tl.float32)
+    layer_ll = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll.dtype == tl.float32)
+    node.to_dtype(tl.float64)
+    dummy_data = tl.tensor(np.random.rand(3, 3), dtype=tl.float64)
+    layer_ll_up = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll_up.dtype == tl.float64)
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    mean = np.arange(3)
+    cov = np.array([[2, 2, 1], [2, 3, 2], [1, 2, 3]])
+
+    node = CondMultivariateGaussian(
+        Scope([0, 1, 2], [3]),
+        cond_f=lambda data: {"mean": mean, "cov": cov},
+    )
+    dummy_data = tl.tensor(np.random.rand(3, 3), dtype=tl.float32)
+    layer_ll = log_likelihood(node, dummy_data)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, node.to_device, cuda)
+        return
+    tc.assertTrue(layer_ll.device.type == "cpu")
+    node.to_device(cuda)
+    dummy_data = tl.tensor(np.random.rand(3, 3), device=cuda)
+    layer_ll = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll.device.type == "cuda")
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

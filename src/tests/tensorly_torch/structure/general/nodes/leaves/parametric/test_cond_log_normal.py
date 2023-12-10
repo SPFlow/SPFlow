@@ -225,6 +225,95 @@ def test_update_backend(do_for_all_backends):
             tc.assertTrue(np.all(cond_log_normal.scopes_out == cond_log_normal_updated.scopes_out))
 
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    model_default = CondLogNormal(Scope([0], [1]), lambda x: {"mean": 0.0, "std": 1.0})
+    param = model_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param1 = param[0]
+    param2 = param[1]
+
+    tc.assertTrue(model_default.dtype == tl.float32)
+    if do_for_all_backends == "numpy":
+        if (isinstance(param1, np.ndarray)):
+                tc.assertTrue(param1.dtype==tl.float32)
+                tc.assertTrue(param2.dtype == tl.float32)
+        else:
+            tc.assertTrue(isinstance(param1, float))
+            tc.assertTrue(isinstance(param2, float))
+    else:
+        tc.assertTrue(param1.dtype == tl.float32)
+        tc.assertTrue(param2.dtype == tl.float32)
+
+    # change to float64 model
+    model_updated = CondLogNormal(Scope([0], [1]), lambda x: {"mean": 0.0, "std": 1.0})
+    model_updated.to_dtype(tl.float64)
+    param_up = model_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param_up1 = param_up[0]
+    param_up2 = param_up[1]
+    tc.assertTrue(model_updated.dtype == tl.float64)
+    if do_for_all_backends == "numpy":
+        if (isinstance(param_up1, np.ndarray)):
+            tc.assertTrue(param_up1.dtype == tl.float64)
+            tc.assertTrue(param_up2.dtype == tl.float64)
+        else:
+            tc.assertTrue(isinstance(param_up1, float))
+            tc.assertTrue(isinstance(param_up2, float))
+    else:
+        tc.assertTrue(param_up1.dtype == tl.float64)
+        tc.assertTrue(param_up2.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([param]),
+            np.array([param_up]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    model_default = CondLogNormal(Scope([0], [1]), lambda x: {"mean": 0.0, "std": 1.0})
+    model_updated = CondLogNormal(Scope([0], [1]), lambda x: {"mean": 0.0, "std": 1.0})
+    # put model on gpu
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, model_updated.to_device, cuda)
+        return
+
+    model_updated.to_device(cuda)
+    param = model_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param1 = param[0]
+    param2 = param[1]
+    param_up = model_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param_up1 = param_up[0]
+    param_up2 = param_up[1]
+
+
+
+    tc.assertTrue(model_default.device.type == "cpu")
+    tc.assertTrue(model_updated.device.type == "cuda")
+
+    tc.assertTrue(param1.device.type == "cpu")
+    tc.assertTrue(param_up1.device.type == "cuda")
+
+    tc.assertTrue(param2.device.type == "cpu")
+    tc.assertTrue(param_up2.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([param1]),
+            np.array([param_up1.cpu()]),
+        )
+    )
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([param2]),
+            np.array([param_up2.cpu()]),
+        )
+    )
+
+
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

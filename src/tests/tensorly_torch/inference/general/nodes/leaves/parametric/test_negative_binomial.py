@@ -70,7 +70,7 @@ def test_gradient_computation(do_for_all_backends):
     )
 
 def test_gradient_optimization(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     if do_for_all_backends == "numpy":
         return
 
@@ -103,14 +103,14 @@ def test_gradient_optimization(do_for_all_backends):
     tc.assertTrue(
         torch.allclose(
             torch_negative_binomial.p,
-            tl.tensor(p_target, dtype=tl.float64),
+            tl.tensor(p_target, dtype=tl.float32),
             atol=1e-3,
             rtol=1e-3,
         )
     )
 
 def test_likelihood_p_1(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     # p = 1
     negative_binomial = NegativeBinomial(Scope([0]), 1, 1.0)
@@ -122,7 +122,7 @@ def test_likelihood_p_1(do_for_all_backends):
     log_probs = log_likelihood(negative_binomial, data)
 
     tc.assertTrue(np.allclose(tl_toNumpy(probs), tl_toNumpy(tl.exp(log_probs))))
-    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets))
+    tc.assertTrue(np.allclose(tl_toNumpy(probs), targets, atol=0.001, rtol=0.001))
 
 def test_likelihood_n_float(do_for_all_backends):
 
@@ -210,6 +210,38 @@ def test_update_backend(do_for_all_backends):
             tc.assertTrue(np.allclose(tl_toNumpy(log_probs), tl_toNumpy(log_probs_updated)))
 
 
+def test_change_dtype(do_for_all_backends):
+    n = random.randint(2, 10)
+    p = random.random()
+
+    node = NegativeBinomial(Scope([0]), n, p)
+    dummy_data = tl.tensor(np.random.randint(1, n, (3, 1)), dtype=tl.float32)
+    layer_ll = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll.dtype == tl.float32)
+    node.to_dtype(tl.float64)
+    dummy_data = tl.tensor(np.random.randint(1, n, (3, 1)), dtype=tl.float64)
+    layer_ll_up = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll_up.dtype == tl.float64)
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    n = random.randint(2, 10)
+    p = random.random()
+
+    node = NegativeBinomial(Scope([0]), n, p)
+    dummy_data = tl.tensor(np.random.randint(1, n, (3, 1)), dtype=tl.float32)
+    layer_ll = log_likelihood(node, dummy_data)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, node.to_device, cuda)
+        return
+    tc.assertTrue(layer_ll.device.type == "cpu")
+    node.to_device(cuda)
+    dummy_data = tl.tensor(np.random.randint(1, n, (3, 1)), device=cuda)
+    layer_ll = log_likelihood(node, dummy_data)
+    tc.assertTrue(layer_ll.device.type == "cuda")
+
+
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

@@ -75,7 +75,7 @@ def maximum_likelihood_estimation(
     scope_data = torch.hstack([data[:, scope.query] for scope in layer.scopes_out])
 
     if weights is None:
-        weights = torch.ones(data.shape[0], layer.n_out)
+        weights = torch.ones(data.shape[0], layer.n_out).type(layer.dtype).to(layer.device)
 
     if (
         (weights.ndim == 1 and weights.shape[0] != data.shape[0])
@@ -147,8 +147,8 @@ def maximum_likelihood_estimation(
         )
 
     # edge case: if prob. 1 (or 0), set to smaller (or larger) value
-    p_est[torch.allclose(p_est, torch.tensor(0.0))] = 1e-8
-    p_est[torch.allclose(p_est, torch.tensor(1.0))] = 1 - 1e-8
+    p_est[torch.allclose(p_est, torch.tensor(0.0, dtype=layer.dtype, device=layer.device))] = 1e-8
+    p_est[torch.allclose(p_est, torch.tensor(1.0, dtype=layer.dtype, device=layer.device))] = 1 - 1e-8
 
     # set parameters of leaf node
     layer.set_params(p=p_est)

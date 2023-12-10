@@ -1,12 +1,15 @@
 import os
 
 import tensorly as tl
+import numpy as np
 
 import unittest
+from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.utils.model_manager import load_model, save_model
 from spflow.meta.data import Scope
 from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
 from spflow.tensorly.structure.spn import ProductNode, SumNode
+from spflow.tensorly.utils.helper_functions import tl_toNumpy
 
 
 tc = unittest.TestCase()
@@ -81,7 +84,20 @@ def test_load_model(do_for_all_backends):
     if os.path.exists(filename):
         os.remove(filename)
 
-# test inference
+def test_load_model_inference(do_for_all_backends):
+    example_spn = create_example_spn()
+    dummy_data = tl.tensor([[1.0, 0.0, 1.0]])
+    ll_result = log_likelihood(example_spn, dummy_data)
+    save_model(example_spn, filename)
+    loaded_model = load_model(filename)
+    loaded_ll_result = log_likelihood(loaded_model, dummy_data)
+    tc.assertTrue(np.allclose(tl_toNumpy(ll_result),tl_toNumpy(loaded_ll_result)))
+
+    # delete model
+    if os.path.exists(filename):
+        os.remove(filename)
+
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -58,7 +58,7 @@ def partition_by_rdc(
     # create adjacency matrix of features from thresholded rdcs
     adj_mat = tl.tensor((rdcs >= threshold), dtype=int)
 
-    partition_ids = tl.zeros(tl.shape(data)[1])
+    partition_ids = tl.zeros(tl.shape(data)[1], dtype=int)
 
     for i, cc in enumerate(connected_components(adj_mat)):
         partition_ids[list(cc)] = i
@@ -207,16 +207,16 @@ def learn_spn(
         )
 
     # helper functions
-    def fit_leaf(leaf: Module, data: tl.tensor, scope: Scope):
+    def fit_leaf(leaf: Module, data: T, scope: Scope):
 
         # create empty data set with data at correct leaf scope indices
-        leaf_data = tl.zeros((tl.shape(data)[0], max(scope.query) + 1), dtype=float)
+        leaf_data = tl.zeros((tl.shape(data)[0], max(scope.query) + 1), dtype=leaf.dtype, device=leaf.device)
         leaf_data[:, scope.query] = data[:, [scope.query.index(rv) for rv in scope.query]]
 
         # estimate leaf node parameters from data
         maximum_likelihood_estimation(leaf, leaf_data, check_support=check_support)
 
-    def create_uv_leaf(scope: Scope, data: tl.tensor, fit_params: bool = True):
+    def create_uv_leaf(scope: Scope, data: T, fit_params: bool = True):
         # create leaf node
         signature = feature_ctx.select(scope.query)
         leaf = AutoLeaf([signature])
@@ -226,7 +226,7 @@ def learn_spn(
 
         return leaf
 
-    def create_partitioned_mv_leaf(scope: Scope, data: tl.tensor, fit_params: bool = True):
+    def create_partitioned_mv_leaf(scope: Scope, data: T, fit_params: bool = True):
         # combine univariate leafs via product node
         leaves = []
         for rv in scope.query:

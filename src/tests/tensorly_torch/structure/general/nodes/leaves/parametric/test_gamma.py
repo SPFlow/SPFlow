@@ -172,7 +172,69 @@ def test_update_backend(do_for_all_backends):
                 )
             )
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    alpha = random.uniform(1, 5)
+    beta = random.uniform(1, 5)
+    model_default = Gamma(Scope([0]), alpha, beta)
+    tc.assertTrue(model_default.dtype == tl.float32)
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(model_default.alpha, float))
+        tc.assertTrue(isinstance(model_default.beta, float))
+    else:
+        tc.assertTrue(model_default.alpha.dtype == tl.float32)
+        tc.assertTrue(model_default.beta.dtype == tl.float32)
+
+    # change to float64 model
+    model_updated = Gamma(Scope([0]), alpha, beta)
+    model_updated.to_dtype(tl.float64)
+    tc.assertTrue(model_updated.dtype == tl.float64)
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(model_updated.alpha, float))
+        tc.assertTrue(isinstance(model_updated.beta, float))
+    else:
+        tc.assertTrue(model_updated.alpha.dtype == tl.float64)
+        tc.assertTrue(model_updated.beta.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([*model_default.get_params()]),
+            np.array([*model_updated.get_params()]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    alpha = random.uniform(1, 5)
+    beta = random.uniform(1, 5)
+    torch.set_default_dtype(torch.float32)
+    model_default = Gamma(Scope([0]), alpha, beta)
+    model_updated = Gamma(Scope([0]), alpha, beta)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, model_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    model_updated.to_device(cuda)
+
+    tc.assertTrue(model_default.device.type == "cpu")
+    tc.assertTrue(model_updated.device.type == "cuda")
+
+    tc.assertTrue(model_default.alpha.device.type == "cpu")
+    tc.assertTrue(model_updated.alpha.device.type == "cuda")
+
+    tc.assertTrue(model_default.beta.device.type == "cpu")
+    tc.assertTrue(model_updated.beta.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([*model_default.get_params()]),
+            np.array([*model_updated.get_params()]),
+        )
+    )
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

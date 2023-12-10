@@ -257,6 +257,13 @@ class CondMultivariateGaussian(LeafNode):
         if np.any(np.linalg.eigvalsh(cov) < 0):
             raise ValueError("Value of 'cov' for 'CondMultivariateGaussian' must be positive semi-definite.")
 
+        # adapt dtype
+        if isinstance(mean, np.ndarray):
+            mean = mean.astype(self.dtype)
+
+        if isinstance(cov, np.ndarray):
+            cov = cov.astype(self.dtype)
+
         return mean, cov
 
     def dist(self, mean: np.ndarray, cov: np.ndarray) -> rv_frozen:

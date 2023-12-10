@@ -93,7 +93,7 @@ class Bernoulli(LeafNode):
         if p < 0.0 or p > 1.0 or not np.isfinite(p):
             raise ValueError(f"Value of 'p' for 'Bernoulli' must to be between 0.0 and 1.0, but was: {p}")
 
-        self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p)), lb=0.0, ub=1.0)
+        self.p_aux.data = proj_bounded_to_real(torch.tensor(float(p), dtype=self.dtype, device=self.device), lb=0.0, ub=1.0)
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -234,13 +234,21 @@ class Bernoulli(LeafNode):
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device = self.device)
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
         valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.p.data)
+
+    def to_device(self, device):
+        self.device = device
+        self.set_params(self.p.data)
 
 
 @dispatch(memoize=True)  # type: ignore

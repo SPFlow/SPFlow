@@ -264,17 +264,17 @@ class CondGammaLayer(Module):
                     alpha.append(args["alpha"])
                     beta.append(args["beta"])
 
-                alpha = torch.tensor(alpha, dtype=torch.float64)
-                beta = torch.tensor(beta, dtype=torch.float64)
+                alpha = torch.tensor(alpha, dtype=self.dtype, device=self.device)
+                beta = torch.tensor(beta, dtype=self.dtype, device=self.device)
             else:
                 args = cond_f(data)
                 alpha = args["alpha"]
                 beta = args["beta"]
 
         if isinstance(alpha, int) or isinstance(alpha, float):
-            alpha = torch.tensor([alpha for _ in range(self.n_out)], dtype=torch.float64)
+            alpha = torch.tensor([alpha for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(alpha, list) or isinstance(alpha, np.ndarray):
-            alpha = torch.tensor(alpha, dtype=torch.float64)
+            alpha = torch.tensor(alpha, dtype=self.dtype, device=self.device)
         if alpha.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'alpha' values for 'CondGammaLayer' is expected to be one-dimensional, but is {alpha.ndim}-dimensional."
@@ -288,9 +288,9 @@ class CondGammaLayer(Module):
             raise ValueError(f"Values of 'alpha' for 'CondGammaLayer' must be greater than 0, but was: {alpha}")
 
         if isinstance(beta, int) or isinstance(beta, float):
-            beta = torch.tensor([beta for _ in range(self.n_out)], dtype=torch.float64)
+            beta = torch.tensor([beta for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(beta, list) or isinstance(beta, np.ndarray):
-            beta = torch.tensor(beta, dtype=torch.float64)
+            beta = torch.tensor(beta, dtype=self.dtype, device=self.device)
         if beta.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'beta' values for 'CondGammaLayer' is expected to be one-dimensional, but is {beta.ndim}-dimensional."

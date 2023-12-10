@@ -195,6 +195,13 @@ class CondGaussian(LeafNode):
         if std <= 0.0:
             raise ValueError(f"Value for 'std' for 'CondGaussian' must be greater than 0.0, but was: {std}")
 
+        # adapt dtype
+        if isinstance(mean, np.ndarray):
+            mean = mean.astype(self.dtype)
+
+        if isinstance(std, np.ndarray):
+            std = std.astype(self.dtype)
+
         return mean, std
 
     def dist(self, mean: float, std: float) -> rv_frozen:

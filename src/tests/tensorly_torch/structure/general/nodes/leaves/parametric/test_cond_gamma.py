@@ -40,16 +40,16 @@ def test_retrieve_params(do_for_all_backends):
     # alpha > 0
     gamma.set_cond_f(
         lambda data: {
-            "alpha": tl_nextafter(tl.tensor(0.0), tl.tensor(1.0)),
-            "beta": tl.tensor(1.0),
+            "alpha": tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32)),
+            "beta": tl.tensor(1.0, dtype=tl.float32),
         }
     )
     tc.assertTrue(
         gamma.retrieve_params(np.array([[1.0]]), DispatchContext())[0]
-        == tl_nextafter(tl.tensor(0.0), tl.tensor(1.0))
+        == tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32))
     )
     # alpha = 0
-    gamma.set_cond_f(lambda data: {"alpha": tl.tensor(0.0), "beta": tl.tensor(1.0)})
+    gamma.set_cond_f(lambda data: {"alpha": tl.tensor(0.0, dtype=tl.float32), "beta": tl.tensor(1.0, dtype=tl.float32)})
     tc.assertRaises(
         Exception,
         gamma.retrieve_params,
@@ -98,16 +98,16 @@ def test_retrieve_params(do_for_all_backends):
     # beta > 0
     gamma.set_cond_f(
         lambda data: {
-            "alpha": tl.tensor(1.0),
-            "beta": tl_nextafter(tl.tensor(0.0), tl.tensor(1.0)),
+            "alpha": tl.tensor(1.0, dtype=tl.float32),
+            "beta": tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32)),
         }
     )
     tc.assertTrue(
         gamma.retrieve_params(np.array([[1.0]]), DispatchContext())[1]
-        == tl_nextafter(tl.tensor(0.0), tl.tensor(1.0))
+        == tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32))
     )
     # beta = 0
-    gamma.set_cond_f(lambda data: {"alpha": tl.tensor(1.0), "beta": tl.tensor(0.0)})
+    gamma.set_cond_f(lambda data: {"alpha": tl.tensor(1.0, dtype=tl.float32), "beta": tl.tensor(0.0, dtype=tl.float32)})
     tc.assertRaises(
         Exception,
         gamma.retrieve_params,
@@ -117,8 +117,8 @@ def test_retrieve_params(do_for_all_backends):
     # beta < 0
     gamma.set_cond_f(
         lambda data: {
-            "alpha": tl.tensor(0.0),
-            "beta": tl_nextafter(tl.tensor(0.0), -tl.tensor(1.0)),
+            "alpha": tl.tensor(0.0, dtype=tl.float32),
+            "beta": tl_nextafter(tl.tensor(0.0, dtype=tl.float32), -tl.tensor(1.0, dtype=tl.float32)),
         }
     )
     tc.assertRaises(
@@ -255,7 +255,119 @@ def test_update_backend(do_for_all_backends):
             # check conversion from torch to python
             tc.assertTrue(np.all(cond_gamma.scopes_out == cond_gamma_updated.scopes_out))
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    model_default = CondGamma(Scope([0], [1]))
+    model_default.set_cond_f(
+        lambda data: {
+            "alpha": tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32)),
+            "beta": tl.tensor(1.0, dtype=tl.float32),
+        }
+    )
+    param = model_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param1 = param[0]
+    param2 = param[1]
+
+    tc.assertTrue(model_default.dtype == tl.float32)
+    if do_for_all_backends == "numpy":
+        if (isinstance(param1, np.ndarray)):
+                tc.assertTrue(param1.dtype==tl.float32)
+                tc.assertTrue(param2.dtype == tl.float32)
+        else:
+            tc.assertTrue(isinstance(param1, float))
+            tc.assertTrue(isinstance(param2, float))
+    else:
+        tc.assertTrue(param1.dtype == tl.float32)
+        tc.assertTrue(param2.dtype == tl.float32)
+
+    # change to float64 model
+    model_updated = CondGamma(Scope([0], [1]))
+    model_updated.set_cond_f(
+        lambda data: {
+            "alpha": tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32)),
+            "beta": tl.tensor(1.0, dtype=tl.float32),
+        }
+    )
+    model_updated.to_dtype(tl.float64)
+    param_up = model_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param_up1 = param_up[0]
+    param_up2 = param_up[1]
+    tc.assertTrue(model_updated.dtype == tl.float64)
+    if do_for_all_backends == "numpy":
+        if (isinstance(param_up1, np.ndarray)):
+            tc.assertTrue(param_up1.dtype == tl.float64)
+            tc.assertTrue(param_up2.dtype == tl.float64)
+        else:
+            tc.assertTrue(isinstance(param_up1, float))
+            tc.assertTrue(isinstance(param_up2, float))
+    else:
+        tc.assertTrue(param_up1.dtype == tl.float64)
+        tc.assertTrue(param_up2.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([param]),
+            np.array([param_up]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    model_default = CondGamma(Scope([0], [1]))
+    model_default.set_cond_f(
+        lambda data: {
+            "alpha": tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32)),
+            "beta": tl.tensor(1.0, dtype=tl.float32),
+        }
+    )
+    model_updated = CondGamma(Scope([0], [1]))
+    model_updated.set_cond_f(
+        lambda data: {
+            "alpha": tl_nextafter(tl.tensor(0.0, dtype=tl.float32), tl.tensor(1.0, dtype=tl.float32)),
+            "beta": tl.tensor(1.0, dtype=tl.float32),
+        }
+    )
+    # put model on gpu
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, model_updated.to_device, cuda)
+        return
+
+    model_updated.to_device(cuda)
+    param = model_default.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param1 = param[0]
+    param2 = param[1]
+    param_up = model_updated.retrieve_params(np.array([[1.0]]), DispatchContext())
+    param_up1 = param_up[0]
+    param_up2 = param_up[1]
+
+
+
+    tc.assertTrue(model_default.device.type == "cpu")
+    tc.assertTrue(model_updated.device.type == "cuda")
+
+    tc.assertTrue(param1.device.type == "cpu")
+    tc.assertTrue(param_up1.device.type == "cuda")
+
+    tc.assertTrue(param2.device.type == "cpu")
+    tc.assertTrue(param_up2.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([param1]),
+            np.array([param_up1.cpu()]),
+        )
+    )
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([param2]),
+            np.array([param_up2.cpu()]),
+        )
+    )
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

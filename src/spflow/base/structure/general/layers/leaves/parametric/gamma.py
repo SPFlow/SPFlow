@@ -86,6 +86,8 @@ class GammaLayer(Module):
 
         super().__init__(children=[], **kwargs)
 
+        self.backend = "numpy"
+
         # create leaf nodes
         self.nodes = [Gamma(s) for s in scope]
 
@@ -103,12 +105,12 @@ class GammaLayer(Module):
     @property
     def alpha(self) -> np.ndarray:
         """Returns the shape parameters of the represented distributions."""
-        return np.array([node.alpha for node in self.nodes])
+        return np.array([node.alpha for node in self.nodes], dtype=self.dtype)
 
     @property
     def beta(self) -> np.ndarray:
         """Returns the rate parameters of the represented distributions."""
-        return np.array([node.beta for node in self.nodes])
+        return np.array([node.beta for node in self.nodes], dtype=self.dtype)
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -188,9 +190,9 @@ class GammaLayer(Module):
                 Defaults to 1.0.
         """
         if isinstance(alpha, int) or isinstance(alpha, float):
-            alpha = np.array([alpha for _ in range(self.n_out)])
+            alpha = np.array([alpha for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(alpha, list):
-            alpha = np.array(alpha)
+            alpha = np.array(alpha, dtype=self.dtype)
         if alpha.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'alpha' values for 'GammaLayer' is expected to be one-dimensional, but is {alpha.ndim}-dimensional."
@@ -201,9 +203,9 @@ class GammaLayer(Module):
             )
 
         if isinstance(beta, int) or isinstance(beta, float):
-            beta = np.array([float(beta) for _ in range(self.n_out)])
+            beta = np.array([float(beta) for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(beta, list):
-            beta = np.array(beta)
+            beta = np.array(beta, dtype=self.dtype)
         if beta.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'beta' values for 'GammaLayer' is expected to be one-dimensional, but is {beta.ndim}-dimensional."
@@ -214,6 +216,7 @@ class GammaLayer(Module):
             )
 
         for node_mean, node_beta, node in zip(alpha, beta, self.nodes):
+            node.dtype = self.dtype
             node.set_params(node_mean, node_beta)
 
     def get_params(self) -> Tuple[np.ndarray, np.ndarray]:
@@ -268,6 +271,10 @@ class GammaLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.alpha.astype(dtype), self.beta.astype(dtype))
 
 
 @dispatch(memoize=True)  # type: ignore

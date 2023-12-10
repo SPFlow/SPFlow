@@ -3,7 +3,7 @@
 from typing import Optional, Union
 import torch
 import tensorly as tl
-from spflow.tensorly.utils.helper_functions import T, tl_logsumexp
+from spflow.tensorly.utils.helper_functions import T, tl_logsumexp, get_device
 from scipy.special import logsumexp  # type: ignore
 
 from spflow.tensorly.structure.spn.nodes.sum_node import SumNode

@@ -196,7 +196,7 @@ def test_weighted_mle(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(leaf.p), tl.tensor([0.2, 0.7]), atol=1e-3, rtol=1e-2))
 
 def test_em_step(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
 
     if do_for_all_backends == "numpy":
         return
@@ -256,7 +256,7 @@ def test_em_product_of_binomials(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(layer.p), tl.tensor([0.8, 0.2]), atol=1e-3, rtol=1e-2))
 
 def test_em_sum_of_binomials(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
 
     if do_for_all_backends == "numpy":
         return
@@ -339,6 +339,77 @@ def test_update_backend(do_for_all_backends):
                 tc.assertTrue(np.allclose(tl_toNumpy(layer_updated.p), params_em, atol=1e-3, rtol=1e-2))
 
 
+def test_change_dtype(do_for_all_backends):
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = BinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
+    prod_node = ProductNode([layer])
+
+    # simulate data
+    data = np.hstack(
+        [
+            np.random.binomial(n=1, p=0.3, size=(10000, 1)),
+            np.random.binomial(n=1, p=0.7, size=(10000, 1)),
+        ]
+    )
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, tl.tensor(data, dtype=tl.float32))
+    tc.assertTrue(layer.p.dtype == tl.float32)
+
+    layer.to_dtype(tl.float64)
+
+    dummy_data = tl.tensor(data, dtype=tl.float64)
+    maximum_likelihood_estimation(layer, dummy_data)
+    tc.assertTrue(layer.p.dtype == tl.float64)
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(NotImplementedError, expectation_maximization, prod_node, tl.tensor(data, dtype=tl.float64),
+                        max_steps=10)
+    else:
+        # test if em runs without error after dype change
+        expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float64), max_steps=10)
+
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = BinomialLayer(scope=[Scope([0]), Scope([1])], n=[3, 10])
+    prod_node = ProductNode([layer])
+
+    # simulate data
+    data = np.hstack(
+        [
+            np.random.binomial(n=1, p=0.3, size=(10000, 1)),
+            np.random.binomial(n=1, p=0.7, size=(10000, 1)),
+        ]
+    )
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, layer.to_device, cuda)
+        return
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, tl.tensor(data, dtype=tl.float32))
+
+    tc.assertTrue(layer.p.device.type == "cpu")
+
+    layer.to_device(cuda)
+
+    dummy_data = tl.tensor(data, dtype=tl.float32, device=cuda)
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, dummy_data)
+    tc.assertTrue(layer.p.device.type == "cuda")
+
+    # test if em runs without error after device change
+    expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float32, device=cuda), max_steps=10)
+
+
 if __name__ == "__main__":
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

@@ -27,7 +27,7 @@ def test_mle(do_for_all_backends):
     torch.manual_seed(0)
     np.random.seed(0)
     random.seed(0)
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
 
     layer = MultivariateGaussianLayer(scope=[Scope([0, 1]), Scope([2, 3])])
 
@@ -92,7 +92,7 @@ def test_em_step(do_for_all_backends):
     torch.manual_seed(0)
     np.random.seed(0)
     random.seed(0)
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
 
     layer = MultivariateGaussianLayer([Scope([0, 1]), Scope([2, 3])])
     data = tl.tensor(
@@ -152,7 +152,7 @@ def test_update_backend(do_for_all_backends):
     torch.manual_seed(0)
     np.random.seed(0)
     random.seed(0)
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
 
     layer = MultivariateGaussianLayer(scope=[Scope([0, 1]), Scope([2, 3])])
 
@@ -209,7 +209,96 @@ def test_update_backend(do_for_all_backends):
                 tc.assertTrue(np.allclose(mean_em, mean_em_updated, atol=1e-2, rtol=1e-1))
                 tc.assertTrue(np.allclose(cov_em, cov_em_updated, atol=1e-2, rtol=1e-1))
 
+def test_change_dtype(do_for_all_backends):
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = MultivariateGaussianLayer(scope=[Scope([0, 1]), Scope([2, 3])])
+    prod_node = ProductNode([layer])
+
+    # simulate data
+    data = np.hstack(
+        [
+            np.random.multivariate_normal(
+                mean=tl.tensor([-1.7, 0.3]),
+                cov=tl.tensor([[1.0, 0.25], [0.25, 0.5]]),
+                size=(20000,),
+            ),
+            np.random.multivariate_normal(
+                mean=tl.tensor([0.5, 0.2]),
+                cov=tl.tensor([[1.3, -0.7], [-0.7, 1.0]]),
+                size=(20000,),
+            ),
+        ]
+    )
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, tl.tensor(data, dtype=tl.float32))
+    tc.assertTrue(layer.mean[0].dtype == tl.float32)
+    tc.assertTrue(layer.cov[0].dtype == tl.float32)
+
+    layer.to_dtype(tl.float64)
+
+    dummy_data = tl.tensor(data, dtype=tl.float64)
+    maximum_likelihood_estimation(layer, dummy_data)
+    tc.assertTrue(layer.mean[0].dtype == tl.float64)
+    tc.assertTrue(layer.cov[0].dtype == tl.float64)
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(NotImplementedError, expectation_maximization, prod_node, tl.tensor(data, dtype=tl.float64),
+                        max_steps=10)
+    else:
+        # test if em runs without error after dype change
+        expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float64), max_steps=10)
+
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    np.random.seed(0)
+    random.seed(0)
+
+    layer = MultivariateGaussianLayer(scope=[Scope([0, 1]), Scope([2, 3])])
+    prod_node = ProductNode([layer])
+
+    # simulate data
+    data = np.hstack(
+        [
+            np.random.multivariate_normal(
+                mean=tl.tensor([-1.7, 0.3]),
+                cov=tl.tensor([[1.0, 0.25], [0.25, 0.5]]),
+                size=(20000,),
+            ),
+            np.random.multivariate_normal(
+                mean=tl.tensor([0.5, 0.2]),
+                cov=tl.tensor([[1.3, -0.7], [-0.7, 1.0]]),
+                size=(20000,),
+            ),
+        ]
+    )
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, layer.to_device, cuda)
+        return
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, tl.tensor(data, dtype=tl.float32))
+
+    tc.assertTrue(layer.mean[0].device.type == "cpu")
+    tc.assertTrue(layer.cov[0].device.type == "cpu")
+
+    layer.to_device(cuda)
+
+    dummy_data = tl.tensor(data, dtype=tl.float32, device=cuda)
+
+    # perform MLE
+    maximum_likelihood_estimation(layer, dummy_data)
+    tc.assertTrue(layer.mean[0].device.type == "cuda")
+    tc.assertTrue(layer.cov[0].device.type == "cuda")
+
+    # test if em runs without error after device change
+    expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float32, device=cuda), max_steps=10)
+
 
 if __name__ == "__main__":
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

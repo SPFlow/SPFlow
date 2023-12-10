@@ -153,7 +153,7 @@ class CondNegativeBinomial(LeafNode):
         Returns:
             ``torch.distributions.NegativeBinomial`` instance.
         """
-        return D.NegativeBinomial(total_count=self.n, probs=torch.ones(1) - p)
+        return D.NegativeBinomial(total_count=self.n, probs=torch.ones(1, dtype=self.dtype, device=self.device) - p)
 
     def set_params(self, n: int) -> None:
         """Sets the parameters for the represented distribution.
@@ -219,7 +219,7 @@ class CondNegativeBinomial(LeafNode):
             p = cond_f(data)["p"]
 
         if isinstance(p, float):
-            p = torch.tensor(p)
+            p = torch.tensor(p, dtype=self.dtype, device=self.device)
 
         # check if value for 'p' is valid
         if p <= 0.0 or p > 1.0 or not torch.isfinite(p):
@@ -227,7 +227,7 @@ class CondNegativeBinomial(LeafNode):
                 f"Value of 'p' for 'CondNegativeBinomial' must to be between 0.0 (excluding) and 1.0 (including), but was: {p}"
             )
 
-        return p
+        return p.type(self.dtype).to(self.device)
 
     def get_trainable_params(self) -> Tuple[int]:
         """Returns the parameters of the represented distribution.
@@ -274,7 +274,7 @@ class CondNegativeBinomial(LeafNode):
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
         valid[~nan_mask] = self.dist(torch.tensor(0.5)).support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check if all values are valid integers

@@ -583,7 +583,72 @@ def test_update_backend(do_for_all_backends):
                 )
             )
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    uniform_default = UniformLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+                           start=[0.2, -0.9, 0.31],
+                           end=[0.3, 1.0, 0.5],
+                           support_outside=[True, False, True])
+    tc.assertTrue(uniform_default.dtype == tl.float32)
+    tc.assertTrue(uniform_default.start.dtype == tl.float32)
+    tc.assertTrue(uniform_default.end.dtype == tl.float32)
+    #tc.assertTrue(uniform_default.support_outside.dtype == tl.float32)
+
+    # change to float64 model
+    uniform_updated = UniformLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+                           start=[0.2, -0.9, 0.31],
+                           end=[0.3, 1.0, 0.5],
+                           support_outside=[True, False, True])
+    uniform_updated.to_dtype(tl.float64)
+    tc.assertTrue(uniform_updated.dtype == tl.float64)
+    tc.assertTrue(uniform_updated.start.dtype == tl.float64)
+    tc.assertTrue(uniform_updated.end.dtype == tl.float64)
+    #tc.assertTrue(uniform_updated.support_outside.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([*uniform_default.get_params()]),
+            np.array([*uniform_updated.get_params()]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    uniform_default = UniformLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+                           start=[0.2, -0.9, 0.31],
+                           end=[0.3, 1.0, 0.5],
+                           support_outside=[True, False, True])
+    uniform_updated = UniformLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+                           start=[0.2, -0.9, 0.31],
+                           end=[0.3, 1.0, 0.5],
+                           support_outside=[True, False, True])
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, uniform_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    uniform_updated.to_device(cuda)
+
+    tc.assertTrue(uniform_default.device.type == "cpu")
+    tc.assertTrue(uniform_updated.device.type == "cuda")
+
+    tc.assertTrue(uniform_default.start.device.type == "cpu")
+    tc.assertTrue(uniform_updated.start.device.type == "cuda")
+    tc.assertTrue(uniform_default.end.device.type == "cpu")
+    tc.assertTrue(uniform_updated.end.device.type == "cuda")
+    tc.assertTrue(uniform_default.support_outside.device.type == "cpu")
+    tc.assertTrue(uniform_updated.support_outside.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([*uniform_default.get_params()]),
+            np.array([*uniform_updated.get_params()]),
+        )
+    )
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

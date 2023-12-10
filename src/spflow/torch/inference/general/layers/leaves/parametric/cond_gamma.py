@@ -68,7 +68,7 @@ def log_likelihood(
     alpha, beta = layer.retrieve_params(data, dispatch_ctx)
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, layer.n_out).to(alpha.device)
+    log_prob: torch.Tensor = torch.empty(batch_size, layer.n_out).type(layer.dtype).to(layer.device)
 
     # query rvs of all node scopes
     query_rvs = [list(set(scope.query)) for scope in layer.scopes_out]
@@ -78,7 +78,7 @@ def log_likelihood(
 
         # compute all nodes with this scope
         node_ids = np.where((query_rvs == query_signature).all(axis=1))[0].tolist()
-        node_ids_tensor = torch.tensor(node_ids)
+        node_ids_tensor = torch.tensor(node_ids, device=layer.device)
 
         # get data for scope (since all "nodes" are univariate, order does not matter)
         scope_data = data[:, layer.scopes_out[node_ids[0]].query]
@@ -104,6 +104,6 @@ def log_likelihood(
         # compute probabilities for values inside distribution support
         log_prob[torch.meshgrid(non_marg_ids, node_ids_tensor, indexing="ij")] = layer.dist(
             alpha=alpha, beta=beta, node_ids=node_ids
-        ).log_prob(scope_data[non_marg_ids, :].type(torch.get_default_dtype())).type(torch.get_default_dtype())
+        ).log_prob(scope_data[non_marg_ids, :])
 
     return log_prob
