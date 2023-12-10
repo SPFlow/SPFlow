@@ -129,7 +129,34 @@ def test_update_backend(do_for_all_backends):
             layer_ll_updated = log_likelihood(layer_updated, tl.tensor(dummy_data))
             tc.assertTrue(np.allclose(tl_toNumpy(ll_result), tl_toNumpy(layer_ll_updated)))
 
+def test_change_dtype(do_for_all_backends):
+    layer_spn = create_example_spn()
+    dummy_data = tl.tensor([[1.0, 0.0, 1.0]], dtype=tl.float32)
+
+    layer_ll = log_likelihood(layer_spn, dummy_data)
+    tc.assertTrue(layer_ll.dtype == tl.float32)
+    layer_spn.to_dtype(tl.float64)
+    dummy_data = tl.tensor([[1.0, 0.0, 1.0]], dtype=tl.float64)
+    layer_ll_up = log_likelihood(layer_spn, dummy_data)
+    tc.assertTrue(layer_ll_up.dtype == tl.float64)
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    layer_spn = create_example_spn()
+    dummy_data = tl.tensor([[1.0, 0.0, 1.0]])
+
+    layer_ll = log_likelihood(layer_spn, dummy_data)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, layer_spn.to_device, cuda)
+        return
+    tc.assertTrue(layer_ll.device.type == "cpu")
+    layer_spn.to_device(cuda)
+    dummy_data = tl.tensor([[1.0, 0.0, 1.0]], device=cuda)
+    layer_ll = log_likelihood(layer_spn, dummy_data)
+    tc.assertTrue(layer_ll.device.type == "cuda")
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

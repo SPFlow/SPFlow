@@ -181,7 +181,7 @@ class CondBernoulli(LeafNode):
             p = cond_f(data)["p"]
 
         if isinstance(p, float):
-            p = torch.tensor(p)
+            p = torch.tensor(p, dtype=self.dtype, device=self.device)
 
         # check if value for 'p' is valid
         if p < 0.0 or p > 1.0 or not torch.isfinite(p):
@@ -189,7 +189,7 @@ class CondBernoulli(LeafNode):
                 f"Value of 'p' for 'CondBernoulli' distribution must to be between 0.0 and 1.0, but was: {p}"
             )
 
-        return p
+        return p.type(self.dtype).to(self.device)
 
     def dist(self, p: torch.Tensor) -> D.Distribution:
         r"""Returns the PyTorch distribution represented by the leaf node.
@@ -240,7 +240,7 @@ class CondBernoulli(LeafNode):
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
         valid[~nan_mask] = self.dist(p=torch.tensor(0.0)).support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values

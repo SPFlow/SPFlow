@@ -15,7 +15,7 @@ from spflow.tensorly.utils.helper_functions import tl_toNumpy
 tc = unittest.TestCase()
 
 def test_layer_likelihood(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     layer = BinomialLayer(
         scope=[Scope([0]), Scope([1]), Scope([0])],
@@ -29,7 +29,7 @@ def test_layer_likelihood(do_for_all_backends):
         Binomial(Scope([0]), n=3, p=0.9),
     ]
 
-    dummy_data = tl.tensor([[3, 1], [1, 2], [0, 0]], dtype=tl.float64)
+    dummy_data = tl.tensor([[3, 1], [1, 2], [0, 0]], dtype=tl.float32)
 
     layer_ll = log_likelihood(layer, dummy_data)
     nodes_ll = tl.concatenate([log_likelihood(node, dummy_data) for node in nodes], axis=1)
@@ -37,7 +37,7 @@ def test_layer_likelihood(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(nodes_ll)))
 
 def test_gradient_computation(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     if do_for_all_backends == "numpy":
         return
@@ -48,7 +48,7 @@ def test_gradient_computation(do_for_all_backends):
     binomial = BinomialLayer(scope=[Scope([0]), Scope([1])], n=n, p=p)
 
     # create dummy input data (batch size x random variables)
-    data = tl.tensor([[0, 5], [3, 2], [4, 1]], dtype=tl.float64)
+    data = tl.tensor([[0, 5], [3, 2], [4, 1]], dtype=tl.float32)
 
     log_probs_torch = log_likelihood(binomial, data)
 
@@ -76,7 +76,7 @@ def test_gradient_computation(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(binomial.p), tl_toNumpy(binomial.dist().probs)))
 
 def test_gradient_optimization(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     if do_for_all_backends == "numpy":
         return
@@ -87,7 +87,7 @@ def test_gradient_optimization(do_for_all_backends):
     binomial = BinomialLayer(scope=[Scope([0]), Scope([1])], n=[5, 3], p=0.3)
 
     # create dummy data
-    p_target = tl.tensor([0.8, 0.5], dtype=tl.float64)
+    p_target = tl.tensor([0.8, 0.5], dtype=tl.float32)
     data = torch.distributions.Binomial(tl.tensor([5, 3]), p_target).sample((100000,))
 
     # initialize gradient optimizer
@@ -109,7 +109,7 @@ def test_gradient_optimization(do_for_all_backends):
     tc.assertTrue(np.allclose(tl_toNumpy(binomial.p), tl_toNumpy(p_target), atol=1e-3, rtol=1e-3))
 
 def test_likelihood_marginalization(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     binomial = BinomialLayer(scope=[Scope([0]), Scope([1])], n=5, p=random.random())
     data = tl.tensor([[float("nan"), float("nan")]])
@@ -124,7 +124,7 @@ def test_support(do_for_all_backends):
     pass
 
 def test_update_backend(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     backends = ["numpy", "pytorch"]
     layer = BinomialLayer(
         scope=[Scope([0]), Scope([1]), Scope([0])],
@@ -144,7 +144,41 @@ def test_update_backend(do_for_all_backends):
             # check conversion from torch to python
             tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(log_probs_updated)))
 
+def test_change_dtype(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    layer = BinomialLayer(
+        scope=[Scope([0]), Scope([1]), Scope([0])],
+        n=[3, 2, 3],
+        p=[0.2, 0.5, 0.9],
+    )
+    dummy_data = tl.tensor([[1, 0], [0, 0], [1, 1]], dtype=tl.float32)
+    layer_ll = log_likelihood(layer, dummy_data)
+    tc.assertTrue(layer_ll.dtype == tl.float32)
+    layer.to_dtype(tl.float64)
+    dummy_data = tl.tensor([[1, 0], [0, 0], [1, 1]], dtype=tl.float64)
+    layer_ll_up = log_likelihood(layer, dummy_data)
+    tc.assertTrue(layer_ll_up.dtype == tl.float64)
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    layer = BinomialLayer(
+        scope=[Scope([0]), Scope([1]), Scope([0])],
+        n=[3, 2, 3],
+        p=[0.2, 0.5, 0.9],
+    )
+    dummy_data = tl.tensor([[1, 0], [0, 0], [1, 1]])
+    layer_ll = log_likelihood(layer, dummy_data)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, layer.to_device, cuda)
+        return
+    tc.assertTrue(layer_ll.device.type == "cpu")
+    layer.to_device(cuda)
+    dummy_data = tl.tensor([[1, 0], [0, 0], [1, 1]], device=cuda)
+    layer_ll = log_likelihood(layer, dummy_data)
+    tc.assertTrue(layer_ll.device.type == "cuda")
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

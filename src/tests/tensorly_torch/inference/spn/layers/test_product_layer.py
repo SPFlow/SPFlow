@@ -36,14 +36,14 @@ def test_product_layer_likelihood(do_for_all_backends):
         weights=[0.3, 0.4, 0.3],
     )
     layer_based_spn = toLayerBased(layer_spn)
-    dummy_data = tl.tensor([[1.0, 0.25, 0.0], [0.0, 1.0, 0.25], [0.25, 0.0, 1.0]], dtype=tl.float64)
+    dummy_data = tl.tensor([[1.0, 0.25, 0.0], [0.0, 1.0, 0.25], [0.25, 0.0, 1.0]], dtype=tl.float32)
 
     layer_ll = log_likelihood(layer_spn, dummy_data)
     nodes_ll = log_likelihood(nodes_spn, dummy_data)
     lb_ll = log_likelihood(layer_based_spn, dummy_data)
 
     tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(nodes_ll)))
-    tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(tl.tensor(lb_ll, dtype=tl.float64))))
+    tc.assertTrue(np.allclose(tl_toNumpy(layer_ll), tl_toNumpy(tl.tensor(lb_ll, dtype=tl.float32))))
 
 def test_update_backend(do_for_all_backends):
     backends = ["numpy", "pytorch"]
@@ -57,7 +57,7 @@ def test_update_backend(do_for_all_backends):
         children=[ProductLayer(n_nodes=3, children=input_nodes)],
         weights=[0.3, 0.4, 0.3],
     )
-    dummy_data = tl.tensor([[1.0, 0.25, 0.0], [0.0, 1.0, 0.25], [0.25, 0.0, 1.0]], dtype=tl.float64)
+    dummy_data = tl.tensor([[1.0, 0.25, 0.0], [0.0, 1.0, 0.25], [0.25, 0.0, 1.0]], dtype=tl.float32)
 
     layer_ll = log_likelihood(layer_spn, dummy_data)
     for backend in backends:
@@ -70,5 +70,5 @@ def test_update_backend(do_for_all_backends):
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

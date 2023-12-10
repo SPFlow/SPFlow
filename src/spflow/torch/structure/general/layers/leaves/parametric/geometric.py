@@ -197,9 +197,9 @@ class GeometricLayer(Module):
                 Defaults to 0.5.
         """
         if isinstance(p, int) or isinstance(p, float):
-            p = torch.tensor([p for _ in range(self.n_out)])
+            p = torch.tensor([p for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(p, list) or isinstance(p, np.ndarray):
-            p = torch.tensor(p)
+            p = torch.tensor(p, dtype=self.dtype, device=self.device)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'GeometricLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
@@ -228,7 +228,7 @@ class GeometricLayer(Module):
         Returns:
             One-dimensional PyTorch tensor representing the success probabilities.
         """
-        return [self.p.detach().numpy()]
+        return [self.p.cpu().detach().numpy()]
 
     def check_support(
         self,
@@ -287,6 +287,14 @@ class GeometricLayer(Module):
         valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf()
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.p_aux.data = self.p_aux.data.type(dtype)
+
+    def to_device(self, device):
+        self.device = device
+        self.p_aux.data = self.p_aux.data.to(device)
 
 
 @dispatch(memoize=True)  # type: ignore

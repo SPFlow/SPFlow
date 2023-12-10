@@ -6,8 +6,24 @@ from scipy.special import logsumexp, softmax
 
 T = Union[np.ndarray, torch.Tensor]
 
-#def tl_ravel(tensor: tl.tensor) -> tl.tensor:
-#    return tl.reshape(tensor, (-1))
+def get_device(data: T):
+
+    # data is numpy return dummy cpu device
+    if isinstance(data, np.ndarray):
+        return torch.device("cpu")
+    elif isinstance(data, torch.Tensor):
+        return data.device
+    else:
+        raise NotImplementedError("get_device is not implemented for this backend")
+
+def tl_to(data:T, dtype, device):
+    if isinstance(data, np.ndarray):
+        return data.astype(dtype)
+    elif isinstance(data, torch.Tensor):
+        return data.to(device=device, dtype=dtype)
+    else:
+        raise NotImplementedError("get_device is not implemented for this backend")
+
 
 def tl_ravel(tensor):
     backend = tl.get_backend()
@@ -60,13 +76,13 @@ def tl_isclose(a, b, rtol=1e-05, atol=1e-08):
 def tl_allclose(a, b, rtol=1e-05, atol=1e-08):
     backend = tl.get_backend()
     if backend == "numpy":
-        return tl.tensor(np.allclose(a=a, b=b, rtol=rtol, atol=atol))
+        return np.allclose(a=a, b=b, rtol=rtol, atol=atol)
     elif backend == "pytorch":
         #if not (torch.is_tensor(a)):
         a = torch.tensor(a, dtype=torch.float32)
         #if not (torch.is_tensor(b)):
         b = torch.tensor(b, dtype=torch.float32)
-        return tl.tensor(torch.allclose(input=a, other=b, rtol=rtol, atol=atol))
+        return torch.allclose(input=a, other=b, rtol=rtol, atol=atol)
     else:
         raise NotImplementedError("tl_isclose is not implemented for this backend")
 
@@ -149,11 +165,11 @@ def tl_unsqueeze(arr, axis):
 def tl_unsqueeze(tensor, axis=None):
     backend = tl.get_backend()
     if backend == "numpy":
-        return tl.tensor(np.expand_dims(tensor, axis=axis))
+        return np.expand_dims(tensor, axis=axis)
     elif backend == "pytorch":
         if not (torch.is_tensor(tensor)):
             tensor = torch.tensor(tensor)
-        return tl.tensor(torch.unsqueeze(tensor, dim=axis))
+        return torch.unsqueeze(tensor, dim=axis)
     else:
         raise NotImplementedError("tl_squeeze is not implemented for this backend")
 
@@ -211,14 +227,16 @@ def tl_isfinite(tensor):
 #def tl_full(shape, fill_value, dtype=float):
 #    return tl.ones(shape,dtype=dtype) * fill_value
 
-def tl_full(shape, fill_value, dtype=None):
+def tl_full(shape, fill_value, dtype=None, device=None):
     backend = tl.get_backend()
     if dtype == None:
-        dtype = tl.float64
+        dtype = tl.float32
+    if device == None:
+        device = torch.device("cpu")
     if backend == "numpy":
-        return tl.tensor(np.full(shape, fill_value), dtype=dtype)
+        return tl.tensor(np.full(shape, fill_value), dtype=dtype, device=device)
     elif backend == "pytorch":
-        return tl.tensor(torch.full(shape, fill_value), dtype=dtype)
+        return tl.tensor(torch.full(shape, fill_value), dtype=dtype, device=device)
     else:
         raise NotImplementedError("tl_full is not implemented for this backend")
 
@@ -424,11 +442,11 @@ def tl_pad_edge(tensor, pad_width):
     backend = tl.get_backend()
     if backend == "numpy":
         # pad along axis=1
-        return tl.tensor(np.pad(tensor,pad_width=((0,0),pad_width),mode="edge"))
+        return np.pad(tensor,pad_width=((0,0),pad_width),mode="edge")
     elif backend == "pytorch":
         if not(torch.is_tensor(tensor)):
             tensor = torch.tensor(tensor)
-        return tl.tensor(torch.nn.functional.pad(tensor, pad=pad_width, mode="replicate"))
+        return torch.nn.functional.pad(tensor, pad=pad_width, mode="replicate")
     else:
         raise NotImplementedError("tl_cov is not implemented for this backend")
 
@@ -526,7 +544,9 @@ def tl_toNumpy(input):
         return np.array(input)
     elif isinstance(input, float):
         return np.array(input)
-    elif isinstance(input, np.int32):
+    elif isinstance(input, tl.float32):
+        return np.array(input)
+    elif isinstance(input, tl.int32):
         return np.array(input)
     elif isinstance(input, int):
         return np.array(input)

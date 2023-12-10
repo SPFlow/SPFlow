@@ -329,7 +329,66 @@ def test_update_backend(do_for_all_backends):
                 expectation_maximization(prod_node, tl.tensor(data), max_steps=10)
                 tc.assertTrue(np.isclose(leaf_updated.get_params()[0], params_em, atol=1e-3, rtol=1e-2))
 
+def test_change_dtype(do_for_all_backends):
+    np.random.seed(0)
+    random.seed(0)
+
+    node = Bernoulli(Scope([0]))
+    prod_node = ProductNode([node])
+
+    # simulate data
+    data = np.random.binomial(n=1, p=0.3, size=(10000, 1))
+
+    # perform MLE
+    maximum_likelihood_estimation(node, tl.tensor(data, dtype=tl.float32))
+    tc.assertTrue(node.p.dtype == tl.float32)
+
+    node.to_dtype(tl.float64)
+
+    dummy_data = tl.tensor(data, dtype=tl.float64)
+    maximum_likelihood_estimation(node, dummy_data)
+    tc.assertTrue(node.p.dtype == tl.float64)
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(NotImplementedError, expectation_maximization, prod_node, tl.tensor(data, dtype=tl.float64), max_steps=10)
+    else:
+        # test if em runs without error after dype change
+        expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float64), max_steps=10)
+
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    np.random.seed(0)
+    random.seed(0)
+
+    node = Bernoulli(Scope([0]))
+    prod_node = ProductNode([node])
+
+    # simulate data
+    data = np.random.binomial(n=1, p=0.3, size=(10000, 1))
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, node.to_device, cuda)
+        return
+
+    # perform MLE
+    maximum_likelihood_estimation(node, tl.tensor(data, dtype=tl.float32))
+
+    tc.assertTrue(node.p.device.type == "cpu")
+
+    node.to_device(cuda)
+
+    dummy_data = tl.tensor(data, dtype=tl.float32, device=cuda)
+
+    # perform MLE
+    maximum_likelihood_estimation(node, dummy_data)
+    tc.assertTrue(node.p.device.type == "cuda")
+
+    # test if em runs without error after device change
+    expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float32, device=cuda), max_steps=10)
+
 
 if __name__ == "__main__":
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

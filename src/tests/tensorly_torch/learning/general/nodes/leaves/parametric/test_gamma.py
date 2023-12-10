@@ -151,7 +151,7 @@ def test_mle_nan_strategy_invalid(do_for_all_backends):
     )
 
 def test_weighted_mle(do_for_all_backends):
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
 
     leaf = Gamma(Scope([0]))
 
@@ -162,13 +162,13 @@ def test_weighted_mle(do_for_all_backends):
                 np.random.gamma(shape=0.5, scale=1.0 / 1.4, size=(10000, 1)),
             ]
         )
-    , dtype=tl.float64)
-    weights = tl.concatenate([tl.zeros(10000, dtype=tl.float64), tl.ones(10000, dtype=tl.float64)])
+    , dtype=tl.float32)
+    weights = tl.concatenate([tl.zeros(10000, dtype=tl.float32), tl.ones(10000, dtype=tl.float32)])
 
     maximum_likelihood_estimation(leaf, data, weights)
 
-    tc.assertTrue(np.isclose(tl_toNumpy(leaf.alpha), tl.tensor(0.5, dtype=tl.float64), atol=1e-1, rtol=1e-2))
-    tc.assertTrue(np.isclose(tl_toNumpy(leaf.beta), tl.tensor(1.4, dtype=tl.float64), atol=1e-1, rtol=1e-2))
+    tc.assertTrue(np.isclose(tl_toNumpy(leaf.alpha), tl.tensor(0.5, dtype=tl.float32), atol=1e-1, rtol=1e-2))
+    tc.assertTrue(np.isclose(tl_toNumpy(leaf.beta), tl.tensor(1.4, dtype=tl.float32), atol=1e-1, rtol=1e-2))
 
 def test_em_step(do_for_all_backends):
     # em is only implemented for pytorch backend
@@ -304,7 +304,79 @@ def test_update_backend(do_for_all_backends):
                 tc.assertTrue(np.isclose(leaf_updated.get_params()[0], params_em, atol=1e-3, rtol=1e-2))
                 tc.assertTrue(np.isclose(leaf_updated.get_params()[1], params_em2, atol=1e-3, rtol=1e-2))
 
+def test_change_dtype(do_for_all_backends):
+    np.random.seed(0)
+    random.seed(0)
+
+    node = Gamma(Scope([0]))
+    prod_node = ProductNode([node])
+
+    # simulate data
+    data = np.random.gamma(shape=0.3, scale=1.0 / 1.7, size=(30000, 1))
+
+    # perform MLE
+    maximum_likelihood_estimation(node, tl.tensor(data, dtype=tl.float32))
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(node.alpha, float))
+        tc.assertTrue(isinstance(node.beta, float))
+    else:
+        tc.assertTrue(node.alpha.dtype == tl.float32)
+        tc.assertTrue(node.beta.dtype == tl.float32)
+
+    node.to_dtype(tl.float64)
+
+    dummy_data = tl.tensor(data, dtype=tl.float64)
+    maximum_likelihood_estimation(node, dummy_data)
+    if do_for_all_backends == "numpy":
+        tc.assertTrue(isinstance(node.alpha, float))
+        tc.assertTrue(isinstance(node.beta, float))
+    else:
+        tc.assertTrue(node.alpha.dtype == tl.float64)
+        tc.assertTrue(node.beta.dtype == tl.float64)
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(NotImplementedError, expectation_maximization, prod_node, tl.tensor(data, dtype=tl.float64),
+                        max_steps=10)
+    else:
+        # test if em runs without error after dype change
+        expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float64), max_steps=10)
+
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    np.random.seed(0)
+    random.seed(0)
+
+    node = Gamma(Scope([0]))
+    prod_node = ProductNode([node])
+
+    # simulate data
+    data = np.random.gamma(shape=0.3, scale=1.0 / 1.7, size=(30000, 1))
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, node.to_device, cuda)
+        return
+
+    # perform MLE
+    maximum_likelihood_estimation(node, tl.tensor(data, dtype=tl.float32))
+
+    tc.assertTrue(node.alpha.device.type == "cpu")
+    tc.assertTrue(node.beta.device.type == "cpu")
+
+    node.to_device(cuda)
+
+    dummy_data = tl.tensor(data, dtype=tl.float32, device=cuda)
+
+    # perform MLE
+    maximum_likelihood_estimation(node, dummy_data)
+    tc.assertTrue(node.alpha.device.type == "cuda")
+    tc.assertTrue(node.beta.device.type == "cuda")
+
+    # test if em runs without error after device change
+    expectation_maximization(prod_node, tl.tensor(data, dtype=tl.float32, device=cuda), max_steps=10)
+
 
 if __name__ == "__main__":
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

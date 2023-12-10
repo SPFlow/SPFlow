@@ -235,14 +235,14 @@ class CondBernoulliLayer(Module):
         if p is None:
             # there is a different function for each conditional node
             if isinstance(cond_f, List):
-                p = torch.tensor([f(data)["p"] for f in cond_f], dtype=torch.float64)
+                p = torch.tensor([f(data)["p"] for f in cond_f], dtype=self.dtype, device=self.device)
             else:
                 p = cond_f(data)["p"]
 
         if isinstance(p, float) or isinstance(p, int):
-            p = torch.tensor([p for _ in range(self.n_out)], dtype=torch.float64)
+            p = torch.tensor([p for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(p, list) or isinstance(p, np.ndarray):
-            p = torch.tensor(p, dtype=torch.float64)
+            p = torch.tensor(p, dtype=self.dtype, device=self.device)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'CondBernoulliLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
@@ -333,6 +333,12 @@ class CondBernoulliLayer(Module):
         valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf()
 
         return valid
+
+    #def to_dtype(self, dtype):
+    #    self.dtype = dtype
+
+    #def to_device(self, device):
+    #    self.device = device
 
 
 @dispatch(memoize=True)  # type: ignore

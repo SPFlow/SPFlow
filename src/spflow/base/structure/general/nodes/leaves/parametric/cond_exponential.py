@@ -180,6 +180,8 @@ class CondExponential(LeafNode):
             raise ValueError(
                 f"Value of 'l' for conditional Exponential distribution must be greater than 0, but was: {l}"
             )
+        if isinstance(l, np.ndarray):
+            l = l.astype(self.dtype)
 
         return l
 

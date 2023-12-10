@@ -6,6 +6,8 @@ from abc import ABC
 from typing import List, Optional, Tuple, Union
 
 import tensorly as tl
+import torch
+import numpy as np
 from ..utils.helper_functions import tl_ravel, tl_tolist
 
 from spflow.meta.structure.module import MetaModule
@@ -50,6 +52,10 @@ class Module(MetaModule, ABC):
         if any(child.backend != self.backend for child in children):
             raise ValueError("Children must all have the same backend as the parent")
         self.children = children
+        self.dtype = self.get_default_dtype()
+
+        # as soon as there are more possible backend with gpu compatibility, a backend distinction is necessary
+        self.device = torch.device("cpu")
 
     def input_to_output_ids(self, input_ids: Union[List[int], tl.tensor]) -> Tuple[List[int], List[int]]:
         """Translates input indices into corresponding child module indices and child module output indices.
@@ -69,7 +75,7 @@ class Module(MetaModule, ABC):
             input_ids = list(range(self.n_out))
 
         if isinstance(input_ids, list):
-            input_ids = tl.tensor(input_ids, dtype=int)
+            input_ids = tl.tensor(input_ids, dtype=tl.int32)
 
         # remember original shape
         shape = tl.shape(input_ids)
@@ -89,7 +95,7 @@ class Module(MetaModule, ABC):
         child_ids = tl.reshape(child_ids, shape)
         output_ids = tl.reshape(output_ids, shape)
 
-        return tl.tensor(child_ids, dtype=int).tolist(), tl.tensor(output_ids, dtype=int).tolist()
+        return tl.tensor(child_ids, dtype=tl.int32).tolist(), tl.tensor(output_ids, dtype=tl.int32).tolist()
 
     def modules(self):
         modules = []
@@ -100,6 +106,27 @@ class Module(MetaModule, ABC):
 
     def parameters(self):
         return self.get_trainable_params()
+
+    def get_default_dtype(self):
+        if self.backend == "numpy":
+            return np.float32
+        elif self.backend == "pytorch":
+            return torch.get_default_dtype()
+        else:
+            raise NotImplementedError("get_default_dtype() is not implemented for this backend")
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        for child in self.children:
+            child.to_dtype(dtype)
+
+    def to_device(self, device):
+        if self.backend == "numpy":
+            raise ValueError("it is not possible to change the device of models that have a numpy backend")
+        self.device = device
+        for child in self.children:
+            child.to_device(device)
+
 
 
 

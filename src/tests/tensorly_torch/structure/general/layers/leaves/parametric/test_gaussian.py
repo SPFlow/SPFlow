@@ -432,7 +432,64 @@ def test_update_backend(do_for_all_backends):
                 )
             )
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    gaussian_default = GaussianLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+                             mean=[0.2, 0.9, 0.31],
+                             std=[1.9, 0.3, 0.71])
+    tc.assertTrue(gaussian_default.dtype == tl.float32)
+    tc.assertTrue(gaussian_default.mean.dtype == tl.float32)
+    tc.assertTrue(gaussian_default.std.dtype == tl.float32)
+
+    # change to float64 model
+    gaussian_updated = GaussianLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+                             mean=[0.2, 0.9, 0.31],
+                             std=[1.9, 0.3, 0.71])
+    gaussian_updated.to_dtype(tl.float64)
+    tc.assertTrue(gaussian_updated.dtype == tl.float64)
+    tc.assertTrue(gaussian_updated.mean.dtype == tl.float64)
+    tc.assertTrue(gaussian_updated.std.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([*gaussian_default.get_params()]),
+            np.array([*gaussian_updated.get_params()]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    gaussian_default = GaussianLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+                             mean=[0.2, 0.9, 0.31],
+                             std=[1.9, 0.3, 0.71])
+    gaussian_updated = GaussianLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+                             mean=[0.2, 0.9, 0.31],
+                             std=[1.9, 0.3, 0.71])
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, gaussian_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    gaussian_updated.to_device(cuda)
+
+    tc.assertTrue(gaussian_default.device.type == "cpu")
+    tc.assertTrue(gaussian_updated.device.type == "cuda")
+
+    tc.assertTrue(gaussian_default.mean.device.type == "cpu")
+    tc.assertTrue(gaussian_updated.mean.device.type == "cuda")
+    tc.assertTrue(gaussian_default.std.device.type == "cpu")
+    tc.assertTrue(gaussian_updated.std.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([*gaussian_default.get_params()]),
+            np.array([*gaussian_updated.get_params()]),
+        )
+    )
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

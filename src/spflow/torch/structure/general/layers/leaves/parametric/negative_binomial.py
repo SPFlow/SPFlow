@@ -101,7 +101,7 @@ class NegativeBinomialLayer(Module):
 
         # register number of trials n as torch buffer (should not be changed)
         #self.register_buffer("n", torch.empty(size=[]))
-        self.n = torch.empty(size=[])
+        self.n = torch.empty(size=[], dtype=self.dtype, device=self.device)
 
         # register auxiliary torch parameter for the success probabilities p for each implicit node
         self.p_aux = Parameter()
@@ -184,9 +184,9 @@ class NegativeBinomialLayer(Module):
     def p(self, p: Union[int, float, List[float], np.ndarray, torch.Tensor]) -> None:
         """TODO"""
         if isinstance(p, float) or isinstance(p, int):
-            p = torch.tensor([p for _ in range(self.n_out)])
+            p = torch.tensor([p for _ in range(self.n_out)], dtype=self.dtype, device=self.device)
         elif isinstance(p, list) or isinstance(p, np.ndarray):
-            p = torch.tensor(p)
+            p = torch.tensor(p, dtype=self.dtype, device=self.device)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'NegativeBinomialLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
@@ -220,7 +220,7 @@ class NegativeBinomialLayer(Module):
 
         return D.NegativeBinomial(
             total_count=self.n[node_ids],
-            probs=torch.ones(len(node_ids)) - self.p[node_ids],
+            probs=torch.ones(len(node_ids), dtype=self.dtype, device=self.device) - self.p[node_ids],
         )
 
     def set_params(
@@ -240,9 +240,9 @@ class NegativeBinomialLayer(Module):
                 Defaults to 0.5.
         """
         if isinstance(n, int) or isinstance(n, float):
-            n = torch.tensor([n for _ in range(self.n_out)])
+            n = torch.tensor([n for _ in range(self.n_out)], device=self.device)
         elif isinstance(n, list) or isinstance(n, np.ndarray):
-            n = torch.tensor(n)
+            n = torch.tensor(n, device=self.device)
         if n.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'n' values for 'NegativeBinomialLayer' is expected to be one-dimensional, but is {n.ndim}-dimensional."
@@ -285,7 +285,7 @@ class NegativeBinomialLayer(Module):
         Returns:
             Tuple of two one-dimensional PyTorch tensors representing the numbers of successes and the success probabilities, respectively.
         """
-        return [self.n.detach().numpy(), self.p.detach().numpy()]
+        return [self.n.cpu().detach().numpy(), self.p.cpu().detach().numpy()]
 
     def check_support(
         self,
@@ -343,6 +343,15 @@ class NegativeBinomialLayer(Module):
         valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf()
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.p_aux.data = self.p_aux.data.type(dtype)
+
+    def to_device(self, device):
+        self.device = device
+        self.p_aux.data = self.p_aux.data.to(device)
+        self.n.data = self.n.data.to(device)
 
 
 @dispatch(memoize=True)  # type: ignore

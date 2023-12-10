@@ -101,7 +101,7 @@ def test_gradient_optimization(do_for_all_backends):
     tc.assertTrue(
         torch.allclose(
             torch_exponential.l,
-            tl.tensor([1.5, 1.5], dtype=tl.float64),
+            tl.tensor([1.5, 1.5], dtype=tl.float32),
             atol=1e-3,
             rtol=0.3,
         )
@@ -122,7 +122,7 @@ def test_support(do_for_all_backends):
     pass
 
 def test_update_backend(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     backends = ["numpy", "pytorch"]
     layer = ExponentialLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 1.0, 2.3])
 
@@ -140,5 +140,5 @@ def test_update_backend(do_for_all_backends):
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

@@ -63,7 +63,7 @@ def log_likelihood(
     scope_data = data[:, leaf.scope.query]
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, 1).to(l.device)
+    log_prob: torch.Tensor = torch.empty(batch_size, 1).type(leaf.dtype).to(leaf.device)
 
     # ----- marginalization -----
 
@@ -84,6 +84,6 @@ def log_likelihood(
             )
 
     # compute probabilities for values inside distribution support
-    log_prob[~marg_ids] = leaf.dist(l=l).log_prob(scope_data[~marg_ids].type(torch.get_default_dtype()))
+    log_prob[~marg_ids] = leaf.dist(l=l).log_prob(scope_data[~marg_ids])
 
     return log_prob

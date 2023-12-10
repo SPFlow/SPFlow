@@ -44,16 +44,16 @@ def test_joint_sampling(do_for_all_backends):
 
 def test_conditional_sampling(do_for_all_backends):
 
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    
     # set seed
     torch.manual_seed(0)
     np.random.seed(0)
     random.seed(0)
 
     # generate mean vector
-    mean = tl.randn((1, 5), dtype=tl.float64) * 0.1
+    mean = tl.randn((1, 5), dtype=tl.float32) * 0.1
     # generate p.s.d covariance matrix
-    cov = tl.randn((5, 5), dtype=tl.float64) * 0.1
+    cov = tl.randn((5, 5), dtype=tl.float32) * 0.1
     cov = cov @ cov.T
 
     # define which scope variables are conditioned on
@@ -73,7 +73,7 @@ def test_conditional_sampling(do_for_all_backends):
 
     # generate patially filled data array
     data = tl_full((100000, 5), float("nan"))
-    data[:, cond_mask] = tl.tensor(cond_data, dtype=tl.float64)
+    data[:, cond_mask] = tl.tensor(cond_data, dtype=tl.float32)
 
     # create distribution
     mv = CondMultivariateGaussian(
@@ -96,10 +96,10 @@ def test_conditional_sampling(do_for_all_backends):
         cond_cov = cov[tuple(tl.tensor(tensor, dtype=tl.int64) for tensor in tl_ix_(cond_rvs, non_cond_rvs, indexing="ij"))]
 
         mean_exact = mean[0, ~cond_mask] + (
-            (data[i * 10000, cond_mask] - mean[:, cond_mask]) @ (tl.tensor(marg_cov_inv, dtype=tl.float64) @ cond_cov)
+            (data[i * 10000, cond_mask] - mean[:, cond_mask]) @ (tl.tensor(marg_cov_inv, dtype=tl.float32) @ cond_cov)
         )
         cov_exact = cov[tuple(tl.tensor(tensor, dtype=tl.int64) for tensor in tl_ix_(non_cond_rvs, non_cond_rvs, indexing="ij"))] - (
-            cond_cov.T @ tl.tensor(marg_cov_inv, dtype=tl.float64) @ cond_cov
+            cond_cov.T @ tl.tensor(marg_cov_inv, dtype=tl.float32) @ cond_cov
         )
 
         tc.assertTrue(np.allclose(mean_exact, mean_est, atol=0.01, rtol=0.1))
@@ -141,7 +141,65 @@ def test_update_backend(do_for_all_backends):
             tc.assertTrue(np.allclose(mean_est, mean_est_updated, atol=0.01, rtol=0.1))
             tc.assertTrue(np.allclose(cov_est, cov_est_updated, atol=0.01, rtol=0.1))
 
+def test_change_dtype(do_for_all_backends):
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+    torch.set_default_dtype(torch.float32)
+
+    # generate mean vector
+    mean = tl.randn((1, 5), dtype=tl.float32) * 0.1
+    # generate p.s.d covariance matrix
+    cov = tl.randn((5, 5), dtype=tl.float32) * 0.1
+    cov = cov @ cov.T
+
+    # create distribution
+    layer = CondMultivariateGaussian(
+        Scope([0, 1, 2, 3, 4], [5]),
+        cond_f=lambda data: {"mean": mean, "cov": cov},
+    )
+
+    samples = sample(layer, 100000)
+
+    tc.assertTrue(samples.dtype == tl.float32)
+    layer.to_dtype(tl.float64)
+
+    samples = sample(layer, 100000)
+    tc.assertTrue(samples.dtype == tl.float64)
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+
+    # generate mean vector
+    mean = tl.randn((1, 5), dtype=tl.float32) * 0.1
+    # generate p.s.d covariance matrix
+    cov = tl.randn((5, 5), dtype=tl.float32) * 0.1
+    cov = cov @ cov.T
+
+    # create distribution
+    layer = CondMultivariateGaussian(
+        Scope([0, 1, 2, 3, 4], [5]),
+        cond_f=lambda data: {"mean": mean, "cov": cov},
+    )
+
+    samples = sample(layer, 100000)
+
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, layer.to_device, cuda)
+        return
+
+    tc.assertTrue(samples.device.type == "cpu")
+    layer.to_device(cuda)
+    samples = sample(layer, 100000)
+    tc.assertTrue(samples.device.type == "cuda")
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

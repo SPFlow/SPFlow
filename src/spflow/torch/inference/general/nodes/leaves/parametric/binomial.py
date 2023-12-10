@@ -62,7 +62,7 @@ def log_likelihood(
     scope_data = data[:, leaf.scope.query]
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob: torch.Tensor = torch.empty(batch_size, 1).to(leaf.p.device)
+    log_prob: torch.Tensor = torch.empty(batch_size, 1).type(leaf.dtype).to(leaf.device)
 
     # ----- marginalization -----
 
@@ -81,6 +81,6 @@ def log_likelihood(
             raise ValueError(f"Encountered data instances that are not in the support of the Binomial distribution.")
 
     # compute probabilities for values inside distribution support
-    log_prob[~marg_ids] = leaf.dist.log_prob(scope_data[~marg_ids].type(torch.get_default_dtype()))
+    log_prob[~marg_ids] = leaf.dist.log_prob(scope_data[~marg_ids])
 
     return log_prob

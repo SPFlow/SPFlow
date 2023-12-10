@@ -170,8 +170,8 @@ class Gaussian(LeafNode):
         if std <= 0.0:
             raise ValueError(f"Value for 'std' for 'Gaussian' must be greater than 0.0, but was: {std}")
 
-        self.mean.data = torch.tensor(float(mean))
-        self.std_aux.data = proj_bounded_to_real(torch.tensor(float(std)), lb=0.0)
+        self.mean.data = torch.tensor(float(mean), dtype=self.dtype, device=self.device)
+        self.std_aux.data = proj_bounded_to_real(torch.tensor(float(std), dtype=self.dtype, device=self.device), lb=0.0)
 
     def get_trainable_params(self) -> Tuple[float, float]:
         """Returns the parameters of the represented distribution.
@@ -227,13 +227,21 @@ class Gaussian(LeafNode):
         # nan entries (regarded as valid)
         nan_mask = torch.isnan(scope_data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
         valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
         valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.mean.data, self.std.data)
+
+    def to_device(self, device):
+        self.device = device
+        self.set_params(self.mean.data, self.std.data)
 
 
 @dispatch(memoize=True)  # type: ignore

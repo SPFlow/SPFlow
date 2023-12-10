@@ -347,7 +347,53 @@ def test_update_backend(do_for_all_backends):
                 )
             )
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    exponential_default = ExponentialLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])
+    tc.assertTrue(exponential_default.dtype == tl.float32)
+    tc.assertTrue(exponential_default.l.dtype == tl.float32)
+
+    # change to float64 model
+    exponential_updated = ExponentialLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])
+    exponential_updated.to_dtype(tl.float64)
+    tc.assertTrue(exponential_updated.dtype == tl.float64)
+    tc.assertTrue(exponential_updated.l.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([*exponential_default.get_params()]),
+            np.array([*exponential_updated.get_params()]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    exponential_default = ExponentialLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])
+    exponential_updated = ExponentialLayer(scope=[Scope([0]), Scope([1]), Scope([0])], l=[0.2, 0.9, 0.31])
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, exponential_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    exponential_updated.to_device(cuda)
+
+    tc.assertTrue(exponential_default.device.type == "cpu")
+    tc.assertTrue(exponential_updated.device.type == "cuda")
+
+    tc.assertTrue(exponential_default.l.device.type == "cpu")
+    tc.assertTrue(exponential_updated.l.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([*exponential_default.get_params()]),
+            np.array([*exponential_updated.get_params()]),
+        )
+    )
+
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

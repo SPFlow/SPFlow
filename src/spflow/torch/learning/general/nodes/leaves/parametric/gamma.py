@@ -62,7 +62,7 @@ def maximum_likelihood_estimation(
     scope_data = data[:, leaf.scope.query]
 
     if weights is None:
-        weights = torch.ones(data.shape[0])
+        weights = torch.ones(data.shape[0]).type(leaf.dtype).to(leaf.device)
 
     if weights.ndim != 1 or weights.shape[0] != data.shape[0]:
         raise ValueError(
@@ -133,13 +133,13 @@ def maximum_likelihood_estimation(
     # TODO: bias correction?
 
     # edge case: if alpha/beta 0, set to larger value (should not happen, but just in case)
-    if torch.isclose(alpha_est, torch.tensor(0.0)):
-        alpha_est = 1e-8
-    if torch.isclose(beta_est, torch.tensor(0.0)):
-        beta_est = 1e-8
+    if torch.isclose(alpha_est, torch.tensor(0.0, dtype=leaf.dtype)):
+        alpha_est = torch.tensor(1e-8)
+    if torch.isclose(beta_est, torch.tensor(0.0, dtype=leaf.dtype)):
+        beta_est = torch.tensor(1e-8)
 
     # set parameters of leaf node
-    leaf.set_params(alpha=alpha_est, beta=beta_est)
+    leaf.set_params(alpha=alpha_est.cpu(), beta=beta_est.cpu())
 
 
 @dispatch(memoize=True)  # type: ignore

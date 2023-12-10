@@ -40,7 +40,7 @@ def test_layer_initialization(do_for_all_backends):
     l = BernoulliLayer(scope=Scope([1]), n_nodes=3, p=p_value)
 
     for p_layer_node in l.p:
-        tc.assertTrue(np.all(tl_toNumpy(p_layer_node) == p_value))
+        tc.assertTrue(np.allclose(tl_toNumpy(p_layer_node), p_value))
 
     # ----- list parameter values -----
     p_values = [0.17, 0.8, 0.53]
@@ -336,7 +336,56 @@ def test_update_backend(do_for_all_backends):
                 )
             )
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    bernoulli_default = BernoulliLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
+    tc.assertTrue(bernoulli_default.dtype == tl.float32)
+    tc.assertTrue(bernoulli_default.p.dtype == tl.float32)
+
+    # change to float64 model
+    bernoulli_updated = BernoulliLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
+    bernoulli_updated.to_dtype(tl.float64)
+    tc.assertTrue(bernoulli_updated.dtype == tl.float64)
+    tc.assertTrue(bernoulli_updated.p.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([*bernoulli_default.get_params()]),
+            np.array([*bernoulli_updated.get_params()]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    bernoulli_default = BernoulliLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
+    bernoulli_updated = BernoulliLayer(scope=[Scope([0]), Scope([1]), Scope([0])], p=[0.2, 0.9, 0.31])
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, bernoulli_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    bernoulli_updated.to_device(cuda)
+
+    tc.assertTrue(bernoulli_default.device.type == "cpu")
+    tc.assertTrue(bernoulli_updated.device.type == "cuda")
+
+    tc.assertTrue(bernoulli_default.p.device.type == "cpu")
+    tc.assertTrue(bernoulli_updated.p.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([*bernoulli_default.get_params()]),
+            np.array([*bernoulli_updated.get_params()]),
+        )
+    )
+
+
+
+
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

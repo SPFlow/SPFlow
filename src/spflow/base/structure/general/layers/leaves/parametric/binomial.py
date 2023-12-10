@@ -85,8 +85,12 @@ class BinomialLayer(Module):
 
         super().__init__(children=[], **kwargs)
 
+        self.backend = "numpy"
+
         # create leaf nodes
         self.nodes = [Binomial(s, 1, 0.5) for s in scope]
+        for node in self.nodes:
+            node.dtype = self.dtype
 
         # compute scope
         self.scopes_out = scope
@@ -107,7 +111,7 @@ class BinomialLayer(Module):
     @property
     def p(self) -> np.ndarray:
         """Returns the success probabilities of the represented distributions."""
-        return np.array([node.p for node in self.nodes])
+        return np.array([node.p for node in self.nodes], dtype=self.dtype)
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -192,9 +196,9 @@ class BinomialLayer(Module):
             )
 
         if isinstance(p, int) or isinstance(p, float):
-            p = np.array([float(p) for _ in range(self.n_out)])
+            p = np.array([float(p) for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(p, list):
-            p = np.array(p)
+            p = np.array(p, dtype=self.dtype)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'BinomialLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
@@ -267,6 +271,12 @@ class BinomialLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        for node in self.nodes:
+            node.dtype = self.dtype
+        self.set_params(self.n, self.p.astype(dtype))
 
 
 @dispatch(memoize=True)  # type: ignore

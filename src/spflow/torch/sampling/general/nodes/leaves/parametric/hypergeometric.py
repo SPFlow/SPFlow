@@ -56,16 +56,16 @@ def sample(
 
     marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
-    instance_ids_mask = torch.zeros(data.shape[0])
+    instance_ids_mask = torch.zeros(data.shape[0], device=leaf.device)
     instance_ids_mask[sampling_ctx.instance_ids] = 1
 
-    sampling_ids = marg_ids & instance_ids_mask.bool().to(leaf.N.device)
+    sampling_ids = marg_ids.to(leaf.device) & instance_ids_mask.bool().to(leaf.device)
 
     # TODO: may be inefficient
     # create random permutations of N elements
-    rand_perm = torch.argsort(torch.rand(sampling_ids.shape[0], leaf.N), dim=1)
+    rand_perm = torch.argsort(torch.rand(sampling_ids.shape[0], leaf.N), dim=1).to(leaf.device)
 
     # assuming that first M indices are the M objects of interest, count how many of these indices were "drawn" in the first n draws (with replacement since all indices are unique per row)
-    data[sampling_ids, leaf.scope.query] = (rand_perm[:, : leaf.n] < leaf.M).sum(dim=1).type(torch.get_default_dtype())
+    data[sampling_ids, leaf.scope.query] = (rand_perm[:, : leaf.n] < leaf.M).sum(dim=1).type(leaf.dtype)
 
     return data

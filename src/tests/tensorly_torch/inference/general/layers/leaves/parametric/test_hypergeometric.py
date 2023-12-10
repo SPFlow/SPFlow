@@ -14,7 +14,7 @@ from spflow.tensorly.utils.helper_functions import tl_toNumpy
 tc = unittest.TestCase()
 
 def test_layer_likelihood(do_for_all_backends):
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
 
     layer = HypergeometricLayer(
         scope=[Scope([0]), Scope([1]), Scope([0])],
@@ -102,5 +102,5 @@ def test_update_backend(do_for_all_backends):
 
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

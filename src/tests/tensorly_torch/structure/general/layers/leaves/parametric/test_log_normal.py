@@ -424,7 +424,64 @@ def test_update_backend(do_for_all_backends):
                 )
             )
 
+def test_change_dtype(do_for_all_backends):
+    # create float32 model
+    torch.set_default_dtype(torch.float32)
+    logNormal_default = LogNormalLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+        mean=[0.2, 0.9, 0.31],
+        std=[1.9, 0.3, 0.71])
+    tc.assertTrue(logNormal_default.dtype == tl.float32)
+    tc.assertTrue(logNormal_default.mean.dtype == tl.float32)
+    tc.assertTrue(logNormal_default.std.dtype == tl.float32)
+
+    # change to float64 model
+    logNormal_updated = LogNormalLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+        mean=[0.2, 0.9, 0.31],
+        std=[1.9, 0.3, 0.71])
+    logNormal_updated.to_dtype(tl.float64)
+    tc.assertTrue(logNormal_updated.dtype == tl.float64)
+    tc.assertTrue(logNormal_updated.mean.dtype == tl.float64)
+    tc.assertTrue(logNormal_updated.std.dtype == tl.float64)
+    tc.assertTrue(
+        np.allclose(
+            np.array([*logNormal_default.get_params()]),
+            np.array([*logNormal_updated.get_params()]),
+        )
+    )
+
+def test_change_device(do_for_all_backends):
+    cuda = torch.device("cuda")
+    # create model on cpu
+    torch.set_default_dtype(torch.float32)
+    logNormal_default = LogNormalLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+        mean=[0.2, 0.9, 0.31],
+        std=[1.9, 0.3, 0.71])
+    logNormal_updated = LogNormalLayer(scope=[Scope([0]), Scope([1]), Scope([0])],
+        mean=[0.2, 0.9, 0.31],
+        std=[1.9, 0.3, 0.71])
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, logNormal_updated.to_device, cuda)
+        return
+
+    # put model on gpu
+    logNormal_updated.to_device(cuda)
+
+    tc.assertTrue(logNormal_default.device.type == "cpu")
+    tc.assertTrue(logNormal_updated.device.type == "cuda")
+
+    tc.assertTrue(logNormal_default.mean.device.type == "cpu")
+    tc.assertTrue(logNormal_updated.mean.device.type == "cuda")
+    tc.assertTrue(logNormal_default.std.device.type == "cpu")
+    tc.assertTrue(logNormal_updated.std.device.type == "cuda")
+
+    tc.assertTrue(
+        np.allclose(
+            np.array([*logNormal_default.get_params()]),
+            np.array([*logNormal_updated.get_params()]),
+        )
+    )
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

@@ -53,7 +53,7 @@ def test_kmeans_clustering_1(do_for_all_backends):
     cluster_2 = tl.randn((100, 1)) + 5.0
 
     # compute clusters using k-means
-    cluster_mask = cluster_by_kmeans(tl.tensor(np.vstack([cluster_1, cluster_2]), dtype=tl.float64), n_clusters=2)
+    cluster_mask = cluster_by_kmeans(tl.tensor(np.vstack([cluster_1, cluster_2]), dtype=tl.float32), n_clusters=2)
 
     # cluster id can either be 0 or 1
     cluster_id = cluster_mask[0]
@@ -77,7 +77,7 @@ def test_kmeans_clustering_2(do_for_all_backends):
     cluster_3 = tl.randn((100, 1))
 
     # compute clusters using k-means
-    cluster_mask = cluster_by_kmeans(tl.tensor(np.vstack([cluster_1, cluster_2, cluster_3]), dtype=tl.float64), n_clusters=3)
+    cluster_mask = cluster_by_kmeans(tl.tensor(np.vstack([cluster_1, cluster_2, cluster_3]), dtype=tl.float32), n_clusters=3)
 
     cluster_ids = [0, 1, 2]
 
@@ -114,7 +114,7 @@ def test_rdc_partitioning_1(do_for_all_backends):
     data_partition_2 = tl.randn((100, 1)) - 10.0
 
     # compute clusters using k-means
-    partition_mask = partition_by_rdc(tl.tensor(np.hstack([data_partition_1, data_partition_2]), dtype=tl.float64), threshold=0.5)
+    partition_mask = partition_by_rdc(tl.tensor(np.hstack([data_partition_1, data_partition_2]), dtype=tl.float32), threshold=0.5)
 
     # should be two partitions
     tc.assertTrue(len(tl_unique(partition_mask)) == 2)
@@ -369,5 +369,5 @@ def test_learn_spn_invalid_arguments(do_for_all_backends):
 
 
 if __name__ == "__main__":
-    torch.set_default_tensor_type(torch.DoubleTensor)
+    torch.set_default_dtype(torch.float32)
     unittest.main()

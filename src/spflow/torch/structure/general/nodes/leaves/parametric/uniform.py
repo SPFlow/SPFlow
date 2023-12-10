@@ -164,9 +164,9 @@ class Uniform(LeafNode):
         # since torch Uniform distribution excludes the upper bound, compute next largest number
         end_next = torch.nextafter(torch.tensor(end), torch.tensor(float("Inf")))  # type: ignore
 
-        self.start.data = torch.tensor(float(start))  # type: ignore
-        self.end.data = torch.tensor(float(end))  # type: ignore
-        self.end_next.data = torch.tensor(float(end_next))
+        self.start.data = torch.tensor(float(start), dtype=self.dtype, device=self.device)  # type: ignore
+        self.end.data = torch.tensor(float(end), dtype=self.dtype, device=self.device)  # type: ignore
+        self.end_next.data = torch.tensor(float(end_next), dtype=self.dtype, device=self.device)
         self.support_outside = support_outside
 
         # create Torch distribution with specified parameters
@@ -233,7 +233,7 @@ class Uniform(LeafNode):
         # torch distribution support is an interval, despite representing a distribution over a half-open interval
         # end is adjusted to the next largest number to make sure that desired end is part of the distribution interval
         # may cause issues with the support check; easier to do a manual check instead
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
 
         # check for infinite values
         valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
@@ -245,6 +245,14 @@ class Uniform(LeafNode):
             ).squeeze(-1)
 
         return valid
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.start.data, self.end.data, self.support_outside)
+
+    def to_device(self, device):
+        self.device = device
+        self.set_params(self.start.data, self.end.data, self.support_outside)
 
 
 @dispatch(memoize=True)  # type: ignore

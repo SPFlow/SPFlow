@@ -87,6 +87,8 @@ class NegativeBinomialLayer(Module):
 
         super().__init__(children=[], **kwargs)
 
+        self.backend = "numpy"
+
         # create leaf nodes
         self.nodes = [NegativeBinomial(s, 1, 0.5) for s in scope]
 
@@ -104,12 +106,12 @@ class NegativeBinomialLayer(Module):
     @property
     def n(self) -> np.ndarray:
         """Returns the numbers of successes of the represented distributions."""
-        return np.array([node.n for node in self.nodes])
+        return np.array([node.n for node in self.nodes], dtype=self.dtype)
 
     @property
     def p(self) -> np.ndarray:
         """Returns the success probabilities of the represented distributions."""
-        return np.array([node.p for node in self.nodes])
+        return np.array([node.p for node in self.nodes], dtype=self.dtype)
 
     @classmethod
     def accepts(cls, signatures: List[FeatureContext]) -> bool:
@@ -196,9 +198,9 @@ class NegativeBinomialLayer(Module):
             )
 
         if isinstance(p, int) or isinstance(p, float):
-            p = np.array([float(p) for _ in range(self.n_out)])
+            p = np.array([float(p) for _ in range(self.n_out)], dtype=self.dtype)
         if isinstance(p, list):
-            p = np.array(p)
+            p = np.array(p, dtype=self.dtype)
         if p.ndim != 1:
             raise ValueError(
                 f"Numpy array of 'p' values for 'NegativeBinomialLayer' is expected to be one-dimensional, but is {p.ndim}-dimensional."
@@ -209,6 +211,7 @@ class NegativeBinomialLayer(Module):
             )
 
         for node_n, node_p, node in zip(n, p, self.nodes):
+            node.dtype = self.dtype
             node.set_params(node_n, node_p)
 
         node_scopes = np.array([s.query[0] for s in self.scopes_out])
@@ -271,6 +274,10 @@ class NegativeBinomialLayer(Module):
             node_ids = list(range(self.n_out))
 
         return np.concatenate([self.nodes[i].check_support(data) for i in node_ids], axis=1)
+
+    def to_dtype(self, dtype):
+        self.dtype = dtype
+        self.set_params(self.n, self.p.astype(dtype))
 
 
 @dispatch(memoize=True)  # type: ignore

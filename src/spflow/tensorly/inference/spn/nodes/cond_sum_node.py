@@ -4,7 +4,7 @@ from typing import Optional
 
 import tensorly as tl
 from scipy.special import logsumexp  # type: ignore
-from spflow.tensorly.utils.helper_functions import T, tl_logsumexp
+from spflow.tensorly.utils.helper_functions import T, tl_logsumexp, get_device
 from spflow.tensorly.structure.spn.nodes.cond_sum_node import CondSumNode
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (

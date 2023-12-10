@@ -141,7 +141,74 @@ def test_update_backend(do_for_all_backends):
             samples_mean_updated = tl_toNumpy(layer_samples_updated).mean()
             tc.assertTrue(np.allclose(samples_mean, samples_mean_updated, atol=0.01, rtol=0.1))
 
+def test_change_dtype(do_for_all_backends):
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+    torch.set_default_dtype(torch.float32)
+
+    input_partitions = [
+        [
+            Gaussian(Scope([0]), mean=3.0, std=0.01),
+            Gaussian(Scope([0]), mean=1.0, std=0.01),
+        ],
+        [
+            Gaussian(Scope([1]), mean=1.0, std=0.01),
+            Gaussian(Scope([1]), mean=-5.0, std=0.01),
+            Gaussian(Scope([1]), mean=0.0, std=0.01),
+        ],
+        [Gaussian(Scope([2]), mean=10.0, std=0.01)],
+    ]
+
+    layer = SumNode(
+        children=[PartitionLayer(child_partitions=input_partitions)],
+        weights=[0.2, 0.1, 0.2, 0.2, 0.2, 0.1],
+    )
+    samples = sample(layer, 100)
+    tc.assertTrue(samples.dtype == tl.float32)
+    layer.to_dtype(tl.float64)
+
+    samples = sample(layer, 100)
+    tc.assertTrue(samples.dtype == tl.float64)
+
+def test_change_device(do_for_all_backends):
+    torch.set_default_dtype(torch.float32)
+    cuda = torch.device("cuda")
+    # set seed
+    torch.manual_seed(0)
+    np.random.seed(0)
+    random.seed(0)
+
+    input_partitions = [
+        [
+            Gaussian(Scope([0]), mean=3.0, std=0.01),
+            Gaussian(Scope([0]), mean=1.0, std=0.01),
+        ],
+        [
+            Gaussian(Scope([1]), mean=1.0, std=0.01),
+            Gaussian(Scope([1]), mean=-5.0, std=0.01),
+            Gaussian(Scope([1]), mean=0.0, std=0.01),
+        ],
+        [Gaussian(Scope([2]), mean=10.0, std=0.01)],
+    ]
+
+    layer = SumNode(
+        children=[PartitionLayer(child_partitions=input_partitions)],
+        weights=[0.2, 0.1, 0.2, 0.2, 0.2, 0.1],
+    )
+    samples = sample(layer, 100)
+    if do_for_all_backends == "numpy":
+        tc.assertRaises(ValueError, layer.to_device, cuda)
+        return
+
+    tc.assertTrue(samples.device.type == "cpu")
+    layer.to_device(cuda)
+
+    samples = sample(layer, 100)
+    tc.assertTrue(samples.device.type == "cuda")
+
 
 if __name__ == "__main__":
-    torch.set_default_dtype(torch.float64)
+    torch.set_default_dtype(torch.float32)
     unittest.main()
