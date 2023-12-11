@@ -1,0 +1,8 @@
+@software{Molina2019SPFlow,
+  author = {Alejandro Molina and Antonio Vergari and Karl Stelzner and Robert Peharz and Pranav Subramani and Nicola Di Mauro and Pascal Poupart and Kristian Kersting},
+  title = {{SPFlow}: An Easy and Extensible Library for Deep Probabilistic Learning using Sum-Product Networks},
+  year = {2019},
+  url = {https://github.com/SPFlow/SPFlow},
+  version = {0.0.41},
+  eprint = {arXiv:1901.03704},
+}
