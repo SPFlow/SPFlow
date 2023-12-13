@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Molina
+    given-names: Alejandro
+  - family-names: Vergari
+    given-names: Antonio
+  - family-names: Stelzner
+    given-names: Karl
+  - family-names: Peharz
+    given-names: Robert
+  - family-names: Subramani
+    given-names: Pranav
+  - family-names: Di Mauro
+    given-names: Nicola
+  - family-names: Poupart
+    given-names: Pascal
+  - family-names: Kersting
+    given-names: Kristian
+title: "SPFlow: An Easy and Extensible Library for Deep Probabilistic Learning using Sum-Product Networks"
+version: 0.0.41
+doi: 10.48550/arXiv.1901.03704
+url: "https://github.com/SPFlow/SPFlow"
