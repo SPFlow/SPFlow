@@ -5,9 +5,6 @@ from typing import Iterable, List, Optional, Union
 
 import numpy as np
 import tensorly as tl
-from spflow.base.structure.spn.layers.hadamard_layer import (
-    HadamardLayer as BaseHadamardLayer,
-)
 from ....utils.helper_functions import tl_tolist
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch

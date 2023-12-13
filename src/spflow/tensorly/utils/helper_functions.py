@@ -36,7 +36,7 @@ def tl_ravel(tensor):
     else:
         raise NotImplementedError("tl_ravel is not implemented for this backend")
 
-#def tl_vstack(stackList):  # all elements have the same shape # TODO: Does not work (example test learing layer bernoulli.py
+#def tl_vstack(stackList):  # all elements have the same shape # TODO: Does not work (example test learing layer
 #    return tl.concatenate(stackList, axis=0).reshape((len(stackList), stackList[0].shape[0]))
 
 def tl_vstack(tensor):

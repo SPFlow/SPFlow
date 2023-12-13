@@ -8,10 +8,13 @@ from spflow.tensorly.utils.helper_functions import tl_unique, T
 from sklearn.cluster import KMeans
 from spflow.torch.utils import kmeans as torch_kmeans
 
-from spflow.tensorly.learning.general.nodes.leaves.parametric.gaussian import (
+from spflow.torch.learning.general.nodes.leaves.parametric.gaussian import (
     maximum_likelihood_estimation,
 )
-from spflow.tensorly.structure.autoleaf import AutoLeaf
+from spflow.base.learning.general.nodes.leaves.parametric.gaussian import (
+    maximum_likelihood_estimation,
+)
+from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.module import Module
 from spflow.tensorly.structure.spn.nodes.cond_sum_node import CondSumNode
 from spflow.tensorly.structure.spn.nodes.product_node import ProductNode
