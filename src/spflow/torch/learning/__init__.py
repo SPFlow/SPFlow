@@ -1,5 +1,4 @@
 # ---- sub-packages -----
-from . import spn
 
 # ---- specific imports
 from .expectation_maximization import expectation_maximization
@@ -65,10 +64,4 @@ from .general.nodes.leaves.parametric.negative_binomial import (
 )
 from .general.nodes.leaves.parametric.poisson import em, maximum_likelihood_estimation
 from .general.nodes.leaves.parametric.uniform import em, maximum_likelihood_estimation
-from .spn.layers.hadamard_layer import em
-from .spn.layers.partition_layer import em
-from .spn.layers.product_layer import em
-from .spn.layers.sum_layer import em
-from .spn.nodes.product_node import em
-from .spn.nodes.sum_node import em
-from .spn.rat.rat_spn import em
+
