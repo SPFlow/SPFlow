@@ -7,7 +7,6 @@ import numpy as np
 import tensorly as tl
 import torch
 
-from spflow.base.structure.spn.layers.sum_layer import SumLayer as BaseSumLayer
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (

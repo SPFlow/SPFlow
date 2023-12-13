@@ -30,4 +30,5 @@ class LeafNode(Node, ABC):
         super().__init__(children=[], **kwargs)
 
         self.scope = scope
-        self.backend = "numpy"
+        self.backend = "pytorch"
+        self.dtype = self.get_default_dtype()
