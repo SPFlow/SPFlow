@@ -7,9 +7,6 @@ import numpy as np
 import torch
 import tensorly as tl
 from ....utils.helper_functions import tl_split, tl_tolist
-from spflow.base.structure.spn.layers.partition_layer import (
-    PartitionLayer as BasePartitionLayer,
-)
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (

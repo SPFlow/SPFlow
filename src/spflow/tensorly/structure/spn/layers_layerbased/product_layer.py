@@ -3,9 +3,6 @@
 from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 
-from spflow.base.structure.spn.layers.product_layer import (
-    ProductLayer as BaseProductLayer,
-)
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
