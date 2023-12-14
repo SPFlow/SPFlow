@@ -2,68 +2,68 @@
 from . import general  # isort: skip
 
 from .autoleaf import AutoLeaf
-from .general.layers.leaves.parametric.bernoulli import marginalize, toBase, toTorch
-from .general.layers.leaves.parametric.binomial import marginalize, toBase, toTorch
-from .general.layers.leaves.parametric.cond_bernoulli import (
+from .general.layer.leaf.bernoulli import marginalize, toBase, toTorch
+from .general.layer.leaf.binomial import marginalize, toBase, toTorch
+from .general.layer.leaf.cond_bernoulli import (
     marginalize,
     toBase,
     toTorch,
 )
-from .general.layers.leaves.parametric.cond_binomial import marginalize, toBase, toTorch
-from .general.layers.leaves.parametric.cond_exponential import (
+from .general.layer.leaf.cond_binomial import marginalize, toBase, toTorch
+from .general.layer.leaf.cond_exponential import (
     marginalize,
     toBase,
     toTorch,
 )
-from .general.layers.leaves.parametric.cond_gamma import marginalize, toBase, toTorch
-from .general.layers.leaves.parametric.cond_gaussian import marginalize, toBase, toTorch
-from .general.layers.leaves.parametric.cond_geometric import (
+from .general.layer.leaf.cond_gamma import marginalize, toBase, toTorch
+from .general.layer.leaf.cond_gaussian import marginalize, toBase, toTorch
+from .general.layer.leaf.cond_geometric import (
     marginalize,
     toBase,
     toTorch,
 )
-from .general.layers.leaves.parametric.cond_log_normal import (
+from .general.layer.leaf.cond_log_normal import (
     marginalize,
     toBase,
     toTorch,
 )
-from .general.layers.leaves.parametric.cond_multivariate_gaussian import (
+from .general.layer.leaf.cond_multivariate_gaussian import (
     marginalize,
     toBase,
     toTorch,
 )
-from .general.layers.leaves.parametric.cond_negative_binomial import (
+from .general.layer.leaf.cond_negative_binomial import (
     marginalize,
     toBase,
     toTorch,
 )
-from .general.layers.leaves.parametric.cond_poisson import marginalize, toBase, toTorch
-from .general.layers.leaves.parametric.exponential import marginalize, toBase, toTorch
-from .general.layers.leaves.parametric.gamma import marginalize, toBase, toTorch
-from .general.layers.leaves.parametric.gaussian import marginalize, toBase, toTorch
-from .general.layers.leaves.parametric.geometric import marginalize, toBase, toTorch
-from .general.layers.leaves.parametric.hypergeometric import (
+from .general.layer.leaf.cond_poisson import marginalize, toBase, toTorch
+from .general.layer.leaf.exponential import marginalize, toBase, toTorch
+from .general.layer.leaf.gamma import marginalize, toBase, toTorch
+from .general.layer.leaf.gaussian import marginalize, toBase, toTorch
+from .general.layer.leaf.geometric import marginalize, toBase, toTorch
+from .general.layer.leaf.hypergeometric import (
     marginalize,
     toBase,
     toTorch,
 )
-from .general.layers.leaves.parametric.log_normal import marginalize, toBase, toTorch
-from .general.layers.leaves.parametric.multivariate_gaussian import (
+from .general.layer.leaf.log_normal import marginalize, toBase, toTorch
+from .general.layer.leaf.multivariate_gaussian import (
     marginalize,
     toBase,
     toTorch,
 )
-from .general.layers.leaves.parametric.negative_binomial import (
+from .general.layer.leaf.negative_binomial import (
     marginalize,
     toBase,
     toTorch,
 )
-from .general.layers.leaves.parametric.poisson import marginalize, toBase, toTorch
-from .general.layers.leaves.parametric.uniform import marginalize, toBase, toTorch
-from .general.nodes.leaf_node import LeafNode
+from .general.layer.leaf.poisson import marginalize, toBase, toTorch
+from .general.layer.leaf.uniform import marginalize, toBase, toTorch
+from .general.node.leaf_node import LeafNode
 
 # import all definitions of 'marginalize', 'toBase' and 'toTorch'
-from .general.nodes.node import marginalize  # handles all leaf nodes
+from .general.node.node import marginalize  # handles all leaf node
 
 # ---- specific imports -----
 from .module import Module

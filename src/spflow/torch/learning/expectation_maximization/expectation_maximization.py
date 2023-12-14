@@ -6,7 +6,7 @@ import torch
 
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.torch.inference.module import log_likelihood
-from spflow.torch.learning.general.nodes.leaves.parametric.bernoulli import em  # TODO
+from spflow.torch.learning.general.node.leaf.bernoulli import em  # TODO
 from spflow.tensorly.structure.module import Module
 
 

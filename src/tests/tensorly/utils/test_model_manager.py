@@ -7,7 +7,7 @@ import unittest
 from spflow.tensorly.inference import log_likelihood
 from spflow.tensorly.utils.model_manager import load_model, save_model
 from spflow.meta.data import Scope
-from spflow.tensorly.structure.general.nodes.leaves.parametric.general_gaussian import Gaussian
+from spflow.tensorly.structure.general.node.leaf.general_gaussian import Gaussian
 from spflow.tensorly.structure.spn import ProductNode, SumNode
 from spflow.tensorly.utils.helper_functions import tl_toNumpy
 

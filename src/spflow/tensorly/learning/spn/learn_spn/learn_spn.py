@@ -8,17 +8,17 @@ from spflow.tensorly.utils.helper_functions import tl_unique, T
 from sklearn.cluster import KMeans
 from spflow.torch.utils import kmeans as torch_kmeans
 
-from spflow.torch.learning.general.nodes.leaves.parametric.gaussian import (
+from spflow.torch.learning.general.node.leaf.gaussian import (
     maximum_likelihood_estimation,
 )
-from spflow.base.learning.general.nodes.leaves.parametric.gaussian import (
+from spflow.base.learning.general.node.leaf.gaussian import (
     maximum_likelihood_estimation,
 )
 from spflow.tensorly.structure import AutoLeaf
 from spflow.tensorly.structure.module import Module
-from spflow.tensorly.structure.spn.nodes.cond_sum_node import CondSumNode
-from spflow.tensorly.structure.spn.nodes.product_node import ProductNode
-from spflow.tensorly.structure.spn.nodes.sum_node import SumNode
+from spflow.tensorly.structure.spn.node.cond_sum_node import CondSumNode
+from spflow.tensorly.structure.spn.node.product_node import ProductNode
+from spflow.tensorly.structure.spn.node.sum_node import SumNode
 from spflow.tensorly.utils.connected_components import connected_components
 from spflow.tensorly.utils.randomized_dependency_coefficients import (
     randomized_dependency_coefficients,

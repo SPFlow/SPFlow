@@ -235,7 +235,7 @@ def updateBackend(partition_layer: PartitionLayer, dispatch_ctx: Optional[Dispat
 
 @dispatch(memoize=True)  # type: ignore
 def toNodeBased(partition_layer: PartitionLayer, dispatch_ctx: Optional[DispatchContext] = None):
-    from spflow.tensorly.structure.spn.layers import PartitionLayer as PartitionLayerNode
+    from spflow.tensorly.structure.spn.layer import PartitionLayer as PartitionLayerNode
     """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
 
     Args:

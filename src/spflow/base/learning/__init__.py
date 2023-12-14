@@ -1,43 +1,43 @@
 # ---- sub-packages -----
 """
 from . import spn
-from .general.layers.leaves.parametric.bernoulli import maximum_likelihood_estimation
-from .general.layers.leaves.parametric.binomial import maximum_likelihood_estimation
-from .general.layers.leaves.parametric.exponential import maximum_likelihood_estimation
-from .general.layers.leaves.parametric.gamma import maximum_likelihood_estimation
-from .general.layers.leaves.parametric.gaussian import maximum_likelihood_estimation
-from .general.layers.leaves.parametric.geometric import maximum_likelihood_estimation
-from .general.layers.leaves.parametric.hypergeometric import (
+from .general.layer.leaf.bernoulli import maximum_likelihood_estimation
+from .general.layer.leaf.binomial import maximum_likelihood_estimation
+from .general.layer.leaf.exponential import maximum_likelihood_estimation
+from .general.layer.leaf.gamma import maximum_likelihood_estimation
+from .general.layer.leaf.gaussian import maximum_likelihood_estimation
+from .general.layer.leaf.geometric import maximum_likelihood_estimation
+from .general.layer.leaf.hypergeometric import (
     maximum_likelihood_estimation,
 )
-from .general.layers.leaves.parametric.log_normal import maximum_likelihood_estimation
-from .general.layers.leaves.parametric.multivariate_gaussian import (
+from .general.layer.leaf.log_normal import maximum_likelihood_estimation
+from .general.layer.leaf.multivariate_gaussian import (
     maximum_likelihood_estimation,
 )
-from .general.layers.leaves.parametric.negative_binomial import (
+from .general.layer.leaf.negative_binomial import (
     maximum_likelihood_estimation,
 )
-from .general.layers.leaves.parametric.poisson import maximum_likelihood_estimation
-from .general.layers.leaves.parametric.uniform import maximum_likelihood_estimation
+from .general.layer.leaf.poisson import maximum_likelihood_estimation
+from .general.layer.leaf.uniform import maximum_likelihood_estimation
 
 # import all definitions of 'maximum_likelihood_estimation'
-from .general.nodes.leaves.parametric.bernoulli import maximum_likelihood_estimation
-from .general.nodes.leaves.parametric.binomial import maximum_likelihood_estimation
-from .general.nodes.leaves.parametric.exponential import maximum_likelihood_estimation
-from .general.nodes.leaves.parametric.gamma import maximum_likelihood_estimation
-from .general.nodes.leaves.parametric.gaussian import maximum_likelihood_estimation
-from .general.nodes.leaves.parametric.geometric import maximum_likelihood_estimation
-from .general.nodes.leaves.parametric.hypergeometric import (
+from .general.node.leaf.bernoulli import maximum_likelihood_estimation
+from .general.node.leaf.binomial import maximum_likelihood_estimation
+from .general.node.leaf.exponential import maximum_likelihood_estimation
+from .general.node.leaf.gamma import maximum_likelihood_estimation
+from .general.node.leaf.gaussian import maximum_likelihood_estimation
+from .general.node.leaf.geometric import maximum_likelihood_estimation
+from .general.node.leaf.hypergeometric import (
     maximum_likelihood_estimation,
 )
-from .general.nodes.leaves.parametric.log_normal import maximum_likelihood_estimation
-from .general.nodes.leaves.parametric.multivariate_gaussian import (
+from .general.node.leaf.log_normal import maximum_likelihood_estimation
+from .general.node.leaf.multivariate_gaussian import (
     maximum_likelihood_estimation,
 )
-from .general.nodes.leaves.parametric.negative_binomial import (
+from .general.node.leaf.negative_binomial import (
     maximum_likelihood_estimation,
 )
-from .general.nodes.leaves.parametric.poisson import maximum_likelihood_estimation
-from .general.nodes.leaves.parametric.uniform import maximum_likelihood_estimation
+from .general.node.leaf.poisson import maximum_likelihood_estimation
+from .general.node.leaf.uniform import maximum_likelihood_estimation
 """
 # ---- specific imports

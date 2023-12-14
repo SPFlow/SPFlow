@@ -9,93 +9,93 @@ from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.scope import Scope
 
 # ----- non-conditional modules -----
-from spflow.torch.structure.general.layers.leaves.parametric.bernoulli import (
+from spflow.torch.structure.general.layer.leaf.bernoulli import (
     Bernoulli,
     BernoulliLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.binomial import (
+from spflow.torch.structure.general.layer.leaf.binomial import (
     Binomial,
     BinomialLayer,
 )
 
 # ----- conditional modules -----
-from spflow.torch.structure.general.layers.leaves.parametric.cond_bernoulli import (
+from spflow.torch.structure.general.layer.leaf.cond_bernoulli import (
     CondBernoulli,
     CondBernoulliLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.cond_binomial import (
+from spflow.torch.structure.general.layer.leaf.cond_binomial import (
     CondBinomial,
     CondBinomialLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.cond_exponential import (
+from spflow.torch.structure.general.layer.leaf.cond_exponential import (
     CondExponential,
     CondExponentialLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.cond_gamma import (
+from spflow.torch.structure.general.layer.leaf.cond_gamma import (
     CondGamma,
     CondGammaLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.cond_gaussian import (
+from spflow.torch.structure.general.layer.leaf.cond_gaussian import (
     CondGaussian,
     CondGaussianLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.cond_geometric import (
+from spflow.torch.structure.general.layer.leaf.cond_geometric import (
     CondGeometric,
     CondGeometricLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.cond_log_normal import (
+from spflow.torch.structure.general.layer.leaf.cond_log_normal import (
     CondLogNormal,
     CondLogNormalLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.cond_multivariate_gaussian import (
+from spflow.torch.structure.general.layer.leaf.cond_multivariate_gaussian import (
     CondMultivariateGaussian,
     CondMultivariateGaussianLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.cond_negative_binomial import (
+from spflow.torch.structure.general.layer.leaf.cond_negative_binomial import (
     CondNegativeBinomial,
     CondNegativeBinomialLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.cond_poisson import (
+from spflow.torch.structure.general.layer.leaf.cond_poisson import (
     CondPoisson,
     CondPoissonLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.exponential import (
+from spflow.torch.structure.general.layer.leaf.exponential import (
     Exponential,
     ExponentialLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.gamma import (
+from spflow.torch.structure.general.layer.leaf.gamma import (
     Gamma,
     GammaLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.gaussian import (
+from spflow.torch.structure.general.layer.leaf.gaussian import (
     Gaussian,
     GaussianLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.geometric import (
+from spflow.torch.structure.general.layer.leaf.geometric import (
     Geometric,
     GeometricLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.hypergeometric import (
+from spflow.torch.structure.general.layer.leaf.hypergeometric import (
     Hypergeometric,
     HypergeometricLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.log_normal import (
+from spflow.torch.structure.general.layer.leaf.log_normal import (
     LogNormal,
     LogNormalLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.multivariate_gaussian import (
+from spflow.torch.structure.general.layer.leaf.multivariate_gaussian import (
     MultivariateGaussian,
     MultivariateGaussianLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.negative_binomial import (
+from spflow.torch.structure.general.layer.leaf.negative_binomial import (
     NegativeBinomial,
     NegativeBinomialLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.poisson import (
+from spflow.torch.structure.general.layer.leaf.poisson import (
     Poisson,
     PoissonLayer,
 )
-from spflow.torch.structure.general.layers.leaves.parametric.uniform import (
+from spflow.torch.structure.general.layer.leaf.uniform import (
     Uniform,
     UniformLayer,
 )
