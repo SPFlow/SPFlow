@@ -5,12 +5,12 @@ from typing import Iterable, List, Optional, Union
 from spflow.tensorly.structure.autoleaf import AutoLeaf
 #from spflow.torch.structure.autoleaf import AutoLeaf as TorchAutoLeaf
 from spflow.tensorly.structure.module import Module
-from spflow.tensorly.structure.spn.layers.cond_sum_layer import CondSumLayer, marginalize
-from spflow.tensorly.structure.spn.layers.hadamard_layer import HadamardLayer, marginalize
-from spflow.tensorly.structure.spn.layers.partition_layer import PartitionLayer, marginalize
-from spflow.tensorly.structure.spn.layers.sum_layer import SumLayer, marginalize
-from spflow.tensorly.structure.spn.nodes.cond_sum_node import CondSumNode, marginalize
-from spflow.tensorly.structure.spn.nodes.sum_node import SumNode, marginalize
+from spflow.tensorly.structure.spn.layer.cond_sum_layer import CondSumLayer, marginalize
+from spflow.tensorly.structure.spn.layer.hadamard_layer import HadamardLayer, marginalize
+from spflow.tensorly.structure.spn.layer.partition_layer import PartitionLayer, marginalize
+from spflow.tensorly.structure.spn.layer.sum_layer import SumLayer, marginalize
+from spflow.tensorly.structure.spn.node.cond_sum_node import CondSumNode, marginalize
+from spflow.tensorly.structure.spn.node.sum_node import SumNode, marginalize
 from spflow.tensorly.structure.spn.rat.region_graph import Partition, Region, RegionGraph
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.scope import Scope

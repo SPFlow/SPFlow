@@ -161,7 +161,7 @@ def updateBackend(product_layer: ProductLayer, dispatch_ctx: Optional[DispatchCo
 
 @dispatch(memoize=True)  # type: ignore
 def toNodeBased(product_layer: ProductLayer, dispatch_ctx: Optional[DispatchContext] = None):
-    from spflow.tensorly.structure.spn.layers import ProductLayer as ProductLayerNode
+    from spflow.tensorly.structure.spn.layer import ProductLayer as ProductLayerNode
     """Conversion for ``ProductLayer`` from ``layerbased`` to ``nodebased``.
 
     Args:

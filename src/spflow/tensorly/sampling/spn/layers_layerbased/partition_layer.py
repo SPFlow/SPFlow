@@ -18,7 +18,7 @@ from spflow.meta.dispatch.sampling_context import (
 )
 from spflow.torch.inference.module import log_likelihood
 from spflow.tensorly.sampling.module import sample
-from spflow.tensorly.structure.spn.layers_layerbased.partition_layer import PartitionLayer
+from spflow.tensorly.structure.spn.layer_layerbased.partition_layer import PartitionLayer
 
 
 @dispatch  # type: ignore

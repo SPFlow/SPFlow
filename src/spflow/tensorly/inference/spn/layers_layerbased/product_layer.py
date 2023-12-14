@@ -10,7 +10,7 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.tensorly.structure.spn.layers_layerbased.product_layer import ProductLayer
+from spflow.tensorly.structure.spn.layer_layerbased.product_layer import ProductLayer
 
 
 @dispatch(memoize=True)  # type: ignore
