@@ -240,7 +240,7 @@ def updateBackend(hadamard_layer: HadamardLayer, dispatch_ctx: Optional[Dispatch
 
 @dispatch(memoize=True)  # type: ignore
 def toNodeBased(hadamard_layer: HadamardLayer, dispatch_ctx: Optional[DispatchContext] = None):
-    from spflow.tensorly.structure.spn.layers import HadamardLayer as HadamardLayerNode
+    from spflow.tensorly.structure.spn.layer import HadamardLayer as HadamardLayerNode
     """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
 
     Args:

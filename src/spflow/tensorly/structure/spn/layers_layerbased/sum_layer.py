@@ -17,7 +17,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from ....utils.helper_functions import tl_vstack, tl_allclose, tl_squeeze, T, tl_repeat
 from spflow.meta.structure import MetaModule
 from spflow.tensorly.structure.module import Module
-from spflow.tensorly.structure.spn.nodes.sum_node import (
+from spflow.tensorly.structure.spn.node.sum_node import (
     proj_convex_to_real,
     proj_real_to_convex,
 )
@@ -298,7 +298,7 @@ def updateBackend(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] =
 
 @dispatch(memoize=True)  # type: ignore
 def toNodeBased(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = None):
-    from spflow.tensorly.structure.spn.layers import SumLayer as SumLayerNode
+    from spflow.tensorly.structure.spn.layer import SumLayer as SumLayerNode
     """Conversion for ``SumLayer`` from ``layerbased`` to ``nodebased``.
 
     Args:

@@ -5,7 +5,7 @@ from spflow.tensorly.structure.spn import SumNode
 from spflow.tensorly.structure import Module
 from spflow.tensorly.structure.general.nodes import Node
 from .dummy_module import DummyModule, DummyNestedModule
-from .general.nodes.dummy_node import DummyNode
+from .general.node.dummy_node import DummyNode
 
 tc = unittest.TestCase()
 

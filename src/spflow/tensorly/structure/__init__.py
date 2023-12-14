@@ -2,20 +2,20 @@
 from . import general, spn
 from .autoleaf import AutoLeaf
 
-from .general.nodes.leaf_node import LeafNode
+from .general.node.leaf_node import LeafNode
 
 # import all definitions of 'marginalize'
-from .general.nodes.node import marginalize  # handles all leaf nodes
+from .general.node.node import marginalize  # handles all leaf node
 
 # ---- specific imports -----
 from .module import Module
 from .nested_module import NestedModule
-from .spn.layers.cond_sum_layer import marginalize
-from .spn.layers.hadamard_layer import marginalize
-from .spn.layers.partition_layer import marginalize
-from .spn.layers.product_layer import marginalize
-from .spn.layers.sum_layer import marginalize
-from .spn.nodes.cond_sum_node import marginalize
-from .spn.nodes.product_node import marginalize
-from .spn.nodes.sum_node import marginalize
+from .spn.layer.cond_sum_layer import marginalize
+from .spn.layer.hadamard_layer import marginalize
+from .spn.layer.partition_layer import marginalize
+from .spn.layer.product_layer import marginalize
+from .spn.layer.sum_layer import marginalize
+from .spn.node.cond_sum_node import marginalize
+from .spn.node.product_node import marginalize
+from .spn.node.sum_node import marginalize
 from .spn.rat.rat_spn import marginalize

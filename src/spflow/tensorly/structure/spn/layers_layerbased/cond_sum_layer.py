@@ -16,7 +16,7 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.tensorly.structure.module import Module
 from spflow.meta.structure import MetaModule
-#from spflow.tensorly.structure.spn.layers.cond_sum_layer import CondSumLayer as CondSumLayerNode
+#from spflow.tensorly.structure.spn.layer.cond_sum_layer import CondSumLayer as CondSumLayerNode
 #import spflow.tensorly.structure.spn.layers.cond_sum_layer as CondSumLayerNode
 
 class CondSumLayer(Module):
@@ -296,7 +296,7 @@ def updateBackend(sum_layer: CondSumLayer, dispatch_ctx: Optional[DispatchContex
 
 @dispatch(memoize=True)  # type: ignore
 def toNodeBased(sum_layer: CondSumLayer, dispatch_ctx: Optional[DispatchContext] = None):
-    from spflow.tensorly.structure.spn.layers.cond_sum_layer import CondSumLayer as CondSumLayerNode
+    from spflow.tensorly.structure.spn.layer.cond_sum_layer import CondSumLayer as CondSumLayerNode
     """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
 
     Args:
