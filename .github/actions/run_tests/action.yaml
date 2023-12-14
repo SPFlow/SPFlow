@@ -21,18 +21,18 @@ runs:
         cache-dependency-path: |
           **/pyproject.toml
     - name: Install library and dependencies
-      run: |
+      shell: |
         python -m pip install --upgrade pip
         pip install .[dev]
 
     - name: Set up Torch ${{ matrix.version-pytorch }}
       if: matrix.version-pytorch
-      run: |
+      shell: |
         pip install torch==${{ matrix.version-pytorch }}
         echo "TENSORLY_BACKEND=torch" >> "$GITHUB_ENV"
 
     - name: Test with pytest
-      run: |
+      shell: |
         echo "TENSORLY_BACKEND=${{ env.TENSORLY_BACKEND }}"
         echo "TENSORLY_BACKEND=$TENSORLY_BACKEND"
         exit 0
