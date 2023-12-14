@@ -55,30 +55,30 @@ from spflow.tensorly.structure.autoleaf import (
     Uniform,
     UniformLayer,
 )
-from spflow.tensorly.structure.spn.layers.cond_sum_layer import CondSumLayer, marginalize
-from spflow.tensorly.structure.spn.layers.hadamard_layer import HadamardLayer, marginalize
-from spflow.tensorly.structure.spn.layers.partition_layer import (
+from spflow.tensorly.structure.spn.layer.cond_sum_layer import CondSumLayer, marginalize
+from spflow.tensorly.structure.spn.layer.hadamard_layer import HadamardLayer, marginalize
+from spflow.tensorly.structure.spn.layer.partition_layer import (
     PartitionLayer,
     marginalize,
 )
-from spflow.tensorly.structure.spn.layers.sum_layer import SumLayer, marginalize
-from spflow.tensorly.structure.spn.nodes.cond_sum_node import (
+from spflow.tensorly.structure.spn.layer.sum_layer import SumLayer, marginalize
+from spflow.tensorly.structure.spn.node.cond_sum_node import (
     CondSumNode,
     marginalize,
     #toBase,
     #toTorch,
 )
-from spflow.tensorly.structure.spn.nodes.sum_node import (
+from spflow.tensorly.structure.spn.node.sum_node import (
     SumNode,
     marginalize,
     #toBase,
     #toTorch,
 )
 from spflow.tensorly.structure.spn.rat.rat_spn import RatSPN, marginalize#, toBase, toTorch
-from spflow.torch.structure.general.nodes.leaves.parametric.gaussian import Gaussian as TorchGaussian
-from spflow.torch.structure.general.layers.leaves.parametric.gaussian import GaussianLayer as TorchGaussianLayer
-from spflow.base.structure.general.nodes.leaves.parametric.gaussian import Gaussian as Gaussian
-from spflow.base.structure.general.layers.leaves.parametric.gaussian import GaussianLayer as GaussianLayer
+from spflow.torch.structure.general.node.leaf.gaussian import Gaussian as TorchGaussian
+from spflow.torch.structure.general.layer.leaf.gaussian import GaussianLayer as TorchGaussianLayer
+from spflow.base.structure.general.node.leaf.gaussian import Gaussian as Gaussian
+from spflow.base.structure.general.layer.leaf.gaussian import GaussianLayer as GaussianLayer
 
 leaf_node_classes = (
     Bernoulli,

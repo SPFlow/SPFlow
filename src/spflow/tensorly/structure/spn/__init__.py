@@ -1,7 +1,7 @@
 # ---- sub-packages -----
 from . import layers, nodes, rat
-from .layers import *
-from .layers_layerbased import *
+from .layer import *
+from .layer_layerbased import *
 
 # ---- specific imports ----
 from .nodes import *

@@ -12,7 +12,7 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.tensorly.structure.spn.layers_layerbased.partition_layer import PartitionLayer
+from spflow.tensorly.structure.spn.layer_layerbased.partition_layer import PartitionLayer
 
 
 @dispatch(memoize=True)  # type: ignore

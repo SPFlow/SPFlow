@@ -17,7 +17,7 @@ from spflow.meta.dispatch.sampling_context import (
 )
 from spflow.tensorly.inference.module import log_likelihood
 from spflow.tensorly.sampling.module import sample
-from spflow.tensorly.structure.spn.layers_layerbased.cond_sum_layer import CondSumLayer
+from spflow.tensorly.structure.spn.layer_layerbased.cond_sum_layer import CondSumLayer
 
 
 @dispatch  # type: ignore

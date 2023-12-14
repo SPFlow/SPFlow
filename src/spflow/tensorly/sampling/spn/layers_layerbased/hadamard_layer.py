@@ -18,7 +18,7 @@ from spflow.meta.dispatch.sampling_context import (
 )
 from spflow.torch.inference.module import log_likelihood
 from spflow.tensorly.sampling.module import sample
-from spflow.tensorly.structure.spn.layers_layerbased.hadamard_layer import HadamardLayer
+from spflow.tensorly.structure.spn.layer_layerbased.hadamard_layer import HadamardLayer
 
 
 @dispatch  # type: ignore
