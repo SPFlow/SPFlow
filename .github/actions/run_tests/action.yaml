@@ -1,0 +1,52 @@
+name: 'Setup Dependencies & Run Tests'
+description: 'Install the nessesary dependencies and run the tests in this repo'
+inputs:
+  version-python:
+    required: true
+
+  # One could also set multiple libraries to be tested in one workflow
+  version-pytorch:
+    required: false
+  version-tensorflow:
+    required: false
+  version-jax:
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python ${{ matrix.version-python }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.version-python }}
+        cache: 'pip' # caching pip dependencies
+        cache-dependency-path: |
+          **/pyproject.toml
+    - name: Install library and dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install .[dev]
+
+    - name: Set up Torch ${{ matrix.version-pytorch }}
+      if: matrix.version-pytorch
+      shell: bash
+      run: |
+        pip install torch==${{ matrix.version-pytorch }} --index-url https://download.pytorch.org/whl/cpu
+
+    - name: Set up TensorFlow ${{ matrix.version-tensorflow }}
+      if: matrix.version-tensorflow
+      shell: bash
+      run: |
+        pip install tensorflow-cpu==${{ matrix.version-tensorflow }}
+
+    - name: Set up JAX ${{ matrix.version-jax }}
+      if: matrix.version-jax
+      shell: bash
+      run: |
+        pip install jax[cpu]==${{ matrix.version-jax }}
+
+    - name: Test with pytest
+      shell: bash
+      run: |
+        pytest --cov=spflow
