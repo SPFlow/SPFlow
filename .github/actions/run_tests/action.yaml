@@ -53,6 +53,4 @@ runs:
       shell: bash
       run: |
         echo "TENSORLY_BACKEND=$TENSORLY_BACKEND"
-        exit 0
-        # TODO: remove this line once we have tests
         pytest
