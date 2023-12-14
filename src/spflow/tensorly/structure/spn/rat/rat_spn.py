@@ -4,7 +4,7 @@ from typing import Iterable, List, Optional, Union
 
 from spflow.tensorly.structure.autoleaf import AutoLeaf
 #from spflow.torch.structure.autoleaf import AutoLeaf as TorchAutoLeaf
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure.module import Module
 from spflow.tensorly.structure.spn.layer.cond_sum_layer import CondSumLayer, marginalize
 from spflow.tensorly.structure.spn.layer.hadamard_layer import HadamardLayer, marginalize
 from spflow.tensorly.structure.spn.layer.partition_layer import PartitionLayer, marginalize

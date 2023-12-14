@@ -4,11 +4,8 @@ import itertools
 from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 import numpy as np
-import tensorly as tl
-from ....utils.helper_functions import tl_split, tl_tolist
-from spflow.meta.structure import MetaModule
-from spflow.tensorly.structure.module import Module
-from spflow.tensorly.structure.nested_module import NestedModule
+from spflow.meta.structure import Module
+from spflow.meta.structure.nested_module import NestedModule
 from spflow.tensorly.structure.spn.node.product_node import ProductNode
 
 from spflow.meta.data.scope import Scope
@@ -54,7 +51,7 @@ class PartitionLayer(NestedModule):
             List of scopes keeping track of the scopes each partition represents.
     """
 
-    def __init__(self, child_partitions: List[List[MetaModule]], **kwargs) -> None:
+    def __init__(self, child_partitions: List[List[Module]], **kwargs) -> None:
         r"""Initializes ``PartitionLayer`` object.
 
         Args:
@@ -158,7 +155,7 @@ def marginalize(
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[PartitionLayer, MetaModule, None]:
+) -> Union[PartitionLayer, Module, None]:
     """Structural marginalization for SPN-like partition layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.

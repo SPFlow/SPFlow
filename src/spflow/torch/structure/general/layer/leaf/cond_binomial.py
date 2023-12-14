@@ -23,7 +23,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.torch.structure.general.node.leaf.cond_binomial import (
     CondBinomial,
 )
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure.module import Module
 
 
 class CondBinomialLayer(Module):

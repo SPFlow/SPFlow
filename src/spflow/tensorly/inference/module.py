@@ -4,7 +4,7 @@ from typing import Optional
 
 import tensorly as tl
 from spflow.tensorly.utils.helper_functions import T
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure.module import Module
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,

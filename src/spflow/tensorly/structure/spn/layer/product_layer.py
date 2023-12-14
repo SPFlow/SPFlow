@@ -2,9 +2,8 @@
 """
 from copy import deepcopy
 from typing import Iterable, List, Optional, Union
-from spflow.meta.structure import MetaModule
-from spflow.tensorly.structure.module import Module
-from spflow.tensorly.structure.nested_module import NestedModule
+from spflow.meta.structure import Module
+from spflow.meta.structure.nested_module import NestedModule
 from spflow.tensorly.structure.spn.node.product_node import ProductNode
 
 from spflow.meta.data.scope import Scope
@@ -31,7 +30,7 @@ class ProductLayer(NestedModule):
             List of ``ProductNode`` objects for the nodes in this layer.
     """
 
-    def __init__(self, n_nodes: int, children: List[MetaModule], **kwargs) -> None:
+    def __init__(self, n_nodes: int, children: List[Module], **kwargs) -> None:
         r"""Initializes ``ProductLayer`` object.
 
         Args:
@@ -99,7 +98,7 @@ def marginalize(
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[ProductLayer, MetaModule, None]:
+) -> Union[ProductLayer, Module, None]:
     """Structural marginalization for SPN-like product layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.

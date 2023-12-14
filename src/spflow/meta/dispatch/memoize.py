@@ -13,14 +13,14 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     default_dispatch_context,
 )
-from spflow.meta.structure.module import MetaModule
+from spflow.meta.structure.module import Module
 
 
 def memoize(f) -> Callable:
     """Cecorator that wraps a function and automatically checks for cached values during dispatching.
 
     Wraps a function in order to automatically check the dispatch cache for stored values.
-    The first argument to the original function must be an instance of (a subclass of) ``MetaModule`` to use as a key for the cache.
+    The first argument to the original function must be an instance of (a subclass of) ``Module`` to use as a key for the cache.
 
     Returns:
         Wrapped function that automatically checks against a dispatch cache
@@ -29,13 +29,13 @@ def memoize(f) -> Callable:
     @wraps(f)
     def memoized_f(*args, **kwargs) -> Any:
 
-        # ----- retrieve MetaModule that is dispatched on -----
+        # ----- retrieve Module that is dispatched on -----
 
         # first argument is the key
         key = args[0]
 
-        if not isinstance(key, MetaModule):
-            raise ValueError(f"First argument is expected to be of type {MetaModule}, but was of type {type(key)}.")
+        if not isinstance(key, Module):
+            raise ValueError(f"First argument is expected to be of type {Module}, but was of type {type(key)}.")
 
         # ----- retrieve DispatchContext -----
 

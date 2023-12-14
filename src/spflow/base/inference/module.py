@@ -4,7 +4,7 @@ from typing import Optional
 
 import numpy as np
 
-from spflow.base.structure.module import Module
+from spflow.meta.structure.module import Module
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,

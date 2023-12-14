@@ -6,7 +6,7 @@ Typical usage example:
 """
 from typing import Any, Dict, Union
 
-from spflow.meta.structure.module import MetaModule
+from spflow.meta.structure.module import Module
 
 
 class DispatchContext:
@@ -31,14 +31,14 @@ class DispatchContext:
         self.funcs = {}
         self.cache = {}
 
-    def cache_value(self, f_name: str, key: MetaModule, value: Any, overwrite=True) -> None:
+    def cache_value(self, f_name: str, key: Module, value: Any, overwrite=True) -> None:
         """Caches an object for a given function name and key.
 
         Args:
             f_name:
                 String denoting the function for which to cache the value.
             key:
-                Instance of (a subclass of) ``MetaModule`` for which to cache the value.
+                Instance of (a subclass of) ``Module`` for which to cache the value.
             value:
                 Object to cache.
             overwrite:
@@ -53,28 +53,28 @@ class DispatchContext:
         # store value
         self.cache[f_name][key] = value
 
-    def is_cached(self, f_name: str, key: MetaModule) -> bool:
+    def is_cached(self, f_name: str, key: Module) -> bool:
         """Checks if a value is cached for a given function name and key.
 
         Args:
             f_name:
                 String denoting the function for which to check the cache.
             key:
-                Instance of (a subclass of) ``MetaModule`` for which to check the cache.
+                Instance of (a subclass of) ``Module`` for which to check the cache.
 
         Returns:
             Boolean indicating whether there is a corresponding cached object (True) or not (False).
         """
         return f_name in self.cache and key in self.cache[f_name]
 
-    def get_cached_value(self, f_name: str, key: MetaModule) -> Union[Any, None]:
+    def get_cached_value(self, f_name: str, key: Module) -> Union[Any, None]:
         """Tries to retrieve a cached object for a given function name and key.
 
         Args:
             f_name:
                 String denoting the function for which to retrive the cached object.
             key:
-                Instance of (a subclass of) ``MetaModule`` for which to retrieve the cached object.
+                Instance of (a subclass of) ``Module`` for which to retrieve the cached object.
 
         Returns:
             Cached object (if it exists) or None.
@@ -86,12 +86,12 @@ class DispatchContext:
         # return cached value
         return self.cache[f_name][key]
 
-    def update_args(self, key: MetaModule, kwargs: Dict[str, Any]) -> None:
+    def update_args(self, key: Module, kwargs: Dict[str, Any]) -> None:
         """Updates additional kword arguments for a given key.
 
         Args:
             key:
-                Instance of (a subclass of) ``MetaModule`` for which to update additional keyword arguments.
+                Instance of (a subclass of) ``Module`` for which to update additional keyword arguments.
             update_args:
                 Dictionary mapping strings (i.e., keyword arguments) to objects (i.e., argument values).
         """

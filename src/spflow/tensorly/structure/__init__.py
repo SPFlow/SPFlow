@@ -8,8 +8,6 @@ from .general.node.leaf_node import LeafNode
 from .general.node.node import marginalize  # handles all leaf node
 
 # ---- specific imports -----
-from .module import Module
-from .nested_module import NestedModule
 from .spn.layer.cond_sum_layer import marginalize
 from .spn.layer.hadamard_layer import marginalize
 from .spn.layer.partition_layer import marginalize

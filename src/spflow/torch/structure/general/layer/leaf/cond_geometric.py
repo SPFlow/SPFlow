@@ -24,7 +24,7 @@ from spflow.meta.dispatch.dispatch_context import (
 from spflow.torch.structure.general.node.leaf.cond_geometric import (
     CondGeometric,
 )
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure.module import Module
 
 
 class CondGeometricLayer(Module):

@@ -1,16 +1,15 @@
 """Contains Binomial leaf layer for SPFlow in the ``base`` backend.
 """
-from typing import Iterable, List, Optional, Tuple, Type, Union
+from typing import Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 
 from spflow.tensorly.structure.spn.layer.leaf import BinomialLayer as GeneralBinomialLayer
 from spflow.base.structure.general.node.leaf.binomial import Binomial
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.feature_types import FeatureType, FeatureTypes
-from spflow.meta.data.meta_type import MetaType
+from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (

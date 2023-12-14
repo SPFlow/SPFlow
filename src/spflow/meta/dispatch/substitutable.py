@@ -13,14 +13,14 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     default_dispatch_context,
 )
-from spflow.meta.structure.module import MetaModule
+from spflow.meta.structure.module import Module
 
 
 def substitutable(f) -> Callable:
     """Decorator that wraps a function and automatically checks for alternative functions during dispatching.
 
     Wraps a function in order to automatically check the dispatch context for specified alternative functions for a given module type.
-    The first argument to the original function must be an instance of (a subclass of) ``MetaModule`` to check for corresponding alternative functions.
+    The first argument to the original function must be an instance of (a subclass of) ``Module`` to check for corresponding alternative functions.
 
     Returns:
         Wrapped function that automatically checks for alternative functions.
@@ -29,13 +29,13 @@ def substitutable(f) -> Callable:
     @wraps(f)
     def substitutable_f(*args, **kwargs) -> Any:
 
-        # ----- retrieve MetaModule that is dispatched on -----
+        # ----- retrieve Module that is dispatched on -----
 
         # first argument is the key
         key = args[0]
 
-        if not isinstance(key, MetaModule):
-            raise ValueError(f"First argument is expected to be of type {MetaModule}, but was {type(key)}.")
+        if not isinstance(key, Module):
+            raise ValueError(f"First argument is expected to be of type {Module}, but was {type(key)}.")
 
         # ----- retrieve DispatchContext -----
 

@@ -9,8 +9,8 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.tensorly.structure.module import Module
-from spflow.meta.structure import MetaModule
+from spflow.meta.structure.module import Module
+from spflow.meta.structure import Module
 
 
 class ProductLayer(Module):
@@ -29,7 +29,7 @@ class ProductLayer(Module):
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, n_nodes: int, children: List[MetaModule], **kwargs) -> None:
+    def __init__(self, n_nodes: int, children: List[Module], **kwargs) -> None:
         r"""Initializes ``ProductLayer`` object.
 
         Args:
@@ -86,7 +86,7 @@ def marginalize(
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[ProductLayer, MetaModule, None]:
+) -> Union[ProductLayer, Module, None]:
     """Structural marginalization for SPN-like product layer objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
