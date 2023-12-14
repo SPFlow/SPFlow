@@ -31,7 +31,8 @@ runs:
       if: matrix.version-pytorch
       shell: bash
       run: |
-        pip install torch==${{ matrix.version-pytorch }}
+        # pip install torch==${{ matrix.version-pytorch }}
+        pip install torch==${{ matrix.version-pytorch }} --index-url https://download.pytorch.org/whl/cpu
         echo "TENSORLY_BACKEND=torch" >> "$GITHUB_ENV"
 
     - name: Test with pytest
