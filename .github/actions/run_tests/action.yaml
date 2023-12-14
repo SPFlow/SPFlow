@@ -12,7 +12,6 @@ inputs:
     required: false
 
 runs:
-  using: "composite"
   steps:
     - name: Set up Python ${{ matrix.version-python }}
       uses: actions/setup-python@v4
