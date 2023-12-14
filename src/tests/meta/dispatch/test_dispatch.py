@@ -7,11 +7,11 @@ from spflow.meta.dispatch import (
     dispatch,
     init_default_dispatch_context,
 )
-from spflow.meta.structure.module import MetaModule
+from spflow.meta.structure.module import Module
 
 
-# dispatching requires an instance of abstract class 'MetaModule' as first argument (e.g., for caching etc.)
-class Module(MetaModule):
+# dispatching requires an instance of abstract class 'Module' as first argument (e.g., for caching etc.)
+class Module(Module):
     pass
 
 

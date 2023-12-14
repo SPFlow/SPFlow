@@ -4,10 +4,9 @@ from copy import deepcopy
 from typing import Callable, Iterable, List, Optional, Union
 
 import tensorly as tl
-from spflow.tensorly.utils.helper_functions import tl_stack, tl_allclose, tl_isinstance, T, tl_to
-from spflow.meta.structure import MetaModule
-from spflow.tensorly.structure.module import Module
-from spflow.tensorly.structure.nested_module import NestedModule
+from spflow.tensorly.utils.helper_functions import tl_allclose, tl_isinstance, T, tl_to
+from spflow.meta.structure import Module
+from spflow.meta.structure.nested_module import NestedModule
 from spflow.tensorly.structure.spn.node.cond_sum_node import CondSumNode
 
 from spflow.meta.data.scope import Scope
@@ -46,7 +45,7 @@ class CondSumLayer(NestedModule):
     def __init__(
         self,
         n_nodes: int,
-        children: List[MetaModule],
+        children: List[Module],
         cond_f: Optional[Union[Callable, List[Callable]]] = None,
         **kwargs,
     ) -> None:
@@ -235,7 +234,7 @@ def marginalize(
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[CondSumLayer, MetaModule, None]:
+) -> Union[CondSumLayer, Module, None]:
     """Structural marginalization for conditional SPN-like sum layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.

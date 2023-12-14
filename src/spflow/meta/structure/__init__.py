@@ -1,1 +1,1 @@
-from .module import MetaModule
+from .module import Module

@@ -1,6 +1,6 @@
 """TODO
 """
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Dict, List, Optional, Union
 
 # ----- non-conditional modules -----
 from spflow.tensorly.structure.spn.layer.leaf import (
@@ -94,11 +94,8 @@ from spflow.tensorly.structure.spn.layer.leaf import (
 )
 from spflow.tensorly.structure.spn.node.leaf import Uniform
 
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.feature_types import FeatureType
-from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.scope import Scope
 
 
 class AutoLeaf:

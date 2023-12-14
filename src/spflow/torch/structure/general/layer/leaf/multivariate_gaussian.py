@@ -1,7 +1,7 @@
 """Contains Multivariate Gaussian leaf layer for SPFlow in the ``torch`` backend.
 """
 from functools import reduce
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Iterable, List, Optional, Union
 
 import numpy as np
 import torch
@@ -24,7 +24,7 @@ from spflow.torch.structure.general.node.leaf.gaussian import Gaussian
 from spflow.torch.structure.general.node.leaf.multivariate_gaussian import (
     MultivariateGaussian,
 )
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure.module import Module
 
 
 class MultivariateGaussianLayer(Module):
