@@ -82,10 +82,10 @@ jobs:
   #   (to catch if only the newest version breaks something)
   # - A single test on Windows and macOS to catch if something breaks there
   # - We only test on the most recent version of macOS and Windows to save resources
-  # - We only test on one version of python for TensorFlow and Jax to save resources
+  # - We test even fewer combinations for TensorFlow and Jax to save resources
 
   "Test_OS":
-    name: "Test: Py ${{ matrix.version-python }} @ OS ${{ matrix.version-pytorch }}"
+    name: "Test: Py ${{ matrix.version-python }} @ OS ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -141,7 +141,7 @@ jobs:
       fail-fast: false 
       matrix:
         version-python: ['3.12']
-        version-jax: ['0.3.25', '0.4.23']
+        version-jax: ['0.4.23']
     steps:
       - uses: actions/checkout@v4
       - uses: "./.github/actions/run_tests"
