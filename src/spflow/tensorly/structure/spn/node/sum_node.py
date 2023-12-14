@@ -11,7 +11,7 @@ import tensorly as tl
 from ....utils.helper_functions import tl_isclose, T
 
 from spflow.tensorly.structure.general.node.node import Node
-from spflow.meta.structure import MetaModule
+from spflow.meta.structure import Module
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -38,7 +38,7 @@ class SumNode(Node):
 
     def __init__(
         self,
-        children: List[MetaModule],#List[Module],
+        children: List[Module],#List[Module],
         weights: Optional[Union[T, List[float]]] = None,
     ) -> None:
         r"""Initializes ``SumNode`` object.

@@ -15,7 +15,7 @@ from spflow.base.learning.general.node.leaf.gaussian import (
     maximum_likelihood_estimation,
 )
 from spflow.tensorly.structure import AutoLeaf
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure.module import Module
 from spflow.tensorly.structure.spn.node.cond_sum_node import CondSumNode
 from spflow.tensorly.structure.spn.node.product_node import ProductNode
 from spflow.tensorly.structure.spn.node.sum_node import SumNode

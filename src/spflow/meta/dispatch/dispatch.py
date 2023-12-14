@@ -23,12 +23,12 @@ def dispatch(*args, memoize=False, substitutable=True) -> Callable:
         memoize:
             Boolean indicating whether or not the dispatched function should use memoization via the dispatch cache. Should be assigned as a keyword argument.
             If set to True, the original function is wrapped and the resulting function automatically checks the dispatch cache for an existing value for the same dispatched function name to be returned instead.
-            The first argument to the original function must be an instance of (a subclass of) ``MetaModule`` to check for corresponding cached values.
+            The first argument to the original function must be an instance of (a subclass of) ``Module`` to check for corresponding cached values.
             Defaults to False.
         substitutable:
             Boolean indicating whether or not the dispatched function can be substituted by a different function via the dispatch cache. Should be assigned as a keyword argument.
             If set to True, the original function is wrapped and the resulting function automatically checks the dispatch cache for an alternative specified function to be called instead.
-            The first argument to the original function must be an instance of (a subclass of) ``MetaModule`` to check for corresponding alternative functions.
+            The first argument to the original function must be an instance of (a subclass of) ``Module`` to check for corresponding alternative functions.
             Defaults to True.
 
     Raises:

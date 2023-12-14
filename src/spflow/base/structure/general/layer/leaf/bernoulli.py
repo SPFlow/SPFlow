@@ -6,7 +6,7 @@ import numpy as np
 from scipy.stats.distributions import rv_frozen  # type: ignore
 from spflow.tensorly.structure.spn.layer.leaf import BernoulliLayer as GeneralBernoulli
 from spflow.base.structure.general.node.leaf.bernoulli import Bernoulli
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.meta_type import MetaType

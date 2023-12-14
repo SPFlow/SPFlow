@@ -1,13 +1,12 @@
 """Contains the expectation maximization optimization parameter learner for SPFlow in the ``torch`` backend.
 """
-from typing import List
 
 import torch
 
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.torch.inference.module import log_likelihood
 from spflow.torch.learning.general.node.leaf.bernoulli import em  # TODO
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure.module import Module
 
 
 def expectation_maximization(

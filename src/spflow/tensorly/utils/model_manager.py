@@ -1,5 +1,5 @@
 import pickle
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure.module import Module
 
 
 def save_model(model: Module, file: str):

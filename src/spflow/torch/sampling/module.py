@@ -15,7 +15,7 @@ from spflow.meta.dispatch.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.torch.structure.module import Module
+from spflow.meta.structure.module import Module
 
 
 @dispatch  # type: ignore

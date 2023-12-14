@@ -3,11 +3,10 @@
 from abc import ABC
 from typing import List, Optional, Tuple, Union
 
-
 import tensorly as tl
-from spflow.meta.structure.module import MetaModule
-from spflow.tensorly.structure.module import Module
+
 from spflow.meta.dispatch.dispatch_context import DispatchContext
+from spflow.meta.structure.module import Module
 
 
 class NestedModule(Module, ABC):
@@ -22,8 +21,7 @@ class NestedModule(Module, ABC):
             List of scopes representing the output scopes.
     """
 
-    #def __init__(self, children: Optional[List[Module]] = None, **kwargs) -> None:
-    def __init__(self, children: Optional[List[MetaModule]] = None, **kwargs) -> None:
+    def __init__(self, children: Optional[List[Module]] = None, **kwargs) -> None:
         """Initializes ``NestedModule`` object.
 
         Initializes module by correctly setting its children.

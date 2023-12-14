@@ -2,9 +2,8 @@
 """
 from typing import Optional
 
-import tensorly as tl
 from spflow.tensorly.utils.helper_functions import T
-from spflow.tensorly.structure.nested_module import NestedModule
+from spflow.meta.structure.nested_module import NestedModule
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 

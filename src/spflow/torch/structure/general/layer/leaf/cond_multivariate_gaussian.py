@@ -28,7 +28,7 @@ from spflow.torch.structure.general.node.leaf.cond_multivariate_gaussian import 
     CondMultivariateGaussian,
     marginalize,
 )
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure.module import Module
 from spflow.tensorly.structure.spn.node.sum_node import marginalize
 
 

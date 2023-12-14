@@ -2,7 +2,7 @@
 """
 from typing import Dict, List, Optional, Tuple, Type, Union
 
-from spflow.base.structure.module import Module
+from spflow.meta.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType
 from spflow.meta.data.meta_type import MetaType

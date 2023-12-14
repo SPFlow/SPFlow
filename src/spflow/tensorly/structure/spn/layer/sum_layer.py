@@ -7,9 +7,8 @@ import numpy as np
 import tensorly as tl
 import torch
 from ....utils.helper_functions import tl_vstack, tl_allclose, tl_squeeze, T
-from spflow.meta.structure import MetaModule
-from spflow.tensorly.structure.module import Module
-from spflow.tensorly.structure.nested_module import NestedModule
+from spflow.meta.structure import Module
+from spflow.meta.structure.nested_module import NestedModule
 from spflow.tensorly.structure.spn.node.sum_node import SumNode
 
 from spflow.meta.data.scope import Scope
@@ -46,7 +45,7 @@ class SumLayer(NestedModule):
     def __init__(
         self,
         n_nodes: int,
-        children: List[MetaModule],
+        children: List[Module],
         weights: Optional[Union[T, List[List[float]], List[float]]] = None,
         **kwargs,
     ) -> None:
@@ -201,7 +200,7 @@ def marginalize(
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[SumLayer, MetaModule, None]:
+) -> Union[SumLayer, Module, None]:
     """Structural marginalization for SPN-like sum layer objects in the ``base`` backend.
 
     Structurally marginalizes the specified layer module.

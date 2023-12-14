@@ -4,9 +4,8 @@ from copy import deepcopy
 from typing import Callable, Iterable, List, Optional, Union
 
 import numpy as np
-import torch
 import tensorly as tl
-from spflow.tensorly.utils.helper_functions import tl_stack, tl_allclose, tl_isinstance, T, tl_to
+from spflow.tensorly.utils.helper_functions import tl_allclose, T, tl_to
 
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
@@ -14,8 +13,8 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.tensorly.structure.module import Module
-from spflow.meta.structure import MetaModule
+from spflow.meta.structure.module import Module
+from spflow.meta.structure import Module
 #from spflow.tensorly.structure.spn.layer.cond_sum_layer import CondSumLayer as CondSumLayerNode
 #import spflow.tensorly.structure.spn.layers.cond_sum_layer as CondSumLayerNode
 
@@ -49,7 +48,7 @@ class CondSumLayer(Module):
     def __init__(
         self,
         n_nodes: int,
-        children: List[MetaModule],
+        children: List[Module],
         cond_f: Optional[Union[Callable, List[Callable]]] = None,
         **kwargs,
     ) -> None:

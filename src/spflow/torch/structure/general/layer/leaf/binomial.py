@@ -1,7 +1,7 @@
 """Contains Binomial leaf layer for SPFlow in the ``torch`` backend.
 """
 from functools import reduce
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Iterable, List, Optional, Union
 
 import numpy as np
 import torch
@@ -21,7 +21,7 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.torch.structure.general.node.leaf.binomial import Binomial
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure.module import Module
 from spflow.torch.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
