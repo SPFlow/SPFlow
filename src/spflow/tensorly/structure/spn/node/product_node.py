@@ -4,8 +4,7 @@ from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 
 from spflow.tensorly.structure.general.node.node import Node
-from spflow.tensorly.structure.module import Module
-from spflow.meta.structure import MetaModule
+from spflow.meta.structure import Module
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -28,7 +27,7 @@ class ProductNode(Node):
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, children: List[MetaModule]) -> None:
+    def __init__(self, children: List[Module]) -> None:
         r"""Initializes ``ProductNode`` object.
 
         Args:
@@ -67,7 +66,7 @@ def marginalize(
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[ProductNode, Node, None, MetaModule]:
+) -> Union[ProductNode, Node, None, Module]:
     r"""Structural marginalization for ``ProductNode`` objects in the ``base`` backend.
 
     Structurally marginalizes the specified product node.

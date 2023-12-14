@@ -4,16 +4,14 @@ from copy import deepcopy
 from typing import Iterable, List, Optional, Union
 
 import numpy as np
-import tensorly as tl
-from ....utils.helper_functions import tl_tolist
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.structure import MetaModule
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure import Module
+from spflow.meta.structure.module import Module
 
 
 
@@ -49,7 +47,7 @@ class HadamardLayer(Module):
             List of scopes keeping track of the scopes each partition represents.
     """
 
-    def __init__(self, child_partitions: List[List[MetaModule]], **kwargs) -> None:
+    def __init__(self, child_partitions: List[List[Module]], **kwargs) -> None:
         r"""Initializes ``HadamardLayer`` object.
 
         Args:
@@ -141,7 +139,7 @@ def marginalize(
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[HadamardLayer, MetaModule, None]:
+) -> Union[HadamardLayer, Module, None]:
     """Structural marginalization for SPN-like Hadamard layer objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.

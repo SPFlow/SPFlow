@@ -14,9 +14,9 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 
-from ....utils.helper_functions import tl_vstack, tl_allclose, tl_squeeze, T, tl_repeat
-from spflow.meta.structure import MetaModule
-from spflow.tensorly.structure.module import Module
+from ....utils.helper_functions import tl_allclose, T
+from spflow.meta.structure import Module
+from spflow.meta.structure.module import Module
 from spflow.tensorly.structure.spn.node.sum_node import (
     proj_convex_to_real,
     proj_real_to_convex,
@@ -49,7 +49,7 @@ class SumLayer(Module):
     def __init__(
         self,
         n_nodes: int,
-        children: List[MetaModule],
+        children: List[Module],
         weights: Optional[Union[T, List[List[float]], List[float]]] = None,
         **kwargs,
     ) -> None:

@@ -93,7 +93,7 @@ from spflow.base.structure.general.layer.leaf.uniform import (
     Uniform,
     UniformLayer,
 )
-from spflow.base.structure.module import Module
+from spflow.meta.structure.module import Module
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureType
 from spflow.meta.data.meta_type import MetaType

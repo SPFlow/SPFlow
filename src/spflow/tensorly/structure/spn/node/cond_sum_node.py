@@ -1,15 +1,12 @@
 """Contains conditional SPN-like sum node for SPFlow in the ``base`` backend.
 """
-from abc import ABC
 from copy import deepcopy
-from typing import Callable, Iterable, List, Optional, Union
+from typing import Callable, Iterable, List, Optional
 
 import tensorly as tl
 from ....utils.helper_functions import tl_isclose,tl_isinstance, tl_to
-from spflow.meta.structure import MetaModule
-from spflow.tensorly.structure.module import Module
+from spflow.meta.structure import Module
 from spflow.tensorly.structure.spn.node.product_node import Node
-from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -35,7 +32,7 @@ class CondSumNode(Node):
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, children: List[MetaModule], cond_f: Optional[Callable] = None) -> None:
+    def __init__(self, children: List[Module], cond_f: Optional[Callable] = None) -> None:
         """Initializes ``CondSumNode`` object.
 
         Args:
