@@ -76,22 +76,75 @@ jobs:
   #       run: |
   #         pytest
 
-  "Test":
-    name: "Test: Py ${{ matrix.version-python }} + Torch ${{ matrix.version-pytorch }}"
+  # We do not want to waste too many resources on testing all combinations. Thus we test:
+  # - on the oldest and the two most recent version of Python that we support (see README.md)
+  # - with the oldest version of the backend we support plus the two most recent major ones
+  #   (to catch if only the newest version breaks something)
+  # - A single test on Windows and macOS to catch if something breaks there
+  # - We only test on the most recent version of macOS and Windows to save resources
+  # - We only test on one version of python for TensorFlow and Jax to save resources
+
+  "Test_OS":
+    name: "Test: Py ${{ matrix.version-python }} @ OS ${{ matrix.version-pytorch }}"
+    runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false  # Don't fail fast to explore which configurations fail
+      fail-fast: false
       matrix:
-        # We do not want to waste too many resources on testing all combinations. Thus we test:
-        # - on the oldest and the two most recent version of Python that we support (see README.md)
-        #   (to catch if only the newest version breaks something)
-        # - with the oldest version of the backend we support plus the two most recent major ones
-        # - A single test on Windows and macOS to catch if something breaks there
-        version-python: ['3.9', '3.10', '3.11']  # 3.12 is not yet supported by torch
-        version-pytorch: ['1.11.0', '2.0.1', '2.1.1']
+        version-python: ['3.12']
+        os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: "./.github/actions/run_tests"
+        with:
+          version-python: ${{ matrix.version-python }}
+
+  "Test_Torch":
+    name: "Test: Py ${{ matrix.version-python }} + Torch ${{ matrix.version-pytorch }}"
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false 
+      matrix:
+        version-python: ['3.9', '3.11']  # 3.12 is not yet supported by torch
+        version-pytorch: ['1.11.0', '2.0.1', '2.1.1']
+        exclude: # Non-supported combinations
+          - version-python: '3.11'
+            version-pytorch: '1.11.0'
     steps:
       - uses: actions/checkout@v4
       - uses: "./.github/actions/run_tests"
         with:
           version-python: ${{ matrix.version-python }}
           version-pytorch: ${{ matrix.version-pytorch }}
+
+  "Test_Tensorflow":
+    name: "Test: Py ${{ matrix.version-python }} + TF ${{ matrix.version-tensorflow }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false 
+      matrix:
+        include:
+          - version-python: '3.10'
+            version-tensorflow: '2.11.0'
+          - version-python: '3.11'
+            version-tensorflow: '2.15.0.post1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: "./.github/actions/run_tests"
+        with:
+          version-python: ${{ matrix.version-python }}
+          version-tensorflow: ${{ matrix.version-tensorflow }}
+
+  "Test_Jax":
+    name: "Test: Py ${{ matrix.version-python }} + Jax ${{ matrix.version-jax }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false 
+      matrix:
+        version-python: ['3.12']
+        version-jax: ['0.3.25', '0.4.23']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: "./.github/actions/run_tests"
+        with:
+          version-python: ${{ matrix.version-python }}
+          version-jax: ${{ matrix.version-jax }}

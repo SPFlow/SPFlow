@@ -4,6 +4,7 @@ inputs:
   version-python:
     required: true
 
+  # Set only one of the following, since the last one will overwrite the previous
   version-pytorch:
     required: false
   version-tensorflow:
@@ -31,14 +32,26 @@ runs:
       if: matrix.version-pytorch
       shell: bash
       run: |
-        # pip install torch==${{ matrix.version-pytorch }}
         pip install torch==${{ matrix.version-pytorch }} --index-url https://download.pytorch.org/whl/cpu
         echo "TENSORLY_BACKEND=torch" >> "$GITHUB_ENV"
+
+    - name: Set up TensorFlow ${{ matrix.version-tensorflow }}
+      if: matrix.version-tensorflow
+      shell: bash
+      run: |
+        pip install tensorflow-cpu==${{ matrix.version-tensorflow }}
+        echo "TENSORLY_BACKEND=tensorflow" >> "$GITHUB_ENV"
+
+    - name: Set up JAX ${{ matrix.version-jax }}
+      if: matrix.version-jax
+      shell: bash
+      run: |
+        pip install jax[cpu]==${{ matrix.version-jax }}
+        echo "TENSORLY_BACKEND=jax" >> "$GITHUB_ENV"
 
     - name: Test with pytest
       shell: bash
       run: |
-        echo "TENSORLY_BACKEND=${{ env.TENSORLY_BACKEND }}"
         echo "TENSORLY_BACKEND=$TENSORLY_BACKEND"
         exit 0
         # TODO: remove this line once we have tests
