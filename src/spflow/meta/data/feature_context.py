@@ -16,8 +16,8 @@ class FeatureContext:
         scope: Scope,
         domains: Optional[
             Union[
-                Dict[int, Union[MetaType, FeatureType, Type[FeatureType]]],
-                List[Union[MetaType, FeatureType, Type[FeatureType]]],
+                dict[int, Union[MetaType, FeatureType, type[FeatureType]]],
+                list[Union[MetaType, FeatureType, type[FeatureType]]],
             ]
         ] = None,
     ):
@@ -45,19 +45,21 @@ class FeatureContext:
     def set_domains(
         self,
         domains: Union[
-            Dict[int, Union[MetaType, FeatureType, Type[FeatureType]]],
-            List[Union[MetaType, FeatureType, Type[FeatureType]]],
+            dict[int, Union[MetaType, FeatureType, type[FeatureType]]],
+            list[Union[MetaType, FeatureType, type[FeatureType]]],
         ],
         overwrite: bool = False,
     ):
         """TODO"""
-        if isinstance(domains, List):
+        if isinstance(domains, list):
             if len(domains) != len(self.scope.query):
                 raise ValueError(
                     "Length of list of domain types for 'FeatureContext' does not match number of scope query RVs."
                 )
 
-            domains = {feature_id: feature_type for feature_id, feature_type in zip(self.scope.query, domains)}
+            domains = {
+                feature_id: feature_type for feature_id, feature_type in zip(self.scope.query, domains)
+            }
 
         for feature_id, feature_type in domains.items():
             # convert to instance if necessary
@@ -74,8 +76,11 @@ class FeatureContext:
             self.domain_map[feature_id] = feature_type
 
     def get_domains(
-        self, feature_ids: Union[int, List[int]] = None
-    ) -> Union[Union[MetaType, FeatureType, Type[FeatureType]], List[Union[MetaType, FeatureType, Type[FeatureType]]],]:
+        self, feature_ids: Union[int, list[int]] = None
+    ) -> Union[
+        Union[MetaType, FeatureType, type[FeatureType]],
+        list[Union[MetaType, FeatureType, type[FeatureType]]],
+    ]:
         """TODO"""
         if feature_ids is None:
             feature_ids = self.scope.query
@@ -84,7 +89,7 @@ class FeatureContext:
         else:
             return [self.domain_map[feature_id] for feature_id in feature_ids]
 
-    def select(self, feature_ids: Union[int, List[int]]) -> "FeatureContext":
+    def select(self, feature_ids: Union[int, list[int]]) -> "FeatureContext":
         """TODO"""
         if isinstance(feature_ids, int):
             feature_ids = [feature_ids]

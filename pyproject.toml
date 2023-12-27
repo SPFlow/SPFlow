@@ -36,7 +36,6 @@ dependencies = [
     "scipy>=1.5.0",
     "torch>=1.11.0",
     "scikit-learn>=1.0",
-    "tensorly>=0.8.0",
 ]
 dynamic = ["version"]
 
@@ -68,7 +67,7 @@ testpaths = [
 ]
 
 [tool.black]
-line-length = 120
+line-length = 110
 color = true
 target-version = [
     "py39",
