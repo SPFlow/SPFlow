@@ -13,7 +13,6 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     default_dispatch_context,
 )
-from spflow.meta.structure.module import Module
 
 
 def substitutable(f) -> Callable:
@@ -26,9 +25,11 @@ def substitutable(f) -> Callable:
         Wrapped function that automatically checks for alternative functions.
     """
 
+    # import here to avoid circular imports, TODO: does this have performance implications?
+    from spflow.modules.module import Module
+
     @wraps(f)
     def substitutable_f(*args, **kwargs) -> Any:
-
         # ----- retrieve Module that is dispatched on -----
 
         # first argument is the key
@@ -49,7 +50,6 @@ def substitutable(f) -> Callable:
 
             for arg in args:
                 if isinstance(arg, DispatchContext):
-
                     # check if another dispatch context has been found before
                     if dispatch_ctx is not None:
                         raise LookupError(
@@ -74,7 +74,6 @@ def substitutable(f) -> Callable:
 
         # check if alternative function is given for module type in dispatch context
         if type(key) in dispatch_ctx.funcs:
-
             _f = dispatch_ctx.funcs[type(key)]
 
         return _f(*args, **kwargs)
