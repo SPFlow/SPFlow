@@ -6,6 +6,10 @@ Typical usage example:
 """
 from typing import List, Optional, Tuple, Union
 
+import spflow.tensor.dtype
+from spflow.utils import Tensor
+from spflow import tensor as T
+
 
 class SamplingContext:
     """Class for storing context information during sampling.
@@ -23,8 +27,9 @@ class SamplingContext:
 
     def __init__(
         self,
-        instance_ids: List[int],
-        output_ids: Optional[List[List[int]]] = None,
+        # instance_ids: list[int],
+        instance_ids: Tensor,
+        output_ids: Optional[Tensor] = None,
     ) -> None:
         """Initializes 'SamplingContext' object.
 
@@ -42,7 +47,7 @@ class SamplingContext:
         """
         if output_ids is None:
             # assume sampling over all outputs (i.e. [])
-            output_ids = [[] for _ in instance_ids]
+            output_ids = T.tensor([[] for _ in instance_ids])
 
         if len(output_ids) != len(instance_ids):
             raise ValueError(
@@ -52,7 +57,7 @@ class SamplingContext:
         self.instance_ids = instance_ids
         self.output_ids = output_ids
 
-    def group_output_ids(self, n_total: int) -> List[Tuple[Union[int, None], List[int]]]:
+    def group_output_ids(self, n_total: int) -> list[tuple[Union[int, None], list[int]]]:
         """Groups instances in the sampling context by their output indices.
 
         Args:
@@ -78,7 +83,7 @@ class SamplingContext:
 
     def unique_outputs_ids(
         self, return_indices: bool = False
-    ) -> Union[List[List[int]], Tuple[List[List[int]], List[List[int]]]]:
+    ) -> Union[list[list[int]], tuple[list[list[int]], list[list[int]]]]:
         """Return the list of unique lists of output indices, not the individual indices
 
         Args:
@@ -117,7 +122,9 @@ def default_sampling_context(n: int) -> SamplingContext:
     Returns:
         Sampling context initialized with instance indices from 0 to ``n`` and corresponding output indices as ``[]``.
     """
-    return SamplingContext(list(range(n)), [[] for _ in range(n)])
+    return SamplingContext(
+        T.tensor(list(range(n))), T.tensor([[] for _ in range(n)], dtype=T.get_default_int_dtype())
+    )
 
 
 def init_default_sampling_context(sampling_ctx: Union[SamplingContext, None], n: int) -> SamplingContext:

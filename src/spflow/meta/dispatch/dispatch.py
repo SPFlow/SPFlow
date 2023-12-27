@@ -14,6 +14,7 @@ from plum import dispatch as plum_dispatch  # type: ignore
 from spflow.meta.dispatch.memoize import memoize as memoize_decorator
 from spflow.meta.dispatch.substitutable import substitutable as substitutable_decorator
 
+
 def dispatch(*args, memoize=False, substitutable=True) -> Callable:
     """Decorator that wraps a function and dispatches it.
 
@@ -65,6 +66,8 @@ def dispatch(*args, memoize=False, substitutable=True) -> Callable:
         f = args[0]
         return dispatch_decorator(f)
     elif len(args) > 0:
-        raise ValueError("'dispatch' Decorator received unknown positional arguments. Try keyword arguments instead.")
+        raise ValueError(
+            "'dispatch' Decorator received unknown positional arguments. Try keyword arguments instead."
+        )
     else:
         return dispatch_decorator
