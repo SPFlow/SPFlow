@@ -69,4 +69,4 @@ jobs:
           pip install .[dev]
       - name: Test with pytest
         run: |
-          pytest
+          pytest src/tests
