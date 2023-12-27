@@ -9,7 +9,7 @@ from spflow.tensor import Tensor
 from tests.fixtures import backend
 
 
-# The parametrization below looks at all relevant spflow.utils.tensorly_extensions functions and tests them with some
+# The parametrization below looks at all relevant spflow.tensor.ops functions and tests them with some
 # data input for each backend and ensures that the results are the same.
 # A touple in the list below has the form (operation, args) where operation is the function to test and args are the
 # arguments to pass to the function. The function is then called as operation(*args) and the results are compared.
