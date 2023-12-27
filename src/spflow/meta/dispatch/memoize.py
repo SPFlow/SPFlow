@@ -13,7 +13,6 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     default_dispatch_context,
 )
-from spflow.meta.structure.module import Module
 
 
 def memoize(f) -> Callable:
@@ -26,16 +25,20 @@ def memoize(f) -> Callable:
         Wrapped function that automatically checks against a dispatch cache
     """
 
+    # import here to avoid circular imports, TODO: does this have performance implications?
+    from spflow.modules.module import Module
+
     @wraps(f)
     def memoized_f(*args, **kwargs) -> Any:
-
         # ----- retrieve Module that is dispatched on -----
 
         # first argument is the key
         key = args[0]
 
         if not isinstance(key, Module):
-            raise ValueError(f"First argument is expected to be of type {Module}, but was of type {type(key)}.")
+            raise ValueError(
+                f"First argument is expected to be of type {Module}, but was of type {type(key)}."
+            )
 
         # ----- retrieve DispatchContext -----
 
@@ -49,7 +52,6 @@ def memoize(f) -> Callable:
 
             for arg in args:
                 if isinstance(arg, DispatchContext):
-
                     # check if another dispatch context has been found before
                     if dispatch_ctx is not None:
                         raise LookupError(

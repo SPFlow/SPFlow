@@ -6,8 +6,6 @@ Typical usage example:
 """
 from typing import Any, Dict, Union
 
-from spflow.meta.structure.module import Module
-
 
 class DispatchContext:
     """Class for storing context information for dispatched functions.
@@ -31,7 +29,7 @@ class DispatchContext:
         self.funcs = {}
         self.cache = {}
 
-    def cache_value(self, f_name: str, key: Module, value: Any, overwrite=True) -> None:
+    def cache_value(self, f_name: str, key: "Module", value: Any, overwrite=True) -> None:
         """Caches an object for a given function name and key.
 
         Args:
@@ -53,7 +51,7 @@ class DispatchContext:
         # store value
         self.cache[f_name][key] = value
 
-    def is_cached(self, f_name: str, key: Module) -> bool:
+    def is_cached(self, f_name: str, key: "Module") -> bool:
         """Checks if a value is cached for a given function name and key.
 
         Args:
@@ -67,7 +65,7 @@ class DispatchContext:
         """
         return f_name in self.cache and key in self.cache[f_name]
 
-    def get_cached_value(self, f_name: str, key: Module) -> Union[Any, None]:
+    def get_cached_value(self, f_name: str, key: "Module") -> Union[Any, None]:
         """Tries to retrieve a cached object for a given function name and key.
 
         Args:
@@ -86,7 +84,7 @@ class DispatchContext:
         # return cached value
         return self.cache[f_name][key]
 
-    def update_args(self, key: Module, kwargs: Dict[str, Any]) -> None:
+    def update_args(self, key: "Module", kwargs: dict[str, Any]) -> None:
         """Updates additional kword arguments for a given key.
 
         Args:

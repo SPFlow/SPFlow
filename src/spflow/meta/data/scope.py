@@ -4,7 +4,8 @@ Typical usage example:
 
     scope = Scope(query_rvs, evidence_rvs)
 """
-from typing import Iterable, List, Optional, Type, Union
+from typing import List, Optional, Type, Union
+from collections.abc import Iterable
 
 from spflow.meta.data.feature_types import FeatureType
 from spflow.meta.data.meta_type import MetaType
@@ -25,8 +26,8 @@ class Scope:
 
     def __init__(
         self,
-        query: Optional[List[int]] = None,
-        evidence: Optional[List[int]] = None,
+        query: Optional[list[int]] = None,
+        evidence: Optional[list[int]] = None,
     ) -> None:
         """Initializes ``Scope`` object.
 
@@ -48,7 +49,9 @@ class Scope:
             evidence = []
 
         if len(query) == 0 and len(evidence) != 0:
-            raise ValueError("List of query variables for 'Scope' is empty, but list of evidence variables is not.")
+            raise ValueError(
+                "List of query variables for 'Scope' is empty, but list of evidence variables is not."
+            )
 
         if any(rv < 0 for rv in query):
             raise ValueError("Query variables must all be non-negative.")
@@ -74,10 +77,20 @@ class Scope:
         Returns:
             String containg the string representation of scope.
         """
-        return "Scope({}|{})".format(
-            self.query if self.query else "{}",
-            self.evidence if self.evidence else "{}",
-        )  # pragma: no cover
+        # return "Scope({}|{})".format(
+        #     self.query if self.query else "{}",
+        #     self.evidence if self.evidence else "{}",
+        # )  # pragma: no cover
+        if len(self.evidence) == 0:
+            if len(self.query) == 1:
+                return str(self.query[0])
+            else:
+                return str(self.query)
+        else:
+            if len(self.query) == 1:
+                return str(self.query[0]) + "|" + str(self.evidence)
+            else:
+                return str(self.query) + "|" + str(self.evidence)
 
     def __eq__(self, other: "Scope") -> bool:
         """Equality comparison between two ``Scope`` objects.
