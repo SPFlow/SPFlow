@@ -2,7 +2,6 @@
 """
 from typing import Callable, List, Optional, Tuple, Union
 
-import tensorly as tl
 
 import spflow.tensor.dtype
 from spflow.meta.data.feature_context import FeatureContext
