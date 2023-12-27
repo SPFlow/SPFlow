@@ -4,7 +4,6 @@ from copy import deepcopy
 from typing import Callable, List, Optional
 from collections.abc import Iterable
 
-import tensorly as tl
 
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.utils import Tensor
