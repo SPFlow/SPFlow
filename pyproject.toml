@@ -41,8 +41,8 @@ dynamic = ["version"]
 # [tool.setuptools.packages]
 # find = {}  # The package is discovered automatically (including the py.typed file):
 
-[tool.setuptools.packages.find]
-where = ["src"]
+# [tool.setuptools.packages.find]
+# where = ["src"]
 
 [tool.setuptools.dynamic]
 version = { attr = "spflow.__version__" }
@@ -63,9 +63,9 @@ dev = [
 addopts = " --color=yes --doctest-modules" #--cov=spflow"
 testpaths = [
     # for the doctests:
-    "src/spflow",
+    "spflow",
     # for the actual tests:
-    "src/tests"
+    "tests"
 ]
 
 [tool.black]

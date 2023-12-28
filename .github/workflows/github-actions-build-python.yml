@@ -25,7 +25,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[dev]
       - name: Lint with flake8
-        run: ruff check src
+        run: ruff check spflow tests
         continue-on-error: true
 
   "Check_Format":
@@ -45,7 +45,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[dev]
       - name: Checking formatting with black
-        run: black --check --diff src/
+        run: black --check --diff spflow tests
 
   "Test":
     name: "Test: Py ${{ matrix.python-version }} + Torch ${{ matrix.pytorch-version }}"
@@ -77,4 +77,4 @@ jobs:
           pip install .[dev]
       - name: Test with pytest
         run: |
-          pytest src/tests
+          pytest tests
