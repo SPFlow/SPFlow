@@ -25,7 +25,7 @@ def isfloat(data: Tensor):
         return isfloat(data[0])
     elif isinstance(data, tuple) and len(data) > 0:
         return isfloat(data[0])
-    elif isinstance(data, (float, np.floating, jnp.floating)):
+    elif isinstance(data, (float, np.floating)):
         return True
     elif isinstance(data, Tensor):
         if isinstance(data, np.ndarray):
