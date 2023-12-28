@@ -38,11 +38,8 @@ dependencies = [
 ]
 dynamic = ["version"]
 
-# [tool.setuptools.packages]
-# find = {}  # The package is discovered automatically (including the py.typed file):
-
-# [tool.setuptools.packages.find]
-# where = ["src"]
+[tool.setuptools.packages]
+find = {}  # The package is discovered automatically (including the py.typed file):
 
 [tool.setuptools.dynamic]
 version = { attr = "spflow.__version__" }
