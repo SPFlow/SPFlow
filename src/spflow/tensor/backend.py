@@ -9,15 +9,15 @@ from typing import Union
 logger = logging.getLogger(__name__)
 
 # List of supported tensor types
-tensor_types = [np.ndarray]
+_TENSOR_TYPES = [np.ndarray]
 try:
     import torch
 
     logger.debug("PyTorch backend loaded.")
     IS_TORCH_AVAILABLE = True
 
-    tensor_types.append(torch.Tensor)
-except ImportError:
+    _TENSOR_TYPES.append(torch.Tensor)
+except ImportError as e:
     IS_TORCH_AVAILABLE = False
 
 try:
@@ -31,13 +31,14 @@ try:
     _jax_platform = xla_bridge.get_backend().platform
     logger.debug("Jax backend platform: %s", _jax_platform)
 
-    tensor_types.append(jnp.ndarray)
+    _TENSOR_TYPES.append(jnp.ndarray)
     IS_JAX_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     IS_JAX_AVAILABLE = False
 
 # Define tensor type as union of all supported tensor types s.t. dispatch methods can be defined for all of them
-Tensor = Union[tuple(tensor_types)]
+_TENSOR_TYPES = tuple(_TENSOR_TYPES)
+Tensor = Union[_TENSOR_TYPES]
 
 
 class MethodNotImplementedError(NotImplementedError):
