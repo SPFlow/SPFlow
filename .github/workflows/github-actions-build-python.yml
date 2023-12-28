@@ -53,6 +53,12 @@ jobs:
       matrix:
         python-version: ['3.9', '3.10', '3.11']  # 3.12 is not yet supported by torch
         pytorch-version: ['1.11.0', '1.12.1', '1.13.1', '2.0.1', '2.1.0']
+        exclude:
+          - python-version: '3.11'
+            pytorch-version: '1.11.0'
+          - python-version: '3.11'
+            pytorch-version: '1.12.1'
+          # Add other incompatible combinations here
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}, PyTorch ${{ matrix.pytorch-version }}
