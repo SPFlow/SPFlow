@@ -1005,6 +1005,8 @@ def sum(data: Tensor, axis=None, keepdims=False) -> Tensor:
     elif backend == Backend.JAX:
         return jnp.sum(data, axis=axis, keepdims=keepdims)
     elif backend == Backend.PYTORCH:
+        if axis is None:
+            axis = ()  # Necessary for PyTorch<=2.0.0 (doesn't accept None)
         return torch.sum(data, dim=axis, keepdim=keepdims)
     else:
         raise MethodNotImplementedError(backend)
