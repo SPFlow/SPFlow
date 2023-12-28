@@ -6,7 +6,7 @@ import scipy
 
 import logging
 
-from spflow.tensor.backend import Tensor, get_backend, Backend, MethodNotImplementedError, _TENSOR_TYPES
+from spflow.tensor.backend import Tensor, get_backend, Backend, MethodNotImplementedError, _TENSOR_TYPES, is_jax_available
 from spflow.tensor.dtype import get_default_dtype, get_default_float_dtype, get_default_int_dtype, isint, int64
 
 logger = logging.getLogger(__name__)
@@ -46,6 +46,9 @@ def tensor(data: Tensor, dtype=None, device=None, requires_grad=False, copy=Fals
             # If source is a tensor, use clone-detach as suggested by PyTorch
             if copy:
                 data = data.clone().detach()
+        elif is_jax_available() and isinstance(data, jnp.ndarray):
+            # If source is a JAX array, convert to numpy and then to PyTorch
+            data = torch.tensor(np.asarray(data), dtype=dtype, device=device, requires_grad=requires_grad)
         else:
             # Else, use PyTorch's tensor constructor
             data = torch.tensor(data, dtype=dtype, device=device, requires_grad=requires_grad)
