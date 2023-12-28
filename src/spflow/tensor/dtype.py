@@ -42,7 +42,9 @@ def isint(data: Tensor):
         return isint(data[0])
     elif isinstance(data, tuple) and len(data) > 0:
         return isint(data[0])
-    elif isinstance(data, (int, np.integer, jnp.integer)):
+    elif isinstance(data, (int, np.integer)):
+        return True
+    elif is_jax_available() and isinstance(data, jnp.integer):
         return True
     elif isinstance(data, Tensor):
         if isinstance(data, np.ndarray):
