@@ -147,8 +147,8 @@ def test_svd():
     """
     data = T.randn(2, 2)
 
-    def fn(data):
-        u, s, vh = T.svd(data)
+    def fn(tensor):
+        u, s, vh = T.svd(tensor)
         return T.abs(u), T.abs(s), T.abs(vh)
 
     test_tensor_ops(operation=fn, args=(data,))
