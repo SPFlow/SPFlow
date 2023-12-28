@@ -6,8 +6,21 @@ import scipy
 
 import logging
 
-from spflow.tensor.backend import Tensor, get_backend, Backend, MethodNotImplementedError, _TENSOR_TYPES, is_jax_available
-from spflow.tensor.dtype import get_default_dtype, get_default_float_dtype, get_default_int_dtype, isint, int64
+from spflow.tensor.backend import (
+    Tensor,
+    get_backend,
+    Backend,
+    MethodNotImplementedError,
+    _TENSOR_TYPES,
+    is_jax_available,
+)
+from spflow.tensor.dtype import (
+    get_default_dtype,
+    get_default_float_dtype,
+    get_default_int_dtype,
+    isint,
+    int64,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -959,6 +972,7 @@ def max(data: Tensor, axis=None) -> Tensor:
             return torch.max(data)
     else:
         raise MethodNotImplementedError(backend)
+
 
 def abs(data: Tensor) -> Tensor:
     data = tensor(data)
