@@ -55,7 +55,7 @@ dev = [
   "pytest",
   "pytest-cov",
   "torch>=1.11.0",
-  "jax>=0.4.0"
+  "jax>=0.4.0",
   "jaxlib>=0.4.0"
 ]
 
