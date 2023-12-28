@@ -54,7 +54,9 @@ class SamplingContext:
                 f"Number of specified instance ids {len(instance_ids)} does not match specified number of output ids {len(output_ids)}."
             )
 
-        self.instance_ids = T.to(instance_ids, dtype=T.int64())   # torch<=2.0.0 requires long indices when we use instances_ids to index into a
+        self.instance_ids = T.to(
+            instance_ids, dtype=T.int64()
+        )  # torch<=2.0.0 requires long indices when we use instances_ids to index into a
         self.output_ids = output_ids
 
     def group_output_ids(self, n_total: int) -> list[tuple[Union[int, None], list[int]]]:
