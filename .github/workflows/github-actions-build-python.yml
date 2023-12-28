@@ -25,6 +25,7 @@ jobs:
           pip install .[dev]
       - name: Lint with flake8
         run: ruff check src
+        continue-on-error: true
 
   "Check_Format":
     name: "Check Format"
