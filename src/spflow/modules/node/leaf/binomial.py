@@ -378,9 +378,9 @@ def log_likelihood(
 
     # Actual binomial log_prob computation:
     # compute probabilities for values inside distribution support
-    scope_data = T.to(T.squeeze(scope_data[~marg_ids], 1), dtype=T.int32())
+    scope_data = T.to(T.squeeze(scope_data[~marg_ids], 1), dtype=T.int64())
     log_coef = _log_binomial_coefficient(
-        T.full((scope_data.shape[0],), leaf.n, dtype=T.int32(), device=leaf.device), scope_data
+        T.full((scope_data.shape[0],), leaf.n, dtype=T.int64(), device=leaf.device), scope_data
     )
     log_pmf = log_coef + scope_data * T.log(leaf.p) + (leaf.n - scope_data) * T.log(1 - leaf.p)
     lls = T.unsqueeze(log_pmf, -1)
