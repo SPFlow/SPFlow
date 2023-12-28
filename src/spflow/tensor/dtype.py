@@ -12,6 +12,7 @@ except ImportError:
 
 from spflow.tensor.backend import (
     Tensor,
+    _TENSOR_TYPES,  # We need this for isinstance checks against Tensor in Python<=3.9
     is_torch_available,
     is_jax_available,
     get_backend,
@@ -27,7 +28,7 @@ def isfloat(data: Tensor):
         return isfloat(data[0])
     elif isinstance(data, (float, np.floating)):
         return True
-    elif isinstance(data, Tensor):
+    elif isinstance(data, _TENSOR_TYPES):
         if isinstance(data, np.ndarray):
             return np.issubdtype(data.dtype, np.floating)
         elif is_torch_available() and isinstance(data, torch.Tensor):
@@ -46,7 +47,7 @@ def isint(data: Tensor):
         return True
     elif is_jax_available() and isinstance(data, jnp.integer):
         return True
-    elif isinstance(data, Tensor):
+    elif isinstance(data, _TENSOR_TYPES):
         if isinstance(data, np.ndarray):
             return np.issubdtype(data.dtype, np.integer)
         elif is_torch_available() and isinstance(data, torch.Tensor):
@@ -66,7 +67,7 @@ def isbool(data: Tensor):
         return isbool(data[0])
     elif isinstance(data, bool):
         return True
-    elif isinstance(data, Tensor):
+    elif isinstance(data, _TENSOR_TYPES):
         if isinstance(data, np.ndarray):
             return data.dtype == np.dtype(bool)
         elif is_torch_available() and isinstance(data, torch.Tensor):
