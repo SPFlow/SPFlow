@@ -3,12 +3,11 @@ import random
 
 import numpy as np
 import scipy
-from scipy.special import logsumexp
 
 import logging
 
-from spflow.tensor.backend import Tensor, get_backend, Backend, MethodNotImplementedError
-from spflow.tensor.dtype import get_default_dtype, get_default_float_dtype, get_default_int_dtype
+from spflow.tensor.backend import Tensor, get_backend, Backend, MethodNotImplementedError, _TENSOR_TYPES
+from spflow.tensor.dtype import get_default_dtype, get_default_float_dtype, get_default_int_dtype, isint, int64
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,10 @@ def tensor(data: Tensor, dtype=None, device=None, requires_grad=False, copy=Fals
     backend = get_backend()
 
     if dtype is None:
-        dtype = get_default_dtype(data)
+        if istensor(data):
+            dtype = data.dtype
+        else:
+            dtype = get_default_dtype(data)
     if backend == Backend.NUMPY:
         if not isinstance(data, np.ndarray) or copy:
             data = np.array(data, dtype=dtype)
@@ -233,13 +235,14 @@ def eigvalsh(data: Tensor) -> Tensor:
     data = tensor(data)
     backend = get_backend()
     if backend == Backend.NUMPY:
-        return np.linalg.eigvalsh(data)
+        result = np.linalg.eigvalsh(data)
     elif backend == Backend.PYTORCH:
-        return torch.linalg.eigvalsh(data)
+        result = torch.linalg.eigvalsh(data)
     elif backend == Backend.JAX:
-        return jnp.linalg.eigvalsh(data)
+        result = jnp.linalg.eigvalsh(data)
     else:
         raise MethodNotImplementedError(backend)
+    return to(result, dtype=data.dtype)
 
 
 def inv(data: Tensor) -> Tensor:
@@ -557,6 +560,8 @@ def _random_jax_prngkey() -> Tensor:
 
 def randn(*size, dtype=None, device=None, seed=None) -> Tensor:
     backend = get_backend()
+    if dtype is None:
+        dtype = get_default_float_dtype()
     if backend == Backend.NUMPY:
         rng = np.random.default_rng(seed)
         return rng.standard_normal(size).astype(dtype)
@@ -575,6 +580,8 @@ def randn(*size, dtype=None, device=None, seed=None) -> Tensor:
 
 def rand(*size, dtype=None, device=None, seed=None) -> Tensor:
     backend = get_backend()
+    if dtype is None:
+        dtype = get_default_float_dtype()
     if backend == Backend.NUMPY:
         rng = np.random.default_rng(seed)
         return rng.random(size).astype(dtype)
@@ -594,6 +601,8 @@ def rand(*size, dtype=None, device=None, seed=None) -> Tensor:
 
 def randint(low, high=None, size=None, dtype=None, device=None, seed=None) -> Tensor:
     backend = get_backend()
+    if dtype is None:
+        dtype = get_default_int_dtype()
     if backend == Backend.NUMPY:
         rng = np.random.default_rng(seed)
         return rng.integers(low, high, size, dtype)
@@ -742,6 +751,19 @@ def assign_at_index_2(destination: Tensor, index_1: Tensor, index_2: Tensor, val
         tensor(index_2),
         tensor(values),
     )
+    destination = tensor(destination)
+    values = tensor(values)
+
+    # If we have int indices, ensure int64 dtype
+    if isint(index_1):
+        index_1 = tensor(index_1, dtype=int64())
+    else:
+        index_1 = tensor(index_1)
+    if isint(index_2):
+        index_2 = tensor(index_2, dtype=int64())
+    else:
+        index_2 = tensor(index_2)
+
     backend = get_backend()
     if backend == Backend.NUMPY:
         destination[index_1, index_2] = values
@@ -874,6 +896,10 @@ def exp(data: Tensor) -> Tensor:
 
 def index_update(data: Tensor, indices, values) -> Tensor:
     data = tensor(data)
+    if isint(indices):
+        indices = tensor(indices, dtype=int64())
+    else:
+        indices = tensor(indices)
     backend = get_backend()
     if backend == Backend.NUMPY:
         data[indices] = values
@@ -928,6 +954,18 @@ def max(data: Tensor, axis=None) -> Tensor:
             return torch.max(data, dim=axis)[0]
         else:
             return torch.max(data)
+    else:
+        raise MethodNotImplementedError(backend)
+
+def abs(data: Tensor) -> Tensor:
+    data = tensor(data)
+    backend = get_backend()
+    if backend == Backend.NUMPY:
+        return np.abs(data)
+    elif backend == Backend.JAX:
+        return jnp.abs(data)
+    elif backend == Backend.PYTORCH:
+        return torch.abs(data)
     else:
         raise MethodNotImplementedError(backend)
 
