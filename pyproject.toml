@@ -34,7 +34,6 @@ dependencies = [
     "plum-dispatch>=1.7.4",
     "numpy>=1.17.4",
     "scipy>=1.5.0",
-    "torch>=1.11.0",
     "scikit-learn>=1.0",
 ]
 dynamic = ["version"]
@@ -55,6 +54,8 @@ dev = [
   "mypy~=1.5",
   "pytest",
   "pytest-cov",
+  "torch>=1.11.0",
+  "jax>=0.4.0"
 ]
 
 [tool.pytest.ini_options]
