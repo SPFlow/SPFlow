@@ -1,6 +1,6 @@
 # SPFlow: An Easy and Extensible Library for Probabilistic Circuits
 
-[![Python version](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![Python version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/github/license/SPFlow/SPFlow.svg)](https://github.com/SPFlow/SPFlow/blob/master/LICENSE.md)
 [![Code style: black & isort](https://img.shields.io/badge/code%20style-black%20%26%20isort-000000.svg)](https://black.readthedocs.io/en/stable/)
 
@@ -23,6 +23,23 @@ Cite using: TODO
 * [Developer Guide](#user-guide)
   * [Custom Modules](#custom-modules)
   * [Implementing Dispatched Routines](#implementing-dispatched-routines)
+
+# Installation
+
+By default, only SPFlow with the NumPy backend is installed:
+```shell
+pip install spflow
+
+# Or for making local changes
+git clone git@github.com:SPFlow/SPFlow.git
+cd SPFlow
+pip install -e .[dev]
+```
+
+To install other backends, SPFlow will detect that you installed the respective packages according to their instructions:
+- [PyTorch](https://pytorch.org/get-started) (`>=1.11.0`)
+- [TensorFlow](https://www.tensorflow.org/install)
+- [Jax](https://jax.readthedocs.io/en/latest/installation.html)
 
 # User Guide
 ## Backends
