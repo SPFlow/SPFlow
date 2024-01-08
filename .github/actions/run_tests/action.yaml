@@ -12,6 +12,10 @@ inputs:
   version-jax:
     required: false
 
+  # We cannot access the secrets in the composite action, so we have to pass it as an input
+  codecov-token:
+    required: true
+
 runs:
   using: 'composite'
   steps:
@@ -54,4 +58,4 @@ runs:
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        CODECOV_TOKEN: ${{ matrix.codecov-token }}
