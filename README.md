@@ -24,6 +24,23 @@ Cite using: TODO
   * [Custom Modules](#custom-modules)
   * [Implementing Dispatched Routines](#implementing-dispatched-routines)
 
+# Installation
+
+By default, only SPFlow with the NumPy backend is installed:
+```shell
+pip install spflow
+
+# Or for making local changes
+git clone git@github.com:SPFlow/SPFlow.git
+cd SPFlow
+pip install -e .[dev]
+```
+
+To install other backends, SPFlow will detect that you installed the respective packages according to their instructions:
+- [PyTorch](https://pytorch.org/get-started) (`>=1.11.0`)
+- [TensorFlow](https://www.tensorflow.org/install)
+- [Jax](https://jax.readthedocs.io/en/latest/installation.html)
+
 # User Guide
 ## Backends
 
