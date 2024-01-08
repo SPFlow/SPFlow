@@ -1,10 +1,23 @@
+import os
+from typing import Any, Union
 import pickle
+
 from spflow.modules.module import Module
 
+try:
+    from typing import TypeAlias
+except ImportError:
+    TypeAlias = None
 
-def save_model(model: Module, file: str):
-    pickle.dump(model, open(file, "wb"))
+
+PathLike: TypeAlias = Union[str, bytes, os.PathLike]
 
 
-def load_model(file: str) -> Module:
-    return pickle.load(open(file, "rb"))
+def save_model(model: Module, path: PathLike) -> None:
+    with open(path, "wb") as file:
+        pickle.dump(model, file)
+
+
+def load_model(path: PathLike) -> Module:
+    with open(path, "rb") as file:
+        return pickle.load(file)
