@@ -1,0 +1,20 @@
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+        target: auto
+        # this allows a small drop from the previous base commit coverage
+        threshold: 0.5%
+    patch:
+      default:
+        informational: true
+        target: auto
+        # this allows a small drop from the previous base commit coverage
+        threshold: 0.5%
+
+comment:
+  require_changes: true  # only post the comment if coverage changes
+
+# github_checks:
+	# annotations: false
