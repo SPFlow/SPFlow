@@ -55,12 +55,13 @@ jobs:
   # - We test even fewer combinations for TensorFlow and Jax to save resources
 
   "Test_OS":
-    name: "Test: Py ${{ matrix.version-python }} @ OS ${{ matrix.os }}"
+    name: "Test: Py ${{ matrix.version-python }} @ OS ${{ matrix.os }} | ${{ matrix.test-backend }}"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         version-python: ['3.11']
+        test-backend: ['numpy', 'pytorch', 'jax']
         os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
     steps:
       - uses: actions/checkout@v4
@@ -74,8 +75,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version-python: ['3.9', '3.11']  # 3.12 is not yet supported by torch
+        version-python: ['3.9', '3.12']  # 3.12 is not yet supported by torch
         version-numpy: ['1.24.0', '1.26.2', '1.26.3']
+        test-backend: ['numpy']
     steps:
       - uses: actions/checkout@v4
       - uses: "./.github/actions/run_tests"
@@ -91,6 +93,7 @@ jobs:
       matrix:
         version-python: ['3.9', '3.11']  # 3.12 is not yet supported by torch
         version-pytorch: ['1.11.0', '2.0.1', '2.1.1']
+        test-backend: ['pytorch']
         exclude: # Non-supported combinations
           - version-python: '3.11'
             version-pytorch: '1.11.0'
@@ -107,8 +110,9 @@ jobs:
     strategy:
       fail-fast: false 
       matrix:
-        version-python: ['3.12']
+        version-python: ['3.9', '3.12']
         version-jax: ['0.4.23']
+        test-backend: ['jax']
     steps:
       - uses: actions/checkout@v4
       - uses: "./.github/actions/run_tests"

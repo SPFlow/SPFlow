@@ -22,7 +22,10 @@ else:
     params=backends,
 )
 def backend_auto(request):
-    torch.manual_seed(0)
+    if T.Backend.PYTORCH in backends:
+        torch.manual_seed(0)
+        torch.cuda.manual_seed(0)
+    # TODO: What about Jax?
     np.random.seed(0)
     random.seed(0)
     backend_name = request.param
