@@ -35,15 +35,11 @@ dependencies = [
     "numpy>=1.17.4",
     "scipy>=1.5.0",
     "scikit-learn>=1.0",
-    "tensorly>=0.8.0",
 ]
 dynamic = ["version"]
 
-# [tool.setuptools.packages]
-# find = {}  # The package is discovered automatically (including the py.typed file):
-
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools.packages]
+find = {}  # The package is discovered automatically (including the py.typed file):
 
 [tool.setuptools.dynamic]
 version = { attr = "spflow.__version__" }
@@ -55,19 +51,22 @@ dev = [
   "mypy~=1.7",
   "pytest",
   "pytest-cov",
+  "torch>=1.11.0",
+  "jax>=0.4.0",
+  "jaxlib>=0.4.0"
 ]
 
 [tool.pytest.ini_options]
 addopts = " --color=yes --doctest-modules"
 testpaths = [
     # for the doctests:
-    "src/spflow",
+    "spflow",
     # for the actual tests:
-    "src/tests"
+    "tests"
 ]
 
 [tool.black]
-line-length = 120
+line-length = 110
 color = true
 target-version = [
     "py39",
