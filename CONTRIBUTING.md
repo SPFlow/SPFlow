@@ -6,8 +6,8 @@ You can install the development tools with `pip install .[dev]`.
 
 To format, lint, and auto-fix the project (both source code and tests), run
 ```shell
-python -m black src/
-python -m ruff check src --fix
+python -m black spflow tests
+python -m ruff check spflow tests --fix
 ```
 
 To run the tests type `python -m pytest`.
