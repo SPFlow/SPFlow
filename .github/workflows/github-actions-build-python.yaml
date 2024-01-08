@@ -68,6 +68,7 @@ jobs:
       - uses: "./.github/actions/run_tests"
         with:
           version-python: ${{ matrix.version-python }}
+          codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
   "Test_Numpy":
     name: "Test: Py ${{ matrix.version-python }} + Numpy ${{ matrix.version-numpy }}"
@@ -84,6 +85,7 @@ jobs:
         with:
           version-python: ${{ matrix.version-python }}
           version-numpy: ${{ matrix.version-numpy }}
+          codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
   "Test_Torch":
     name: "Test: Py ${{ matrix.version-python }} + Torch ${{ matrix.version-pytorch }}"
@@ -103,6 +105,7 @@ jobs:
         with:
           version-python: ${{ matrix.version-python }}
           version-pytorch: ${{ matrix.version-pytorch }}
+          codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
   "Test_Jax":
     name: "Test: Py ${{ matrix.version-python }} + Jax ${{ matrix.version-jax }}"
@@ -119,3 +122,4 @@ jobs:
         with:
           version-python: ${{ matrix.version-python }}
           version-jax: ${{ matrix.version-jax }}
+          codecov-token: ${{ secrets.CODECOV_TOKEN }}
