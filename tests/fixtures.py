@@ -28,6 +28,7 @@ def backend_auto(request):
     # TODO: What about Jax?
     if backend == T.Backend.PYTORCH:
         import torch
+
         torch.manual_seed(0)
         torch.cuda.manual_seed(0)
     with T.backend_context(backend_name):
@@ -47,6 +48,7 @@ def backend(request):
     # TODO: What about Jax?
     if backend == T.Backend.PYTORCH:
         import torch
+
         torch.manual_seed(0)
         torch.cuda.manual_seed(0)
     with T.backend_context(backend):
