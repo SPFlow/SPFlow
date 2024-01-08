@@ -1,0 +1,66 @@
+from typing import List, Optional, Callable, Union
+
+import tensorly as tl
+
+from spflow.meta.data import FeatureContext
+
+from spflow.meta.data.scope import Scope
+
+
+class CondMultivariateGaussianLayer:  # ToDo: backend über T.getBackend() abfragen
+    def __new__(
+        cls,
+        scope: Union[Scope, list[Scope]],
+        cond_f: Optional[Union[Callable, list[Callable]]] = None,
+        n_nodes: int = 1,
+        **kwargs,
+    ):
+        from spflow.base.structure.general.layer.leaf.cond_multivariate_gaussian import (
+            CondMultivariateGaussianLayer as TensorlyCondMultivariateGaussian,
+        )
+        from spflow.torch.structure.general.layer.leaf.cond_multivariate_gaussian import (
+            CondMultivariateGaussianLayer as TorchCondMultivariateGaussian,
+        )
+
+        """TODO"""
+        backend = T.get_backend()
+        if backend == "numpy":
+            return TensorlyCondMultivariateGaussian(scope=scope, cond_f=cond_f, n_nodes=n_nodes, **kwargs)
+        elif backend == "pytorch":
+            return TorchCondMultivariateGaussian(scope=scope, cond_f=cond_f, n_nodes=n_nodes, **kwargs)
+        else:
+            raise NotImplementedError("CondMultivariateGaussian is not implemented for this backend")
+
+    @classmethod
+    def accepts(cls, signatures: list[FeatureContext]) -> bool:
+        from spflow.base.structure.general.layer.leaf.cond_multivariate_gaussian import (
+            CondMultivariateGaussianLayer as TensorlyCondMultivariateGaussian,
+        )
+        from spflow.torch.structure.general.layer.leaf.cond_multivariate_gaussian import (
+            CondMultivariateGaussianLayer as TorchCondMultivariateGaussian,
+        )
+
+        backend = T.get_backend()
+        if backend == "numpy":
+            return TensorlyCondMultivariateGaussian.accepts(signatures)
+        elif backend == "pytorch":
+            return TorchCondMultivariateGaussian.accepts(signatures)
+        else:
+            raise NotImplementedError("CondMultivariateGaussian is not implemented for this backend")
+
+    @classmethod
+    def from_signatures(cls, signatures: list[FeatureContext]):
+        from spflow.base.structure.general.layer.leaf.cond_multivariate_gaussian import (
+            CondMultivariateGaussianLayer as TensorlyCondMultivariateGaussian,
+        )
+        from spflow.torch.structure.general.layer.leaf.cond_multivariate_gaussian import (
+            CondMultivariateGaussianLayer as TorchCondMultivariateGaussian,
+        )
+
+        backend = T.get_backend()
+        if backend == "numpy":
+            return TensorlyCondMultivariateGaussian.from_signatures(signatures)
+        elif backend == "pytorch":
+            return TorchCondMultivariateGaussian.from_signatures(signatures)
+        else:
+            raise NotImplementedError("CondMultivariateGaussian is not implemented for this backend")
