@@ -4,12 +4,10 @@ from copy import deepcopy
 from typing import List, Optional, Union
 from collections.abc import Iterable
 
-import tensorly as tl
-import torch
-
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.modules.module import Module
-from spflow.tensor.ops import Tensor
+from spflow.tensor import Tensor
+from spflow import tensor as T
 from spflow.modules.nested_module import NestedModule
 from spflow.modules.node import ProductNode
 
