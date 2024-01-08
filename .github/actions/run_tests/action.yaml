@@ -49,7 +49,7 @@ runs:
     - name: Test with pytest
       shell: bash
       run: |
-        pytest --cov=spflow tests
+        SPFLOW_TEST_BACKEND=${{ matrix.test-backend }} pytest --cov=spflow tests
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
