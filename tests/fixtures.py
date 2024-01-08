@@ -3,7 +3,6 @@ import os
 from typing import Callable
 import random
 import numpy as np
-import torch
 from pytest import fixture
 from spflow import tensor as T
 
@@ -22,13 +21,16 @@ else:
     params=backends,
 )
 def backend_auto(request):
-    if T.Backend.PYTORCH in backends:
-        torch.manual_seed(0)
-        torch.cuda.manual_seed(0)
-    # TODO: What about Jax?
     np.random.seed(0)
     random.seed(0)
     backend_name = request.param
+
+    # TODO: What about Jax?
+    if backend == T.Backend.PYTORCH:
+        import torch
+
+        torch.manual_seed(0)
+        torch.cuda.manual_seed(0)
     with T.backend_context(backend_name):
         yield
 
@@ -39,9 +41,15 @@ def backend_auto(request):
     params=backends,
 )
 def backend(request):
-    torch.manual_seed(0)
     np.random.seed(0)
     random.seed(0)
-    backend_name = request.param
-    with T.backend_context(backend_name):
-        yield backend_name
+    backend = request.param
+
+    # TODO: What about Jax?
+    if backend == T.Backend.PYTORCH:
+        import torch
+
+        torch.manual_seed(0)
+        torch.cuda.manual_seed(0)
+    with T.backend_context(backend):
+        yield backend

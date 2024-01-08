@@ -76,7 +76,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version-python: ['3.9', '3.12']  # 3.12 is not yet supported by torch
+        version-python: ['3.9', '3.11']  # 3.12 is not yet supported by torch
         version-numpy: ['1.24.0', '1.26.2', '1.26.3']
         test-backend: ['numpy']
     steps:
@@ -94,7 +94,7 @@ jobs:
       fail-fast: false 
       matrix:
         version-python: ['3.9', '3.11']  # 3.12 is not yet supported by torch
-        version-pytorch: ['1.11.0', '2.0.1', '2.1.1']
+        version-pytorch: ['1.11.0', '2.0.1', '2.1.2']
         test-backend: ['pytorch']
         exclude: # Non-supported combinations
           - version-python: '3.11'
@@ -113,7 +113,7 @@ jobs:
     strategy:
       fail-fast: false 
       matrix:
-        version-python: ['3.9', '3.12']
+        version-python: ['3.9', '3.11']
         version-jax: ['0.4.23']
         test-backend: ['jax']
     steps:
