@@ -41,7 +41,7 @@ class MultivariateGaussianLayer(Module):
         - :math:`\mu` is the :math:`d`-dim. mean vector
         - :math:`\Sigma` is the :math:`d\times d` covariance matrix
 
-    In contrast to other layers is ``torch`` backend, the layer is composed of ``MultivariateGaussian`` nodes and is not further optimized.
+    In contrast to other layers in the ``torch`` backend, the layer is composed of ``MultivariateGaussian`` nodes and is not further optimized.
     Note, that different to ``MultivariateGaussianLayer`` in the ``base`` backend, the ``torch`` implementation only accepts positive definite (as opposed to positive semi-definite) covariance matrices.
 
     Attributes:
@@ -81,7 +81,7 @@ class MultivariateGaussianLayer(Module):
                 Each row corresponds to a distribution. If a list of floats or one-dimensional NumPy array is given, it is broadcast to all nodes.
                 Defaults to None, in which case all distributions are initialized with all zero means.
             cov:
-                A list of lists of floats, a list of lists of lists of floats, a two-dimensional NumPy array or PyTorch tensor or a list of two-dimensional NumPy arrays or PyTorch tensors (representing :math:`d\times d` symmetric positive semi-definite matrix, where :math:`d` is the length
+                A list of lists of floats, a list of lists of lists of floats, a two-dimensional NumPy array or PyTorch tensor or a list of two-dimensional NumPy arrays or PyTorch tensors (representing :math:`d\times d` symmetric positive **definite** matrix, where :math:`d` is the length
                 of the scope of the respective distribution) describing the covariances of the distributions. The diagonals hold the variances (:math:`\sigma^2`) of each of the one-dimensional distributions.
                 Each element of the first dimension corresponds to a distribution. If a list of lists of floats or two-dimensional NumPy array is given, it is broadcast to all nodes.
                 Defaults to None, in which case all distributions are initialized with identity matrices.
