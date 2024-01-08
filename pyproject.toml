@@ -89,6 +89,11 @@ target-version = "py39"  # The lowest supported version
 [tool.ruff.pydocstyle]
 convention = "google"
 
+[tool.coverage.run]
+omit = [
+    "*/*_old/*",  # Omit old code for now
+    ]
+
 [tool.isort]
 profile = "black"
 
