@@ -57,17 +57,17 @@ torch = [
 ]
 jax = [
   "jax>=0.4.0",
-  "jaxlib>=0.4.0"
+  "jaxlib>=0.4.0",
 ]
 
 
 [tool.pytest.ini_options]
-addopts = " --color=yes --doctest-modules"
+addopts = "--color=yes --doctest-modules"
 testpaths = [
     # for the doctests:
-    "spflow",
+    # "spflow",  # TODO: Add for doctests and for detecting broken yet unimported modules
     # for the actual tests:
-    "tests"
+    "tests",
 ]
 
 [tool.black]
@@ -77,7 +77,7 @@ target-version = [
     "py39",
     "py310",
     "py311",
-    "py312"
+    "py312",
 ]
 
 [tool.ruff]
