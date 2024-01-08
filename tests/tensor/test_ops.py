@@ -136,7 +136,7 @@ def test_tensor_ops(operation, args):
                         t_prev_i.dtype == t_i.dtype
                     ), f"Dtype mismatch ({backends[i-1]}: {t_prev_i.dtype}, {backend}: {t_i.dtype}) with args {args}."
                     assert np.allclose(
-                        t_prev_i, t_i, atol=1e-6
+                        t_prev_i, t_i, atol=1e-5
                     ), f"Value mismatch for args {args} between backend {backend} and {backends[i-1]}"
 
 

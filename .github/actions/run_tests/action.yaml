@@ -5,9 +5,9 @@ inputs:
     required: true
 
   # One could also set multiple libraries to be tested in one workflow
-  version-pytorch:
+  version-numpy:
     required: false
-  version-tensorflow:
+  version-pytorch:
     required: false
   version-jax:
     required: false
@@ -30,7 +30,7 @@ runs:
       shell: bash
       run: |
         python -m pip install --upgrade pip
-        pip install .[dev,torch,jax]
+        pip install .[dev,jax,torch]
 
     - name: Set up Numpy ${{ matrix.version-numpy }}
       if: matrix.version-numpy
