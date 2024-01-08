@@ -1,8 +1,13 @@
 import os
-from typing import TypeAlias, Union
+from typing import Any, Union
 import pickle
 
 from spflow.modules.module import Module
+
+try:
+    from typing import TypeAlias
+except ImportError:
+    TypeAlias = None
 
 
 PathLike: TypeAlias = Union[str, bytes, os.PathLike]
