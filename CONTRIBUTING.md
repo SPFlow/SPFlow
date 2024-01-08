@@ -4,10 +4,10 @@
 
 You can install the development tools with `pip install .[dev]`.
 
-To format the project (both source code and tests), run
+To format, lint, and auto-fix the project (both source code and tests), run
 ```shell
-python -m black src/
-python -m isort --color src/
+python -m black spflow tests
+python -m ruff check spflow tests --fix
 ```
 
 To run the tests type `python -m pytest`.
@@ -15,4 +15,3 @@ To run the tests type `python -m pytest`.
 ## Best practices
 
 *TODO: Define development best-practices applied in this library.*
-

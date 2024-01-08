@@ -2,26 +2,91 @@
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "spflow"
+authors = [
+    { name = "The SPFlow authors", email = "todo@example.invalid" },
+]
+description = "Sum Product Flow: An Easy and Extensible Library for Sum-Product Networks"
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = ["probabilistic circuits", "machine learning"]
+requires-python = ">=3.9"
+classifiers = [
+    # See https://pypi.org/classifiers/
+    "Programming Language :: Python :: 3",
+    "Development Status :: 4 - Beta",
+    "Operating System :: OS Independent",
+    "Natural Language :: English",
+    "License :: OSI Approved :: Apache Software License",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Framework :: Robot Framework :: Library",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries",
+    "Typing :: Typed",
+]
+urls = { Homepage = "https://github.com/SPFlow/SPFlow" }
+dependencies = [
+    "plum-dispatch>=1.7.4",
+    "numpy>=1.17.4",
+    "scipy>=1.5.0",
+    "scikit-learn>=1.0",
+]
+dynamic = ["version"]
+
+[tool.setuptools.packages]
+find = {}  # The package is discovered automatically (including the py.typed file):
+
+[tool.setuptools.dynamic]
+version = { attr = "spflow.__version__" }
+
+[project.optional-dependencies]
+dev = [
+  "black~=23.12",
+  "ruff~=0.1.8",
+  "mypy~=1.7",
+  "pytest",
+  "pytest-cov",
+  "torch>=1.11.0",
+  "jax>=0.4.0",
+  "jaxlib>=0.4.0"
+]
+
 [tool.pytest.ini_options]
-addopts = "--color=yes --doctest-modules"
+addopts = " --color=yes --doctest-modules"
 testpaths = [
     # for the doctests:
-    "src/spflow",
+    "spflow",
     # for the actual tests:
-    "src/tests"
+    "tests"
 ]
 
 [tool.black]
-line-length = 120
+line-length = 110
 color = true
 target-version = [
-    "py37",
-    "py38",
     "py39",
     "py310",
-    "py311"
+    "py311",
+    "py312"
 ]
+
+[tool.ruff]
+# See https://docs.astral.sh/ruff/rules
+select = ["E", "F", "W", "I", "N", "D", "C90", "UP", "NPY"]
+line-length = 110  # Same as Black
+target-version = "py39"  # The lowest supported version
+
+[tool.ruff.pydocstyle]
+convention = "google"
 
 [tool.isort]
 profile = "black"
-py_version = 37
+
+[tool.mypy]
+warn_return_any = true
+warn_unused_configs = true

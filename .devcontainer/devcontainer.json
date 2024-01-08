@@ -1,0 +1,19 @@
+// For format details, see https://aka.ms/devcontainer.json.
+{
+	"name": "SPFlow Development",
+
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"updateContentCommand": "pip install -e .[dev]",
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"tamasfe.even-better-toml",
+				"ms-python.python",
+				"charliermarsh.ruff"
+			]
+		}
+	}
+}
