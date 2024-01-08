@@ -46,6 +46,7 @@ from tests.fixtures import backend
         (T.nextafter, [T.randn(2, 2), T.randn(2, 2)]),
         (T.logsumexp, [T.randn(2, 2), 1]),
         (T.softmax, [T.randn(2, 2), 1]),
+        (T.log_softmax, [T.randn(2, 2), 1]),
         (T.cartesian_product, [T.randn(2), T.randn(2)]),
         (T.sigmoid, [T.randn(2, 2)]),
         (T.ones, [2, 2]),
