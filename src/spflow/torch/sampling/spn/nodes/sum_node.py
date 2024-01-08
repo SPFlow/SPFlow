@@ -53,7 +53,7 @@ def sample(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    # compute log likelihoods of data instances (TODO: only compute for relevant instances? might clash with cashed values or cashing in general)
+    # compute log likelihoods of data instances (TODO: only compute for relevant instances? might clash with cached values or caching in general)
     child_lls = torch.concat(
         [
             log_likelihood(
