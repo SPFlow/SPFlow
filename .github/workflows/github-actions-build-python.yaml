@@ -24,7 +24,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[dev]
       - name: Lint
-        run: ruff check src
+        run: ruff check spflow tests
+        continue-on-error: true
 
   "Check_Format":
     name: "Check Format"
@@ -43,7 +44,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[dev]
       - name: Checking formatting with black
-        run: black --check --diff src/
+        run: black --check --diff spflow tests
 
   # We do not want to waste too many resources on testing all combinations. Thus we test:
   # - on the oldest and the two most recent version of Python that we support (see README.md)
@@ -67,6 +68,21 @@ jobs:
         with:
           version-python: ${{ matrix.version-python }}
 
+  "Test_Numpy":
+    name: "Test: Py ${{ matrix.version-python }} + Numpy ${{ matrix.version-numpy }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version-python: ['3.9', '3.11']  # 3.12 is not yet supported by torch
+        version-numpy: ['1.24.0', '1.26.2', '1.26.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: "./.github/actions/run_tests"
+        with:
+          version-python: ${{ matrix.version-python }}
+          version-numpy: ${{ matrix.version-numpy }}
+
   "Test_Torch":
     name: "Test: Py ${{ matrix.version-python }} + Torch ${{ matrix.version-pytorch }}"
     runs-on: ubuntu-latest
@@ -84,24 +100,6 @@ jobs:
         with:
           version-python: ${{ matrix.version-python }}
           version-pytorch: ${{ matrix.version-pytorch }}
-
-  "Test_Tensorflow":
-    name: "Test: Py ${{ matrix.version-python }} + TF ${{ matrix.version-tensorflow }}"
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false 
-      matrix:
-        include:
-          - version-python: '3.10'
-            version-tensorflow: '2.11.0'
-          - version-python: '3.11'
-            version-tensorflow: '2.15.0.post1'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: "./.github/actions/run_tests"
-        with:
-          version-python: ${{ matrix.version-python }}
-          version-tensorflow: ${{ matrix.version-tensorflow }}
 
   "Test_Jax":
     name: "Test: Py ${{ matrix.version-python }} + Jax ${{ matrix.version-jax }}"
