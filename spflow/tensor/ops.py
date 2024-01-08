@@ -512,6 +512,7 @@ def softmax(data: Tensor, axis) -> Tensor:
     else:
         raise MethodNotImplementedError(backend)
 
+
 def log_softmax(data: Tensor, axis) -> Tensor:
     data = tensor(data)
     backend = get_backend()
