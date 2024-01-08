@@ -92,7 +92,7 @@ jobs:
       fail-fast: false 
       matrix:
         version-python: ['3.9', '3.11']  # 3.12 is not yet supported by torch
-        version-pytorch: ['1.11.0', '2.0.1', '2.1.1']
+        version-pytorch: ['1.11.0', '2.0.1', '2.1.2']
         test-backend: ['pytorch']
         exclude: # Non-supported combinations
           - version-python: '3.11'
