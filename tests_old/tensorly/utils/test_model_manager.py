@@ -1,23 +1,20 @@
-import os
+import unittest
 
-import tensorly as tl
+from pytest import fixture
 import numpy as np
 
-import unittest
 from spflow.modules.module import log_likelihood
 from spflow.utils.model_manager import load_model, save_model
 from spflow.meta.data import Scope
 from spflow.modules.node import Gaussian
-from spflow.structure.spn import ProductNode, SumNode
+from spflow.structure.spn import Node, ProductNode, SumNode
 from spflow.utils import Tensor
 from spflow.tensor import ops as tle
 
-tc = unittest.TestCase()
-filename = "save.p"
 
-
-def create_example_spn():
-    spn = SumNode(
+@fixture
+def example_spn() -> SumNode:
+    return Node(
         children=[
             ProductNode(
                 children=[
@@ -55,51 +52,38 @@ def create_example_spn():
         ],
         weights=tl.tensor([0.4, 0.6]),
     )
-    return spn
 
 
-def test_save_model(do_for_all_backends):
-    # save model at filename
-    save_model(create_example_spn(), filename)
-    tc.assertTrue(os.path.exists(filename))
-
-    # delete model
-    if os.path.exists(filename):
-        os.remove(filename)
+@fixture
+def tmp_model_file(tmp_path):
+    return tmp_path / "test_model.pkl"
 
 
-def test_load_model(do_for_all_backends):
-    # save mdoel
-    example_spn = create_example_spn()
-    save_model(example_spn, filename)
-    # load the same model
-    loaded_model = load_model(filename)
+def test_save_model(do_for_all_backends, tmp_model_file, example_spn):
+    save_model(example_spn, tmp_model_file)
+    assert tmp_model_file.exists()
+
+
+def test_load_model(do_for_all_backends, tmp_model_file, example_spn):
+    save_model(example_spn, tmp_model_file)
+    loaded_model = load_model(tmp_model_file)
 
     # check if model attributes are equal
     for m1, m2 in zip(example_spn.modules(), loaded_model.modules()):
-        tc.assertTrue(m1.__class__ == m2.__class__)
-        tc.assertTrue(m1.scope == m2.scope)
-        tc.assertTrue(m1.backend == m2.backend)
+        assert m1.__class__ == m2.__class__
+        assert m1.scope == m2.scope
+        assert m1.backend == m2.backend
         if isinstance(m1, SumNode):
-            tc.assertTrue(tl.all(m1.weights == m2.weights))
-
-    # delete model
-    if os.path.exists(filename):
-        os.remove(filename)
+            assert tl.all(m1.weights == m2.weights)
 
 
-def test_load_model_inference(do_for_all_backends):
-    example_spn = create_example_spn()
+def test_load_model_inference(do_for_all_backends, tmp_model_file, example_spn):
     dummy_data = tl.tensor([[1.0, 0.0, 1.0]])
     ll_result = log_likelihood(example_spn, dummy_data)
-    save_model(example_spn, filename)
-    loaded_model = load_model(filename)
+    save_model(example_spn, tmp_model_file)
+    loaded_model = load_model(tmp_model_file)
     loaded_ll_result = log_likelihood(loaded_model, dummy_data)
-    tc.assertTrue(np.allclose(tle.toNumpy(ll_result), tle.toNumpy(loaded_ll_result)))
-
-    # delete model
-    if os.path.exists(filename):
-        os.remove(filename)
+    assert np.allclose(tle.toNumpy(ll_result), tle.toNumpy(loaded_ll_result))
 
 
 if __name__ == "__main__":
