@@ -5,9 +5,9 @@ inputs:
     required: true
 
   # One could also set multiple libraries to be tested in one workflow
-  version-pytorch:
+  version-numpy:
     required: false
-  version-tensorflow:
+  version-pytorch:
     required: false
   version-jax:
     required: false
