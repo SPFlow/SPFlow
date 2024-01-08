@@ -512,6 +512,19 @@ def softmax(data: Tensor, axis) -> Tensor:
     else:
         raise MethodNotImplementedError(backend)
 
+def log_softmax(data: Tensor, axis) -> Tensor:
+    data = tensor(data)
+    backend = get_backend()
+
+    if backend == Backend.NUMPY:
+        return scipy.special.log_softmax(data, axis=axis)
+    elif backend == Backend.PYTORCH:
+        return torch.nn.functional.log_softmax(input=data, dim=axis)
+    elif backend == Backend.JAX:
+        return jax.nn.log_softmax(data, axis=axis)
+    else:
+        raise MethodNotImplementedError(backend)
+
 
 def cartesian_product(*input) -> Tensor:
     backend = get_backend()
