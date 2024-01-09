@@ -400,15 +400,13 @@ def maximum_likelihood_estimation(
     # normalize weights to sum to n_samples
     weights /= weights.sum() / scope_data.shape[0]
 
-    categories = T.arange(0, len(leaf.probs), device=leaf.device)
-
     # compute weighted counts
-    weighted_counts = T.bincount(scope_data.reshape(-1), weights=weights.reshape(-1), minlength=len(leaf.probs))
+    weighted_counts = T.bincount(
+        scope_data.reshape(-1), weights=weights.reshape(-1), minlength=len(leaf.probs)
+    )
 
     # update parameters
     leaf.probs = weighted_counts / weighted_counts.sum()
-
-
 
 
 @dispatch(memoize=True)  # type: ignore
