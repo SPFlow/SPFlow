@@ -1,9 +1,9 @@
 import os
-
-from typing import Callable
 import random
+
 import numpy as np
 from pytest import fixture
+
 from spflow import tensor as T
 
 # If a backend is specified via the environment variable SPFLOW_TEST_BACKEND,
@@ -26,7 +26,7 @@ def backend_auto(request):
     backend_name = request.param
 
     # TODO: What about Jax?
-    if backend == T.Backend.PYTORCH:
+    if backend_name == T.Backend.PYTORCH:
         import torch
 
         torch.manual_seed(0)
@@ -43,13 +43,13 @@ def backend_auto(request):
 def backend(request):
     np.random.seed(0)
     random.seed(0)
-    backend = request.param
+    backend_name = request.param
 
     # TODO: What about Jax?
-    if backend == T.Backend.PYTORCH:
+    if backend_name == T.Backend.PYTORCH:
         import torch
 
         torch.manual_seed(0)
         torch.cuda.manual_seed(0)
-    with T.backend_context(backend):
-        yield backend
+    with T.backend_context(backend_name):
+        yield backend_name
