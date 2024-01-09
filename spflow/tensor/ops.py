@@ -76,11 +76,12 @@ def tensor(data: Tensor, dtype=None, device=None, requires_grad=False, copy=Fals
 
 def device(data: Tensor):
     # data is numpy return dummy cpu device
-    if isinstance(data, np.ndarray):
+    backend = get_backend()
+    if backend == Backend.NUMPY:
         return "cpu"
-    elif isinstance(data, torch.Tensor):
+    elif backend == Backend.PYTORCH:
         return data.device
-    elif isinstance(data, jnp.ndarray):
+    elif backend == Backend.JAX:
         return jax.devices()[0]
     else:
         raise MethodNotImplementedError(get_backend())
