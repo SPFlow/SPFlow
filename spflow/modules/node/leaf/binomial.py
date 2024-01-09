@@ -289,7 +289,7 @@ class Binomial(LeafNode):
 def _log_factorial(n):
     max_n = T.max(n)
     arange = (
-        T.arange(1, max_n + 1, device=T.get_device(n), dtype=spflow.tensor.dtype.get_default_float_dtype())
+        T.arange(1, max_n + 1, device=T.device(n), dtype=spflow.tensor.dtype.get_default_float_dtype())
         + 1
     )
     log_fact = T.lgamma(arange)
