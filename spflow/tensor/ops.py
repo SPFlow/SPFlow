@@ -1187,6 +1187,7 @@ def reshape(data: Tensor, shape) -> Tensor:
     else:
         raise MethodNotImplementedError(backend)
 
+
 def searchsorted(sorted_sequence, values, side="left") -> Tensor:
     sorted_sequence, values = tensor(sorted_sequence), tensor(values)
     backend = get_backend()
