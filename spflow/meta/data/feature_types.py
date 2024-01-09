@@ -137,6 +137,19 @@ class BinomialType(FeatureType):
 
 
 @dataclass
+class CategoricalType(FeatureType):
+    """Feature type for Categorical-distributed features.
+
+    Attributes:
+        probs:
+            List of probabilities for each category.
+    """
+
+    meta_type: ClassVar[MetaType] = MetaType.Discrete
+    p: list[float]
+
+
+@dataclass
 class GeometricType(FeatureType):
     r"""Feature type for Geometric-distributed features.
 
@@ -271,6 +284,7 @@ class FeatureTypes(ABC):
     Hypergeometric = HypergeometricType
     NegativeBinomial = NegativeBinomialType
     Poisson = PoissonType
+    Categorical = CategoricalType
 
     @classmethod
     def register(cls, name: str, type: FeatureType, overwrite=False) -> None:
