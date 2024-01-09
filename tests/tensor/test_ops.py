@@ -97,6 +97,11 @@ from tests.fixtures import backend
         (T.where, [T.rand(10) > 0.5, T.rand(10), T.rand(10)]),
         (T.reshape, [T.rand(10), (2, 5)]),
         (T.reshape, [T.rand(4, 3), (2, 6)]),
+        (T.bincount, [T.randint(0, 10, (10,))]),
+        (T.bincount, [T.randint(0, 10, (10,)), T.rand(10)]),
+        (T.bincount, [T.randint(0, 10, (10,)), T.rand(10), 20]),
+        (T.searchsorted, [T.tensor([0, 3, 2, 5, 4, 1]), T.rand(6), "left"]),
+        (T.searchsorted, [T.tensor([0, 3, 2, 5, 4, 1]), T.rand(6), "right"]),
         # Add more operations with their arguments here
     ],
 )
