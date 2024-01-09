@@ -3,6 +3,7 @@ import logging
 from contextlib import contextmanager
 from enum import Enum
 import numpy as np
+import os
 
 from typing import Union
 
@@ -54,8 +55,12 @@ class Backend(str, Enum):
     JAX = "jax"
 
 
-# Global variable to store the current backend, defaults to numpy upon initialization
-_BACKEND = Backend.NUMPY
+# Global variable to store the current backend, defaults to numpy upon initialization or the value of the
+# environment variable SPFLOW_BACKEND
+if env := os.environ.get("SPFLOW_BACKEND"):
+    _BACKEND = Backend(env)
+else:
+    _BACKEND = Backend.NUMPY
 
 
 def get_backend():
