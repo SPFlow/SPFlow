@@ -15,6 +15,9 @@ from spflow.tensor.backend import (
     _TENSOR_TYPES,  # We need this for isinstance checks against Tensor in Python<=3.9
     is_torch_available,
     is_jax_available,
+    is_numpy,
+    is_pytorch,
+    is_jax,
     get_backend,
     Backend,
     MethodNotImplementedError,
@@ -90,11 +93,11 @@ def get_default_dtype(data):
 
 def int32():
     backend = get_backend()
-    if backend == Backend.NUMPY:
+    if is_numpy():
         return np.int32
-    elif backend == Backend.PYTORCH:
+    elif is_pytorch():
         return torch.int32
-    elif backend == Backend.JAX:
+    elif is_jax():
         return jnp.int32
     else:
         raise MethodNotImplementedError(backend)
@@ -102,11 +105,11 @@ def int32():
 
 def int64():
     backend = get_backend()
-    if backend == Backend.NUMPY:
+    if is_numpy():
         return np.int64
-    elif backend == Backend.PYTORCH:
+    elif is_pytorch():
         return torch.int64
-    elif backend == Backend.JAX:
+    elif is_jax():
         return jnp.int64
     else:
         raise MethodNotImplementedError(backend)
@@ -114,11 +117,11 @@ def int64():
 
 def float16():
     backend = get_backend()
-    if backend == Backend.NUMPY:
+    if is_numpy():
         return np.float16
-    elif backend == Backend.PYTORCH:
+    elif is_pytorch():
         return torch.float16
-    elif backend == Backend.JAX:
+    elif is_jax():
         return jnp.float16
     else:
         raise MethodNotImplementedError(backend)
@@ -126,11 +129,11 @@ def float16():
 
 def float32():
     backend = get_backend()
-    if backend == Backend.NUMPY:
+    if is_numpy():
         return np.float32
-    elif backend == Backend.PYTORCH:
+    elif is_pytorch():
         return torch.float32
-    elif backend == Backend.JAX:
+    elif is_jax():
         return jnp.float32
     else:
         raise MethodNotImplementedError(backend)
@@ -138,11 +141,11 @@ def float32():
 
 def float64():
     backend = get_backend()
-    if backend == Backend.NUMPY:
+    if is_numpy():
         return np.float64
-    elif backend == Backend.PYTORCH:
+    elif is_pytorch():
         return torch.float64
-    elif backend == Backend.JAX:
+    elif is_jax():
         return jnp.float64
     else:
         raise MethodNotImplementedError(backend)
@@ -150,11 +153,11 @@ def float64():
 
 def boolean():
     backend = get_backend()
-    if backend == Backend.NUMPY:
+    if is_numpy():
         return np.bool_
-    elif backend == Backend.PYTORCH:
+    elif is_pytorch():
         return torch.bool
-    elif backend == Backend.JAX:
+    elif is_jax():
         return jnp.bool_
     else:
         raise MethodNotImplementedError(backend)

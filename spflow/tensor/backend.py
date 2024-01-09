@@ -43,7 +43,9 @@ Tensor = Union[_TENSOR_TYPES]
 
 
 class MethodNotImplementedError(NotImplementedError):
-    def __init__(self, backend):
+    def __init__(self, backend=None):
+        if backend is None:
+            backend = get_backend()
         super().__init__(f"Method not implemented for the backend: {backend}")
 
 
@@ -75,18 +77,36 @@ def set_backend(backend: Backend):
 
 
 def is_torch_available():
+    """Check if torch is currently installed and the import was successful."""
     return IS_TORCH_AVAILABLE
 
 
 def is_jax_available():
+    """Check if jax is currently installed and the import was successful."""
     return IS_JAX_AVAILABLE
 
 
 @contextmanager
 def backend_context(backend: Backend):
+    """Context manager to temporarily change the backend."""
     _old_backend = get_backend()
     set_backend(backend)
     try:
         yield
     finally:
         set_backend(_old_backend)
+
+
+def is_numpy():
+    """Check if the current backend is numpy."""
+    return _BACKEND == Backend.NUMPY
+
+
+def is_pytorch():
+    """Check if the current backend is pytorch."""
+    return _BACKEND == Backend.PYTORCH
+
+
+def is_jax():
+    """Check if the current backend is jax."""
+    return _BACKEND == Backend.JAX
