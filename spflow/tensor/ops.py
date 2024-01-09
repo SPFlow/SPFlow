@@ -74,7 +74,7 @@ def tensor(data: Tensor, dtype=None, device=None, requires_grad=False, copy=Fals
     return to(data, dtype=dtype, device=device)
 
 
-def get_device(data: Tensor):
+def device(data: Tensor):
     # data is numpy return dummy cpu device
     if isinstance(data, np.ndarray):
         return "cpu"
@@ -745,7 +745,7 @@ def set_tensor_data(destination: Tensor, data: Tensor) -> Tensor:
     overwrite the parameter wrapper.
     """
     destination = tensor(destination)
-    data = tensor(data, dtype=destination.dtype, device=get_device(destination))
+    data = tensor(data, dtype=destination.dtype, device=device(destination))
     backend = get_backend()
     if backend == Backend.NUMPY:
         destination[:] = data
@@ -1204,7 +1204,7 @@ def searchsorted(sorted_sequence, values, side="left") -> Tensor:
 
 def bincount(data: Tensor, weights=None, minlength=0) -> Tensor:
     if weights is None:
-        weights = ones(len(data), device=get_device(data))
+        weights = ones(len(data), device=device(data))
     data, weights = tensor(data), tensor(weights)
     backend = get_backend()
     if backend == Backend.NUMPY:
