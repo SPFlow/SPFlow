@@ -19,6 +19,7 @@ from spflow.tensor.dtype import (
     get_default_float_dtype,
     get_default_int_dtype,
     isint,
+    int32,
     int64,
 )
 
@@ -1185,3 +1186,33 @@ def reshape(data: Tensor, shape) -> Tensor:
         return torch.reshape(data, shape)
     else:
         raise MethodNotImplementedError(backend)
+
+def searchsorted(sorted_sequence, values, side="left") -> Tensor:
+    sorted_sequence, values = tensor(sorted_sequence), tensor(values)
+    backend = get_backend()
+    if backend == Backend.NUMPY:
+        result = np.searchsorted(sorted_sequence, values, side=side)
+    elif backend == Backend.JAX:
+        result = jnp.searchsorted(sorted_sequence, values, side=side)
+    elif backend == Backend.PYTORCH:
+        result = torch.searchsorted(sorted_sequence, values, side=side)
+    else:
+        raise MethodNotImplementedError(backend)
+    return to(result, dtype=int32())
+
+
+def bincount(data: Tensor, weights=None, minlength=0) -> Tensor:
+    if weights is None:
+        weights = ones(len(data), device=get_device(data))
+    data, weights = tensor(data), tensor(weights)
+    backend = get_backend()
+    if backend == Backend.NUMPY:
+        result = np.bincount(data, weights=weights, minlength=minlength)
+    elif backend == Backend.JAX:
+        result = jnp.bincount(data, weights=weights, minlength=minlength)
+    elif backend == Backend.PYTORCH:
+        result = torch.bincount(data, weights=weights, minlength=minlength)
+    else:
+        raise MethodNotImplementedError(backend)
+
+    return to(result, dtype=get_default_int_dtype())
