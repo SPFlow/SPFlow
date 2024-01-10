@@ -101,8 +101,11 @@ class Module(ABC):
         modules.insert(0, self)
         return modules
 
-    def parameters(self):
-        return self.get_trainable_parameters()
+    def parameters(self) -> list[Tensor]:
+        parameters = []
+        for child in self.children:
+            parameters.extend(list(child.parameters()))
+        return parameters
 
     def to(self, dtype=None, device=None):
         if device is not None:

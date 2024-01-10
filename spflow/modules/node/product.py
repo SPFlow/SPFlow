@@ -60,12 +60,6 @@ class ProductNode(Node):
 
         self.scope = scope
 
-    def parameters(self):
-        params = []
-        for child in self.children:
-            params.extend(list(child.parameters()))
-        return params
-
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
