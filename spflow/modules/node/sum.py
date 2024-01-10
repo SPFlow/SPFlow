@@ -122,12 +122,10 @@ class SumNode(Node):
         super().to(dtype, device)
         self.weights = T.to(self.weights, dtype=dtype, device=device)
 
-    def parameters(self):
-        params = []
-        for child in self.children:
-            params.extend(list(child.parameters()))
-        params.insert(0, self.log_weights)
-        return params
+    def parameters(self) -> list[Tensor]:
+        parameters = super().parameters()
+        parameters.insert(0, self.log_weights)
+        return parameters
 
     def describe_node(self) -> str:
         formatted_weights = [f"{num:.3f}" for num in T.tolist(self.weights)]
