@@ -185,49 +185,8 @@ class Binomial(LeafNode):
 
         return Binomial(feature_ctx.scope, n=n, p=p)
 
-    def set_parameters(self, n: int, p: float) -> None:
-        """Sets the parameters for the represented distribution.
-
-        Bounded parameter ``p`` is projected onto the unbounded parameter ``p_aux``.
-
-        TODO: projection function
-
-        Args:
-            n:
-                Integer representing the number of i.i.d. Bernoulli trials (greater or equal to 0).
-            p:
-                Floating point value representing the success probability of the Binomial distribution between zero and one.
-        """
-        if isinstance(n, float):
-            if not n.is_integer():
-                raise ValueError(
-                    f"Value of 'n' for 'Binomial' must be (equal to) an integer value, but was: {n}"
-                )
-            n = T.tensor(int(n))
-        elif isinstance(n, int):
-            n = T.tensor(n)
-        if n < 0 or not T.isfinite(n):
-            raise ValueError(f"Value of 'n' for 'Binomial' must to greater of equal to 0, but was: {n}")
-
-        self.p = T.tensor(p)
-        self.n = T.tensor(self.n, dtype=T.int32())
-
-    def get_trainable_parameters(self) -> tuple[int, float]:
-        """Returns the parameters of the represented distribution.
-
-        Returns:
-            Integer number representing the number of i.i.d. Bernoulli trials and the floating point value representing the success probability.
-        """
-        # return self.n.data.cpu().numpy(), self.p.data.cpu().numpy()  # type: ignore
-        return [self.log_p]  # type: ignore
-
-    def get_parameters(self) -> tuple[int, float]:
-        """Returns the parameters of the represented distribution.
-
-        Returns:
-            Integer number representing the number of i.i.d. Bernoulli trials and the floating point value representing the success probability.
-        """
-        return self.n, self.p  # type: ignore
+    def parameters(self) -> list[Tensor]:
+        return [self.log_p]
 
     def check_support(self, data: Tensor, is_scope_data: bool = False) -> Tensor:
         r"""Checks if specified data is in support of the represented distribution.

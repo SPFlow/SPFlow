@@ -115,32 +115,8 @@ class Categorical(LeafNode):
 
         return Categorical(feature_ctx.scope, probs=probs)
 
-    def set_parameters(self, probs: list[float]) -> None:
-        """Sets the parameters of the represented distribution.
-
-        Args:
-            probs:
-                List of floating point values representing the success probabilities.
-        """
-        if isinstance(probs, list):
-            self.probs = T.Tensor(probs, copy=True)
-        self.probs = probs
-
-    def get_trainable_parameters(self) -> tuple[int, float]:
-        """Returns the parameters of the represented distribution.
-
-        Returns:
-            Integer number representing the number of i.i.d. Bernoulli trials and the floating point value representing the success probability.
-        """
-        return [self.logits]  # type: ignore
-
-    def get_parameters(self) -> tuple[list[float]]:
-        """Returns the parameters of the represented distribution.
-
-        Returns:
-            Integer number representing the number of i.i.d. Bernoulli trials and the floating point value representing the success probability.
-        """
-        return (self.probs,)
+    def parameters(self) -> list[Tensor]:
+        return [self.logits]
 
     def check_support(self, data: Tensor, is_scope_data: bool = False) -> Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -244,7 +220,6 @@ def log_likelihood(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # get information relevant for the scope
-    # scope_data = data[:, leaf.scope.query]
     scope_data = data[:, leaf.scope.query]
 
     # initialize zeros tensor (number of output values matches batch_size)

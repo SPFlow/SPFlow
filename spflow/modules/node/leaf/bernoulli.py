@@ -159,35 +159,13 @@ class Bernoulli(LeafNode):
 
         return Bernoulli(feature_ctx.scope, p=p)
 
-    def set_parameters(self, p: float) -> None:
-        """Sets the parameters for the represented distribution.
-
-        Bounded parameter ``p`` is projected onto the unbounded parameter ``p_aux``.
-
-        TODO: projection function
-
-        Args:
-            p:
-                Floating point value representing the success probability of the Bernoulli distribution between zero and one.
-        """
-        self.p = T.tensor(float(p))
-
-    def get_trainable_parameters(self) -> tuple[float]:
+    def parameters(self) -> list[Tensor]:
         """Returns the parameters of the represented distribution.
 
         Returns:
             Floating point value representing the success probability.
         """
-        # return (self.p.data.cpu().numpy(),)  # type: ignore
-        return [self.log_p]  # type: ignore
-
-    def get_parameters(self) -> tuple[float]:
-        """Returns the parameters of the represented distribution.
-
-        Returns:
-            Floating point value representing the success probability.
-        """
-        return (self.p.data.cpu().numpy(),)  # type: ignore
+        return [self.log_p]
 
     def check_support(self, data: Tensor, is_scope_data: bool = False) -> Tensor:
         r"""Checks if specified data is in support of the represented distribution.
