@@ -148,34 +148,8 @@ class Gaussian(LeafNode):
 
         return Gaussian(feature_ctx.scope, mean=mean, std=std)
 
-    def set_parameters(self, mean: float, std: float) -> None:
-        r"""Sets the parameters for the represented distribution.
-
-        Args:
-            mean:
-                Floating point value representing the mean (:math:`\mu`) of the distribution.
-            std:
-                Floating point values representing the standard deviation (:math:`\sigma`) of the distribution (must be greater than 0).
-        """
-
-        self.mean = mean
-        self.std = std
-
-    def get_trainable_parameters(self) -> tuple[float, float]:
-        """Returns the parameters of the represented distribution.
-
-        Returns:
-            Tuple of floating point values representing the mean and standard deviation.
-        """
-        return [self.mean, self._log_std]  # type: ignore
-
-    def get_parameters(self) -> tuple[float, float]:
-        """Returns the parameters of the represented distribution.
-
-        Returns:
-            Tuple of floating point values representing the mean and standard deviation.
-        """
-        return [self.mean, self.std]  # type: ignore
+    def parameters(self) -> list[Tensor]:
+        return [self.mean, self._log_std]
 
     def check_support(self, data: Tensor, is_scope_data: bool = False) -> Tensor:
         r"""Checks if specified data is in support of the represented distribution.

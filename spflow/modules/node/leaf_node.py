@@ -58,21 +58,3 @@ class LeafNode(Node, ABC):
             A new leaf node created from the given signatures.
         """
         pass
-
-    @abstractmethod
-    def get_parameters(self) -> Iterable:
-        """Returns the parameters of the leaf node.
-
-        Returns:
-            Dictionary containing the parameters of the leaf node.
-        """
-        pass
-
-    @abstractmethod
-    def get_trainable_parameters(self) -> Iterable:
-        """Returns the trainable parameters of the leaf node.
-
-        Returns:
-            Dictionary containing the training parameters of the leaf node.
-        """
-        pass
