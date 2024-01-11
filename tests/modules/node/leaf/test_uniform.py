@@ -1,4 +1,5 @@
 import unittest
+from tests.fixtures import set_seed
 import numpy as np
 import scipy
 from spflow.meta.data import Scope
@@ -25,14 +26,14 @@ def test_sample():
 
 
 def test_maximum_likelihood_estimation():
-    low, high = 0.5, 1.8
+    low, high = 0.1, 1.7
     leaf = make_leaf(low, high)
-    low_data = 17.9
-    high_data = 200.1
-    data = make_data() * (high_data - low_data) + low_data
+    data = make_data() * (high - low) + low
     maximum_likelihood_estimation(leaf, data)
-    assert np.allclose(leaf.low.detach(), torch.min(data), atol=1e-5)
-    assert np.allclose(leaf.high.detach(), torch.max(data), atol=1e-5)
+
+    # MLE does nothing for Uniform distributions since the bounds are fixed and there is no learnable parameter
+    assert np.allclose(leaf.low.detach(), low, atol=1e-5)
+    assert np.allclose(leaf.high.detach(), high, atol=1e-5)
 
 
 def test_constructor():
@@ -52,8 +53,8 @@ def test_constructor():
 
 def test_requires_grad():
     leaf = make_leaf()
-    assert leaf.low.requires_grad
-    assert leaf.high.requires_grad
+    assert not leaf.low.requires_grad
+    assert not leaf.high.requires_grad
 
 
 if __name__ == "__main__":

@@ -8,9 +8,8 @@ from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import torch
-from torch import nn
+from torch import nn, Tensor
 
-from spflow import tensor as T
 from spflow.meta.dispatch import (
     DispatchContext,
     SamplingContext,
@@ -19,8 +18,6 @@ from spflow.meta.dispatch import (
 )
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.meta.dispatch.sampling_context import init_default_sampling_context
-from spflow.tensor import Tensor
-from spflow.tensor.ops import Tensor
 
 
 class Module(nn.Module, ABC):
@@ -80,27 +77,27 @@ class Module(nn.Module, ABC):
             input_ids = list(range(self.n_out))
 
         if isinstance(input_ids, list):
-            input_ids = T.tensor(input_ids, dtype=T.int32())
+            input_ids = torch.tensor(input_ids, dtype=torch.int)
 
         # remember original shape
-        shape = T.shape(input_ids)
+        shape = input_ids.shape
         # flatten tensor
-        input_ids = T.ravel(input_ids)
+        input_ids = torch.ravel(input_ids)
 
         # infer number of inputs from inputs (and their numbers of outputs)
-        child_num_outputs = T.tensor([child.n_out for child in self.inputs])
-        child_cum_outputs = T.cumsum(child_num_outputs, -1)
+        child_num_outputs = torch.tensor([child.n_out for child in self.inputs])
+        child_cum_outputs = torch.cumsum(child_num_outputs, -1)
 
         # get child module for corresponding input
-        child_ids = T.sum(child_cum_outputs <= T.reshape(input_ids, (-1, 1)), axis=1)
+        child_ids = torch.sum(child_cum_outputs <= torch.reshape(input_ids, (-1, 1)), dim=1)
         # get output id of child module for corresponding input
         output_ids = input_ids - (child_cum_outputs[child_ids] - child_num_outputs[child_ids])
 
         # restore original shape
-        child_ids = T.reshape(child_ids, shape)
-        output_ids = T.reshape(output_ids, shape)
+        child_ids = child_ids.view(shape)
+        output_ids = output_ids.view(shape)
 
-        return T.tensor(child_ids, dtype=T.int32()), T.tensor(output_ids, dtype=T.int32())
+        return child_ids, output_ids
 
     def modules(self):
         modules = []
@@ -258,10 +255,12 @@ def sample(
     """
     combined_module_scope = reduce(lambda s1, s2: s1.join(s2), module.scopes_out)
 
-    data = torch.full((num_samples, int(max(combined_module_scope.query) + 1)), T.NAN, device=module.device)
+    data = torch.full(
+        (num_samples, int(max(combined_module_scope.query) + 1)), torch.nan, device=module.device
+    )
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, T.shape(data)[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     return sample(
         module,

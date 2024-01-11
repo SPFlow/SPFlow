@@ -8,7 +8,6 @@ from spflow.meta.data import Scope
 from spflow.modules.node import Node, ProductNode
 from spflow.modules.node.leaf import Gaussian
 from spflow.utils.model_manager import load_model, save_model
-from ..fixtures import backend_auto
 
 
 @fixture
@@ -25,12 +24,12 @@ def tmp_model_file(tmp_path):
     return tmp_path / "test_model.pkl"
 
 
-def test_save_model(backend_auto, tmp_model_file, example_spn):
+def test_save_model(tmp_model_file, example_spn):
     save_model(example_spn, tmp_model_file)
     assert tmp_model_file.exists()
 
 
-def test_load_model(backend_auto, tmp_model_file, example_spn):
+def test_load_model(tmp_model_file, example_spn):
     save_model(example_spn, tmp_model_file)
     load_model(tmp_model_file)
 

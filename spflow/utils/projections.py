@@ -3,21 +3,19 @@
 Used for internal projections of PyTorch parameters.
 """
 from typing import Optional, Union
-from spflow.utils import Tensor
-from spflow import tensor as T
-from spflow.tensor.ops import Tensor
 import torch
+from torch import Tensor
 
 
 def proj_convex_to_real(x: Tensor) -> Tensor:
     """TODO"""
     # convex coefficients are already normalized, so taking the log is sufficient
-    return T.log(x)
+    return torch.log(x)
 
 
 def proj_real_to_convex(x: Tensor) -> Tensor:
     """TODO"""
-    return T.softmax(x, axis=-1)
+    return torch.softmax(x, dim=-1)
 
 
 def proj_real_to_bounded(
@@ -51,13 +49,13 @@ def proj_real_to_bounded(
     """
     if lb is not None and ub is not None:
         # project to bounded interval
-        return T.sigmoid(x) * (ub - lb) + lb
+        return torch.sigmoid(x) * (ub - lb) + lb
     elif ub is None:
         # project to left-bounded interval
-        return T.exp(x) + lb
+        return torch.exp(x) + lb
     else:
         # project to right-bounded interval
-        return -T.exp(x) + ub
+        return -torch.exp(x) + ub
 
 
 def proj_bounded_to_real(
@@ -91,10 +89,10 @@ def proj_bounded_to_real(
     """
     if lb is not None and ub is not None:
         # project from bounded interval
-        return T.log((x - lb) / (ub - x))
+        return torch.log((x - lb) / (ub - x))
     elif ub is None:
         # project from left-bounded interval
-        return T.log(x - lb)
+        return torch.log(x - lb)
     else:
         # project from right-bounded interval
-        return T.log(ub - x)
+        return torch.log(ub - x)

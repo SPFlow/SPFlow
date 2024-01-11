@@ -1,8 +1,8 @@
 """Contains the expectation maximization optimization parameter learner for SPFlow in the ``torch`` backend.
 """
 
-from spflow.utils import Tensor
-from spflow import tensor as T
+import torch
+from torch import Tensor
 
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 
@@ -43,9 +43,8 @@ def expectation_maximization(
     Returns:
         One-dimensional PyTorch tensors, containing the average log-likelihood for each iteration step.
     """
-    prev_avg_ll = T.tensor(-float("inf"))
+    prev_avg_ll = torch.tensor(-float("inf"))
     ll_history = []
-    backend = T.get_backend()
 
     if max_steps == -1:
         max_steps = 2**64 - 1
@@ -56,10 +55,7 @@ def expectation_maximization(
 
         # compute log likelihoods and sum them together
         acc_ll = log_likelihood(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx).sum()
-        if backend == "pytorch":
-            avg_ll = acc_ll.detach().clone() / data.shape[0]
-        else:
-            avg_ll = acc_ll / data.shape[0]
+        avg_ll = acc_ll.detach().clone() / data.shape[0]
 
         ll_history.append(avg_ll)
 
@@ -67,14 +63,13 @@ def expectation_maximization(
             logger.info(f"Step {step}: Average log-likelihood: {avg_ll}")
 
         # retain gradients for all module log-likelihoods
-        if backend == "pytorch":
-            for lls in dispatch_ctx.cache["log_likelihood"].values():
-                if lls.requires_grad:
-                    lls.retain_grad()
+        for lls in dispatch_ctx.cache["log_likelihood"].values():
+            if lls.requires_grad:
+                lls.retain_grad()
 
-            # compute gradients (if there are differentiable parameters to begin with)
-            if acc_ll.requires_grad:
-                acc_ll.backward(retain_graph=True)
+        # compute gradients (if there are differentiable parameters to begin with)
+        if acc_ll.requires_grad:
+            acc_ll.backward(retain_graph=True)
 
         # recursively perform expectation maximization
         em(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
@@ -88,4 +83,4 @@ def expectation_maximization(
         prev_avg_ll = avg_ll
         # TODO: zero/None all gradients
 
-    return T.stack(ll_history)
+    return torch.stack(ll_history)

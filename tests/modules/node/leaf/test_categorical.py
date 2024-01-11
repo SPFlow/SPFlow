@@ -6,14 +6,15 @@ from spflow import log_likelihood, sample, maximum_likelihood_estimation
 from spflow.modules.node.leaf.categorical import Categorical
 from pytest import raises
 import torch
+from tests.fixtures import set_seed
 
 
 def make_leaf(probs=[0.1, 0.2, 0.7]):
     return Categorical(scope=Scope([0]), probs=probs)
 
 
-def make_data():
-    return T.tensor([0, 1, 2]).reshape((-1, 1))
+def make_data(probs=[0.1, 0.2, 0.7], n_samples=5):
+    return torch.distributions.Categorical(probs=torch.tensor(probs)).sample((n_samples, 1))
 
 
 def test_sample():
@@ -28,11 +29,11 @@ def test_sample():
 
 def test_maximum_likelihood_estimation():
     leaf = make_leaf(probs=[0.1, 0.2, 0.7])
-    data = torch.tensor([0, 1, 1, 2, 2, 2]).view(-1, 1)
+    data = make_data(probs=[0.1, 0.3, 0.6], n_samples=10000)
     maximum_likelihood_estimation(leaf, data)
-    assert np.isclose(leaf.probs[0].item(), 1 / 6, atol=1e-2)
-    assert np.isclose(leaf.probs[1].item(), 2 / 6, atol=1e-2)
-    assert np.isclose(leaf.probs[2].item(), 3 / 6, atol=1e-2)
+    assert np.isclose(leaf.probs[0].item(), 0.1, atol=1e-2)
+    assert np.isclose(leaf.probs[1].item(), 0.3, atol=1e-2)
+    assert np.isclose(leaf.probs[2].item(), 0.6, atol=1e-2)
 
 
 def test_constructor():
