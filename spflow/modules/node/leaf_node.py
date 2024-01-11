@@ -136,7 +136,7 @@ def em(
         dispatch_ctx:
             Optional dispatch context.
     """
-    #
+    # TODO: resolve this circular import somehow
     from spflow import maximum_likelihood_estimation
 
     # initialize dispatch context
@@ -247,7 +247,7 @@ def sample(
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
 ) -> Tensor:
-    r"""Samples from ``Gaussian`` nodes in the ``torch`` backend given potential evidence.
+    r"""Samples from the leaf nodes in the ``torch`` backend given potential evidence.
 
     Samples missing values proportionally to its probability distribution function (PDF).
 

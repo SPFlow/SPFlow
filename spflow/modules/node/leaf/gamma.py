@@ -240,9 +240,6 @@ def maximum_likelihood_estimation(
     # Apply NaN strategy
     scope_data, weights = apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support)
 
-    # normalize weights to sum to n_samples
-    weights /= weights.sum() / scope_data.shape[0]
-
     # compute two parameter gamma estimates according to (Mink, 2002): https://tminka.github.io/papers/minka-gamma.pdf
     # also see this VBA implementation for reference: https://github.com/jb262/MaximumLikelihoodGammaDist/blob/main/MLGamma.bas
     # adapted to take weights
