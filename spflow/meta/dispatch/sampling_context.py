@@ -4,11 +4,9 @@ Typical usage example:
 
     sampling_ctx = SamplingDispatch(instance_ids, output_ids)
 """
+import torch
 from typing import List, Optional, Tuple, Union
-
-import spflow.tensor.dtype
-from spflow.utils import Tensor
-from spflow import tensor as T
+from torch import Tensor
 
 
 class SamplingContext:
@@ -47,16 +45,14 @@ class SamplingContext:
         """
         if output_ids is None:
             # assume sampling over all outputs (i.e. [])
-            output_ids = T.tensor([[] for _ in instance_ids])
+            output_ids = torch.tensor([[] for _ in instance_ids])
 
         if len(output_ids) != len(instance_ids):
             raise ValueError(
                 f"Number of specified instance ids {len(instance_ids)} does not match specified number of output ids {len(output_ids)}."
             )
 
-        self.instance_ids = T.to(
-            instance_ids, dtype=T.int64()
-        )  # torch<=2.0.0 requires long indices when we use instances_ids to index into a
+        self.instance_ids = instance_ids
         self.output_ids = output_ids
 
     def group_output_ids(self, n_total: int) -> list[tuple[Union[int, None], list[int]]]:
@@ -125,7 +121,7 @@ def default_sampling_context(n: int) -> SamplingContext:
         Sampling context initialized with instance indices from 0 to ``n`` and corresponding output indices as ``[]``.
     """
     return SamplingContext(
-        T.tensor(list(range(n))), T.tensor([[] for _ in range(n)], dtype=T.get_default_int_dtype())
+        torch.tensor(list(range(n)), dtype=torch.long), torch.tensor([[] for _ in range(n)], dtype=torch.long)
     )
 
 

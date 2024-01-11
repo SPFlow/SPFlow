@@ -8,7 +8,6 @@ from collections.abc import Iterable
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from torch import nn, Tensor
 import torch
-from spflow.tensor.ops import Tensor
 from spflow.modules.module import Module
 from spflow.modules.node.node import Node
 from spflow.meta.dispatch.dispatch import dispatch

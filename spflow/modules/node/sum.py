@@ -79,7 +79,8 @@ class SumNode(Node):
             weights = torch.rand(self.n_in) + 1e-08
             weights = weights / weights.sum()
         else:
-            weights = torch.tensor(weights)
+            if not torch.is_tensor(weights):
+                weights = torch.tensor(weights)
 
         if weights.ndim != 1:
             raise ValueError(
@@ -291,11 +292,9 @@ def sample(
     branches = (cum_sampling_weights < random_choices).sum(dim=1)
 
     # group sampled branches
-    for branch in torch.tensor(torch.unique(branches), dtype=int, device=node.device):
+    for branch in torch.unique(branches):
         # group instances by sampled branch
-        branch_instance_ids = torch.tensor(sampling_ctx.instance_ids, dtype=int, device=node.device)[
-            branches == branch
-        ]
+        branch_instance_ids = sampling_ctx.instance_ids[branches == branch]
         # get corresponding child and output id for sampled branch
         child_ids, output_ids = node.input_to_output_ids([branch])
 
