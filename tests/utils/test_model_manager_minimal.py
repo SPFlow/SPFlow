@@ -6,7 +6,7 @@ from pytest import fixture
 
 from spflow.meta.data import Scope
 from spflow.modules.node import Node, ProductNode
-from spflow.modules.node.leaf import Gaussian
+from spflow.modules.node.leaf import Normal
 from spflow.utils.model_manager import load_model, save_model
 
 
@@ -14,7 +14,7 @@ from spflow.utils.model_manager import load_model, save_model
 def example_spn() -> Node:
     return ProductNode(
         inputs=[
-            Gaussian(Scope([0])),
+            Normal(Scope([0])),
         ],
     )
 
