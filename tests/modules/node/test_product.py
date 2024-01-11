@@ -1,6 +1,6 @@
 import unittest
 
-from spflow.modules.node.leaf import Gaussian
+from spflow.modules.node.leaf import Normal
 from spflow.meta.data import Scope
 from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
@@ -16,7 +16,7 @@ def make_product(num_inputs=2, inputs=None):
 
 
 def make_leaf(mean=0.0, std=1.0, scope=0):
-    return Gaussian(scope=Scope([scope]), mean=mean, std=std)
+    return Normal(scope=Scope([scope]), mean=mean, std=std)
 
 
 def make_data(mean=0.0, std=1.0, num_samples=10, dim=2):
