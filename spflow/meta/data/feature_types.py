@@ -24,13 +24,13 @@ class ExponentialType(FeatureType):
     """Feature type for Exponential-distributed features.
 
     Attributes:
-        l:
+        rate:
             Floating point representing the rate parameter, greater than 0.0.
             Defaults to 1.0.
     """
 
     meta_type: ClassVar[MetaType] = MetaType.Continuous
-    l: float = 1.0
+    rate: float = 1.0
 
 
 @dataclass
@@ -202,13 +202,13 @@ class PoissonType(FeatureType):
     """Feature type for Poisson-distributed features.
 
     Attributes:
-        l:
+        rate:
             Floating point representing the rate parameter, greater than or equal to 0.0.
             Defaults to 1.0.
     """
 
     meta_type: ClassVar[MetaType] = MetaType.Discrete
-    l: float = 1.0
+    rate: float = 1.0
 
 
 class FeatureTypes(ABC):

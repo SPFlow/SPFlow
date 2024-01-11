@@ -6,6 +6,7 @@ from spflow import sample, maximum_likelihood_estimation
 from spflow.modules.node.leaf import Bernoulli
 from pytest import raises
 import torch
+from tests.fixtures import set_seed
 
 
 def make_leaf(p=0.5):

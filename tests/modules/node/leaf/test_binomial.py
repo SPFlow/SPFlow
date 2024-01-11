@@ -4,8 +4,9 @@ import scipy
 from spflow.meta.data import Scope
 from spflow import sample, maximum_likelihood_estimation
 from spflow.modules.node.leaf.binomial import Binomial
-from spflow import tensor as T
 from pytest import raises
+import torch
+from tests.fixtures import set_seed
 
 
 def make_leaf(n=2, p=0.5):
@@ -13,7 +14,7 @@ def make_leaf(n=2, p=0.5):
 
 
 def make_data():
-    return T.tensor([0, 1, 2]).reshape((-1, 1))
+    return torch.tensor([0, 1, 2]).reshape((-1, 1))
 
 
 def test_sample():
@@ -25,9 +26,9 @@ def test_sample():
 
 def test_maximum_likelihood_estimation():
     leaf = make_leaf(n=4, p=0.5)
-    data = T.reshape(T.tensor([0, 1, 2, 2, 3, 3, 3, 4]), (-1, 1))
+    data = torch.tensor([0, 1, 2, 2, 3, 3, 3, 4]).view(-1, 1)
     maximum_likelihood_estimation(leaf, data)
-    assert np.isclose(leaf.p.item(), T.sum(data) / (leaf.n * data.shape[0]), atol=1e-2)
+    assert np.isclose(leaf.p.item(), data.sum() / (leaf.n * data.shape[0]), atol=1e-2)
 
 
 def test_constructor():

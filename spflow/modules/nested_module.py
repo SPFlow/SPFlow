@@ -4,7 +4,6 @@ from abc import ABC
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
-from spflow import tensor as T
 
 from spflow.meta.dispatch import (
     dispatch,
@@ -13,8 +12,9 @@ from spflow.meta.dispatch import (
     init_default_sampling_context,
 )
 from spflow.meta.dispatch.dispatch_context import DispatchContext
-from spflow.tensor.ops import Tensor
 from spflow.modules.module import Module
+import torch
+from torch import nn, Tensor
 
 
 class NestedModule(Module, ABC):
@@ -217,7 +217,7 @@ def sample(
     """
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, T.shape(data)[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # dictionary to hold the
     sampling_ids_per_child = [([], []) for _ in placeholder.host.inputs]
@@ -226,12 +226,12 @@ def sample(
         # convert ids to actual child and output ids of host module
         child_ids_actual, output_ids_actual = placeholder.input_to_output_ids(output_ids)
 
-        # for child_id in T.unique(child_ids_actual):
+        # for child_id in torch.unique(child_ids_actual):
         for child_id in np.unique(child_ids_actual):
-            # child_id = T.tensor(child_id, dtype=int)
+            # child_id = torch.tensor(child_id, dtype=int)
             sampling_ids_per_child[child_id][0].append(instance_id)
             # sampling_ids_per_child[child_id][1].append(
-            #    T.tensor(output_ids_actual, dtype=int)[child_ids_actual == child_id].tolist()
+            #    torch.tensor(output_ids_actual, dtype=int)[child_ids_actual == child_id].tolist()
             # )
             sampling_ids_per_child[child_id][1].append(
                 np.array(output_ids_actual)[child_ids_actual == child_id].tolist()

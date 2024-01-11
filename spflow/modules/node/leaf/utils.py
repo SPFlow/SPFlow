@@ -1,11 +1,12 @@
 from typing import Callable
 
-from spflow import tensor as T
+
+import torch
 
 
 def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support):
     if weights is None:
-        weights = T.ones(scope_data.shape[0], device=leaf.device)
+        weights = torch.ones(scope_data.shape[0], device=leaf.device)
     if weights.ndim != 1 or weights.shape[0] != scope_data.shape[0]:
         raise ValueError(
             "Number of specified weights for maximum-likelihood estimation does not match number of data points."
@@ -13,13 +14,13 @@ def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support):
     # reshape weights
     weights = weights.reshape((-1, 1))
     if check_support:
-        if T.any(~leaf.check_support(scope_data, is_scope_data=True)):
+        if torch.any(~leaf.check_support(scope_data, is_scope_data=True)):
             raise ValueError("Encountered values outside of the support.")
     # NaN entries (no information)
-    nan_mask = T.isnan(scope_data)
-    if T.all(nan_mask):
+    nan_mask = torch.isnan(scope_data)
+    if torch.all(nan_mask):
         raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
-    if nan_strategy is None and T.any(nan_mask):
+    if nan_strategy is None and torch.any(nan_mask):
         raise ValueError(
             "Maximum-likelihood estimation cannot be performed on missing data by default. Set a strategy for handling missing values if this is intended."
         )
