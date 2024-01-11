@@ -38,4 +38,8 @@ def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support):
         raise ValueError(
             f"Expected 'nan_strategy' to be of type '{type(str)}, or '{Callable}' or '{None}', but was of type {type(nan_strategy)}."
         )
+
+    # normalize weights to sum to n_samples
+    weights /= weights.sum() / scope_data.shape[0]
+
     return scope_data, weights

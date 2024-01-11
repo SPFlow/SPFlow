@@ -219,9 +219,6 @@ def maximum_likelihood_estimation(
     # apply NaN strategy
     scope_data, weights = apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support)
 
-    # normalize weights to sum to n_samples
-    weights /= weights.sum() / data.shape[0]
-
     # total number of instances
     n_total = weights.sum()
 
