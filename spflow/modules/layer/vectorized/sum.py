@@ -27,14 +27,14 @@ from spflow.modules.node import (
 
 
 class SumLayer(Module):
-    r"""Layer representing multiple SPN-like sum nodes over all children in the 'base' backend.
+    r"""Layer representing multiple SPN-like sum nodes over all inputs in the 'base' backend.
 
-    Represents multiple convex combinations of its children over the same scope.
+    Represents multiple convex combinations of its inputs over the same scope.
     Internally, the weights are represented as unbounded parameters that are projected onto convex combination for each node, representing the actual weights.
 
     Methods:
-        children():
-            Iterator over all modules that are children to the module in a directed graph.
+        inputs():
+            Iterator over all modules that are inputs to the module in a directed graph.
 
     Attributes:
         weights_aux:
@@ -52,7 +52,7 @@ class SumLayer(Module):
     def __init__(
         self,
         n_nodes: int,
-        children: list[Module],
+        inputs: list[Module],
         weights: Optional[Union[Tensor, list[list[float]], list[float]]] = None,
         **kwargs,
     ) -> None:
@@ -61,8 +61,8 @@ class SumLayer(Module):
         Args:
             n_nodes:
                 Integer specifying the number of nodes the layer should represent.
-            children:
-                Non-empty list of modules that are children to the layer.
+            inputs:
+                Non-empty list of modules that are inputs to the layer.
                 The output scopes for all child modules need to be equal.
             weights:
                 Optional list of floats, list of lists of floats, one- to two-dimensional NumPy array or two-dimensional
@@ -77,13 +77,13 @@ class SumLayer(Module):
         if n_nodes < 1:
             raise ValueError("Number of nodes for 'SumLayer' must be greater of equal to 1.")
 
-        if not children:
+        if not inputs:
             raise ValueError("'SumLayer' requires at least one child to be specified.")
 
-        super().__init__(children=children, **kwargs)
+        super().__init__(inputs=inputs, **kwargs)
 
         self._n_out = n_nodes
-        self.n_in = sum(child.n_out for child in self.children)
+        self.n_in = sum(child.n_out for child in self.inputs)
 
         # parse weights
         if weights is None:
@@ -103,7 +103,7 @@ class SumLayer(Module):
         # compute scope
         scope = None
 
-        for child in children:
+        for child in inputs:
             for s in child.scopes_out:
                 if scope is None:
                     scope = s
@@ -216,7 +216,7 @@ class SumLayer(Module):
     def to_dtype(self, dtype):
         self.dtype = dtype
         self.weights = self.weights
-        for child in self.children:
+        for child in self.inputs:
             child.to_dtype(dtype)
 
     def to_device(self, device):
@@ -224,12 +224,12 @@ class SumLayer(Module):
             raise ValueError("it is not possible to change the device of models that have a numpy backend")
         self.device = device
         self.weights = self.weights
-        for child in self.children:
+        for child in self.inputs:
             child.to_device(device)
 
     def parameters(self):
         params = []
-        for child in self.children:
+        for child in self.inputs:
             params.extend(list(child.parameters()))
         params.insert(0, self._weights)
         return params
@@ -277,17 +277,17 @@ def marginalize(
     # node scope is being partially marginalized
     elif mutual_rvs:
         # TODO: pruning
-        marg_children = []
+        marg_inputs = []
 
         # marginalize child modules
-        for child in layer.children:
+        for child in layer.inputs:
             marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
-                marg_children.append(marg_child)
+                marg_inputs.append(marg_child)
 
-        return SumLayer(n_nodes=layer.n_out, children=marg_children, weights=layer.weights)
+        return SumLayer(n_nodes=layer.n_out, inputs=marg_inputs, weights=layer.weights)
     else:
         return deepcopy(layer)
 
@@ -306,13 +306,13 @@ def updateBackend(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] =
     if isinstance(sum_layer.weights, np.ndarray):
         return SumLayer(
             n_nodes=sum_layer.n_out,
-            children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+            inputs=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.inputs],
             weights=T.tensor(sum_layer.weights),
         )
     elif torch.is_tensor(sum_layer.weights):
         return SumLayer(
             n_nodes=sum_layer.n_out,
-            children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+            inputs=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.inputs],
             weights=T.tensor(sum_layer.weights.data),
         )
     else:
@@ -334,7 +334,7 @@ def toNodeBased(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = N
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return SumLayerNode(
         n_nodes=sum_layer.n_out,
-        children=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+        inputs=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.inputs],
         weights=sum_layer.weights,
     )
 
@@ -352,7 +352,7 @@ def toLayerBased(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return SumLayer(
         n_nodes=sum_layer.n_out,
-        children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+        inputs=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.inputs],
         weights=sum_layer.weights,
     )
 
@@ -413,12 +413,12 @@ def sample(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in sum_layer.children
+            for child in sum_layer.inputs
         ],
         axis=1,
     )
 
-    children = sum_layer.children
+    inputs = sum_layer.inputs
 
     for node_id, instances in sampling_ctx.group_output_ids(sum_layer.n_out):
         # sample branches
@@ -437,7 +437,7 @@ def sample(
 
             # sample from partition node
             sample(
-                children[int(child_id)],
+                inputs[int(child_id)],
                 data,
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
@@ -487,7 +487,7 @@ def log_likelihood(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in sum_layer.children
+            for child in sum_layer.inputs
         ],
         axis=1,
     )

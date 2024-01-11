@@ -6,8 +6,8 @@ from collections.abc import Iterable
 
 
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
-from spflow.utils import Tensor
-from spflow import tensor as T
+from torch import nn, Tensor
+import torch
 from spflow.tensor.ops import Tensor
 from spflow.modules.module import Module
 from spflow.modules.node.node import Node
@@ -21,11 +21,11 @@ from spflow.meta.dispatch.dispatch_context import (
 class CondSumNode(Node):
     """Conditional SPN-like sum node in the ``base`` backend.
 
-    Represents a convex combination of its children over the same scope.
+    Represents a convex combination of its inputs over the same scope.
 
     Attributes:
-        children:
-            Non-empty list of modules that are children to the node in a directed graph.
+        inputs:
+            Non-empty list of modules that are inputs to the node in a directed graph.
         cond_f:
             Optional callable to retrieve weights for the sum node.
             Its output should be a dictionary containing ``weights`` as a key, and the value should be
@@ -36,12 +36,12 @@ class CondSumNode(Node):
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, children: list[Module], cond_f: Optional[Callable] = None) -> None:
+    def __init__(self, inputs: list[Module], cond_f: Optional[Callable] = None) -> None:
         """Initializes ``CondSumNode`` object.
 
         Args:
-            children:
-                Non-empty list of modules that are children to the node.
+            inputs:
+                Non-empty list of modules that are inputs to the node.
                 The output scopes for all child modules need to be equal.
             cond_f:
                 Optional callable to retrieve weights for the sum node.
@@ -51,14 +51,14 @@ class CondSumNode(Node):
         Raises:
             ValueError: Invalid arguments.
         """
-        super().__init__(children=children)
+        super().__init__(inputs=inputs)
 
-        if not children:
+        if not inputs:
             raise ValueError("'CondSumNode' requires at least one child to be specified.")
 
         scope = None
 
-        for child in children:
+        for child in inputs:
             for s in child.scopes_out:
                 if scope is None:
                     scope = s
@@ -71,7 +71,7 @@ class CondSumNode(Node):
                 scope = scope.join(s)
 
         self.scope = scope
-        self.n_in = sum(child.n_out for child in children)
+        self.n_in = sum(child.n_out for child in inputs)
 
         self.cond_f = cond_f
 
@@ -133,22 +133,22 @@ class CondSumNode(Node):
             weights = cond_f(data)["weights"]
 
         # check if value for 'weights' is valid
-        if isinstance(weights, list) or not (T.istensor(weights)):
-            weights = T.tensor(weights, dtype=self.dtype, device=self.device)
-        if T.ndim(weights) != 1:
+        if isinstance(weights, list) or not (torch.istensor(weights)):
+            weights = torch.tensor(weights, device=data.device)
+        if weights.ndim != 1:
             raise ValueError(
-                f"Numpy array of weight values for 'CondSumNode' is expected to be one-dimensional, but is {T.ndim(weights)}-dimensional."
+                f"Numpy array of weight values for 'CondSumNode' is expected to be one-dimensional, but is {torch.ndim(weights)}-dimensional."
             )
-        if not T.all(weights > 0):
+        if not torch.all(weights > 0):
             raise ValueError("Weights for 'CondCondSumNode' must be all positive.")
-        if not T.isclose(T.sum(weights), 1.0):
+        if not torch.isclose(torch.sum(weights), 1.0):
             raise ValueError("Weights for 'CondCondSumNode' must sum up to one.")
         if not (len(weights) == self.n_in):
             raise ValueError(
                 "Number of weights for 'CondCondSumNode' does not match total number of child outputs."
             )
 
-        return T.to(weights, self.dtype, self.device)  # T.tensor(weights, **T.context(weights))
+        return weights.to(dtype=data.dtype, device=data.device)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -192,36 +192,19 @@ def marginalize(
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
-        marg_children = []
+        marg_inputs = []
 
         # marginalize child modules
-        for child in sum_node.children:
+        for child in sum_node.inputs:
             marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
-                marg_children.append(marg_child)
+                marg_inputs.append(marg_child)
 
-        return CondSumNode(children=marg_children)
+        return CondSumNode(inputs=marg_inputs)
     else:
         return deepcopy(sum_node)
-
-
-@dispatch(memoize=True)  # type: ignore
-def updateBackend(sum_node: CondSumNode, dispatch_ctx: Optional[DispatchContext] = None) -> CondSumNode:
-    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
-
-    Args:
-        product_node:
-            Product node to be converted.
-        dispatch_ctx:
-            Dispatch context.
-    """
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return CondSumNode(
-        children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
-        cond_f=sum_node.cond_f,
-    )
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -236,7 +219,7 @@ def toLayerBased(sum_node: CondSumNode, dispatch_ctx: Optional[DispatchContext] 
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondSumNode(
-        children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
+        inputs=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.inputs],
         cond_f=sum_node.cond_f,
     )
 
@@ -252,9 +235,7 @@ def toNodeBased(sum_node: CondSumNode, dispatch_ctx: Optional[DispatchContext] =
             Dispatch context.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return CondSumNode(
-        children=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children]
-    )
+    return CondSumNode(inputs=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.inputs])
 
 
 @dispatch  # type: ignore
@@ -290,10 +271,10 @@ def sample(
     """
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, T.shape(data)[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, torch.shape(data)[0])
 
     # compute log likelihoods of data instances (TODO: only compute for relevant instances? might clash with cashed values or cashing in general)
-    child_lls = T.concatenate(
+    child_lls = torch.cat(
         [
             log_likelihood(
                 child,
@@ -301,9 +282,9 @@ def sample(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in node.children
+            for child in node.inputs
         ],
-        axis=1,
+        dim=1,
     )
 
     # retrieve value for 'weights'
@@ -314,17 +295,15 @@ def sample(
 
     # sample branch for each instance id
     # this solution is based on a trick described here: https://stackoverflow.com/questions/34187130/fast-random-weighted-selection-across-all-rows-of-a-stochastic-matrix/34190035#34190035
-    cum_sampling_weights = T.cumsum(sampling_weights, axis=1)
-    random_choices = T.unsqueeze(
-        T.random.random_tensor(T.shape(sampling_weights)[0], 1, device=node.device), 1
-    )
-    branches = T.sum(cum_sampling_weights < random_choices, axis=1)
+    cum_sampling_weights = torch.cumsum(sampling_weights, dim=1)
+    random_choices = torch.rand(sampling_weights.shape[0], 1, device=node.device).unsqueeze(1)
+    branches = torch.sum(cum_sampling_weights < random_choices, dim=1)
 
     # group sampled branches
-    for branch in T.unique(branches):
+    for branch in torch.unique(branches):
         # group instances by sampled branch
-        branch = T.tensor(branch, dtype=int, device=node.device)
-        branch_instance_ids = T.tensor(sampling_ctx.instance_ids, dtype=int, device=node.device)[
+        branch = torch.tensor(branch, dtype=torch.int, device=node.device)
+        branch_instance_ids = torch.tensor(sampling_ctx.instance_ids, dtype=torch.int, device=node.device)[
             branches == branch
         ].tolist()
 
@@ -333,7 +312,7 @@ def sample(
 
         # sample from child module
         sample(
-            node.children[child_ids[0]],
+            node.inputs[child_ids[0]],
             data,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,
@@ -381,7 +360,7 @@ def log_likelihood(
     weights = sum_node.retrieve_params(data, dispatch_ctx)
 
     # compute child log-likelihoods
-    child_lls = T.concatenate(
+    child_lls = torch.cat(
         [
             log_likelihood(
                 child,
@@ -389,10 +368,10 @@ def log_likelihood(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in sum_node.children
+            for child in sum_node.inputs
         ],
-        axis=1,
+        dim=1,
     )
-    weighted_inputs = child_lls + T.log(weights)
+    weighted_inputs = child_lls + torch.log(weights)
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return T.logsumexp(weighted_inputs, axis=-1, keepdims=True)
+    return torch.logsumexp(weighted_inputs, dim=-1, keepdims=True)

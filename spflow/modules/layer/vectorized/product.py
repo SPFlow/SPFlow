@@ -20,13 +20,13 @@ from spflow.tensor.ops import Tensor
 
 
 class ProductLayer(Module):
-    r"""Layer representing multiple SPN-like product nodes over all children in the ``torch`` backend.
+    r"""Layer representing multiple SPN-like product nodes over all inputs in the ``torch`` backend.
 
-    Represents multiple products of its children over pair-wise disjoint scopes.
+    Represents multiple products of its inputs over pair-wise disjoint scopes.
 
     Methods:
-        children():
-            Iterator over all modules that are children to the module in a directed graph.
+        inputs():
+            Iterator over all modules that are inputs to the module in a directed graph.
 
     Attributes:
         n_out:
@@ -35,14 +35,14 @@ class ProductLayer(Module):
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, n_nodes: int, children: list[Module], **kwargs) -> None:
+    def __init__(self, n_nodes: int, inputs: list[Module], **kwargs) -> None:
         r"""Initializes ``ProductLayer`` object.
 
         Args:
             n_nodes:
                 Integer specifying the number of nodes the layer should represent.
-            children:
-                Non-empty list of modules that are children to the layer.
+            inputs:
+                Non-empty list of modules that are inputs to the layer.
                 The output scopes for all child modules need to be pair-wise disjoint.
         Raises:
             ValueError: Invalid arguments.
@@ -52,15 +52,15 @@ class ProductLayer(Module):
 
         self._n_out = n_nodes
 
-        if not children:
+        if not inputs:
             raise ValueError("'ProductLayer' requires at least one child to be specified.")
 
-        super().__init__(children=children, **kwargs)
+        super().__init__(inputs=inputs, **kwargs)
 
         # compute scope
         scope = Scope()
 
-        for child in children:
+        for child in inputs:
             for s in child.scopes_out:
                 if not scope.isdisjoint(s):
                     raise ValueError(f"'ProductNode' requires child scopes to be pair-wise disjoint.")
@@ -81,7 +81,7 @@ class ProductLayer(Module):
 
     def parameters(self):
         params = []
-        for child in self.children:
+        for child in self.inputs:
             params.extend(list(child.parameters()))
         return params
 
@@ -129,21 +129,21 @@ def marginalize(
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
-        marg_children = []
+        marg_inputs = []
 
         # marginalize child modules
-        for child in layer.children:
+        for child in layer.inputs:
             marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
-                marg_children.append(marg_child)
+                marg_inputs.append(marg_child)
 
         # if product node has only one child after marginalization and pruning is true, return child directly
-        if len(marg_children) == 1 and prune:
-            return marg_children[0]
+        if len(marg_inputs) == 1 and prune:
+            return marg_inputs[0]
         else:
-            return ProductLayer(n_nodes=layer.n_out, children=marg_children)
+            return ProductLayer(n_nodes=layer.n_out, inputs=marg_inputs)
     else:
         return deepcopy(layer)
 
@@ -163,7 +163,7 @@ def updateBackend(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return ProductLayer(
         n_nodes=product_layer.n_out,
-        children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children],
+        inputs=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in product_layer.inputs],
     )
 
 
@@ -182,7 +182,7 @@ def toNodeBased(product_layer: ProductLayer, dispatch_ctx: Optional[DispatchCont
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return ProductLayerNode(
         n_nodes=product_layer.n_out,
-        children=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children],
+        inputs=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in product_layer.inputs],
     )
 
 
@@ -199,7 +199,7 @@ def toLayerBased(product_layer: ProductLayer, dispatch_ctx: Optional[DispatchCon
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return ProductLayer(
         n_nodes=product_layer.n_out,
-        children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children],
+        inputs=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in product_layer.inputs],
     )
 
 
@@ -246,8 +246,8 @@ def sample(
     if any([len(out) != 1 for out in sampling_ctx.output_ids]):
         raise ValueError("'ProductLayer only allows single output sampling.")
 
-    # all product nodes are over (all) children
-    for child in product_layer.children:
+    # all product nodes are over (all) inputs
+    for child in product_layer.inputs:
         sample(
             child,
             data,
@@ -302,7 +302,7 @@ def log_likelihood(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in product_layer.children
+            for child in product_layer.inputs
         ],
         axis=1,
     )

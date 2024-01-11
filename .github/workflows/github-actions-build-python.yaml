@@ -55,36 +55,18 @@ jobs:
   # - We test even fewer combinations for TensorFlow and Jax to save resources
 
   "Test_OS":
-    name: "Test: Py ${{ matrix.version-python }} @ OS ${{ matrix.os }} | ${{ matrix.test-backend }}"
+    name: "Test: Py ${{ matrix.version-python }} @ OS ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         version-python: ['3.11']
-        test-backend: ['numpy', 'pytorch', 'jax']
         os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
     steps:
       - uses: actions/checkout@v4
       - uses: "./.github/actions/run_tests"
         with:
           version-python: ${{ matrix.version-python }}
-          codecov-token: ${{ secrets.CODECOV_TOKEN }}
-
-  "Test_Numpy":
-    name: "Test: Py ${{ matrix.version-python }} + Numpy ${{ matrix.version-numpy }}"
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        version-python: ['3.9', '3.11']  # 3.12 is not yet supported by torch
-        version-numpy: ['1.24.0', '1.26.2', '1.26.3']
-        test-backend: ['numpy']
-    steps:
-      - uses: actions/checkout@v4
-      - uses: "./.github/actions/run_tests"
-        with:
-          version-python: ${{ matrix.version-python }}
-          version-numpy: ${{ matrix.version-numpy }}
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
   "Test_Torch":
@@ -95,7 +77,6 @@ jobs:
       matrix:
         version-python: ['3.9', '3.11']  # 3.12 is not yet supported by torch
         version-pytorch: ['1.11.0', '2.0.1', '2.1.2']
-        test-backend: ['pytorch']
         exclude: # Non-supported combinations
           - version-python: '3.11'
             version-pytorch: '1.11.0'
@@ -107,19 +88,3 @@ jobs:
           version-pytorch: ${{ matrix.version-pytorch }}
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
-  "Test_Jax":
-    name: "Test: Py ${{ matrix.version-python }} + Jax ${{ matrix.version-jax }}"
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false 
-      matrix:
-        version-python: ['3.9', '3.11']
-        version-jax: ['0.4.23']
-        test-backend: ['jax']
-    steps:
-      - uses: actions/checkout@v4
-      - uses: "./.github/actions/run_tests"
-        with:
-          version-python: ${{ matrix.version-python }}
-          version-jax: ${{ matrix.version-jax }}
-          codecov-token: ${{ secrets.CODECOV_TOKEN }}

@@ -14,7 +14,7 @@ from ..fixtures import backend_auto
 @fixture
 def example_spn() -> Node:
     return ProductNode(
-        children=[
+        inputs=[
             Gaussian(Scope([0])),
         ],
     )
