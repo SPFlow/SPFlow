@@ -1,5 +1,6 @@
 import unittest
 
+from tests.fixtures import set_seed
 import numpy as np
 import pytest
 import scipy
