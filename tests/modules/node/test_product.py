@@ -60,7 +60,7 @@ def test_marginalize(prune):
 
     if prune:
         # If pruning, Gaussian should be returned
-        assert isinstance(marginalized_product_node, Gaussian)
+        assert isinstance(marginalized_product_node, Normal)
     else:
         # Else ProductNode should be returned, with single child
         assert isinstance(marginalized_product_node, ProductNode)
