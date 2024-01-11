@@ -179,9 +179,6 @@ def maximum_likelihood_estimation(
     # handle nans
     scope_data, weights = apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support)
 
-    # normalize weights to sum to n_samples
-    weights /= weights.sum() / scope_data.shape[0]
-
     # compute weighted counts
     weighted_counts = torch.bincount(
         scope_data.reshape(-1), weights=weights.reshape(-1), minlength=len(leaf.probs)
