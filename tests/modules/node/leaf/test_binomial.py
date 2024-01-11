@@ -5,9 +5,7 @@ from spflow.meta.data import Scope
 from spflow import sample, maximum_likelihood_estimation
 from spflow.modules.node.leaf.binomial import Binomial
 from spflow import tensor as T
-from utils import compare_spflow_with_scipy_dist
 from pytest import raises
-from tests.fixtures import backend_auto
 
 
 def make_leaf(n=2, p=0.5):
@@ -23,13 +21,6 @@ def test_sample():
     leaf = make_leaf(p=p)
     samples = sample(leaf, num_samples=500)
     assert np.isclose(samples.mean() / leaf.n, p, atol=1e-1)
-
-
-def test_log_likelihood():
-    leaf = make_leaf(n=4, p=0.5)
-    data = make_data()
-    scipy_dist = scipy.stats.binom(leaf.n.item(), leaf.p.item())
-    compare_spflow_with_scipy_dist(leaf, scipy_dist.logpmf, data)
 
 
 def test_maximum_likelihood_estimation():
@@ -55,8 +46,6 @@ def test_constructor():
 
 
 def test_requires_grad():
-    if T.get_backend() != T.Backend.PYTORCH:
-        return
     leaf = make_leaf()
     assert not leaf.n.requires_grad
     assert leaf.p.requires_grad

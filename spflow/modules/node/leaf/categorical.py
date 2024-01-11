@@ -3,7 +3,8 @@
 from spflow.utils.projections import proj_convex_to_real
 from typing import Callable, Optional, Union
 
-from spflow import tensor as T
+import torch
+from torch import nn, Tensor
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes
 from spflow.meta.data.scope import Scope
@@ -31,28 +32,32 @@ class Categorical(LeafNode):
         super().__init__(scope=scope)
 
         # register logits
-        self.logits = T.requires_grad_(T.zeros(len(probs), device=self.device))  # type: ignore
+        self.logits = nn.Parameter(torch.empty(len(probs), dtype=torch.float32))
         self.probs = probs
 
     @property
     def probs(self) -> Tensor:
-        return T.softmax(self.logits, axis=0)
+        return torch.softmax(self.logits, dim=0)
 
     @probs.setter
     def probs(self, probs: list[float]) -> None:
         if isinstance(probs, list):
-            probs = T.tensor(probs, device=self.device)
-        if T.ndim(probs) != 1:
+            probs = torch.tensor(probs, device=self.device)
+        if probs.ndim != 1:
             raise ValueError(
                 f"Numpy array of weight probs for 'Categorical' is expected to be one-dimensional, but is {probs.ndim}-dimensional."
             )
-        if not T.all(probs > 0):
+        if not torch.all(probs > 0):
             raise ValueError("Probabilities for 'Categorical' must be all positive.")
-        if not T.isclose(T.sum(probs), 1.0):
+        if not torch.isclose(torch.sum(probs), torch.tensor(1.0)):
             raise ValueError("Probabilities for 'Categorical' must sum up to one.")
 
-        values = T.to(proj_convex_to_real(probs), device=self.device)
-        self.logits = T.set_tensor_data(self.logits, values)
+        values = proj_convex_to_real(probs)
+        self.logits.data = values
+
+    @property
+    def distribution(self) -> torch.distributions.Distribution:
+        return torch.distributions.Categorical(logits=self.logits)
 
     @classmethod
     def accepts(cls, signatures: list[FeatureContext]) -> bool:
@@ -115,9 +120,6 @@ class Categorical(LeafNode):
 
         return Categorical(feature_ctx.scope, probs=probs)
 
-    def parameters(self) -> list[Tensor]:
-        return [self.logits]
-
     def check_support(self, data: Tensor, is_scope_data: bool = False) -> Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
@@ -153,22 +155,15 @@ class Categorical(LeafNode):
             )
 
         # nan entries (regarded as valid)
-        nan_mask = T.isnan(scope_data)
+        nan_mask = torch.isnan(scope_data)
 
-        # nan entries (regarded as valid)
-        nan_mask = T.isnan(scope_data)
-        inf_mask = T.isinf(scope_data)
-        # TODO: Add support checks here! Previously, we used the pytorch distribution support checks as follows
-        #       valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
-        #       Now we need our own support checks.
-        invalid_support_mask = T.zeros(scope_data.shape[0], 1, dtype=bool, device=self.device)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
+        valid[~nan_mask] = self.distribution.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
-        # Valid is everything that is not nan, inf or outside of the support
-        return (~nan_mask) & (~inf_mask) & (~invalid_support_mask)
+        # check for infinite values
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
-    def to(self, dtype=None, device=None):
-        super().to(dtype=dtype, device=device)
-        self.logits = T.to(self.logits, dtype=dtype, device=device)
+        return valid
 
     def describe_node(self) -> str:
         formatted_probs = [f"{num:.3f}" for num in T.tolist(self.probs)]
@@ -217,42 +212,36 @@ def log_likelihood(
     Raises:
         ValueError: Data outside of support.
     """
+
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+
+    batch_size: int = data.shape[0]
 
     # get information relevant for the scope
     scope_data = data[:, leaf.scope.query]
 
-    # initialize zeros tensor (number of output values matches batch_size)
-    log_prob = T.zeros(data.shape[0], 1, device=leaf.device)
+    log_prob = torch.empty_like(scope_data)
 
     # ----- marginalization -----
-    # Get marginalization ids, indicated by nans in the tensor
-    # NOTE: we don't need to set these to zero (1 in non-logspace) since log_prob is initialized with zeros
-    marg_ids = T.sum(T.isnan(scope_data), axis=1) == len(leaf.scope.query)
 
-    # if all instances should be marginalized, return early
-    if T.all(marg_ids):
-        return log_prob
+    marg_ids = torch.isnan(scope_data).sum(dim=1) == len(leaf.scope.query)
+
+    # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
+    log_prob[marg_ids] = 0.0
 
     # ----- log probabilities -----
 
     if check_support:
-        # create masked based on distribution's support
-        valid_ids = leaf.check_support(scope_data[~marg_ids], is_scope_data=True)
+        # create mask based on distribution's support
+        valid_ids = leaf.check_support(scope_data[~marg_ids], is_scope_data=True).squeeze(1)
 
         if not all(valid_ids):
             raise ValueError(
-                "Encountered data instances that are not in the support of the Categorical distribution."
+                f"Encountered data instances that are not in the support of the Gaussian distribution."
             )
 
-    # Actual binomial log_prob computation:
     # compute probabilities for values inside distribution support
-    scope_data = T.to(T.squeeze(scope_data[~marg_ids], 1), dtype=T.int64())
-    # Compute the log_likelihood of scope_data w.r.t. the categorical probabilities given in self.logits
-    logits = T.log_softmax(leaf.logits, axis=0)
-    log_pmf = logits[scope_data]
-    lls = T.unsqueeze(log_pmf, -1)
-    log_prob = T.index_update(log_prob, ~marg_ids, lls)
+    log_prob[~marg_ids] = leaf.distribution.log_prob(scope_data[~marg_ids])
 
     return log_prob
 
@@ -293,28 +282,16 @@ def sample(
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    marg_ids = (T.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
+    marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
-    instance_ids_mask = T.zeros(data.shape[0], device=leaf.device, dtype=T.int32())
-    instance_ids_mask = T.index_update(instance_ids_mask, sampling_ctx.instance_ids, 1)
+    instance_ids_mask = torch.zeros(data.shape[0], device=leaf.device)
+    instance_ids_mask[sampling_ctx.instance_ids] = 1
 
-    sampling_ids = T.logical_and(marg_ids, instance_ids_mask)
+    sampling_ids = marg_ids.to(leaf.device) & instance_ids_mask.bool().to(leaf.device)
 
-    n_samples = sampling_ids.sum().item()
+    data[sampling_ids, leaf.scope.query] = leaf.distribution.sample((sampling_ids.sum(),)).to(data.dtype)
 
-    # Sample from categorical distribution with probabilities self.probs
-    probs = leaf.probs
-
-    # Generate N random numbers from a uniform distribution
-    random_nums = T.rand(n_samples)
-
-    # Compute the cumulative sum of probabilities
-    cumulative_probs = T.cumsum(probs, axis=0)
-
-    # Find indices where each random number fits in the cumulative sum array
-    sampled_indices = T.searchsorted(cumulative_probs, random_nums)
-
-    return sampled_indices
+    return data
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -376,7 +353,7 @@ def maximum_likelihood_estimation(
     weights /= weights.sum() / scope_data.shape[0]
 
     # compute weighted counts
-    weighted_counts = T.bincount(
+    weighted_counts = torch.bincount(
         scope_data.reshape(-1), weights=weights.reshape(-1), minlength=len(leaf.probs)
     )
 

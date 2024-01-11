@@ -43,8 +43,8 @@ class PartitionLayer(NestedModule):
             node2, node3, node6
 
     Attributes:
-        children:
-            Non-empty list of modules that are children to the node in a directed graph.
+        inputs:
+            Non-empty list of modules that are inputs to the node in a directed graph.
         n_out:
             Integer indicating the number of outputs. Equal to the number of nodes represented by the layer.
         scopes_out:
@@ -62,7 +62,7 @@ class PartitionLayer(NestedModule):
 
         Args:
             child_partitions:
-                Non-empty list of lists of modules that are children to the layer.
+                Non-empty list of lists of modules that are inputs to the layer.
                 The output scopes for all child modules in a partition need to be qual.
                 The output scopes for different partitions need to be pair-wise disjoint.
         Raises:
@@ -109,7 +109,7 @@ class PartitionLayer(NestedModule):
             else:
                 raise ValueError("Scopes of partitions must be pair-wise disjoint.")
 
-        super().__init__(children=sum(child_partitions, []), **kwargs)
+        super().__init__(inputs=sum(child_partitions, []), **kwargs)
 
         self.n_in = sum(partition_sizes)
         self.nodes = []
@@ -119,7 +119,7 @@ class PartitionLayer(NestedModule):
             *np.split(list(range(self.n_in)), np.cumsum(partition_sizes[:-1]))
         ):
             ph = self.create_placeholder(input_ids)
-            self.nodes.append(ProductNode(children=[ph]))
+            self.nodes.append(ProductNode(inputs=[ph]))
 
         self._n_out = len(self.nodes)
         self.scope = Scope([int(x) for x in scope.query], scope.evidence)
@@ -136,7 +136,7 @@ class PartitionLayer(NestedModule):
 
     def parameters(self):
         params = []
-        for child in self.children:
+        for child in self.inputs:
             params.extend(list(child.parameters()))
         return params
 
@@ -144,7 +144,7 @@ class PartitionLayer(NestedModule):
         self.dtype = dtype
         for node in self.nodes:
             node.dtype = dtype
-        for child in self.children:
+        for child in self.inputs:
             child.to_dtype(dtype)
 
     def to_device(self, device):
@@ -153,7 +153,7 @@ class PartitionLayer(NestedModule):
         self.device = device
         for node in self.nodes:
             node.device = device
-        for child in self.children:
+        for child in self.inputs:
             child.to_device(device)
 
 
@@ -202,11 +202,11 @@ def marginalize(
     elif mutual_rvs:
         marg_partitions = []
 
-        children = layer.children
-        partitions = np.split(children, np.cumsum(layer.modules_per_partition[:-1]))
+        inputs = layer.inputs
+        partitions = np.split(inputs, np.cumsum(layer.modules_per_partition[:-1]))
 
-        for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
-            partition_children = partition_children.tolist()
+        for partition_scope, partition_inputs in zip(layer.partition_scopes, partitions):
+            partition_inputs = partition_inputs.tolist()
             partition_mutual_rvs = set(partition_scope.query).intersection(set(marg_rvs))
 
             # partition scope is being fully marginalized over
@@ -224,11 +224,11 @@ def marginalize(
                             prune=prune,
                             dispatch_ctx=dispatch_ctx,
                         )
-                        for child in partition_children
+                        for child in partition_inputs
                     ]
                 )
             else:
-                marg_partitions.append(deepcopy(partition_children))
+                marg_partitions.append(deepcopy(partition_inputs))
 
         # if product node has only one input after marginalization and pruning is true, return input directly
         if (
@@ -257,8 +257,8 @@ def updateBackend(
             Dispatch context.
     """
 
-    children = partition_layer.children
-    partitions = np.split(children, np.cumsum(partition_layer.modules_per_partition[:-1]))
+    inputs = partition_layer.inputs
+    partitions = np.split(inputs, np.cumsum(partition_layer.modules_per_partition[:-1]))
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return PartitionLayer(
@@ -282,8 +282,8 @@ def toNodeBased(
             Dispatch context.
     """
 
-    children = partition_layer.children
-    partitions = np.split(children, np.cumsum(partition_layer.modules_per_partition[:-1]))
+    inputs = partition_layer.inputs
+    partitions = np.split(inputs, np.cumsum(partition_layer.modules_per_partition[:-1]))
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return PartitionLayer(
@@ -306,8 +306,8 @@ def toLayerBased(partition_layer: PartitionLayer, dispatch_ctx: Optional[Dispatc
             Dispatch context.
     """
 
-    children = partition_layer.children
-    partitions = np.split(children, np.cumsum(partition_layer.modules_per_partition[:-1]))
+    inputs = partition_layer.inputs
+    partitions = np.split(inputs, np.cumsum(partition_layer.modules_per_partition[:-1]))
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return PartitionLayerLayer(
@@ -400,8 +400,8 @@ def em(
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    # recursively call EM on children
-    for child in layer.children:
+    # recursively call EM on inputs
+    for child in layer.inputs:
         em(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
 
@@ -445,7 +445,7 @@ def log_likelihood(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in partition_layer.children
+            for child in partition_layer.inputs
         ],
         axis=1,
     )

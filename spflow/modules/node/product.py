@@ -5,10 +5,9 @@ from typing import List, Optional, Union
 from collections.abc import Iterable
 
 import torch
+from torch import Tensor
 
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
-from spflow.utils import Tensor
-from spflow import tensor as T
 
 from spflow.modules.node.node import Node
 from spflow.modules.module import Module
@@ -23,35 +22,35 @@ from spflow.meta.data import Scope
 class ProductNode(Node):
     r"""SPN-like product node in the ``base`` backend.
 
-    Represents a product of its children over pair-wise disjoint scopes.
+    Represents a product of its inputs over pair-wise disjoint scopes.
 
     Attributes:
-        children:
-            Non-empty list of modules that are children to the node in a directed graph.
+        inputs:
+            Non-empty list of modules that are inputs to the node in a directed graph.
         n_out:
             Integer indicating the number of outputs. One for nodes.
         scopes_out:
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, children: list[Module]) -> None:
+    def __init__(self, inputs: list[Module]) -> None:
         r"""Initializes ``ProductNode`` object.
 
         Args:
-            children:
-                Non-empty list of modules that are children to the node.
+            inputs:
+                Non-empty list of modules that are inputs to the node.
                 The output scopes for all child modules need to be pair-wise disjoint.
         Raises:
             ValueError: Invalid arguments.
         """
-        super().__init__(children=children)
+        super().__init__(inputs=inputs)
 
-        if not children:
+        if not inputs:
             raise ValueError("'ProductNode' requires at least one child to be specified.")
 
         scope = Scope()
 
-        for child in children:
+        for child in inputs:
             for s in child.scopes_out:
                 if not scope.isdisjoint(s):
                     raise ValueError(f"'ProductNode' requires child scopes to be pair-wise disjoint.")
@@ -59,6 +58,9 @@ class ProductNode(Node):
                 scope = scope.join(s)
 
         self.scope = scope
+
+    def get_params(self) -> dict[str, Tensor]:
+        return {}
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -104,21 +106,21 @@ def marginalize(
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
-        marg_children = []
+        marg_inputs = []
 
         # marginalize child modules
-        for child in product_node.children:
+        for child in product_node.inputs:
             marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
-                marg_children.append(marg_child)
+                marg_inputs.append(marg_child)
 
         # if product node has only one child with a single output after marginalization and pruning is true, return child directly
-        if len(marg_children) == 1 and marg_children[0].n_out == 1 and prune:
-            return marg_children[0]
+        if len(marg_inputs) == 1 and marg_inputs[0].n_out == 1 and prune:
+            return marg_inputs[0]
         else:
-            return ProductNode(marg_children)
+            return ProductNode(marg_inputs)
     else:
         return deepcopy(product_node)
 
@@ -135,7 +137,7 @@ def updateBackend(product_node: ProductNode, dispatch_ctx: Optional[DispatchCont
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return ProductNode(
-        children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in product_node.children]
+        inputs=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in product_node.inputs]
     )
 
 
@@ -151,7 +153,7 @@ def toLayerBased(product_node: ProductNode, dispatch_ctx: Optional[DispatchConte
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return ProductNode(
-        children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in product_node.children]
+        inputs=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in product_node.inputs]
     )
 
 
@@ -167,7 +169,7 @@ def toNodeBased(product_node: ProductNode, dispatch_ctx: Optional[DispatchContex
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return ProductNode(
-        children=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in product_node.children]
+        inputs=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in product_node.inputs]
     )
 
 
@@ -204,10 +206,10 @@ def sample(
     """
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, T.shape(data)[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # sample from all child outputs
-    for child in node.children:
+    for child in node.inputs:
         data = sample(
             child,
             data,
@@ -246,8 +248,8 @@ def em(
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    # recursively call EM on children
-    for child in node.children:
+    # recursively call EM on inputs
+    for child in node.inputs:
         em(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
 
@@ -280,7 +282,7 @@ def log_likelihood(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # compute child log-likelihoods
-    child_lls = T.concatenate(
+    child_lls = torch.cat(
         [
             log_likelihood(
                 child,
@@ -288,39 +290,10 @@ def log_likelihood(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in product_node.children
+            for child in product_node.inputs
         ],
         axis=1,
     )
 
     # multiply child log-likelihoods together (sum in log-space)
-    return T.sum(child_lls, axis=1, keepdims=True)
-
-
-if __name__ == "__main__":
-    from spflow.modules.node.leaf.binomial import Binomial
-    from spflow.modules.node.sum import SumNode
-    from spflow.meta.data.scope import Scope
-    from rich.traceback import install
-
-    install()
-    P = ProductNode(
-        children=[
-            SumNode(
-                children=[Binomial(scope=Scope([0]), n=256), Binomial(scope=Scope([0]), n=256)],
-                weights=[0.1, 0.9],
-            ),
-            SumNode(
-                children=[Binomial(scope=Scope([1]), n=256), Binomial(scope=Scope([1]), n=256)],
-                weights=[0.2, 0.8],
-            ),
-        ],
-    )
-    print(P)
-
-    data = T.tensor([[1.0, 2.0], [2.0, 3.0], [3.0, 4.0]])  # .to("cuda")
-    # print(g.log_prob(data))
-    print(log_likelihood(P, data))
-    print(sample(P, num_samples=3))
-    # maximum_likelihood_estimation(g, data)
-    # print(g.mean, g.std)
+    return torch.sum(child_lls, dim=1, keepdims=True)
