@@ -1,89 +1,78 @@
-"""Contains Binomial leaf node for SPFlow in the ``torch`` backend.
+"""Contains Geometric leaf node for SPFlow in the ``torch`` backend.
 """
-from typing import Callable, List, Optional, Tuple, Union
+from spflow.modules.node.leaf.utils import apply_nan_strategy
+from spflow.modules.node.leaf_node import LeafNode
+from typing import List, Optional, Tuple
 
+import numpy as np
+import torch
+import torch.distributions as D
+from torch.nn.parameter import Parameter
 
 from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.feature_types import FeatureTypes
+from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.meta.dispatch.sampling_context import (
-    SamplingContext,
-    init_default_sampling_context,
-)
-from spflow.modules.node.leaf_node import LeafNode
-from spflow.modules.node.leaf.utils import apply_nan_strategy
 from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
-from torch import nn, Tensor
+
+
+from typing import Callable, Optional, Union
+
 import torch
+from torch import nn, Tensor
+
+from spflow.meta.dispatch.dispatch import dispatch
+from spflow.meta.dispatch.dispatch_context import (
+    DispatchContext,
+    init_default_dispatch_context,
+)
 
 
-class Binomial(LeafNode):
-    r"""(Univariate) Binomial distribution leaf node in the ``torch`` backend.
+class Geometric(LeafNode):
+    r"""(Univariate) Geometric distribution leaf node in the ``torch`` backend.
 
-    Represents an univariate Binomial distribution, with the following probability mass function (PMF):
+    Represents an univariate Geometric distribution, with the following probability mass function (PMF):
 
     .. math::
 
-        \text{PMF}(k) = \binom{n}{k}p^k(1-p)^{n-k}
+        \text{PMF}(k) =  p(1-p)^{k-1}
 
     where
-        - :math:`p` is the success probability of each trial in :math:`[0,1]`
-        - :math:`n` is the number of total trials
-        - :math:`k` is the number of successes
-        - :math:`\binom{n}{k}` is the binomial coefficient (n choose k)
+        - :math:`k` is the number of trials
+        - :math:`p` is the success probability of each trial
 
-    Internally :math:`p` is represented as an unbounded parameter that is projected onto the bounded range :math:`[0,1]` for representing the actual success probability.
+    Internally :math:`p` is represented as an unbounded parameter that is projected onto the bounded range :math:`(0,1]` for representing the actual success probability.
 
     Attributes:
-        n:
-            Scalar PyTorch tensor representing the number of i.i.d. Bernoulli trials (greater or equal to 0).
         p_aux:
             Unbounded scalar PyTorch parameter that is projected to yield the actual success probability.
         p:
-            Scalar PyTorch tensor representing the success probability of the Bernoulli distribution (projected from ``p_aux``).
+            Scalar PyTorch tensor representing the success probability in the range :math:`(0,1]` (projected from ``p_aux``).
     """
 
-    def __init__(self, scope: Scope, n: int, p: float = 0.5) -> None:
-        r"""Initializes ``Binomial`` leaf node.
+    def __init__(self, scope: Scope, p: float = 0.5) -> None:
+        r"""Initializes ``Geometric`` leaf node.
 
         Args:
             scope:
                 Scope object specifying the scope of the distribution.
-            n:
-                Integer representing the number of i.i.d. Bernoulli trials (greater or equal to 0).
             p:
-                Floating point value representing the success probability of each trial between zero and one.
+                Floating points representing the probability of success in the range :math:`(0,1]`.
                 Defaults to 0.5.
         """
-        super().__init__(scope=scope)
         if len(scope.query) != 1:
-            raise ValueError(f"Query scope size for 'Binomial' should be 1, but was {len(scope.query)}.")
+            raise ValueError(f"Query scope size for 'Geometric' should be 1, but was {len(scope.query)}.")
         if len(scope.evidence) != 0:
-            raise ValueError(f"Evidence scope for 'Binomial' should be empty, but was {scope.evidence}.")
-        if n < 1:
-            raise ValueError(f"Value of 'n' for 'Binomial' must be greater than 0, but was: {n}")
+            raise ValueError(f"Evidence scope for 'Geometric' should be empty, but was {scope.evidence}.")
 
-        if isinstance(n, float):
-            if not n.is_integer():
-                raise ValueError(
-                    f"Value of 'n' for 'Binomial' must be (equal to) an integer value, but was: {n}"
-                )
-            n = torch.tensor(int(n))
-        elif isinstance(n, int):
-            n = torch.tensor(n)
-        if n < 0 or not torch.isfinite(n):
-            raise ValueError(f"Value of 'n' for 'Binomial' must to greater of equal to 0, but was: {n}")
-
-        # register number of trials n as torch buffer (not trainable)
-        self.register_buffer("n", n)
+        super().__init__(scope=scope)
 
         # register auxiliary torch parameter for the success probability p
-        self.p_aux = nn.Parameter(torch.empty(1))
+        self.p_aux = torch.nn.Parameter(torch.empty(1))
         self.p = torch.tensor(p)
 
     @property
@@ -95,17 +84,16 @@ class Binomial(LeafNode):
     @p.setter
     def p(self, p: Tensor) -> None:
         """Sets the success probability."""
-        # project parameter onto auxiliary parameter range
+        # project auxiliary parameter onto actual parameter range
         if p < 0.0 or p > 1.0 or not torch.isfinite(p):
-            raise ValueError(f"Value of 'p' for 'Binomial' must to be between 0.0 and 1.0, but was: {p}")
-
+            raise ValueError(f"Value of 'p' for 'Geometric' must to be between 0.0 and 1.0, but was: {p}")
         self.p_aux.data = proj_bounded_to_real(p, 0.0, 1.0)
 
     @classmethod
     def accepts(cls, signatures: list[FeatureContext]) -> bool:
         """Checks if a specified signature can be represented by the module.
 
-        ``Binomial`` can represent a single univariate node with ``BinomialType`` domain.
+        ``Geometric`` can represent a single univariate node with ``MetaType.Discrete`` or ``GeometricType`` domain.
 
         Returns:
             Boolean indicating whether the module can represent the specified signature (True) or not (False).
@@ -126,26 +114,29 @@ class Binomial(LeafNode):
         ):
             return False
 
-        # leaf is a discrete Binomial distribution
-        # NOTE: only accept instances of 'FeatureTypes.Binomial', otherwise required parameter 'n' is not specified. Reject 'FeatureTypes.Discrete' for the same reason.
-        if not isinstance(domains[0], FeatureTypes.Binomial):
+        # leaf is a discrete Geometric distribution
+        if not (
+            domains[0] == FeatureTypes.Discrete
+            or domains[0] == FeatureTypes.Geometric
+            or isinstance(domains[0], FeatureTypes.Geometric)
+        ):
             return False
 
         return True
 
     @classmethod
-    def from_signatures(cls, signatures: list[FeatureContext]) -> "Binomial":
+    def from_signatures(cls, signatures: list[FeatureContext]) -> "Geometric":
         """Creates an instance from a specified signature.
 
         Returns:
-            ``Binomial`` instance.
+            ``Geometric`` instance.
 
         Raises:
             Signatures not accepted by the module.
         """
         if not cls.accepts(signatures):
             raise ValueError(
-                f"'Binomial' cannot be instantiated from the following signatures: {signatures}."
+                f"'Geometric' cannot be instantiated from the following signatures: {signatures}."
             )
 
         # get single output signature
@@ -153,48 +144,64 @@ class Binomial(LeafNode):
         domain = feature_ctx.get_domains()[0]
 
         # read or initialize parameters
-        if isinstance(domain, FeatureTypes.Binomial):
-            n = domain.n
+        if domain == MetaType.Discrete:
+            p = 0.5
+        elif domain == FeatureTypes.Geometric:
+            # instantiate object
+            p = domain().p
+        elif isinstance(domain, FeatureTypes.Geometric):
             p = domain.p
         else:
             raise ValueError(
-                f"Unknown signature type {domain} for 'Binomial' that was not caught during acception checking."
+                f"Unknown signature type {domain} for 'Geometric' that was not caught during acception checking."
             )
 
-        return Binomial(feature_ctx.scope, n=n, p=p)
+        return Geometric(feature_ctx.scope, p=p)
 
     @property
-    def distribution(self) -> torch.distributions.Distribution:
-        return torch.distributions.Binomial(self.n, self.p)
+    def distribution(self) -> D.Distribution:
+        r"""Returns the PyTorch distribution represented by the leaf node.
 
-    def describe_node(self) -> str:
-        return f"N={self.n.item()}, p={self.p.item():.3f}"
+        Note, that the Geometric distribution as implemented in PyTorch uses :math:`k-1` as input.
+        Therefore values are offset by 1 if used directly.
+
+        Returns:
+            ``torch.distributions.Geometric`` instance.
+        """
+        return D.Geometric(probs=self.p)
 
 
 @dispatch(memoize=True)  # type: ignore
 def maximum_likelihood_estimation(
-    leaf: Binomial,
-    data: Tensor,
-    weights: Optional[Tensor] = None,
+    leaf: Geometric,
+    data: torch.Tensor,
+    weights: Optional[torch.Tensor] = None,
     bias_correction: bool = True,
     nan_strategy: Optional[Union[str, Callable]] = None,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> None:
-    r"""Maximum (weighted) likelihood estimation (MLE) of ``Binomial`` node parameters in the ``torch`` backend.
+    r"""Maximum (weighted) likelihood estimation (MLE) of ``Geometric`` node parameters in the ``torch`` backend.
 
-    Estimates the success probability :math:`p` of a Binomial distribution from data, as follows:
+    Estimates the success probability :math:`p` of a Gaussian distribution from data, as follows:
 
     .. math::
 
-        p^{\*}=\frac{1}{n\sum_{i=1}^N w_i}\sum_{i=1}^{N}w_ix_i
+        p^{\*}=\begin{cases} \frac{1}{\sum_{i=1}^N w_i}\sum_{i=1}^{N}w_ix_i & \text{if } \sum_{i=1}^Nw_ix_i\ne0\\
+                             0 & \text{if } \sum_{i=1}^Nw_ix_i=0 \end{cases}
 
-    where
+    or
+
+    .. math::
+
+        p^{\*}=\begin{cases} \frac{1}{(\sum_{i=1}^N w_i)-1}\sum_{i=1}^{N}w_ix_i & \text{if } \sum_{i=1}^Nw_ix_i\ne0\\
+                             0 & \text{if } \sum_{i=1}^Nw_ix_i=0 \end{cases}
+
+    if bias correction is used, where
         - :math:`N` is the number of samples in the data set
         - :math:`x_i` is the data of the relevant scope for the `i`-th sample of the data set
         - :math:`w_i` is the weight for the `i`-th sample of the data set
 
-    The number of i.i.d. Bernoulli trials is fixed and will not be estimated.
     Weights are normalized to sum up to :math:`N`.
 
     Args:
@@ -209,7 +216,6 @@ def maximum_likelihood_estimation(
             Defaults to None in which case all weights are initialized to ones.
         bias_corrections:
             Boolen indicating whether or not to correct possible biases.
-            Has no effect for ``Binomial`` nodes.
             Defaults to True.
         nan_strategy:
             Optional string or callable specifying how to handle missing data.
@@ -231,17 +237,21 @@ def maximum_likelihood_estimation(
     # select relevant data for scope
     scope_data = data[:, leaf.scope.query]
 
-    # handle nans
+    # Apply NaN strategy
     scope_data, weights = apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support)
 
-    # total (weighted) number of instances times number of trials per instance
-    n_total = weights.sum() * leaf.n
+    # total number of instances
+    n_total = weights.sum()
 
-    # count (weighted) number of total successes
-    n_success = (weights * scope_data).sum()
+    # total number of trials in data
+    scope_data = scope_data + 1  # Shift by one since torch.distributions.Geometric starts counting at 0
+    n_trials = (weights * scope_data).sum()
 
-    # estimate (weighted) success probability
-    p_est = n_success / n_total
+    # avoid division by zero
+    p_est = 1e-8 if n_trials == 0 else n_total / n_trials
+
+    if bias_correction:
+        p_est = p_est - p_est * (1 - p_est) / n_total
 
     # edge case: if prob. 1 (or 0), set to smaller (or larger) value
     if torch.isclose(p_est, torch.tensor(0.0)):
@@ -250,4 +260,4 @@ def maximum_likelihood_estimation(
         p_est = torch.tensor(1 - 1e-8)
 
     # set parameters of leaf node
-    leaf.p_aux.data = proj_bounded_to_real(p_est, 0.0, 1.0)
+    leaf.p = p_est

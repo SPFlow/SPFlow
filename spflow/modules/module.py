@@ -109,6 +109,7 @@ class Module(nn.Module, ABC):
     def forward(
         self, data: Tensor, check_support: bool = True, dispatch_ctx: Optional[DispatchContext] = None
     ):
+        """Forward pass is simply the log-likelihood function."""
         return log_likelihood(self, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
 

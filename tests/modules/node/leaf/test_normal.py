@@ -9,11 +9,11 @@ from pytest import raises
 
 from spflow import maximum_likelihood_estimation, sample
 from spflow.meta.data import Scope
-from spflow.modules.node.leaf.gaussian import Gaussian
+from spflow.modules.node.leaf.normal import Normal
 
 
 def make_leaf(mean=0.0, std=1.0):
-    return Gaussian(scope=Scope([0]), mean=mean, std=std)
+    return Normal(scope=Scope([0]), mean=mean, std=std)
 
 
 def make_data(n=2, p=0.5):
@@ -37,7 +37,7 @@ def test_maximum_likelihood_estimation(bias_correction):
     data = make_data()
     maximum_likelihood_estimation(leaf, data, bias_correction=bias_correction)
     assert torch.isclose(leaf.mean, data.mean(), atol=1e-2)
-    assert torch.isclose(leaf.std, data.std(correction=bias_correction), atol=1e-2)
+    assert torch.isclose(leaf.std, data.std(unbiased=bias_correction), atol=1e-2)
 
 
 def test_constructor():

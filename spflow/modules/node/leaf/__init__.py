@@ -1,3 +1,3 @@
-from .gaussian import Gaussian
+from .normal import Normal
 from .binomial import Binomial
 from .bernoulli import Bernoulli

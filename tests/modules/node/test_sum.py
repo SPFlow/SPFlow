@@ -1,7 +1,7 @@
 import unittest
 
 import pytest
-from spflow.modules.node.leaf import Gaussian
+from spflow.modules.node.leaf.normal import Normal
 from spflow.meta.data import Scope
 from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
@@ -18,7 +18,7 @@ def make_sum(num_inputs=2, weights=None, inputs=None, scope=0):
 
 
 def make_leaf(mean=0.0, std=1.0, scope=0):
-    return Gaussian(scope=Scope([scope]), mean=mean, std=std)
+    return Normal(scope=Scope([scope]), mean=mean, std=std)
 
 
 def make_data(mean=0.0, std=1.0, num_samples=10, dim=2):
@@ -69,14 +69,14 @@ def test_marginalize(prune):
         inputs=[
             ProductNode(
                 inputs=[
-                    Gaussian(scope=Scope([0]), mean=0.0, std=1.0),
-                    Gaussian(scope=Scope([1]), mean=0.0, std=1.0),
+                    Normal(scope=Scope([0]), mean=0.0, std=1.0),
+                    Normal(scope=Scope([1]), mean=0.0, std=1.0),
                 ]
             ),
             ProductNode(
                 inputs=[
-                    Gaussian(scope=Scope([0]), mean=0.0, std=1.0),
-                    Gaussian(scope=Scope([1]), mean=0.0, std=1.0),
+                    Normal(scope=Scope([0]), mean=0.0, std=1.0),
+                    Normal(scope=Scope([1]), mean=0.0, std=1.0),
                 ]
             ),
         ]
@@ -89,18 +89,18 @@ def test_marginalize(prune):
     assert marginalized_sum_node.scope.query == [1]
 
     if prune:
-        # If pruning, Gaussian should be returned
+        # If pruning, Normal should be returned
         assert isinstance(marginalized_sum_node, SumNode)
         assert len(marginalized_sum_node.inputs) == 2
-        assert isinstance(marginalized_sum_node.inputs[0], Gaussian)
-        assert isinstance(marginalized_sum_node.inputs[1], Gaussian)
+        assert isinstance(marginalized_sum_node.inputs[0], Normal)
+        assert isinstance(marginalized_sum_node.inputs[1], Normal)
     else:
         # Else ProductNode should be returned, with single child
         assert isinstance(marginalized_sum_node, SumNode)
         assert isinstance(marginalized_sum_node.inputs[0], ProductNode)
         assert isinstance(marginalized_sum_node.inputs[1], ProductNode)
-        assert isinstance(marginalized_sum_node.inputs[0].inputs[0], Gaussian)
-        assert isinstance(marginalized_sum_node.inputs[1].inputs[0], Gaussian)
+        assert isinstance(marginalized_sum_node.inputs[0].inputs[0], Normal)
+        assert isinstance(marginalized_sum_node.inputs[1].inputs[0], Normal)
         assert len(marginalized_sum_node.inputs[0].inputs) == 1
         assert len(marginalized_sum_node.inputs[1].inputs) == 1
 
