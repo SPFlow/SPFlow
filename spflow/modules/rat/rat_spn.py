@@ -72,7 +72,7 @@ class RatSPN(Module):
         Raises:
             ValueError: Invalid arguments.
         """
-        super().__init__(children=[])
+        super().__init__(inputs=[])
         self.n_root_nodes = n_root_nodes
         self.n_region_nodes = n_region_nodes
         self.n_leaf_nodes = n_leaf_nodes
@@ -119,11 +119,11 @@ class RatSPN(Module):
         def convert_region(region: Region, n_nodes: int) -> Union[SumLayer, HadamardLayer, Module]:
             # non-leaf region
             if region.partitions:
-                children = [convert_partition(partition) for partition in region.partitions]
+                inputs = [convert_partition(partition) for partition in region.partitions]
                 sum_layer = (
-                    CondSumLayer(children=children, n_nodes=n_nodes)
+                    CondSumLayer(inputs=inputs, n_nodes=n_nodes)
                     if region.scope.is_conditional()
-                    else SumLayer(children=children, n_nodes=n_nodes)
+                    else SumLayer(inputs=inputs, n_nodes=n_nodes)
                 )
                 return sum_layer
             # leaf region
@@ -152,9 +152,9 @@ class RatSPN(Module):
         if region_graph.root_region is not None:
             self.root_region = convert_region(region_graph.root_region, n_nodes=self.n_root_nodes)
             self.root_node = (
-                CondSumNode(children=[self.root_region])
+                CondSumNode(inputs=[self.root_region])
                 if region_graph.scope.is_conditional()
-                else SumNode(children=[self.root_region])
+                else SumNode(inputs=[self.root_region])
             )
         else:
             self.root_region = None

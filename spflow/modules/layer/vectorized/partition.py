@@ -39,8 +39,8 @@ class PartitionLayer(Module):
             node2, node3, node6
 
     Methods:
-        children():
-            Iterator over all modules that are children to the module in a directed graph.
+        inputs():
+            Iterator over all modules that are inputs to the module in a directed graph.
 
     Attributes:
         n_out:
@@ -58,7 +58,7 @@ class PartitionLayer(Module):
 
         Args:
             child_partitions:
-                Non-empty list of lists of modules that are children to the layer.
+                Non-empty list of lists of modules that are inputs to the layer.
                 The output scopes for all child modules in a partition need to be qual.
                 The output scopes for different partitions need to be pair-wise disjoint.
         Raises:
@@ -105,7 +105,7 @@ class PartitionLayer(Module):
             else:
                 raise ValueError("Scopes of partitions must be pair-wise disjoint.")
 
-        super().__init__(children=sum(child_partitions, []), **kwargs)
+        super().__init__(inputs=sum(child_partitions, []), **kwargs)
 
         self.n_in = sum(self.partition_sizes)
         if self.backend == "pytorch":
@@ -126,7 +126,7 @@ class PartitionLayer(Module):
 
     def parameters(self):
         params = []
-        for child in self.children:
+        for child in self.inputs:
             params.extend(list(child.parameters()))
         return params
 
@@ -176,11 +176,11 @@ def marginalize(
     elif mutual_rvs:
         marg_partitions = []
 
-        children = list(layer.children)
-        partitions = np.split(children, np.cumsum(layer.modules_per_partition[:-1]))
+        inputs = list(layer.inputs)
+        partitions = np.split(inputs, np.cumsum(layer.modules_per_partition[:-1]))
 
-        for partition_scope, partition_children in zip(layer.partition_scopes, partitions):
-            partition_children = T.tolist(partition_children)
+        for partition_scope, partition_inputs in zip(layer.partition_scopes, partitions):
+            partition_inputs = T.tolist(partition_inputs)
             partition_mutual_rvs = set(partition_scope.query).intersection(set(marg_rvs))
 
             # partition scope is being fully marginalized over
@@ -198,11 +198,11 @@ def marginalize(
                             prune=prune,
                             dispatch_ctx=dispatch_ctx,
                         )
-                        for child in partition_children
+                        for child in partition_inputs
                     ]
                 )
             else:
-                marg_partitions.append(deepcopy(partition_children))
+                marg_partitions.append(deepcopy(partition_inputs))
 
         # if product node has only one child after marginalization and pruning is true, return child directly
         if len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and prune:
@@ -226,8 +226,8 @@ def updateBackend(
             Dispatch context.
     """
 
-    children = partition_layer.children
-    partitions = np.split(children, np.cumsum(partition_layer.modules_per_partition[:-1]))
+    inputs = partition_layer.inputs
+    partitions = np.split(inputs, np.cumsum(partition_layer.modules_per_partition[:-1]))
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return PartitionLayer(
@@ -251,8 +251,8 @@ def toNodeBased(partition_layer: PartitionLayer, dispatch_ctx: Optional[Dispatch
             Dispatch context.
     """
 
-    children = partition_layer.children
-    partitions = np.split(children, np.cumsum(partition_layer.modules_per_partition[:-1]))
+    inputs = partition_layer.inputs
+    partitions = np.split(inputs, np.cumsum(partition_layer.modules_per_partition[:-1]))
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return PartitionLayerNode(
@@ -275,8 +275,8 @@ def toLayerBased(
             Dispatch context.
     """
 
-    children = partition_layer.children
-    partitions = np.split(children, np.cumsum(partition_layer.modules_per_partition[:-1]))
+    inputs = partition_layer.inputs
+    partitions = np.split(inputs, np.cumsum(partition_layer.modules_per_partition[:-1]))
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return PartitionLayer(
@@ -337,7 +337,7 @@ def sample(
     )
     input_ids_per_node = T.cartesian_product(*partition_indices)
 
-    children = partition_layer.children
+    inputs = partition_layer.inputs
 
     # sample accoding to sampling_context
     for node_id, instances in sampling_ctx.group_output_ids(partition_layer.n_out):
@@ -351,7 +351,7 @@ def sample(
 
             # sample from partition node
             sample(
-                children[int(child_id)],
+                inputs[int(child_id)],
                 data,
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
@@ -401,7 +401,7 @@ def log_likelihood(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in partition_layer.children
+            for child in partition_layer.inputs
         ],
         axis=1,
     )
@@ -413,5 +413,5 @@ def log_likelihood(
     )
     indices = T.tensor(T.cartesian_product(*partition_indices), dtype=int)
 
-    # multiply children (sum in log-space)
+    # multiply inputs (sum in log-space)
     return T.sum(child_lls[:, indices], axis=-1)

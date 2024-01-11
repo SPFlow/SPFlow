@@ -13,6 +13,9 @@ from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 from typing import Callable, Optional, Union
 
+import torch
+from torch import nn
+
 
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -39,44 +42,29 @@ class Gaussian(LeafNode):
             raise ValueError(f"Query scope size for 'Gaussian' should be 1, but was: {len(scope.query)}.")
         if len(scope.evidence) != 0:
             raise ValueError(f"Evidence scope for 'Gaussian' should be empty, but was {scope.evidence}.")
+        if std <= 0.0:
+            raise ValueError(f"Value for 'std' must be greater than 0.0, but was: {std}")
 
         super().__init__(scope=scope)
 
-        self._mean = T.requires_grad_(T.zeros(1, device=self.device))
-        self._log_std = T.requires_grad_(T.zeros(1, device=self.device))
-
-        self.mean = mean
-        self.std = std
+        self.mean = nn.Parameter(torch.tensor(mean))
+        self.log_std = nn.Parameter(torch.empty(1))
+        self.std = torch.tensor(std)
 
     @property
     def std(self) -> Tensor:
         """Returns the standard deviation."""
-        # project auxiliary parameter onto actual parameter range
-        return proj_real_to_bounded(self._log_std, lb=0.0)  # type: ignore
+        return self.log_std.exp()
 
     @std.setter
     def std(self, std) -> Tensor:
         """Set the standard deviation."""
         # project auxiliary parameter onto actual parameter range
-        if std <= 0.0:
-            raise ValueError(f"Value for 'std' must be greater than 0.0, but was: {std}")
-        if not T.isfinite(std):
+        if not torch.isfinite(std):
             raise ValueError(f"Values for 'std' must be finite, but was: {std}")
 
-        log_std = proj_bounded_to_real(T.tensor(std), lb=0.0)
-        self._log_std = T.set_tensor_data(self._log_std, log_std)  # type: ignore
-
-    @property
-    def mean(self) -> Tensor:
-        """Returns the mean."""
-        return self._mean
-
-    @mean.setter
-    def mean(self, mean) -> Tensor:
-        """Set the mean."""
-        if not T.isfinite(mean):
-            raise ValueError(f"Values for 'mean' must be finite, but was: {mean}")
-        self._mean = T.set_tensor_data(self._mean, mean)
+        log_std = std.log()
+        self.log_std.data = log_std
 
     @classmethod
     def accepts(cls, signatures: list[FeatureContext]) -> bool:
@@ -148,8 +136,9 @@ class Gaussian(LeafNode):
 
         return Gaussian(feature_ctx.scope, mean=mean, std=std)
 
-    def parameters(self) -> list[Tensor]:
-        return [self.mean, self._log_std]
+    @property
+    def distribution(self) -> torch.distributions.Distribution:
+        return torch.distributions.Normal(self.mean, self.std)
 
     def check_support(self, data: Tensor, is_scope_data: bool = False) -> Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -186,20 +175,15 @@ class Gaussian(LeafNode):
             )
 
         # nan entries (regarded as valid)
-        nan_mask = T.isnan(scope_data)
-        inf_mask = T.isinf(scope_data)
-        # TODO: Add support checks here! Previously, we used the pytorch distribution support checks as follows
-        #       valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
-        #       Now we need our own support checks.
-        invalid_support_mask = T.zeros(scope_data.shape[0], 1, dtype=bool, device=self.device)
+        nan_mask = torch.isnan(scope_data)
 
-        # Valid is everything that is not nan, inf or outside of the support
-        return (~nan_mask) & (~inf_mask) & (~invalid_support_mask)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
+        valid[~nan_mask] = self.distribution.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
-    def to(self, dtype=None, device=None):
-        super().to(dtype=dtype, device=device)
-        self.mean = T.to(self.mean, dtype=dtype, device=device)
-        self.std = T.to(self.std, dtype=dtype, device=device)
+        # check for infinite values
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+
+        return valid
 
     def describe_node(self) -> str:
         return f"mean={self.mean.item():.3f}, std={self.std.item():.3f}"
@@ -248,22 +232,25 @@ def log_likelihood(
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
+    batch_size: int = data.shape[0]
+
     # get information relevant for the scope
     scope_data = data[:, leaf.scope.query]
 
-    # initialize zeros tensor (number of output values matches batch_size)
-    log_prob: Tensor = T.zeros(data.shape[0], 1, dtype=data.dtype, device=leaf.device)
+    log_prob = torch.empty_like(scope_data)
 
     # ----- marginalization -----
-    # Get marginalization ids, indicated by nans in the tensor
-    # NOTE: we don't need to set these to zero (1 in non-logspace) since log_prob is initialized with zeros
-    marg_ids = T.sum(T.isnan(scope_data), axis=1) == len(leaf.scope.query)
+
+    marg_ids = torch.isnan(scope_data).sum(dim=1) == len(leaf.scope.query)
+
+    # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
+    log_prob[marg_ids] = 0.0
 
     # ----- log probabilities -----
 
     if check_support:
         # create mask based on distribution's support
-        valid_ids = leaf.check_support(scope_data[~marg_ids], is_scope_data=True)
+        valid_ids = leaf.check_support(scope_data[~marg_ids], is_scope_data=True).squeeze(1)
 
         if not all(valid_ids):
             raise ValueError(
@@ -271,11 +258,7 @@ def log_likelihood(
             )
 
     # compute probabilities for values inside distribution support
-    scope_data = scope_data[~marg_ids]
-    variance = leaf.std**2
-    mean = leaf.mean
-    lls = -0.5 * T.log(2 * T.PI * variance) - (scope_data - mean) ** 2 / (2 * variance)
-    log_prob = T.index_update(log_prob, ~marg_ids, lls)
+    log_prob[~marg_ids] = leaf.distribution.log_prob(scope_data[~marg_ids])
 
     return log_prob
 
@@ -316,21 +299,14 @@ def sample(
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    scope_data = data[:, leaf.scope.query]
-    nan_mask = T.isnan(scope_data)
-    marg_ids = T.squeeze(T.to(nan_mask, T.int32()) == len(leaf.scope.query), axis=1)
+    marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
-    instance_ids_mask = T.zeros(data.shape[0], device=leaf.device, dtype=T.int32())
-    instance_ids_mask = T.index_update(instance_ids_mask, sampling_ctx.instance_ids, 1)
+    instance_ids_mask = torch.zeros(data.shape[0], device=leaf.device)
+    instance_ids_mask[sampling_ctx.instance_ids] = 1
 
-    sampling_ids = T.logical_and(marg_ids, T.to(instance_ids_mask, dtype=bool))
-    # Translate sampling ids to indices in the data tensor
-    n_samples = T.sum(sampling_ids)
-    samples = T.randn(n_samples, dtype=data.dtype, device=leaf.device) * leaf.std + leaf.mean
+    sampling_ids = marg_ids.to(leaf.device) & instance_ids_mask.bool().to(leaf.device)
 
-    data = T.assign_at_index_2(
-        destination=data, index_1=sampling_ids, index_2=leaf.scope.query, values=samples
-    )
+    data[sampling_ids, leaf.scope.query] = leaf.distribution.sample((sampling_ids.sum(),)).to(leaf.device)
 
     return data
 
@@ -400,29 +376,31 @@ def maximum_likelihood_estimation(
     # select relevant data for scope
     scope_data = data[:, leaf.scope.query]
 
-    # handle nans
+    # apply NaN strategy
     scope_data, weights = apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support)
 
     # normalize weights to sum to n_samples
-    weights /= T.sum(weights) / scope_data.shape[0]
+    weights /= weights.sum() / scope_data.shape[0]
 
     # total (weighted) number of instances
-    n_total = T.sum(weights)
+    n_total = weights.sum()
 
-    # calculate mean from data
-    mean_est = T.sum(weights * scope_data) / n_total
+    # calculate mean and standard deviation from data
+    mean_est = (weights * scope_data).sum() / n_total
+    std_est = (weights * (scope_data - mean_est) ** 2).sum()
 
-    # calculate std from data
-    bias_correction_term = 1 if bias_correction else 0
-    std_est = T.sqrt(T.sum(weights * T.pow(scope_data - mean_est, 2)) / (n_total - bias_correction_term))
+    if bias_correction:
+        std_est = torch.sqrt((weights * torch.pow(scope_data - mean_est, 2)).sum() / (n_total - 1))
+    else:
+        std_est = torch.sqrt((weights * torch.pow(scope_data - mean_est, 2)).sum() / n_total)
 
     # edge case (if all values are the same, not enough samples or very close to each other)
-    if T.isclose(std_est, 0.0) or T.isnan(std_est):
-        std_est = T.tensor(1e-8)
+    if torch.isclose(std_est, torch.tensor(0.0)) or torch.isnan(std_est):
+        std_est = torch.tensor(1e-8)
 
     # set parameters of leaf node
-    leaf.mean = mean_est
-    leaf.std = std_est
+    leaf.mean.data = mean_est
+    leaf.log_std.data = std_est.log()
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -447,10 +425,6 @@ def em(
             Optional dispatch context.
     """
 
-    assert (
-        leaf.backend == "pytorch"
-    ), f"EM is only supported in PyTorch but was called for backend '{leaf.backend}'."
-
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -463,7 +437,7 @@ def em(
         expectations = dispatch_ctx.cache["log_likelihood"][leaf].grad
         # normalize expectations for better numerical stability
         assert expectations is not None  # TODO remove assert
-        expectations /= T.sum(expectations)
+        expectations /= expectations.sum()
 
         # ----- maximization step -----
 
@@ -478,15 +452,3 @@ def em(
         )
 
     # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients
-
-
-if __name__ == "__main__":
-    g = Gaussian(scope=Scope([0]), mean=0.0, std=1.0)
-    # g.to_device("cuda")
-    print(g)
-
-    data = T.tensor([[1.0], [2.0], [3.0]])  # .to("cuda")
-    print(log_likelihood(g, data))
-    print(sample(g, num_samples=3))
-    maximum_likelihood_estimation(g, data)
-    print(g.mean, g.std)

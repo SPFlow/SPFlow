@@ -20,13 +20,13 @@ from spflow.meta.dispatch.dispatch_context import (
 
 
 class ProductLayer(NestedModule):
-    r"""Layer representing multiple SPN-like product nodes over all children in the ``base`` backend.
+    r"""Layer representing multiple SPN-like product nodes over all inputs in the ``base`` backend.
 
-    Represents multiple products of its children over pair-wise disjoint scopes.
+    Represents multiple products of its inputs over pair-wise disjoint scopes.
 
     Attributes:
-        children:
-            Non-empty list of modules that are children to the node in a directed graph.
+        inputs:
+            Non-empty list of modules that are inputs to the node in a directed graph.
         n_out:
             Integer indicating the number of outputs. Equal to the number of nodes represented by the layer.
         scopes_out:
@@ -35,14 +35,14 @@ class ProductLayer(NestedModule):
             List of ``ProductNode`` objects for the nodes in this layer.
     """
 
-    def __init__(self, n_nodes: int, children: list[Module], **kwargs) -> None:
+    def __init__(self, n_nodes: int, inputs: list[Module], **kwargs) -> None:
         r"""Initializes ``ProductLayer`` object.
 
         Args:
             n_nodes:
                 Integer specifying the number of nodes the layer should represent.
-            children:
-                Non-empty list of modules that are children to the layer.
+            inputs:
+                Non-empty list of modules that are inputs to the layer.
                 The output scopes for all child modules need to be pair-wise disjoint.
         Raises:
             ValueError: Invalid arguments.
@@ -52,15 +52,15 @@ class ProductLayer(NestedModule):
 
         self._n_out = n_nodes
 
-        if len(children) == 0:
+        if len(inputs) == 0:
             raise ValueError("'ProductLayer' requires at least one child to be specified.")
 
-        super().__init__(children=children, **kwargs)
+        super().__init__(inputs=inputs, **kwargs)
 
         # create input placeholder
-        ph = self.create_placeholder(list(range(sum(child.n_out for child in self.children))))
+        ph = self.create_placeholder(list(range(sum(child.n_out for child in self.inputs))))
         # create prodcut nodes
-        self.nodes = [ProductNode(children=[ph]) for _ in range(n_nodes)]
+        self.nodes = [ProductNode(inputs=[ph]) for _ in range(n_nodes)]
 
         self.scope = Scope([int(x) for x in self.nodes[0].scope.query], self.nodes[0].scope.evidence)
 
@@ -76,7 +76,7 @@ class ProductLayer(NestedModule):
 
     def parameters(self):
         params = []
-        for child in self.children:
+        for child in self.inputs:
             params.extend(list(child.parameters()))
         return params
 
@@ -84,7 +84,7 @@ class ProductLayer(NestedModule):
         self.dtype = dtype
         for node in self.nodes:
             node.dtype = dtype
-        for child in self.children:
+        for child in self.inputs:
             child.to_dtype(dtype)
 
     def to_device(self, device):
@@ -93,7 +93,7 @@ class ProductLayer(NestedModule):
         self.device = device
         for node in self.nodes:
             node.device = device
-        for child in self.children:
+        for child in self.inputs:
             child.to_device(device)
 
 
@@ -140,21 +140,21 @@ def marginalize(
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
-        marg_children = []
+        marg_inputs = []
 
         # marginalize child modules
-        for child in layer.children:
+        for child in layer.inputs:
             marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
-                marg_children.append(marg_child)
+                marg_inputs.append(marg_child)
 
         # if product node has only one child with a single ouput after marginalization and pruning is true, return child directly
-        if len(marg_children) == 1 and marg_children[0].n_out == 1 and prune:
-            return marg_children[0]
+        if len(marg_inputs) == 1 and marg_inputs[0].n_out == 1 and prune:
+            return marg_inputs[0]
         else:
-            return ProductLayer(n_nodes=layer.n_out, children=marg_children)
+            return ProductLayer(n_nodes=layer.n_out, inputs=marg_inputs)
     else:
         return deepcopy(layer)
 
@@ -174,7 +174,7 @@ def updateBackend(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return ProductLayer(
         n_nodes=product_layer.n_out,
-        children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children],
+        inputs=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in product_layer.inputs],
     )
 
 
@@ -191,7 +191,7 @@ def toNodeBased(product_layer: ProductLayer, dispatch_ctx: Optional[DispatchCont
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return ProductLayer(
         n_nodes=product_layer.n_out,
-        children=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children],
+        inputs=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in product_layer.inputs],
     )
 
 
@@ -210,7 +210,7 @@ def toLayerBased(product_layer: ProductLayer, dispatch_ctx: Optional[DispatchCon
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return ProductLayerLayer(
         n_nodes=product_layer.n_out,
-        children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in product_layer.children],
+        inputs=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in product_layer.inputs],
     )
 
 
@@ -257,8 +257,8 @@ def sample(
         if len(node_ids) != 1 or (len(node_ids) == 0 and product_layer.n_out != 1):
             raise ValueError("Too many output ids specified for outputs over same scope.")
 
-    # all product nodes are over (all) children
-    for child in product_layer.children:
+    # all product nodes are over (all) inputs
+    for child in product_layer.inputs:
         sample(
             child,
             data,
@@ -297,8 +297,8 @@ def em(
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    # recursively call EM on children
-    for child in layer.children:
+    # recursively call EM on inputs
+    for child in layer.inputs:
         em(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
 
@@ -342,7 +342,7 @@ def log_likelihood(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in product_layer.children
+            for child in product_layer.inputs
         ],
         axis=1,
     )

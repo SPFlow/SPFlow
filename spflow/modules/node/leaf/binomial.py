@@ -18,9 +18,10 @@ from spflow.meta.dispatch.sampling_context import (
 )
 from spflow.modules.node.leaf_node import LeafNode
 from spflow.modules.node.leaf.utils import apply_nan_strategy
-from spflow.utils import Tensor
-from spflow import tensor as T
 from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
+from torch import Tensor
+from torch import nn
+import torch
 
 
 class Binomial(LeafNode):
@@ -61,6 +62,7 @@ class Binomial(LeafNode):
                 Floating point value representing the success probability of each trial between zero and one.
                 Defaults to 0.5.
         """
+        super().__init__(scope=scope)
         if len(scope.query) != 1:
             raise ValueError(f"Query scope size for 'Binomial' should be 1, but was {len(scope.query)}.")
         if len(scope.evidence) != 0:
@@ -68,60 +70,38 @@ class Binomial(LeafNode):
         if n < 1:
             raise ValueError(f"Value of 'n' for 'Binomial' must be greater than 0, but was: {n}")
 
-        super().__init__(scope=scope)
-
-        # register number of trials n as torch buffer (not trainable)
-        self._n = T.tensor(n, dtype=T.int32(), device=self.device)
-        self.n = T.tensor(n, dtype=T.int32(), device=self.device)
-
-        # register auxiliary torch parameter for the success probability p
-        self.log_p = T.requires_grad_(T.zeros(1, device=self.device))  # type: ignore
-        self.p = p
-
-    @property
-    def p(self) -> Tensor:
-        """Returns the success proability."""
-        # project auxiliary parameter onto actual parameter range
-        # return self.p_aux
-        return proj_real_to_bounded(self.log_p, lb=0.0, ub=1.0)  # type: ignore
-
-    @property
-    def n(self) -> Tensor:
-        return self._n
-
-    @n.setter
-    def n(self, n: int):
         if isinstance(n, float):
             if not n.is_integer():
                 raise ValueError(
                     f"Value of 'n' for 'Binomial' must be (equal to) an integer value, but was: {n}"
                 )
-            n = T.tensor(int(n))
+            n = torch.tensor(int(n))
         elif isinstance(n, int):
-            n = T.tensor(n)
-        if n < 0 or not T.isfinite(n):
+            n = torch.tensor(n)
+        if n < 0 or not torch.isfinite(n):
             raise ValueError(f"Value of 'n' for 'Binomial' must to greater of equal to 0, but was: {n}")
 
-        self._n = T.tensor(n, dtype=T.int32(), device=self.device)
+        # register number of trials n as torch buffer (not trainable)
+        self.register_buffer("n", n)
+
+        # register auxiliary torch parameter for the success probability p
+        self.p_aux = nn.Parameter(torch.empty(1))
+        self.p = torch.tensor(p)
+
+    @property
+    def p(self) -> Tensor:
+        """Returns the success proability."""
+        # project auxiliary parameter onto actual parameter range
+        return proj_real_to_bounded(self.p_aux, 0.0, 1.0)
 
     @p.setter
-    def p(self, p: float) -> None:
-        r"""Sets the success probability.
+    def p(self, p: Tensor) -> None:
+        """Sets the success probability."""
+        # project parameter onto auxiliary parameter range
+        if p < 0.0 or p > 1.0 or not torch.isfinite(p):
+            raise ValueError(f"Value of 'p' for 'Binomial' must to be between 0.0 and 1.0, but was: {p}")
 
-        Args:
-            p:
-                Floating point representing the success probability in :math:`[0,1]`.
-
-        Raises:
-            ValueError: Invalid arguments.
-        """
-        if p < 0.0 or p > 1.0 or not T.isfinite(p):
-            raise ValueError(
-                f"Value of 'p' for 'Binomial' distribution must to be between 0.0 and 1.0, but was: {p}"
-            )
-
-        log_p = proj_bounded_to_real(T.tensor(p), lb=0.0, ub=1.0)  # type: ignore
-        self.log_p = T.set_tensor_data(self.log_p, log_p)  # type: ignore
+        self.p_aux.data = proj_bounded_to_real(p, 0.0, 1.0)
 
     @classmethod
     def accepts(cls, signatures: list[FeatureContext]) -> bool:
@@ -185,9 +165,6 @@ class Binomial(LeafNode):
 
         return Binomial(feature_ctx.scope, n=n, p=p)
 
-    def parameters(self) -> list[Tensor]:
-        return [self.log_p]
-
     def check_support(self, data: Tensor, is_scope_data: bool = False) -> Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
@@ -211,6 +188,7 @@ class Binomial(LeafNode):
         Returns:
             Two dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
+
         if is_scope_data:
             scope_data = data
         else:
@@ -223,44 +201,22 @@ class Binomial(LeafNode):
             )
 
         # nan entries (regarded as valid)
-        nan_mask = T.isnan(scope_data)
+        nan_mask = torch.isnan(scope_data)
 
-        # nan entries (regarded as valid)
-        nan_mask = T.isnan(scope_data)
-        inf_mask = T.isinf(scope_data)
-        # TODO: Add support checks here! Previously, we used the pytorch distribution support checks as follows
-        #       valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
-        #       Now we need our own support checks.
-        invalid_support_mask = T.zeros(scope_data.shape[0], 1, dtype=bool, device=self.device)
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
+        valid[~nan_mask] = self.distribution.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
-        # Valid is everything that is not nan, inf or outside of the support
-        return (~nan_mask) & (~inf_mask) & (~invalid_support_mask)
+        # check for infinite values
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
-    def to(self, dtype=None, device=None):
-        super().to(dtype=dtype, device=device)
-        self.n = T.to(self.n, dtype=dtype, device=device)
-        self.log_p = T.to(self.log_p, dtype=dtype, device=device)
+        return valid
+
+    @property
+    def distribution(self) -> torch.distributions.Distribution:
+        return torch.distributions.Binomial(self.n, self.p)
 
     def describe_node(self) -> str:
         return f"N={self.n.item()}, p={self.p.item():.3f}"
-
-
-def _log_factorial(n):
-    max_n = T.max(n)
-    arange = (
-        T.arange(1, max_n + 1, device=T.device(n), dtype=spflow.tensor.dtype.get_default_float_dtype()) + 1
-    )
-    log_fact = T.lgamma(arange)
-    index = n - 1
-    index = T.index_update(index, index < 0, 0)
-    result = log_fact[index]  # Adjust index since Python is 0-based
-    zero_mask = n == 0
-    result = T.index_update(result, zero_mask, 0)
-    return result
-
-
-def _log_binomial_coefficient(n, k):
-    return _log_factorial(n) - (_log_factorial(k) + _log_factorial(n - k))
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -307,42 +263,34 @@ def log_likelihood(
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
+    batch_size: int = data.shape[0]
+
     # get information relevant for the scope
-    # scope_data = data[:, leaf.scope.query]
     scope_data = data[:, leaf.scope.query]
 
-    # initialize zeros tensor (number of output values matches batch_size)
-    log_prob = T.zeros(data.shape[0], 1, device=leaf.device)
+    # initialize empty tensor (number of output values matches batch_size)
+    log_prob: torch.Tensor = torch.empty(batch_size, 1).type(leaf.dtype).to(leaf.device)
 
     # ----- marginalization -----
-    # Get marginalization ids, indicated by nans in the tensor
-    # NOTE: we don't need to set these to zero (1 in non-logspace) since log_prob is initialized with zeros
-    marg_ids = T.sum(T.isnan(scope_data), axis=1) == len(leaf.scope.query)
 
-    # if all instances should be marginalized, return early
-    if T.all(marg_ids):
-        return log_prob
+    marg_ids = torch.isnan(scope_data).sum(dim=1) == len(leaf.scope.query)
+
+    # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
+    log_prob[marg_ids] = 0.0
 
     # ----- log probabilities -----
 
     if check_support:
         # create masked based on distribution's support
-        valid_ids = leaf.check_support(scope_data[~marg_ids], is_scope_data=True)
+        valid_ids = leaf.check_support(scope_data[~marg_ids], is_scope_data=True).squeeze(1)
 
         if not all(valid_ids):
             raise ValueError(
                 f"Encountered data instances that are not in the support of the Binomial distribution."
             )
 
-    # Actual binomial log_prob computation:
     # compute probabilities for values inside distribution support
-    scope_data = T.to(T.squeeze(scope_data[~marg_ids], 1), dtype=T.int64())
-    log_coef = _log_binomial_coefficient(
-        T.full((scope_data.shape[0],), leaf.n, dtype=T.int64(), device=leaf.device), scope_data
-    )
-    log_pmf = log_coef + scope_data * T.log(leaf.p) + (leaf.n - scope_data) * T.log(1 - leaf.p)
-    lls = T.unsqueeze(log_pmf, -1)
-    log_prob = T.index_update(log_prob, ~marg_ids, lls)
+    log_prob[~marg_ids] = leaf.distribution.log_prob(scope_data[~marg_ids])
 
     return log_prob
 
@@ -377,31 +325,21 @@ def sample(
         Two-dimensional PyTorch tensor containing the sampled values together with the specified evidence.
         Each row corresponds to a sample.
     """
+
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    marg_ids = (T.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
+    marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
-    instance_ids_mask = T.zeros(data.shape[0], device=leaf.device, dtype=T.int32())
-    instance_ids_mask = T.index_update(instance_ids_mask, sampling_ctx.instance_ids, 1)
+    instance_ids_mask = torch.zeros(data.shape[0], device=leaf.device)
+    instance_ids_mask[sampling_ctx.instance_ids] = 1
 
-    sampling_ids = T.logical_and(marg_ids, instance_ids_mask)
+    sampling_ids = marg_ids.to(leaf.device) & instance_ids_mask.bool().to(leaf.device)
 
-    n_samples = sampling_ids.sum().item()
-
-    # Generate random numbers between 0 and 1
-    random_numbers = T.rand(n_samples, leaf.n, device=leaf.device)
-    # Compare with probability p to determine successes
-    successes = random_numbers < leaf.p
-    # Sum the successes for each sample
-    samples = T.to(T.sum(successes, axis=1), dtype=T.float32())
-
-    data = T.assign_at_index_2(
-        destination=data, index_1=sampling_ids, index_2=leaf.scope.query, values=samples
-    )
+    data[sampling_ids, leaf.scope.query] = leaf.distribution.sample((sampling_ids.sum(),)).to(leaf.device)
 
     return data
 
@@ -473,22 +411,22 @@ def maximum_likelihood_estimation(
     weights /= weights.sum() / scope_data.shape[0]
 
     # total (weighted) number of instances times number of trials per instance
-    n_total = weights.sum() * leaf.n
+    n_total = (weights.sum() * leaf.n).type(dtype=torch.get_default_dtype())
 
     # count (weighted) number of total successes
-    n_success = (weights * scope_data).sum()
+    n_success = (weights * scope_data).sum(dtype=torch.get_default_dtype())
 
     # estimate (weighted) success probability
     p_est = n_success / n_total
 
     # edge case: if prob. 1 (or 0), set to smaller (or larger) value
-    if T.isclose(p_est, 0.0):
-        p_est = 1e-8
-    elif T.isclose(p_est, 1.0):
-        p_est = 1 - 1e-8
+    if torch.isclose(p_est, torch.tensor(0.0)):
+        p_est = torch.tensor(1e-8)
+    elif torch.isclose(p_est, torch.tensor(1.0)):
+        p_est = torch.tensor(1 - 1e-8)
 
     # set parameters of leaf node
-    leaf.p = p_est
+    leaf.p_aux.data = proj_bounded_to_real(p_est, 0.0, 1.0)
 
 
 @dispatch(memoize=True)  # type: ignore

@@ -27,13 +27,13 @@ from spflow import log_likelihood
 
 
 class CondSumLayer(Module):
-    r"""Layer representing multiple SPN-like sum nodes over all children in the ``torch`` backend.
+    r"""Layer representing multiple SPN-like sum nodes over all inputs in the ``torch`` backend.
 
-    Represents multiple convex combinations of its children over the same scope.
+    Represents multiple convex combinations of its inputs over the same scope.
 
     Methods:
-        children():
-            Iterator over all modules that are children to the module in a directed graph.
+        inputs():
+            Iterator over all modules that are inputs to the module in a directed graph.
 
     Attributes:
         cond_f:
@@ -56,7 +56,7 @@ class CondSumLayer(Module):
     def __init__(
         self,
         n_nodes: int,
-        children: list[Module],
+        inputs: list[Module],
         cond_f: Optional[Union[Callable, list[Callable]]] = None,
         **kwargs,
     ) -> None:
@@ -81,18 +81,18 @@ class CondSumLayer(Module):
         if n_nodes < 1:
             raise ValueError("Number of nodes for 'CondSumLayer' must be greater of equal to 1.")
 
-        if not children:
+        if not inputs:
             raise ValueError("'CondSumLayer' requires at least one child to be specified.")
 
-        super().__init__(children=children, **kwargs)
+        super().__init__(inputs=inputs, **kwargs)
 
         self._n_out = n_nodes
-        self.n_in = sum(child.n_out for child in self.children)
+        self.n_in = sum(child.n_out for child in self.inputs)
 
         # compute scope
         scope = None
 
-        for child in children:
+        for child in inputs:
             for s in child.scopes_out:
                 if scope is None:
                     scope = s
@@ -274,17 +274,17 @@ def marginalize(
     # node scope is being partially marginalized
     elif mutual_rvs:
         # TODO: pruning
-        marg_children = []
+        marg_inputs = []
 
         # marginalize child modules
-        for child in layer.children:
+        for child in layer.inputs:
             marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
-                marg_children.append(marg_child)
+                marg_inputs.append(marg_child)
 
-        return CondSumLayer(n_nodes=layer.n_out, children=marg_children)
+        return CondSumLayer(n_nodes=layer.n_out, inputs=marg_inputs)
     else:
         return deepcopy(layer)
 
@@ -302,7 +302,7 @@ def updateBackend(sum_layer: CondSumLayer, dispatch_ctx: Optional[DispatchContex
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondSumLayer(
         n_nodes=sum_layer.n_out,
-        children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+        inputs=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.inputs],
         cond_f=sum_layer.cond_f,
     )
 
@@ -322,7 +322,7 @@ def toNodeBased(sum_layer: CondSumLayer, dispatch_ctx: Optional[DispatchContext]
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondSumLayerNode(
         n_nodes=sum_layer.n_out,
-        children=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+        inputs=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.inputs],
         cond_f=sum_layer.cond_f,
     )
 
@@ -340,7 +340,7 @@ def toLayerBased(sum_layer: CondSumLayer, dispatch_ctx: Optional[DispatchContext
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return CondSumLayer(
         n_nodes=sum_layer.n_out,
-        children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.children],
+        inputs=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.inputs],
         cond_f=sum_layer.cond_f,
     )
 
@@ -404,12 +404,12 @@ def sample(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in sum_layer.children
+            for child in sum_layer.inputs
         ],
         axis=1,
     )
 
-    children = sum_layer.children
+    inputs = sum_layer.inputs
 
     for node_id, instances in sampling_ctx.group_output_ids(sum_layer.n_out):
         # sample branches
@@ -425,7 +425,7 @@ def sample(
 
             # sample from partition node
             sample(
-                children[int(child_id)],
+                inputs[int(child_id)],
                 data,
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
@@ -478,7 +478,7 @@ def log_likelihood(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in sum_layer.children
+            for child in sum_layer.inputs
         ],
         axis=1,
     )
