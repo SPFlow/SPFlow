@@ -21,22 +21,6 @@ try:
 except ImportError as e:
     IS_TORCH_AVAILABLE = False
 
-try:
-    import jax
-    import jax.numpy as jnp
-
-    logger.info("Jax backend loaded.")
-
-    from jax.lib import xla_bridge
-
-    _jax_platform = xla_bridge.get_backend().platform
-    logger.debug("Jax backend platform: %s", _jax_platform)
-
-    _TENSOR_TYPES.append(jnp.ndarray)
-    IS_JAX_AVAILABLE = True
-except ImportError as e:
-    IS_JAX_AVAILABLE = False
-
 # Define tensor type as union of all supported tensor types s.t. dispatch methods can be defined for all of them
 _TENSOR_TYPES = tuple(_TENSOR_TYPES)
 Tensor = Union[_TENSOR_TYPES]
@@ -62,7 +46,7 @@ class Backend(str, Enum):
 if env := os.environ.get("SPFLOW_BACKEND"):
     _BACKEND = Backend(env)
 else:
-    _BACKEND = Backend.NUMPY
+    _BACKEND = Backend.PYTORCH
 
 
 def get_backend():
@@ -83,7 +67,7 @@ def is_torch_available():
 
 def is_jax_available():
     """Check if jax is currently installed and the import was successful."""
-    return IS_JAX_AVAILABLE
+    return False
 
 
 @contextmanager

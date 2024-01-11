@@ -2,57 +2,65 @@
 
 All valid SPFlow modules in the ``base`` backend should inherit from this class or a subclass of it.
 """
+from abc import ABC, abstractmethod
 from functools import reduce
-from abc import ABC
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
+import torch
+from torch import nn
 
-from spflow.meta.dispatch import dispatch, DispatchContext, init_default_dispatch_context, SamplingContext
-from spflow.meta.dispatch.sampling_context import init_default_sampling_context
-from spflow.meta.dispatch.dispatch_context import (
-    DispatchContext,
-)
 from spflow import tensor as T
+from spflow.meta.dispatch import (
+    DispatchContext,
+    SamplingContext,
+    dispatch,
+    init_default_dispatch_context,
+)
+from spflow.meta.dispatch.dispatch_context import DispatchContext
+from spflow.meta.dispatch.sampling_context import init_default_sampling_context
 from spflow.tensor import Tensor
 from spflow.tensor.ops import Tensor
 
 
-class Module(ABC):
+class Module(nn.Module, ABC):
     r"""Abstract module class for building graph-based models in the ``base`` backend.
 
     Attributes:
-        children:
-            List of modules that are children to the module in a directed graph.
+        inputs:
+            List of modules that are inputs to the module in a directed graph.
         n_out:
             Integer indicating the number of outputs.
         scopes_out:
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, children: Optional[list["Module"]] = None) -> None:
+    def __init__(self, inputs: Optional[list["Module"]] = None) -> None:
         r"""Initializes ``Module`` object.
 
-        Initializes module by correctly setting its children.
+        Initializes module by correctly setting its inputs.
 
         Args:
-            children:
-                List of modules that are children to the module.
+            inputs:
+                List of modules that are inputs to the module.
 
         Raises:
-            ValueError: children of invalid type.
+            ValueError: inputs of invalid type.
         """
-        if children is None:
-            children = []
+        super().__init__()
+        if inputs is None:
+            inputs = []
 
-        self.backend = T.get_backend()
-        if any(child.backend != self.backend for child in children):
-            raise ValueError("Children must all have the same backend as the parent")
-        self.children = children
+        self.inputs = nn.ModuleList(inputs)
 
-        # as soon as there are more possible backend with gpu compatibility, a backend distinction is necessary
-        # TODO: make this torch agnostic (should we make our own device enum with CPU, GPU, ...?)
-        self.device = "cpu"
+    @property
+    def device(self):
+        """
+        Returns the device of the model. If the model parameters are on different devices,
+        it returns the device of the first parameter. If the model has no parameters,
+        it returns 'cpu' as the default device.
+        """
+        return next(iter(self.parameters())).device
 
     def input_to_output_ids(self, input_ids: Union[list[int], Tensor]) -> tuple[list[int], list[int]]:
         """Translates input indices into corresponding child module indices and child module output indices.
@@ -79,8 +87,8 @@ class Module(ABC):
         # flatten tensor
         input_ids = T.ravel(input_ids)
 
-        # infer number of inputs from children (and their numbers of outputs)
-        child_num_outputs = T.tensor([child.n_out for child in self.children])
+        # infer number of inputs from inputs (and their numbers of outputs)
+        child_num_outputs = T.tensor([child.n_out for child in self.inputs])
         child_cum_outputs = T.cumsum(child_num_outputs, -1)
 
         # get child module for corresponding input
@@ -96,23 +104,15 @@ class Module(ABC):
 
     def modules(self):
         modules = []
-        for child in self.children:
+        for child in self.inputs:
             modules.extend(list(child.modules()))
         modules.insert(0, self)
         return modules
 
-    def parameters(self) -> list[Tensor]:
-        parameters = []
-        for child in self.children:
-            parameters.extend(list(child.parameters()))
-        return parameters
-
-    def to(self, dtype=None, device=None):
-        if device is not None:
-            self.device = device
-
-        for child in self.children:
-            child.to(dtype=dtype, device=device)
+    def forward(
+        self, data: Tensor, check_support: bool = True, dispatch_ctx: Optional[DispatchContext] = None
+    ):
+        return log_likelihood(self, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -184,7 +184,7 @@ def likelihood(
         Each row corresponds to an input sample.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    return T.exp(log_likelihood(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx))
+    return torch.exp(log_likelihood(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx))
 
 
 @dispatch  # type: ignore
@@ -258,10 +258,7 @@ def sample(
     """
     combined_module_scope = reduce(lambda s1, s2: s1.join(s2), module.scopes_out)
 
-    data = T.tensor(
-        T.full((num_samples, int(max(combined_module_scope.query) + 1)), T.NAN),
-        device=module.device,
-    )
+    data = torch.full((num_samples, int(max(combined_module_scope.query) + 1)), T.NAN, device=module.device)
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, T.shape(data)[0])

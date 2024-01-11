@@ -1,13 +1,14 @@
 import unittest
+
 import numpy as np
+import pytest
 import scipy
-from spflow.meta.data import Scope
-from spflow import sample, maximum_likelihood_estimation
-from spflow import tensor as T
-from spflow.modules.node.leaf.gaussian import Gaussian
-from utils import compare_spflow_with_scipy_dist
+import torch
 from pytest import raises
-from tests.fixtures import backend_auto
+
+from spflow import maximum_likelihood_estimation, sample
+from spflow.meta.data import Scope
+from spflow.modules.node.leaf.gaussian import Gaussian
 
 
 def make_leaf(mean=0.0, std=1.0):
@@ -15,7 +16,7 @@ def make_leaf(mean=0.0, std=1.0):
 
 
 def make_data(n=2, p=0.5):
-    return T.reshape(T.tensor([0.4, 0.3, -0.1]), (-1, 1))
+    return torch.tensor([0.4, 0.3, -0.1]).view(-1, 1)
 
 
 def test_sample():
@@ -23,27 +24,19 @@ def test_sample():
     std = 0.3
     leaf = make_leaf(mean=mean, std=std)
     samples = sample(leaf, num_samples=500)
-    assert np.isclose(samples.mean().item(), mean, atol=1e-1)
-    assert np.isclose(samples.std().item(), std, atol=1e-1)
+    assert torch.isclose(samples.mean(), torch.tensor(mean), atol=1e-1)
+    assert torch.isclose(samples.std(), torch.tensor(std), atol=1e-1)
 
 
-def test_log_likelihood():
+@pytest.mark.parametrize("bias_correction", [True, False])
+def test_maximum_likelihood_estimation(bias_correction):
     mean = 0.7
     std = 0.3
     leaf = make_leaf(mean=mean, std=std)
     data = make_data()
-    scipy_dist = scipy.stats.norm(leaf.mean.item(), leaf.std.item())
-    compare_spflow_with_scipy_dist(leaf, scipy_dist.logpdf, data)
-
-
-def test_maximum_likelihood_estimation():
-    mean = 0.7
-    std = 0.3
-    leaf = make_leaf(mean=mean, std=std)
-    data = make_data()
-    maximum_likelihood_estimation(leaf, data, bias_correction=False)
-    assert np.isclose(leaf.mean.item(), data.mean(), atol=1e-2)
-    assert np.isclose(leaf.std.item(), np.std(T.tolist(data)), atol=1e-2)
+    maximum_likelihood_estimation(leaf, data, bias_correction=bias_correction)
+    assert torch.isclose(leaf.mean, data.mean(), atol=1e-2)
+    assert torch.isclose(leaf.std, data.std(correction=bias_correction), atol=1e-2)
 
 
 def test_constructor():
@@ -61,8 +54,6 @@ def test_constructor():
 
 
 def test_requires_grad():
-    if T.get_backend() != T.Backend.PYTORCH:
-        return
     leaf = make_leaf()
     assert leaf.mean.requires_grad
     assert leaf.std.requires_grad

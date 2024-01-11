@@ -22,27 +22,27 @@ class Node(Module, ABC):
     All valid SPFlow node modules in the ``base`` backend should inherit from this class or a subclass of it.
 
     Attributes:
-        children:
-            List of modules that are children to the module in a directed graph.
+        inputs:
+            List of modules that are inputs to the module in a directed graph.
         n_out:
             Integer indicating the number of outputs. One for nodes.
         scopes_out:
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, children: Optional[list[Module]] = None, **kwargs) -> None:
+    def __init__(self, inputs: Optional[list[Module]] = None, **kwargs) -> None:
         r"""Initializes ``Node`` object.
 
-        Initializes node by correctly setting its children.
+        Initializes node by correctly setting its inputs.
 
         Args:
-            children:
-                Optional list of modules that are children to the node.
+            inputs:
+                Optional list of modules that are inputs to the node.
         """
-        if children is None:
-            children = []
+        if inputs is None:
+            inputs = []
 
-        super().__init__(children=children, **kwargs)
+        super().__init__(inputs=inputs, **kwargs)
 
     @property
     def n_out(self) -> int:
@@ -54,21 +54,21 @@ class Node(Module, ABC):
         """Returns the output scopes this node represents."""
         return [self.scope]
 
-    def __str__(self, indent=0) -> str:
-        """
-        Returns a string representation of the node and its children in a tree-like structure.
-        """
-        # Start with the node's own description
-        node_str = "\t" * indent + f"{self.__class__.__name__} (scope={self.scope}): {self.describe_node()}\n"
+    # def __str__(self, indent=0) -> str:
+    #     """
+    #     Returns a string representation of the node and its inputs in a tree-like structure.
+    #     """
+    #     # Start with the node's own description
+    #     node_str = "\t" * indent + f"{self.__class__.__name__} (scope={self.scope}): {self.describe_node()}\n"
 
-        # If the node has children, recursively call __str__ on each child
-        for child in self.children:
-            node_str += child.__str__(indent + 1)
+    #     # If the node has inputs, recursively call __str__ on each child
+    #     for child in self.inputs:
+    #         node_str += child.__str__(indent + 1)
 
-        return node_str
+    #     return node_str
 
-    def __repr__(self) -> str:
-        return str(self)
+    # def __repr__(self) -> str:
+    #     return str(self)
 
     def describe_node(self) -> str:
         """

@@ -72,7 +72,7 @@ def tensor(data: Tensor, dtype=None, device=None, requires_grad=False, copy=Fals
         if not isinstance(data, jnp.ndarray) or copy:
             data = jnp.array(data, dtype=dtype)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
     return to(data, dtype=dtype, device=device)
 
 
@@ -88,7 +88,7 @@ def device(data: Tensor):
     elif is_jax():
         return jax.devices()[0]
     else:
-        raise MethodNotImplementedError(get_backend())
+        raise MethodNotImplementedError()
 
 
 def to(data: Tensor, dtype=None, device=None) -> Tensor:
@@ -104,7 +104,7 @@ def to(data: Tensor, dtype=None, device=None) -> Tensor:
     elif is_pytorch():
         return data.to(dtype=dtype, device=device)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def ravel(data: Tensor) -> Tensor:
@@ -116,7 +116,7 @@ def ravel(data: Tensor) -> Tensor:
     elif is_jax():
         return jnp.ravel(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def vstack(tensors: Tensor) -> Tensor:
@@ -129,7 +129,7 @@ def vstack(tensors: Tensor) -> Tensor:
     elif is_jax():
         return jnp.vstack(tensors)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def hstack(tensors) -> Tensor:
@@ -141,7 +141,7 @@ def hstack(tensors) -> Tensor:
     elif is_jax():
         return jnp.hstack(tensors)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def isclose(a, b, rtol=1e-05, atol=1e-08) -> Tensor:
@@ -155,7 +155,7 @@ def isclose(a, b, rtol=1e-05, atol=1e-08) -> Tensor:
         b = b.clone().detach()
         return torch.isclose(a, b, rtol=np.float32(rtol), atol=np.float32(atol))
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def allclose(a, b, rtol=1e-05, atol=1e-08) -> Tensor:
@@ -168,16 +168,16 @@ def allclose(a, b, rtol=1e-05, atol=1e-08) -> Tensor:
     elif is_jax():
         return jnp.allclose(a, b, rtol=rtol, atol=atol)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def tolist(data: Tensor) -> Tensor:
-    data = tensor(data)
+    return []
     data = tensor(data)
     if is_numpy() or is_pytorch() or is_jax():
         return data.tolist()
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def unique(data: Tensor, axis=None) -> Tensor:
@@ -189,7 +189,7 @@ def unique(data: Tensor, axis=None) -> Tensor:
     elif is_jax():
         return jnp.unique(data, axis=axis)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def isnan(data: Tensor) -> Tensor:
@@ -201,7 +201,7 @@ def isnan(data: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.isnan(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def isinf(data: Tensor) -> Tensor:
@@ -213,7 +213,7 @@ def isinf(data: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.isinf(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def isfinite(data: Tensor) -> Tensor:
@@ -225,7 +225,7 @@ def isfinite(data: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.isfinite(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def full(shape, fill_value, dtype=None, device=None) -> Tensor:
@@ -238,7 +238,7 @@ def full(shape, fill_value, dtype=None, device=None) -> Tensor:
     elif is_pytorch():
         return torch.full(shape, fill_value, dtype=dtype, device=device)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def eigvalsh(data: Tensor) -> Tensor:
@@ -250,7 +250,7 @@ def eigvalsh(data: Tensor) -> Tensor:
     elif is_jax():
         result = jnp.linalg.eigvalsh(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
     return to(result, dtype=data.dtype)
 
 
@@ -263,7 +263,7 @@ def inv(data: Tensor) -> Tensor:
     elif is_jax():
         return jnp.linalg.inv(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def cholesky(data: Tensor) -> Tensor:
@@ -275,7 +275,7 @@ def cholesky(data: Tensor) -> Tensor:
     elif is_jax():
         return jnp.linalg.cholesky(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def svd(data: Tensor) -> Tensor:
@@ -290,7 +290,7 @@ def svd(data: Tensor) -> Tensor:
         u, s, vh = jnp.linalg.svd(data)
         return u, s, vh
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def real(data: Tensor) -> Tensor:
@@ -302,7 +302,7 @@ def real(data: Tensor) -> Tensor:
     elif is_jax():
         return jnp.real(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def ix_(*args, indexing: Optional = None) -> Tensor:
@@ -323,7 +323,7 @@ def ix_(*args, indexing: Optional = None) -> Tensor:
         arr = jnp.ix_(*args)
         return tuple(tensor(arr[i]) for i in range(len(arr)))
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def nan_to_num(data: Tensor, copy=True) -> Tensor:
@@ -335,7 +335,7 @@ def nan_to_num(data: Tensor, copy=True) -> Tensor:
     elif is_jax():
         return jnp.nan_to_num(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def cov(data: Tensor, aweights=None, ddof=None) -> Tensor:
@@ -347,7 +347,7 @@ def cov(data: Tensor, aweights=None, ddof=None) -> Tensor:
     elif is_jax():
         return jnp.cov(data, aweights=aweights, ddof=ddof)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def repeat(data: Tensor, repeats, axis=None) -> Tensor:
@@ -359,7 +359,7 @@ def repeat(data: Tensor, repeats, axis=None) -> Tensor:
     elif is_jax():
         return jnp.repeat(data, repeats=repeats, axis=axis)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def tile(data: Tensor, repeats) -> Tensor:
@@ -371,7 +371,7 @@ def tile(data: Tensor, repeats) -> Tensor:
     elif is_jax():
         return jnp.tile(data, reps=repeats)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def spacing(data: Tensor) -> Tensor:
@@ -383,7 +383,7 @@ def spacing(data: Tensor) -> Tensor:
     elif is_jax():
         return jnp.nextafter(data, jnp.array(float("inf"))) - data
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def split(data: Tensor, indices_or_sections, axis=0) -> Tensor:
@@ -405,7 +405,7 @@ def split(data: Tensor, indices_or_sections, axis=0) -> Tensor:
         tensor_list = [el for el in arr]
         return tensor_list
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def array_split(data: Tensor, indices_or_sections, axis=0) -> Tensor:
@@ -423,7 +423,7 @@ def array_split(data: Tensor, indices_or_sections, axis=0) -> Tensor:
         tensor_list = [el for el in arr]
         return tensor_list
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def pad_edge(data: Tensor, pad_width) -> Tensor:
@@ -437,7 +437,7 @@ def pad_edge(data: Tensor, pad_width) -> Tensor:
     elif is_jax():
         return jnp.pad(data, pad_width=((0, 0), pad_width), mode="edge")
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def istensor(data: Tensor) -> Tensor:
@@ -448,7 +448,7 @@ def istensor(data: Tensor) -> Tensor:
     elif is_jax():
         return isinstance(data, jnp.ndarray)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def nextafter(data: Tensor, other: Tensor) -> Tensor:
@@ -461,7 +461,7 @@ def nextafter(data: Tensor, other: Tensor) -> Tensor:
     elif is_jax():
         return jnp.nextafter(data, other)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def logsumexp(data: Tensor, axis, keepdims=False) -> Tensor:
@@ -473,7 +473,7 @@ def logsumexp(data: Tensor, axis, keepdims=False) -> Tensor:
     elif is_jax():
         return jax.scipy.special.logsumexp(data, axis=axis, keepdims=keepdims)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def softmax(data: Tensor, axis) -> Tensor:
@@ -486,7 +486,7 @@ def softmax(data: Tensor, axis) -> Tensor:
     elif is_jax():
         return jax.nn.softmax(data, axis=axis)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def log_softmax(data: Tensor, axis) -> Tensor:
@@ -499,7 +499,7 @@ def log_softmax(data: Tensor, axis) -> Tensor:
     elif is_jax():
         return jax.nn.log_softmax(data, axis=axis)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def cartesian_product(*input) -> Tensor:
@@ -514,7 +514,7 @@ def cartesian_product(*input) -> Tensor:
     elif is_jax():
         return jnp.stack(jnp.meshgrid(*input, indexing="ij"), axis=-1).reshape(-1, len(input))
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def multinomial(data: Tensor, num_samples) -> Tensor:
@@ -524,7 +524,7 @@ def multinomial(data: Tensor, num_samples) -> Tensor:
     elif is_pytorch():
         return torch.multinomial(data, num_samples)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def multivariate_normal(loc, cov_matrix, size) -> Tensor:
@@ -534,7 +534,7 @@ def multivariate_normal(loc, cov_matrix, size) -> Tensor:
     elif is_pytorch():
         return torch.distributions.MultivariateNormal(loc, cov_matrix).sample(size)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def toNumpy(data: Tensor) -> Tensor:
@@ -553,7 +553,7 @@ def toNumpy(data: Tensor) -> Tensor:
     elif isinstance(data, int):
         return np.array(data)
     else:
-        raise MethodNotImplementedError(get_backend())
+        raise MethodNotImplementedError()
 
 
 def _random_jax_prngkey() -> Tensor:
@@ -576,7 +576,7 @@ def randn(*size, dtype=None, device=None, seed=None) -> Tensor:
             result = torch.randn(*size, dtype=dtype, device=device)
         return result
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def rand(*size, dtype=None, device=None, seed=None) -> Tensor:
@@ -596,7 +596,7 @@ def rand(*size, dtype=None, device=None, seed=None) -> Tensor:
         else:
             return torch.rand(*size, dtype=dtype, device=device)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def randint(low, high=None, size=None, dtype=None, device=None, seed=None) -> Tensor:
@@ -615,7 +615,7 @@ def randint(low, high=None, size=None, dtype=None, device=None, seed=None) -> Te
             result = torch.randint(low, high, size, dtype=dtype, device=device)
         return result
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def sigmoid(data: Tensor) -> Tensor:
@@ -627,7 +627,7 @@ def sigmoid(data: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.sigmoid(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def ones(*size, dtype=None, device=None) -> Tensor:
@@ -640,7 +640,7 @@ def ones(*size, dtype=None, device=None) -> Tensor:
     elif is_pytorch():
         return torch.ones(*size, dtype=dtype, device=device)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def zeros(*size, dtype=None, device=None) -> Tensor:
@@ -653,7 +653,7 @@ def zeros(*size, dtype=None, device=None) -> Tensor:
     elif is_pytorch():
         return torch.zeros(*size, dtype=dtype, device=device)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def logical_xor(data_a: Tensor, data_b: Tensor) -> Tensor:
@@ -665,7 +665,7 @@ def logical_xor(data_a: Tensor, data_b: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.logical_xor(data_a, data_b)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def logical_and(data_a: Tensor, data_b: Tensor) -> Tensor:
@@ -677,7 +677,7 @@ def logical_and(data_a: Tensor, data_b: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.logical_and(data_a, data_b)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def pow(data: Tensor, exponent) -> Tensor:
@@ -689,7 +689,7 @@ def pow(data: Tensor, exponent) -> Tensor:
     elif is_pytorch():
         return torch.pow(data, exponent)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def requires_grad_(data: Tensor, flag=True) -> Tensor:
@@ -716,7 +716,7 @@ def set_tensor_data(destination: Tensor, data: Tensor) -> Tensor:
     elif is_jax():
         return data
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def arange(start, stop, step=1, dtype=None, device=None) -> Tensor:
@@ -731,7 +731,7 @@ def arange(start, stop, step=1, dtype=None, device=None) -> Tensor:
     elif is_pytorch():
         return torch.arange(start=start, end=stop, step=step, dtype=dtype, device=device)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def assign_at_index_2(destination: Tensor, index_1: Tensor, index_2: Tensor, values) -> Tensor:
@@ -763,7 +763,7 @@ def assign_at_index_2(destination: Tensor, index_1: Tensor, index_2: Tensor, val
     elif is_jax():
         return destination.at[index_1, index_2].set(values)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def squeeze(data: Tensor, axis=None) -> Tensor:
@@ -775,7 +775,7 @@ def squeeze(data: Tensor, axis=None) -> Tensor:
     elif is_pytorch():
         return torch.squeeze(data, dim=axis)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def unsqueeze(data: Tensor, axis) -> Tensor:
@@ -787,7 +787,7 @@ def unsqueeze(data: Tensor, axis) -> Tensor:
     elif is_pytorch():
         return torch.unsqueeze(data, dim=axis)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def lgamma(data: Tensor) -> Tensor:
@@ -799,7 +799,7 @@ def lgamma(data: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.lgamma(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def all(data: Tensor) -> Tensor:
@@ -811,7 +811,7 @@ def all(data: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.all(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def any(data: Tensor) -> Tensor:
@@ -823,7 +823,7 @@ def any(data: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.any(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def cumsum(data: Tensor, axis=None) -> Tensor:
@@ -835,7 +835,7 @@ def cumsum(data: Tensor, axis=None) -> Tensor:
     elif is_pytorch():
         return torch.cumsum(data, dim=axis)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def concatenate(arrays: Tensor, axis=0) -> Tensor:
@@ -847,7 +847,7 @@ def concatenate(arrays: Tensor, axis=0) -> Tensor:
     elif is_pytorch():
         return torch.cat(arrays, dim=axis)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def copy(data: Tensor) -> Tensor:
@@ -859,7 +859,7 @@ def copy(data: Tensor) -> Tensor:
     elif is_pytorch():
         return data.clone()
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def exp(data: Tensor) -> Tensor:
@@ -871,7 +871,7 @@ def exp(data: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.exp(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def index_update(data: Tensor, indices, values) -> Tensor:
@@ -889,7 +889,7 @@ def index_update(data: Tensor, indices, values) -> Tensor:
         data[indices] = values
         return data
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def log(data: Tensor) -> Tensor:
@@ -901,7 +901,7 @@ def log(data: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.log(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def min(data: Tensor, axis=None) -> Tensor:
@@ -916,7 +916,7 @@ def min(data: Tensor, axis=None) -> Tensor:
         else:
             return torch.min(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def max(data: Tensor, axis=None) -> Tensor:
@@ -931,7 +931,7 @@ def max(data: Tensor, axis=None) -> Tensor:
         else:
             return torch.max(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def abs(data: Tensor) -> Tensor:
@@ -943,7 +943,7 @@ def abs(data: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.abs(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def ndim(data: Tensor) -> Tensor:
@@ -955,7 +955,7 @@ def ndim(data: Tensor) -> Tensor:
     elif is_pytorch():
         return data.ndim
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def prod(data: Tensor, axis=None) -> Tensor:
@@ -967,7 +967,7 @@ def prod(data: Tensor, axis=None) -> Tensor:
     elif is_pytorch():
         return torch.prod(data, dim=axis)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def shape(data: Tensor) -> Tensor:
@@ -979,7 +979,7 @@ def shape(data: Tensor) -> Tensor:
     elif is_pytorch():
         return data.shape
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def sqrt(data: Tensor) -> Tensor:
@@ -991,7 +991,7 @@ def sqrt(data: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.sqrt(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def stack(arrays: Tensor, axis=0) -> Tensor:
@@ -1003,7 +1003,7 @@ def stack(arrays: Tensor, axis=0) -> Tensor:
     elif is_pytorch():
         return torch.stack(arrays, dim=axis)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def sum(data: Tensor, axis=None, keepdims=False) -> Tensor:
@@ -1017,7 +1017,7 @@ def sum(data: Tensor, axis=None, keepdims=False) -> Tensor:
             axis = ()  # Necessary for PyTorch<=2.0.0 (doesn't accept None)
         return torch.sum(data, dim=axis, keepdim=keepdims)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def diag(data: Tensor) -> Tensor:
@@ -1029,7 +1029,7 @@ def diag(data: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.diag(data)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def transpose(data: Tensor, axes=None) -> Tensor:
@@ -1042,7 +1042,7 @@ def transpose(data: Tensor, axes=None) -> Tensor:
         axes = axes or list(range(ndim(data)))[::-1]
         return data.permute(*axes)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def dot(data_a: Tensor, data_b: Tensor) -> Tensor:
@@ -1054,7 +1054,7 @@ def dot(data_a: Tensor, data_b: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.dot(data_a, data_b)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def norm(data: Tensor, ord=None, axis=None) -> Tensor:
@@ -1066,7 +1066,7 @@ def norm(data: Tensor, ord=None, axis=None) -> Tensor:
     elif is_pytorch():
         return torch.linalg.norm(data, ord=ord, dim=axis)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def eye(N, dtype=None, device=None) -> Tensor:
@@ -1079,7 +1079,7 @@ def eye(N, dtype=None, device=None) -> Tensor:
     elif is_pytorch():
         return torch.eye(N, dtype=dtype, device=device)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def sort(data: Tensor, axis=-1) -> Tensor:
@@ -1091,7 +1091,7 @@ def sort(data: Tensor, axis=-1) -> Tensor:
     elif is_pytorch():
         return torch.sort(data, dim=axis)[0]
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def where(condition: Tensor, x: Tensor, y: Tensor) -> Tensor:
@@ -1103,7 +1103,7 @@ def where(condition: Tensor, x: Tensor, y: Tensor) -> Tensor:
     elif is_pytorch():
         return torch.where(condition, x, y)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def reshape(data: Tensor, shape) -> Tensor:
@@ -1115,7 +1115,7 @@ def reshape(data: Tensor, shape) -> Tensor:
     elif is_pytorch():
         return torch.reshape(data, shape)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
 
 def searchsorted(sorted_sequence, values, side="left") -> Tensor:
@@ -1127,7 +1127,7 @@ def searchsorted(sorted_sequence, values, side="left") -> Tensor:
     elif is_pytorch():
         result = torch.searchsorted(sorted_sequence, values, side=side)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
     return to(result, dtype=int32())
 
 
@@ -1142,6 +1142,6 @@ def bincount(data: Tensor, weights=None, minlength=0) -> Tensor:
     elif is_pytorch():
         result = torch.bincount(data, weights=weights, minlength=minlength)
     else:
-        raise MethodNotImplementedError(backend)
+        raise MethodNotImplementedError()
 
     return to(result, dtype=get_default_int_dtype())

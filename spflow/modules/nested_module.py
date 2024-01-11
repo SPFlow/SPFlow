@@ -21,27 +21,27 @@ class NestedModule(Module, ABC):
     """Convenient abstract module class for modules in the ``base`` backend that nest non-terminal modules.
 
     Attributes:
-        children:
-            List of modules that are children to the module in a directed graph.
+        inputs:
+            List of modules that are inputs to the module in a directed graph.
         n_out:
             Integer indicating the number of outputs.
         scopes_out:
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, children: Optional[list[Module]] = None, **kwargs) -> None:
+    def __init__(self, inputs: Optional[list[Module]] = None, **kwargs) -> None:
         """Initializes ``NestedModule`` object.
 
-        Initializes module by correctly setting its children.
+        Initializes module by correctly setting its inputs.
 
         Args:
-            children:
-                List of modules that are children to the module.
+            inputs:
+                List of modules that are inputs to the module.
         """
-        if children is None:
-            children = []
+        if inputs is None:
+            inputs = []
 
-        super().__init__(children=children, **kwargs)
+        super().__init__(inputs=inputs, **kwargs)
         self.placeholders = []
 
     def create_placeholder(self, input_ids: list[int]) -> "Placeholder":
@@ -88,9 +88,9 @@ class NestedModule(Module, ABC):
     class Placeholder(Module):
         """Placeholder module as an intermediary module between nested non-terminal modules and actual child modules in the ``base`` backend.
 
-        Since all non-terminal modules need their children to be specified at creation, internal non-terminal modules would
-        have to have the same children as the outer host module. This is not ideal, therefore placeholders can be used instead
-        that simply act as mediators between the actual host module's children and the internal non-terminal modules.
+        Since all non-terminal modules need their inputs to be specified at creation, internal non-terminal modules would
+        have to have the same inputs as the outer host module. This is not ideal, therefore placeholders can be used instead
+        that simply act as mediators between the actual host module's inputs and the internal non-terminal modules.
         Furthermore, placeholders can be used to select parts of modules' outputs and use them internally in arbirary ways.
 
         Attributes:
@@ -103,7 +103,7 @@ class NestedModule(Module, ABC):
         def __init__(self, host: Module, input_ids: list[int]) -> None:
             """Initializes ``Placeholder`` object.
 
-            Initializes module by correctly setting its children.
+            Initializes module by correctly setting its inputs.
 
             Args:
                 host:
@@ -220,7 +220,7 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, T.shape(data)[0])
 
     # dictionary to hold the
-    sampling_ids_per_child = [([], []) for _ in placeholder.host.children]
+    sampling_ids_per_child = [([], []) for _ in placeholder.host.inputs]
 
     for instance_id, output_ids in zip(sampling_ctx.instance_ids, sampling_ctx.output_ids):
         # convert ids to actual child and output ids of host module
@@ -237,12 +237,12 @@ def sample(
                 np.array(output_ids_actual)[child_ids_actual == child_id].tolist()
             )
 
-    # sample from children
+    # sample from inputs
     for child_id, (instance_ids, output_ids) in enumerate(sampling_ids_per_child):
         if len(instance_ids) == 0:
             continue
         sample(
-            placeholder.host.children[child_id],
+            placeholder.host.inputs[child_id],
             data,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,

@@ -6,10 +6,9 @@ from collections.abc import Iterable
 
 import numpy as np
 import torch
-
+from torch import nn
+from torch import Tensor
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
-from spflow.utils import Tensor
-from spflow import tensor as T
 from spflow import log_likelihood
 
 from spflow.modules.node.node import Node
@@ -25,11 +24,11 @@ from spflow.utils.projections import proj_convex_to_real, proj_real_to_convex
 class SumNode(Node):
     """SPN-like sum node in the ``base`` backend.
 
-    Represents a convex combination of its children over the same scope.
+    Represents a convex combination of its inputs over the same scope.
 
     Attributes:
-        children:
-            Non-empty list of modules that are children to the node in a directed graph.
+        inputs:
+            Non-empty list of modules that are inputs to the node in a directed graph.
         weights:
             One-dimensional NumPy array containing non-negative weights for each input, summing up to one.
         n_out:
@@ -40,14 +39,14 @@ class SumNode(Node):
 
     def __init__(
         self,
-        children: list[Module],
+        inputs: list[Module],
         weights: Optional[Union[Tensor, list[float]]] = None,
     ) -> None:
         r"""Initializes ``SumNode`` object.
 
         Args:
-            children:
-                Non-empty list of modules that are children to the node.
+            inputs:
+                Non-empty list of modules that are inputs to the node.
                 The output scopes for all child modules need to be equal.
             weights:
                 Optional list of floats, or one-dimensional NumPy array containing non-negative weights for each input, summing up to one.
@@ -56,32 +55,44 @@ class SumNode(Node):
         Raises:
             ValueError: Invalid arguments.
         """
-        super().__init__(children=children)
+        super().__init__(inputs=inputs)
 
-        if not children:
+        if not inputs:
             raise ValueError("'SumNode' requires at least one child to be specified.")
 
         scope = None
 
-        for child in children:
-            for s in child.scopes_out:
+        for child in inputs:
+            for sc in child.scopes_out:
                 if scope is None:
-                    scope = s
+                    scope = sc
                 else:
-                    if not scope.equal_query(s):
+                    if not scope.equal_query(sc):
                         raise ValueError(f"'SumNode' requires child scopes to have the same query variables.")
 
-                scope = scope.join(s)
+                scope = scope.join(sc)
 
         self.scope = scope
-        self.n_in = sum(child.n_out for child in children)
+        self.n_in = sum(child.n_out for child in inputs)
 
         if weights is None:
-            weights = T.rand(self.n_in, device=self.device) + 1e-08
-            weights = weights / T.sum(weights)
+            weights = torch.rand(self.n_in) + 1e-08
+            weights = weights / weights.sum()
+        else:
+            weights = torch.tensor(weights)
 
-        self.log_weights = T.requires_grad_(T.zeros(len(children), device=self.device))
-        self.weights = weights
+        if weights.ndim != 1:
+            raise ValueError(
+                f"Numpy array of weight weights for 'SumNode' is expected to be one-dimensional, but is {weights.ndim}-dimensional."
+            )
+        if not torch.all(weights > 0):
+            raise ValueError("Weights for 'SumNode' must be all positive.")
+        if not torch.isclose(torch.sum(weights), torch.tensor(1.0)):
+            raise ValueError("Weights for 'SumNode' must sum up to one.")
+        if not (len(weights) == self.n_in):
+            raise ValueError("Number of weights for 'SumNode' does not match total number of child outputs.")
+
+        self.log_weights = nn.Parameter(proj_convex_to_real(weights))
 
     @property
     def weights(self) -> Tensor:
@@ -103,32 +114,13 @@ class SumNode(Node):
             ValueError: Invalid values.
         """
         if isinstance(values, list):
-            values = T.tensor(values, device=self.device)
-        if T.ndim(values) != 1:
-            raise ValueError(
-                f"Numpy array of weight values for 'SumNode' is expected to be one-dimensional, but is {values.ndim}-dimensional."
-            )
-        if not T.all(values > 0):
-            raise ValueError("Weights for 'SumNode' must be all positive.")
-        if not T.isclose(T.sum(values), 1.0):
-            raise ValueError("Weights for 'SumNode' must sum up to one.")
-        if not (len(values) == self.n_in):
-            raise ValueError("Number of weights for 'SumNode' does not match total number of child outputs.")
+            values = torch.tensor(values, device=self.device)
 
-        values = T.to(proj_convex_to_real(values), device=self.device)
-        self.log_weights = T.set_tensor_data(self.log_weights, values)
-
-    def to(self, dtype=None, device=None):
-        super().to(dtype, device)
-        self.weights = T.to(self.weights, dtype=dtype, device=device)
-
-    def parameters(self) -> list[Tensor]:
-        parameters = super().parameters()
-        parameters.insert(0, self.log_weights)
-        return parameters
+        values = torch.to(proj_convex_to_real(values), device=self.device)
+        self.log_weights.data = values
 
     def describe_node(self) -> str:
-        formatted_weights = [f"{num:.3f}" for num in T.tolist(self.weights)]
+        formatted_weights = [f"{num:.3f}" for num in self.weights.tolist()]
         return f"weights=[{', '.join(formatted_weights)}]"
 
 
@@ -173,44 +165,19 @@ def marginalize(
         return None
     # node scope is being partially marginalized
     elif mutual_rvs:
-        marg_children = []
+        marg_inputs = []
 
         # marginalize child modules
-        for child in sum_node.children:
+        for child in sum_node.inputs:
             marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
             # if marginalized child is not None
             if marg_child:
-                marg_children.append(marg_child)
+                marg_inputs.append(marg_child)
 
-        return SumNode(children=marg_children, weights=sum_node.weights)
+        return SumNode(inputs=marg_inputs, weights=sum_node.weights)
     else:
         return deepcopy(sum_node)
-
-
-@dispatch(memoize=True)  # type: ignore # ToDo: überprüfen ob sum_layer.weights ein parameter ist
-def updateBackend(sum_node: SumNode, dispatch_ctx: Optional[DispatchContext] = None) -> SumNode:
-    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
-
-    Args:
-        sum_node:
-            Sum node to be converted.
-        dispatch_ctx:
-            Dispatch context.
-    """
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    if isinstance(sum_node.weights, np.ndarray):
-        return SumNode(
-            children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
-            weights=T.tensor(sum_node.weights),
-        )
-    elif torch.is_tensor(sum_node.weights):
-        return SumNode(
-            children=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
-            weights=T.tensor(sum_node.weights.data),
-        )
-    else:
-        raise NotImplementedError("updateBackend has no implementation for this backend")
 
 
 @dispatch(memoize=True)  # type: ignore # ToDo: überprüfen ob sum_layer.weights ein parameter ist
@@ -226,13 +193,13 @@ def toLayerBased(sum_node: SumNode, dispatch_ctx: Optional[DispatchContext] = No
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     if isinstance(sum_node.weights, np.ndarray):
         return SumNode(
-            children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
-            weights=T.tensor(sum_node.weights),
+            inputs=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.inputs],
+            weights=torch.tensor(sum_node.weights),
         )
     elif torch.is_tensor(sum_node.weights):
         return SumNode(
-            children=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
-            weights=T.tensor(sum_node.weights.data),
+            inputs=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.inputs],
+            weights=torch.tensor(sum_node.weights.data),
         )
     else:
         raise NotImplementedError("toLayerBased has no implementation for this backend")
@@ -251,13 +218,13 @@ def toNodeBased(sum_node: SumNode, dispatch_ctx: Optional[DispatchContext] = Non
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     if isinstance(sum_node.weights, np.ndarray):
         return SumNode(
-            children=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
-            weights=T.tensor(sum_node.weights),
+            inputs=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.inputs],
+            weights=torch.tensor(sum_node.weights),
         )
     elif torch.is_tensor(sum_node.weights):
         return SumNode(
-            children=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.children],
-            weights=T.tensor(sum_node.weights.data),
+            inputs=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_node.inputs],
+            weights=torch.tensor(sum_node.weights.data),
         )
     else:
         raise NotImplementedError("toNodeBased has no implementation for this backend")
@@ -296,10 +263,10 @@ def sample(
     """
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, T.shape(data)[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # compute log likelihoods of data instances (TODO: only compute for relevant instances? might clash with cashed values or cashing in general)
-    child_lls = T.concatenate(
+    child_lls = torch.cat(
         [
             log_likelihood(
                 child,
@@ -307,26 +274,26 @@ def sample(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in node.children
+            for child in node.inputs
         ],
-        axis=1,
+        dim=1,
     )
 
     # take child likelihoods into account when sampling
-    # TODO: this is missing the prior -> posterior renormalization?
-    # TODO: this is not taking the log of the weights
+    # FIXME: this is missing the prior -> posterior renormalization?
+    # FIXME: this is not taking the log of the weights
     sampling_weights = node.weights + child_lls[sampling_ctx.instance_ids]
 
     # sample branch for each instance id
     # this solution is based on a trick described here: https://stackoverflow.com/questions/34187130/fast-random-weighted-selection-across-all-rows-of-a-stochastic-matrix/34190035#34190035
-    cum_sampling_weights = T.cumsum(sampling_weights, axis=1)
-    random_choices = T.unsqueeze(T.rand(sampling_weights.shape[0], device=node.device), axis=1)
-    branches = T.sum((cum_sampling_weights < random_choices), axis=1)
+    cum_sampling_weights = sampling_weights.cumsum(dim=1)
+    random_choices = torch.rand(sampling_weights.shape[0], device=node.device).unsqueeze(1)
+    branches = (cum_sampling_weights < random_choices).sum(dim=1)
 
     # group sampled branches
-    for branch in T.tensor(T.unique(branches), dtype=int, device=node.device):
+    for branch in torch.tensor(torch.unique(branches), dtype=int, device=node.device):
         # group instances by sampled branch
-        branch_instance_ids = T.tensor(sampling_ctx.instance_ids, dtype=int, device=node.device)[
+        branch_instance_ids = torch.tensor(sampling_ctx.instance_ids, dtype=int, device=node.device)[
             branches == branch
         ]
         # get corresponding child and output id for sampled branch
@@ -334,7 +301,7 @@ def sample(
 
         # sample from child module
         data = sample(
-            node.children[child_ids[0]],
+            node.inputs[child_ids[0]],
             data,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,
@@ -374,22 +341,22 @@ def em(
     with torch.no_grad():
         # node.weights = node.log_weights.grad / node.log_weights.grad.sum()
         # ----- expectation step -----
-        child_lls = torch.hstack([dispatch_ctx.cache["log_likelihood"][child] for child in node.children])
+        child_lls = torch.hstack([dispatch_ctx.cache["log_likelihood"][child] for child in node.inputs])
         node_lls = dispatch_ctx.cache["log_likelihood"][node]
-        log_expectations = node.log_weights + T.log(node_lls.grad) + child_lls - node_lls
+        log_expectations = node.log_weights + node_lls.grad.log() + child_lls - node_lls
         log_expectations = log_expectations.logsumexp(0)
         log_expectations = log_expectations - log_expectations.logsumexp(0)
         # log_expectations = node.log_weights.grad / node.log_weights.grad.sum()
         # print((le2.log() - log_expectations).abs().sum())
 
         # ----- maximization step -----
-        node.log_weights = T.set_tensor_data(node.log_weights, log_expectations)
+        node.log_weights.data = log_expectations
 
         # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients
 
-    # recursively call EM on children
-    for child in node.children:
-        em(child, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
+    # recursively call EM on inputs
+    for input in node.inputs:
+        em(input, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -424,7 +391,7 @@ def log_likelihood(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # compute child log-likelihoods
-    child_lls = T.concatenate(
+    child_lls = torch.cat(
         [
             log_likelihood(
                 child,
@@ -432,10 +399,10 @@ def log_likelihood(
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in sum_node.children
+            for child in sum_node.inputs
         ],
         axis=1,
     )
     weighted_inputs = child_lls + sum_node.log_weights
     # weight child log-likelihoods (sum in log-space) and compute log-sum-exp
-    return T.logsumexp(weighted_inputs, axis=-1, keepdims=True)
+    return torch.logsumexp(weighted_inputs, dim=-1, keepdims=True)

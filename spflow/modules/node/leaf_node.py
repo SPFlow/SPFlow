@@ -4,6 +4,7 @@ All leaf nodes in the ``base`` backend should inherit from ``LeafNode`` or a sub
 """
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+import torch
 
 from spflow.modules.node.node import Node
 from spflow.meta.data.scope import Scope
@@ -28,7 +29,7 @@ class LeafNode(Node, ABC):
             scope:
                 Scope object representing the scope of the leaf node,
         """
-        super().__init__(children=[], **kwargs)
+        super().__init__(inputs=[], **kwargs)
 
         # self.scope = scope
         self.scope = Scope([int(x) for x in scope.query], scope.evidence)
@@ -57,4 +58,10 @@ class LeafNode(Node, ABC):
         Returns:
             A new leaf node created from the given signatures.
         """
+        pass
+
+    @property
+    @abstractmethod
+    def distribution(self) -> torch.distributions.Distribution:
+        """Returns the distribution of the leaf node."""
         pass

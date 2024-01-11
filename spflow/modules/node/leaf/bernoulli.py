@@ -1,8 +1,10 @@
 from typing import Callable, List, Optional, Tuple, Union
 
+from spflow.modules.node.leaf.utils import apply_nan_strategy
 import numpy as np
 
-from spflow import tensor as T
+import torch
+from torch import nn, Tensor
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.feature_types import FeatureTypes, MetaType
 from spflow.meta.data.scope import Scope
@@ -64,31 +66,27 @@ class Bernoulli(LeafNode):
         super().__init__(scope=scope)
 
         # register auxiliary torch parameter for the success probability p
-        self.log_p = T.requires_grad_(T.zeros(1, device=self.device))  # type: ignore
-        self.p = p
+        self.p_aux = torch.nn.Parameter(torch.empty(1))
+        self.p = torch.tensor(p)
 
     @property
     def p(self) -> Tensor:
         """Returns the success proability."""
         # project auxiliary parameter onto actual parameter range
-        return proj_real_to_bounded(self.log_p, lb=0.0, ub=1.0)  # type: ignore
+        return proj_real_to_bounded(self.p_aux, 0.0, 1.0)
 
     @p.setter
-    def p(self, p: float) -> None:
-        r"""Sets the success probability.
-
-        Args:
-            p:
-                Floating point representing the success probability in :math:`[0,1]`.
-
-        Raises:
-            ValueError: Invalid arguments.
-        """
-        if p < 0.0 or p > 1.0 or not np.isfinite(p):
+    def p(self, p: Tensor) -> None:
+        """Sets the success probability."""
+        # project auxiliary parameter onto actual parameter range
+        if p < 0.0 or p > 1.0 or not torch.isfinite(p):
             raise ValueError(f"Value of 'p' for 'Bernoulli' must to be between 0.0 and 1.0, but was: {p}")
+        self.p_aux.data = proj_bounded_to_real(p, 0.0, 1.0)
 
-        log_p = proj_bounded_to_real(T.tensor(p), lb=0.0, ub=1.0)  # type: ignore
-        self.log_p = T.set_tensor_data(self.log_p, log_p)  # type: ignore
+    @property
+    def distribution(self) -> torch.distributions.Distribution:
+        """Returns the Bernoulli distribution."""
+        return torch.distributions.Bernoulli(probs=self.p)
 
     @classmethod
     def accepts(cls, signatures: list[FeatureContext]) -> bool:
@@ -159,14 +157,6 @@ class Bernoulli(LeafNode):
 
         return Bernoulli(feature_ctx.scope, p=p)
 
-    def parameters(self) -> list[Tensor]:
-        """Returns the parameters of the represented distribution.
-
-        Returns:
-            Floating point value representing the success probability.
-        """
-        return [self.log_p]
-
     def check_support(self, data: Tensor, is_scope_data: bool = False) -> Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
@@ -202,24 +192,15 @@ class Bernoulli(LeafNode):
             )
 
         # nan entries (regarded as valid)
-        nan_mask = T.isnan(scope_data)
-        inf_mask = T.isinf(scope_data)
+        nan_mask = torch.isnan(scope_data)
 
-        invalid_support_mask = T.zeros(scope_data.shape[0], 1, dtype=bool, device=self.device)
-
-        # TODO: Add support checks here! Previously, we used the pytorch distribution support checks as follows
-        #       valid[~nan_mask] = self.dist.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
-        #       Now we need our own support checks.
+        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
+        valid[~nan_mask] = self.distribution.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        invalid_support_mask = T.zeros(scope_data.shape[0], 1, dtype=bool, device=self.device)
+        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
 
-        # Valid is everything that is not nan, inf or outside of the support
-        return (~nan_mask) & (~inf_mask) & (~invalid_support_mask)
-
-    def to(self, dtype=None, device=None):
-        super().to(dtype=dtype, device=device)
-        self.log_p = T.to(self.log_p, dtype=dtype, device=device)
+        return valid
 
     def describe_node(self) -> str:
         return f"p={self.p.item():.3f}"
@@ -261,21 +242,14 @@ def sample(
     if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
         raise ValueError("Some instance ids are out of bounds for data tensor.")
 
-    marg_ids = (T.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
+    marg_ids = (torch.isnan(data[:, leaf.scope.query]) == len(leaf.scope.query)).squeeze(1)
 
-    instance_ids_mask = T.zeros(data.shape[0], device=leaf.device, dtype=T.int32())
-    instance_ids_mask = T.index_update(instance_ids_mask, sampling_ctx.instance_ids, 1)
+    instance_ids_mask = torch.zeros(data.shape[0], device=leaf.device)
+    instance_ids_mask[sampling_ctx.instance_ids] = 1
 
-    sampling_ids = T.logical_and(marg_ids, instance_ids_mask)
+    sampling_ids = marg_ids.to(leaf.device) & instance_ids_mask.bool().to(leaf.device)
 
-    n_samples = sampling_ids.sum().item()
-
-    # Randomly sample from bernoulli distribution with success probability p
-    samples = T.to(T.rand(n_samples, device=leaf.device) < leaf.p, dtype=T.float32())
-
-    data = T.assign_at_index_2(
-        destination=data, index_1=sampling_ids, index_2=leaf.scope.query, values=samples
-    )
+    data[sampling_ids, leaf.scope.query] = leaf.distribution.sample((sampling_ids.sum(),)).to(leaf.device)
 
     return data
 
@@ -340,46 +314,10 @@ def maximum_likelihood_estimation(
     # select relevant data for scope
     scope_data = data[:, leaf.scope.query]
 
-    if weights is None:
-        weights = T.ones(data.shape[0], device=leaf.device)
-
-    if weights.ndim != 1 or weights.shape[0] != data.shape[0]:
-        raise ValueError(
-            "Number of specified weights for maximum-likelihood estimation does not match number of data points."
-        )
-
-    # reshape weights
-    weights = weights.reshape(-1, 1)
-
-    if check_support:
-        if T.any(~leaf.check_support(scope_data, is_scope_data=True)):
-            raise ValueError("Encountered values outside of the support for 'Bernoulli'.")
-
-    # NaN entries (no information)
-    nan_mask = T.isnan(scope_data)
-
-    if T.all(nan_mask):
-        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
-
-    if nan_strategy is None and T.any(nan_mask):
-        raise ValueError(
-            "Maximum-likelihood estimation cannot be performed on missing data by default. Set a strategy for handling missing values if this is intended."
-        )
-
-    if isinstance(nan_strategy, str):
-        if nan_strategy == "ignore":
-            # simply ignore missing data
-            scope_data = scope_data[~nan_mask.squeeze(1)]
-            weights = weights[~nan_mask.squeeze(1)]
-        else:
-            raise ValueError("Unknown strategy for handling missing (NaN) values for 'Bernoulli'.")
-    elif isinstance(nan_strategy, Callable):
-        scope_data = nan_strategy(scope_data)
-        # TODO: how to handle weights?
-    elif nan_strategy is not None:
-        raise ValueError(
-            f"Expected 'nan_strategy' to be of type '{type(str)}, or '{Callable}' or '{None}', but was of type {type(nan_strategy)}."
-        )
+    # apply NaN strategy
+    scope_data, weights = apply_nan_strategy(
+        nan_strategy, scope_data, leaf, weights, check_support=check_support
+    )
 
     # normalize weights to sum to n_samples
     weights /= weights.sum() / scope_data.shape[0]
@@ -394,10 +332,10 @@ def maximum_likelihood_estimation(
     p_est = n_success / n_total
 
     # edge case: if prob. 1 (or 0), set to smaller (or larger) value
-    if T.isclose(p_est, 0.0):
-        p_est = 1e-8
-    elif T.isclose(p_est, 1.0):
-        p_est = 1 - 1e-8
+    if torch.isclose(p_est, torch.tensor(0.0)):
+        p_est = torch.tensor(1e-8)
+    elif torch.isclose(p_est, torch.tensor(1.0)):
+        p_est = torch.tensor(1 - 1e-8)
 
     # set parameters of leaf node
     leaf.p = p_est
@@ -406,7 +344,7 @@ def maximum_likelihood_estimation(
 @dispatch(memoize=True)  # type: ignore
 def em(
     leaf: Bernoulli,
-    data: T.Tensor,
+    data: Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> None:
@@ -497,19 +435,20 @@ def log_likelihood(
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
+    batch_size: int = data.shape[0]
+
     # get information relevant for the scope
     scope_data = data[:, leaf.scope.query]
 
     # initialize empty tensor (number of output values matches batch_size)
-    log_prob = T.zeros(data.shape[0], 1, device=leaf.device)
+    log_prob: torch.Tensor = torch.empty(batch_size, 1).type(leaf.dtype).to(leaf.device)
 
     # ----- marginalization -----
 
-    marg_ids = T.sum(T.isnan(scope_data), axis=1) == len(leaf.scope.query)
+    marg_ids = torch.isnan(scope_data).sum(dim=1) == len(leaf.scope.query)
 
-    # if all instances should be marginalized, return early
-    if T.all(marg_ids):
-        return log_prob
+    # if the scope variables are fully marginalized over (NaNs) return probability 1 (0 in log-space)
+    log_prob[marg_ids] = 0.0
 
     # ----- log probabilities -----
 
@@ -522,14 +461,7 @@ def log_likelihood(
                 f"Encountered data instances that are not in the support of the Bernoulli distribution."
             )
 
-    # Actual binomial log_prob computation:
     # compute probabilities for values inside distribution support
-    scope_data = T.to(T.squeeze(scope_data[~marg_ids], 1), dtype=T.int32())
-
-    # Bernoulli log_pmf
-    log_pmf = T.log(leaf.p) * scope_data + T.log(1 - leaf.p) * (1 - scope_data)
-
-    lls = T.unsqueeze(log_pmf, -1)
-    log_prob = T.index_update(log_prob, ~marg_ids, lls)
+    log_prob[~marg_ids] = leaf.distribution.log_prob(scope_data[~marg_ids])
 
     return log_prob
