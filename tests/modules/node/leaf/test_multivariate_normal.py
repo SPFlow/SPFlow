@@ -22,15 +22,18 @@ def make_leaf(mean=None, cov=None):
     else:
         ndim = mean.shape[0]
     if cov is None:
-        cov = torch.cov(torch.rand(ndim, ndim))
+        cov = torch.cov(torch.randn(ndim, 100))
     return MultivariateNormal(scope=Scope(list(range(ndim))), mean=mean, cov=cov)
 
 
 def make_data(mean=None, cov=None, n_samples=5):
     if mean is None:
         mean = torch.randn(5)
+        ndim = 5
+    else:
+        ndim = mean.shape[0]
     if cov is None:
-        cov = torch.cov(torch.rand(5, 5))
+        cov = torch.cov(torch.randn(5, 100))
     return torch.distributions.MultivariateNormal(loc=mean, covariance_matrix=cov).sample((n_samples,))
 
 
@@ -47,7 +50,7 @@ def test_sample():
 @pytest.mark.parametrize("bias_correction", [True, False])
 def test_maximum_likelihood_estimation(bias_correction):
     mean = torch.randn(5)
-    cov = torch.cov(torch.rand(5, 5))
+    cov = torch.cov(torch.randn(5, 100))
     leaf = make_leaf(mean=mean, cov=cov)
     data = make_data(mean=mean, cov=cov, n_samples=10000)
     maximum_likelihood_estimation(leaf, data, bias_correction=bias_correction)
@@ -58,7 +61,7 @@ def test_maximum_likelihood_estimation(bias_correction):
 def test_constructor():
     # Check that parameters are set correctly
     mean = torch.randn(5)
-    cov = torch.cov(torch.rand(5, 5))
+    cov = torch.cov(torch.randn(5, 100))
     leaf = make_leaf(mean=mean, cov=cov)
     assert torch.isclose(leaf.mean, mean, atol=1e-8).all()
     assert torch.isclose(leaf.cov, cov, atol=1e-8).all()
