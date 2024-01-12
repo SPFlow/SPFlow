@@ -250,4 +250,4 @@ def maximum_likelihood_estimation(
         p_est = torch.tensor(1 - 1e-8)
 
     # set parameters of leaf node
-    leaf.p_aux.data = proj_bounded_to_real(p_est, 0.0, 1.0)
+    leaf.p = p_est
