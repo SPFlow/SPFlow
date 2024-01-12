@@ -1,5 +1,6 @@
 import unittest
 
+from tests.modules.node.leaf.utils import evaluate_log_likelihood
 import numpy as np
 import pytest
 import scipy
@@ -34,6 +35,10 @@ def test_maximum_likelihood_estimation(bias_correction):
     data = make_data(p=0.3, n_samples=10000)
     maximum_likelihood_estimation(leaf, data, bias_correction=bias_correction)
     assert np.isclose(leaf.p.item(), p, atol=1e-2)
+
+
+def test_log_likelihood():
+    evaluate_log_likelihood(make_leaf(), make_data())
 
 
 def test_constructor():
