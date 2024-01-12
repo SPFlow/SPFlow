@@ -52,8 +52,8 @@ class GammaType(FeatureType):
 
 
 @dataclass
-class GaussianType(FeatureType):
-    """Feature type for Gaussian-distributed features.
+class NormalType(FeatureType):
+    """Feature type for Normal-distributed features.
 
     Attributes:
         mean:
@@ -240,8 +240,8 @@ class FeatureTypes(ABC):
             Alias for ``GammaType``, indicating Gamma-distributed data.
             Optional parameters ``alpha`,``beta``, representing the shape and rate parameters, greater than 0.0.
             ``GammaType``
-        Gaussian:
-            Alias for ``GaussianType``, indicating Gaussian-distributed data.
+        Normal:
+            Alias for ``NormalType``, indicating Normal-distributed data.
             Optional parameters ``mean``,``std``, representing the mean and standard deviation (the latter greater than 0.0).
         Geometric:
             Alias for ``GeometricType``, indicating Geometric-distributed data.
@@ -273,7 +273,7 @@ class FeatureTypes(ABC):
     # ----- continuous feature types -----
     Exponential = ExponentialType
     Gamma = GammaType
-    Gaussian = GaussianType
+    Normal = NormalType
     LogNormal = LogNormalType
     Uniform = UniformType
 
