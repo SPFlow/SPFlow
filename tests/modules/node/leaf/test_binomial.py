@@ -1,4 +1,5 @@
 import unittest
+from tests.modules.node.leaf.utils import evaluate_log_likelihood
 import numpy as np
 import scipy
 from spflow.meta.data import Scope
@@ -15,6 +16,10 @@ def make_leaf(n=2, p=0.5):
 
 def make_data():
     return torch.tensor([0, 1, 2]).reshape((-1, 1))
+
+
+def test_log_likelihood():
+    evaluate_log_likelihood(make_leaf(), make_data())
 
 
 def test_sample():

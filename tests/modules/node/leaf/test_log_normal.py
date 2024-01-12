@@ -1,5 +1,6 @@
 import unittest
 
+from tests.modules.node.leaf.utils import evaluate_log_likelihood
 from tests.fixtures import set_seed
 import numpy as np
 import pytest
@@ -27,6 +28,10 @@ def test_sample():
     samples = sample(leaf, num_samples=500)
 
     # TODO: what can we test here?
+
+
+def test_log_likelihood():
+    evaluate_log_likelihood(make_leaf(), make_data())
 
 
 @pytest.mark.parametrize("bias_correction", [True, False])
