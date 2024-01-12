@@ -234,7 +234,7 @@ def log_likelihood(
             )
 
     # compute probabilities for values inside distribution support
-    log_prob[~marg_ids] = leaf.distribution.log_prob(scope_data[~marg_ids])
+    log_prob[~marg_ids] = leaf.distribution.log_prob(scope_data[~marg_ids].float())
 
     return log_prob
 
