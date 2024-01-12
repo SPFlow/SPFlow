@@ -5,8 +5,8 @@ Typical usage example:
     pd_matrix = nearest_sym_pd(matrix)
 """
 import numpy as np
-from spflow import tensor as T
-from spflow.tensor import Tensor
+import torch
+from torch import Tensor
 
 
 def nearest_sym_pd(A: Tensor) -> Tensor:
@@ -27,8 +27,8 @@ def nearest_sym_pd(A: Tensor) -> Tensor:
 
     def is_pd(A: Tensor) -> Tensor:
         try:
-            T.cholesky(A)
-            return True
+            torch.cholesky(A)
+            return torch.ue
         except np.linalg.LinAlgError:
             return False
 
@@ -36,26 +36,26 @@ def nearest_sym_pd(A: Tensor) -> Tensor:
     B = (A + A) / 2
 
     # compute symmetric polar factor of B from SVD (which is symmetric positive definite)
-    U, s, _ = T.svd(B)
-    H = T.dot(U, T.dot(T.diag(s), T.transpose(U)))
+    U, s, _ = torch.svd(B)
+    H = torch.dot(U, torch.dot(torch.diag(s), torch.transpose(U)))
 
     # compute closest symmetric positive semi-definite matrix to A in Frobenius norm (see paper linked above)
     A_hat = (B + H) / 2
     # again, make sure matrix is symmetric
-    A_hat = (A_hat + T.transpose(A_hat)) / 2
+    A_hat = (A_hat + torch.transpose(A_hat)) / 2
 
     # check if matrix is actually symmetric positive-definite
     if is_pd(A_hat):
         return A_hat
 
     # else fix it
-    spacing = T.spacing(T.norm(A_hat))
-    I = T.eye(A.shape[0])
+    spacing = torch.spacing(torch.norm(A_hat))
+    I = torch.eye(A.shape[0])
     k = 1
 
     while not is_pd(A_hat):
         # compute smallest real part eigenvalue
-        min_eigval = T.min(T.real(T.eigvalsh(A_hat)))
+        min_eigval = torch.min(torch.real(torch.eigvalsh(A_hat)))
         # adjust matrix
         A_hat += I * (-min_eigval * (k**2) + spacing)
         k += 1
