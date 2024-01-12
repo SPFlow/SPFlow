@@ -72,7 +72,7 @@ class LeafNode(Node, ABC):
         """Returns the distribution of the leaf node."""
         pass
 
-    def check_support(self, data: Tensor, is_scope_data: bool = False) -> Tensor:
+    def check_support(self, data: Tensor) -> Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 
         Determines whether or note instances are part of the support of this distribution.
@@ -83,34 +83,23 @@ class LeafNode(Node, ABC):
             data:
                 Two-dimensional PyTorch tensor containing sample instances.
                 Each row is regarded as a sample.
-                Unless ``is_scope_data`` is set to True, it is assumed that the relevant data is located in the columns corresponding to the scope indices.
-            is_scope_data:
-                Boolean indicating if the given data already contains the relevant data for the leaf's scope in the correct order (True) or if it needs to be extracted from the full data set.
-                Defaults to False.
 
         Returns:
             Two dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
         """
-
-        if is_scope_data:
-            scope_data = data
-        else:
-            # select relevant data for scope
-            scope_data = data[:, self.scope.query]
-
-        if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
+        if data.ndim != 2 or data.shape[1] != len(self.scope.query):
             raise ValueError(
-                f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
+                f"Expected 'data' to be of shape (n,{len(self.scope.query)}), but was: {data.shape}"
             )
 
         # nan entries (regarded as valid)
-        nan_mask = torch.isnan(scope_data)
+        nan_mask = torch.isnan(data)
 
-        valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
-        valid[~nan_mask] = self.distribution.support.check(scope_data[~nan_mask]).squeeze(-1)  # type: ignore
+        valid = torch.ones(data.shape[0], 1, dtype=torch.bool, device=self.device)
+        valid[~nan_mask] = self.distribution.support.check(data[~nan_mask]).squeeze(-1)  # type: ignore
 
         # check for infinite values
-        valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
+        valid[~nan_mask & valid] &= ~data[~nan_mask & valid].isinf().squeeze(-1)
 
         return valid
 
@@ -226,7 +215,7 @@ def log_likelihood(
 
     if check_support:
         # create mask based on distribution's support
-        valid_ids = leaf.check_support(scope_data[~marg_ids], is_scope_data=True).squeeze(1)
+        valid_ids = leaf.check_support(scope_data[~marg_ids]).squeeze(1)
 
         if not all(valid_ids):
             raise ValueError(
