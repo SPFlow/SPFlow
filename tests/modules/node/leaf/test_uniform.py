@@ -1,4 +1,5 @@
 import unittest
+from tests.modules.node.leaf.utils import evaluate_log_likelihood
 from tests.fixtures import set_seed
 import numpy as np
 import scipy
@@ -13,8 +14,13 @@ def make_leaf(low=0.5, high=1.8):
     return Uniform(scope=Scope([0]), low=low, high=high)
 
 
-def make_data():
-    return torch.rand(5).reshape((-1, 1))
+def make_data(low=0.5, high=1.8, n_samples=5):
+    return torch.rand(n_samples, 1) * (high - low) + low
+
+
+def test_log_likelihood():
+    low, high = 0.1, 2.7
+    evaluate_log_likelihood(make_leaf(low=low, high=high), make_data(low=low, high=high))
 
 
 def test_sample():
@@ -28,7 +34,7 @@ def test_sample():
 def test_maximum_likelihood_estimation():
     low, high = 0.1, 1.7
     leaf = make_leaf(low, high)
-    data = make_data() * (high - low) + low
+    data = make_data(low, high)
     maximum_likelihood_estimation(leaf, data)
 
     # MLE does nothing for Uniform distributions since the bounds are fixed and there is no learnable parameter
