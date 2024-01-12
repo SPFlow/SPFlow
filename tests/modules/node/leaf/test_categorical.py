@@ -7,6 +7,7 @@ from spflow.modules.node.leaf.categorical import Categorical
 from pytest import raises
 import torch
 from tests.fixtures import set_seed
+from tests.modules.node.leaf.utils import evaluate_log_likelihood
 
 
 def make_leaf(probs=[0.1, 0.2, 0.7]):
@@ -25,6 +26,10 @@ def test_sample():
     p_1 = (samples == 1).sum() / samples.shape[0]
     assert np.isclose(p_0, probs[0], atol=1e-1)
     assert np.isclose(p_1, probs[1], atol=1e-1)
+
+
+def test_log_likelihood():
+    evaluate_log_likelihood(make_leaf(), make_data())
 
 
 def test_maximum_likelihood_estimation():

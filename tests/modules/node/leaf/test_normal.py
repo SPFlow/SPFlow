@@ -1,5 +1,6 @@
 import unittest
 
+from tests.modules.node.leaf.utils import evaluate_log_likelihood
 from tests.fixtures import set_seed
 import numpy as np
 import pytest
@@ -18,6 +19,10 @@ def make_leaf(mean=0.0, std=1.0):
 
 def make_data(n=2, p=0.5):
     return torch.tensor([0.4, 0.3, -0.1]).view(-1, 1)
+
+
+def test_log_likelihood():
+    evaluate_log_likelihood(make_leaf(), make_data())
 
 
 def test_sample():

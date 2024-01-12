@@ -1,5 +1,6 @@
 import unittest
 
+from tests.modules.node.leaf.utils import evaluate_log_likelihood
 import numpy as np
 import pytest
 import scipy
@@ -19,6 +20,10 @@ def make_leaf(alpha=1.0, beta=1.0):
 
 def make_data(alpha=1.0, beta=1.0, n_samples=5):
     return torch.distributions.Gamma(alpha, beta).sample((n_samples, 1))
+
+
+def test_log_likelihood():
+    evaluate_log_likelihood(make_leaf(), make_data())
 
 
 def test_sample():

@@ -1,5 +1,6 @@
 import unittest
 
+from tests.modules.node.leaf.utils import evaluate_log_likelihood
 from tests.fixtures import set_seed
 import numpy as np
 import pytest
@@ -18,6 +19,10 @@ def make_leaf(rate=1.0):
 
 def make_data(rate=1.0, n_samples=5):
     return torch.poisson(torch.ones(n_samples, 1) * rate)
+
+
+def test_log_likelihood():
+    evaluate_log_likelihood(make_leaf(), make_data())
 
 
 def test_sample():
