@@ -154,65 +154,6 @@ class Uniform(LeafNode):
 
         return Uniform(feature_ctx.scope, low=start, high=end)
 
-    # def check_support(self, data: Tensor, is_scope_data: bool = False) -> Tensor:
-    #     r"""Checks if specified data is in support of the represented distribution.
-
-    #     Determines whether or note instances are part of the support of the Uniform distribution, which is:
-
-    #     .. math::
-
-    #         \text{supp}(\text{Uniform})=\begin{cases} [start,end] & \text{if support\_outside}=\text{false}\\
-    #                                              (-\infty,\infty) & \text{if support\_outside}=\text{true} \end{cases}
-    #     where
-    #         - :math:`start` is the start of the interval
-    #         - :math:`end` is the end of the interval
-    #         - :math:`\text{support\_outside}` is a truth value indicating whether values outside of the interval are part of the support
-
-    #     Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
-
-    #     Args:
-    #         data:
-    #             Two-dimensional PyTorch tensor containing sample instances.
-    #             Each row is regarded as a sample.
-    #             Unless ``is_scope_data`` is set to True, it is assumed that the relevant data is located in the columns corresponding to the scope indices.
-    #         is_scope_data:
-    #             Boolean indicating if the given data already contains the relevant data for the leaf's scope in the correct order (True) or if it needs to be extracted from the full data set.
-    #             Defaults to False
-
-    #     Returns:
-    #         Two-dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
-    #     """
-    #     if is_scope_data:
-    #         scope_data = data
-    #     else:
-    #         # select relevant data for scope
-    #         scope_data = data[:, self.scope.query]
-
-    #     if scope_data.ndim != 2 or scope_data.shape[1] != len(self.scope.query):
-    #         raise ValueError(
-    #             f"Expected 'scope_data' to be of shape (n,{len(self.scope.query)}), but was: {scope_data.shape}"
-    #         )
-
-    #     # nan entries (regarded as valid)
-    #     nan_mask = torch.isnan(scope_data)
-
-    #     # torch distribution support is an interval, despite representing a distribution over a half-open interval
-    #     # end is adjusted to the next largest number to make sure that desired end is part of the distribution interval
-    #     # may cause issues with the support check; easier to do a manual check instead
-    #     valid = torch.ones(scope_data.shape[0], 1, dtype=torch.bool, device=self.device)
-
-    #     # check for infinite values
-    #     valid[~nan_mask & valid] &= ~scope_data[~nan_mask & valid].isinf().squeeze(-1)
-
-    #     # check if values are within valid range
-    #     if not self.support_outside:
-    #         valid[~nan_mask & valid] &= (
-    #             (scope_data[~nan_mask & valid] >= self.start)
-    #             & (scope_data[~nan_mask & valid] < self.end_next)
-    #         ).squeeze(-1)
-
-    #     return valid
-
 
 @dispatch(memoize=True)  # type: ignore
 def maximum_likelihood_estimation(
