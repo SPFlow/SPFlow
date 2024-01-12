@@ -6,7 +6,7 @@ from .feature_types import (
     FeatureType,
     FeatureTypes,
     GammaType,
-    GaussianType,
+    NormalType,
     GeometricType,
     HypergeometricType,
     LogNormalType,
