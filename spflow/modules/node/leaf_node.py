@@ -213,7 +213,7 @@ def log_likelihood(
     # get information relevant for the scope
     scope_data = data[:, leaf.scope.query]
 
-    log_prob = torch.empty_like(scope_data)
+    log_prob = torch.empty_like(scope_data, dtype=torch.float)
 
     # ----- marginalization -----
 
