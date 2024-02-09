@@ -5,7 +5,6 @@ from typing import List, Optional, Union
 from collections.abc import Iterable
 
 import numpy as np
-import tensorly as tl
 import torch
 
 from spflow.meta.data.scope import Scope
@@ -16,11 +15,10 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 
-from spflow.utils import Tensor
-from spflow import tensor as T
+from torch import Tensor
 from spflow import log_likelihood
 from spflow.modules.module import Module
-from spflow.modules.node import (
+from spflow.utils.projections import (
     proj_convex_to_real,
     proj_real_to_convex,
 )
@@ -63,7 +61,7 @@ class SumLayer(Module):
                 Integer specifying the number of nodes the layer should represent.
             inputs:
                 Non-empty list of modules that are inputs to the layer.
-                The output scopes for all child modules need to be equal.
+                The output scopes for all input modules need to be equal.
             weights:
                 Optional list of floats, list of lists of floats, one- to two-dimensional NumPy array or two-dimensional
                 PyTorch tensor containing non-negative weights. There should be weights for each of the node and inputs.
@@ -78,39 +76,37 @@ class SumLayer(Module):
             raise ValueError("Number of nodes for 'SumLayer' must be greater of equal to 1.")
 
         if not inputs:
-            raise ValueError("'SumLayer' requires at least one child to be specified.")
+            raise ValueError("'SumLayer' requires at least one input to be specified.")
 
         super().__init__(inputs=inputs, **kwargs)
 
         self._n_out = n_nodes
-        self.n_in = sum(child.n_out for child in self.inputs)
+        self.n_in = sum(input.n_out for input in self.inputs)
 
         # parse weights
         if weights is None:
             weights = (
-                T.random.random_tensor((self.n_out, self.n_in), dtype=self.dtype, device=self.device) + 1e-08
+                torch.random.random_tensor((self.n_out, self.n_in), dtype=self.dtype, device=self.device)
+                + 1e-08
             )  # avoid zeros
-            weights /= T.sum(weights, axis=-1, keepdims=True)
+            weights /= torch.sum(weights, axis=-1, keepdims=True)
 
         # register auxiliary parameters for weights as torch parameters
-        if self.backend == "pytorch":
-            self._weights = torch.nn.Parameter(requires_grad=True)
-        else:
-            self._weights = None
+        self._weights = torch.nn.Parameter()
         # initialize weights
         self.weights = weights
 
         # compute scope
         scope = None
 
-        for child in inputs:
-            for s in child.scopes_out:
+        for input in inputs:
+            for s in input.scopes_out:
                 if scope is None:
                     scope = s
                 else:
                     if not scope.equal_query(s):
                         raise ValueError(
-                            f"'SumLayer' requires child scopes to have the same query variables."
+                            f"'SumLayer' requires input scopes to have the same query variables."
                         )
 
                 scope = scope.join(s)
@@ -152,87 +148,44 @@ class SumLayer(Module):
             ValueError: Invalid values.
         """
         if isinstance(values, list) or isinstance(values, np.ndarray):
-            values = T.tensor(values, dtype=self.dtype, device=self.device)
+            values = torch.tensor(values, dtype=self.dtype, device=self.device)
         if values.ndim != 1 and values.ndim != 2:
             raise ValueError(
                 f"Torch tensor of weight values for 'SumLayer' is expected to be one- or two-dimensional, but is {values.ndim}-dimensional."
             )
-        if not T.all(values > 0):
+        if not torch.all(values > 0):
             raise ValueError("Weights for 'SumLayer' must be all positive.")
-        if not T.allclose(
-            T.tensor(T.sum(values, axis=-1), dtype=self.dtype, device=self.device),
-            T.tensor(1.0, dtype=self.dtype, device=self.device),
+        if not torch.allclose(
+            torch.tensor(torch.sum(values, axis=-1), dtype=self.dtype, device=self.device),
+            torch.tensor(1.0, dtype=self.dtype, device=self.device),
         ):
             raise ValueError("Weights for 'SumLayer' must sum up to one in last dimension.")
         if not (values.shape[-1] == self.n_in):
             raise ValueError(
-                "Number of weights for 'SumLayer' in last dimension does not match total number of child outputs."
+                "Number of weights for 'SumLayer' in last dimension does not match total number of input outputs."
             )
 
         # same weights for all sum nodes
-        if self.backend == "pytorch":
-            if values.ndim == 1:
+        if values.ndim == 1:
+            self._weights.data = (
+                proj_convex_to_real(values.repeat((self.n_out, 1)).clone()).type(self.dtype).to(self.device)
+            )
+        if values.ndim == 2:
+            # same weights for all sum nodes
+            if values.shape[0] == 1:
                 self._weights.data = (
                     proj_convex_to_real(values.repeat((self.n_out, 1)).clone())
                     .type(self.dtype)
                     .to(self.device)
                 )
-            if values.ndim == 2:
-                # same weights for all sum nodes
-                if values.shape[0] == 1:
-                    self._weights.data = (
-                        proj_convex_to_real(values.repeat((self.n_out, 1)).clone())
-                        .type(self.dtype)
-                        .to(self.device)
-                    )
-                # different weights for all sum nodes
-                elif values.shape[0] == self.n_out:
-                    self._weights.data = proj_convex_to_real(values.clone()).type(self.dtype).to(self.device)
-                # incorrect number of specified weights
-                else:
-                    raise ValueError(
-                        f"Incorrect number of weights for 'SumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}."
-                    )
-        elif self.backend == "numpy":
-            if values.ndim == 1:
-                self._weights = proj_convex_to_real(
-                    values.reshape(1, -1).repeat((self.n_out), 0).copy()
-                ).astype(self.dtype)
-            if values.ndim == 2:
-                # same weights for all sum nodes
-                if values.shape[0] == 1:
-                    self._weights = proj_convex_to_real(values.repeat((self.n_out), 0).copy()).astype(
-                        self.dtype
-                    )
-                # different weights for all sum nodes
-                elif values.shape[0] == self.n_out:
-                    self._weights = proj_convex_to_real(values.copy()).astype(self.dtype)
-                # incorrect number of specified weights
-                else:
-                    raise ValueError(
-                        f"Incorrect number of weights for 'SumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}."
-                    )
-
-    def to_dtype(self, dtype):
-        self.dtype = dtype
-        self.weights = self.weights
-        for child in self.inputs:
-            child.to_dtype(dtype)
-
-    def to_device(self, device):
-        if self.backend == "numpy":
-            raise ValueError("it is not possible to change the device of models that have a numpy backend")
-        self.device = device
-        self.weights = self.weights
-        for child in self.inputs:
-            child.to_device(device)
-
-    def parameters(self):
-        params = []
-        for child in self.inputs:
-            params.extend(list(child.parameters()))
-        params.insert(0, self._weights)
-        return params
+            # different weights for all sum nodes
+            elif values.shape[0] == self.n_out:
+                self._weights.data = proj_convex_to_real(values.clone()).type(self.dtype).to(self.device)
+            # incorrect number of specified weights
+            else:
+                raise ValueError(
+                    f"Incorrect number of weights for 'SumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}."
+                )
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -247,7 +200,7 @@ def marginalize(
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
     If the layer's scope is fully marginalized over, then None is returned.
-    If the layer's scope is partially marginalized over, then a new sum layer over the marginalized child modules is returned.
+    If the layer's scope is partially marginalized over, then a new sum layer over the marginalized input modules is returned.
 
     Args:
         layer:
@@ -279,44 +232,17 @@ def marginalize(
         # TODO: pruning
         marg_inputs = []
 
-        # marginalize child modules
-        for child in layer.inputs:
-            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+        # marginalize input modules
+        for input in layer.inputs:
+            marg_input = marginalize(input, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
-            # if marginalized child is not None
-            if marg_child:
-                marg_inputs.append(marg_child)
+            # if marginalized input is not None
+            if marg_input:
+                marg_inputs.append(marg_input)
 
         return SumLayer(n_nodes=layer.n_out, inputs=marg_inputs, weights=layer.weights)
     else:
         return deepcopy(layer)
-
-
-@dispatch(memoize=True)  # type: ignore
-def updateBackend(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = None) -> SumLayer:
-    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
-
-    Args:
-        sum_node:
-            Sum node to be converted.
-        dispatch_ctx:
-            Dispatch context.
-    """
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    if isinstance(sum_layer.weights, np.ndarray):
-        return SumLayer(
-            n_nodes=sum_layer.n_out,
-            inputs=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.inputs],
-            weights=T.tensor(sum_layer.weights),
-        )
-    elif torch.is_tensor(sum_layer.weights):
-        return SumLayer(
-            n_nodes=sum_layer.n_out,
-            inputs=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.inputs],
-            weights=T.tensor(sum_layer.weights.data),
-        )
-    else:
-        raise NotImplementedError("updateBackend has no implementation for this backend")
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -334,7 +260,7 @@ def toNodeBased(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = N
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return SumLayerNode(
         n_nodes=sum_layer.n_out,
-        inputs=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.inputs],
+        inputs=[toNodeBased(input, dispatch_ctx=dispatch_ctx) for input in sum_layer.inputs],
         weights=sum_layer.weights,
     )
 
@@ -352,7 +278,7 @@ def toLayerBased(sum_layer: SumLayer, dispatch_ctx: Optional[DispatchContext] = 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return SumLayer(
         n_nodes=sum_layer.n_out,
-        inputs=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in sum_layer.inputs],
+        inputs=[toLayerBased(input, dispatch_ctx=dispatch_ctx) for input in sum_layer.inputs],
         weights=sum_layer.weights,
     )
 
@@ -401,47 +327,47 @@ def sample(
         raise ValueError("'SumLayer only allows single output sampling.")
 
     # create mask for instane ids
-    instance_ids_mask = T.zeros(data.shape[0], dtype=bool)
+    instance_ids_mask = torch.zeros(data.shape[0], dtype=bool)
     instance_ids_mask[sampling_ctx.instance_ids] = True
 
     # compute log likelihoods for sum "nodes"
-    partition_ll = T.concatenate(
+    partition_ll = torch.cat(
         [
             log_likelihood(
-                child,
+                input,
                 data,
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in sum_layer.inputs
+            for input in sum_layer.inputs
         ],
-        axis=1,
+        dim=1,
     )
 
     inputs = sum_layer.inputs
 
     for node_id, instances in sampling_ctx.group_output_ids(sum_layer.n_out):
         # sample branches
-        input_ids = T.multinomial(
-            sum_layer.weights[node_id] * T.exp(partition_ll[instances]),
+        input_ids = torch.multinomial(
+            sum_layer.weights[node_id] * torch.exp(partition_ll[instances]),
             num_samples=1,
         ).flatten()
 
-        # get correct child id and corresponding output id
-        child_ids, output_ids = sum_layer.input_to_output_ids(input_ids)
+        # get correct input id and corresponding output id
+        input_ids, output_ids = sum_layer.input_to_output_ids(input_ids)
 
-        # group by child ids
-        for child_id in T.unique(T.tensor(child_ids)):
-            child_instance_ids = T.tolist(T.tensor(instances)[T.tensor(child_ids) == child_id])
-            child_output_ids = T.tolist(T.unsqueeze(T.tensor(output_ids)[T.tensor(child_ids) == child_id], 1))
+        # group by input ids
+        for input_id in torch.unique(torch.tensor(input_ids)):
+            input_instance_ids = instances[input_ids == input_id]
+            input_output_ids = torch.unsqueeze(output_ids[input_ids == input_id], 1)
 
             # sample from partition node
             sample(
-                inputs[int(child_id)],
+                inputs[int(input_id)],
                 data,
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
-                sampling_ctx=SamplingContext(child_instance_ids, child_output_ids),
+                sampling_ctx=SamplingContext(input_instance_ids, input_output_ids),
             )
 
     return data
@@ -478,20 +404,20 @@ def log_likelihood(
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    # compute child log-likelihoods
-    child_lls = T.concatenate(
+    # compute input log-likelihoods
+    input_lls = torch.cat(
         [
             log_likelihood(
-                child,
+                input,
                 data,
                 check_support=check_support,
                 dispatch_ctx=dispatch_ctx,
             )
-            for child in sum_layer.inputs
+            for input in sum_layer.inputs
         ],
-        axis=1,
+        dim=1,
     )
 
-    weighted_lls = T.unsqueeze(child_lls, 1) + T.log(sum_layer.weights)
+    weighted_lls = input_lls.unsqueeze(1) + sum_layer.weights.log()
 
-    return T.logsumexp(weighted_lls, axis=-1)
+    return torch.logsumexp(weighted_lls, dim=-1)
