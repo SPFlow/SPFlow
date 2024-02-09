@@ -7,7 +7,6 @@ import tensorly as tl
 
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.tensor.ops import Tensor
-from spflow import tensor as T
 
 from spflow.autoleaf import AutoLeaf
 from spflow.modules.module import Module
@@ -170,16 +169,6 @@ class RatSPN(Module):
         """Returns the output scopes of the RAT-SPN."""
         return self.root_node.scopes_out
 
-    def to_dtype(self, dtype):
-        self.dtype = dtype
-        self.root_node.to_dtype(dtype)
-
-    def to_device(self, device):
-        if self.backend == "numpy":
-            raise ValueError("it is not possible to change the device of models that have a numpy backend")
-        self.device = device
-        self.root_node.to_device(device)
-
 
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
@@ -225,17 +214,6 @@ def marginalize(
         return marg_rat
 
 
-@dispatch(memoize=True)  # type: ignore
-def updateBackend(rat_spn: RatSPN) -> RatSPN:
-    return RatSPN(
-        rat_spn.region_graph,
-        rat_spn.feature_ctx,
-        rat_spn.n_root_nodes,
-        rat_spn.n_region_nodes,
-        rat_spn.n_leaf_nodes,
-    )
-
-
 @dispatch  # type: ignore
 def sample(
     rat_spn: RatSPN,
@@ -267,7 +245,7 @@ def sample(
         Each row corresponds to a sample.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, T.shape(data)[0])
+    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     return sample(
         rat_spn.root_node,
