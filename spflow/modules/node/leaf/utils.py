@@ -1,10 +1,11 @@
-from typing import Callable
+from typing import Callable, Tuple
 
 
 import torch
+from torch import Tensor
 
 
-def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support):
+def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support) -> tuple[Tensor, Tensor]:
     if weights is None:
         weights = torch.ones(scope_data.shape[0], device=leaf.device)
     if weights.ndim != 1 or weights.shape[0] != scope_data.shape[0]:
@@ -14,7 +15,7 @@ def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support):
     # reshape weights
     weights = weights.reshape((-1, 1))
     if check_support:
-        if torch.any(~leaf.check_support(scope_data)):
+        if torch.any(~leaf.distribution.check_support(scope_data)):
             raise ValueError("Encountered values outside of the support.")
     # NaN entries (no information)
     nan_mask = torch.isnan(scope_data)
@@ -43,3 +44,22 @@ def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support):
     weights /= weights.sum() / scope_data.shape[0]
 
     return scope_data, weights
+
+
+def init_parameter(param: Tensor, event_shape: Tuple[int, ...], init: Callable) -> Tensor:
+    """Initializes a parameter tensor of a leaf node."""
+
+    if param is None:
+        return init(event_shape)
+    else:
+        return param
+    # else:
+    #     if param.ndim == 0:
+    #         return param.view(1,)
+    #     elif param.ndim == 1:
+    #         # Make space for scope and n_out dimensions
+    #         return param.view(-1, 1)
+    #     elif param.ndim == 2:
+    #         return param
+    #     else:
+    #         raise ValueError(f"Invalid shape for 'param': {param.shape}. Must must be 0D (scalar), 1D or 2D.")

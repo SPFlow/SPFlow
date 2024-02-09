@@ -2,7 +2,7 @@
 
 All nodes in the ``base`` backend should inherit from ``Node`` or a subclass of it.
 """
-from abc import ABC
+from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import List, Optional, Union
 from collections.abc import Iterable
@@ -30,29 +30,16 @@ class Node(Module, ABC):
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, inputs: Optional[list[Module]] = None, **kwargs) -> None:
-        r"""Initializes ``Node`` object.
-
-        Initializes node by correctly setting its inputs.
-
-        Args:
-            inputs:
-                Optional list of modules that are inputs to the node.
-        """
-        if inputs is None:
-            inputs = []
-
-        super().__init__(inputs=inputs, **kwargs)
-
     @property
+    @abstractmethod
     def n_out(self) -> int:
-        """Returns the number of outputs for this node. Returns one since nodes represent single outputs."""
-        return 1
+        """Returns the number of outputs for this node."""
+        pass
 
     @property
     def scopes_out(self) -> list[Scope]:
         """Returns the output scopes this node represents."""
-        return [self.scope]
+        return [self.scope]  # TODO: Why is this a list? shouldn't the scope object represent the set of RVs?
 
     # def __str__(self, indent=0) -> str:
     #     """
