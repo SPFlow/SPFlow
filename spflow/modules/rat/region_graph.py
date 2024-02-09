@@ -183,7 +183,7 @@ def split(scope: Scope, depth: int, n_splits: int = 2) -> Partition:
     shuffled_rvs = scope.query.copy()
     random.shuffle(shuffled_rvs)
 
-    split_rvs = T.array_split(shuffled_rvs, n_splits)
+    split_rvs = torch.array_split(shuffled_rvs, n_splits)
 
     if any(region_rvs.size == 0 for region_rvs in split_rvs):
         raise ValueError(
