@@ -233,3 +233,11 @@ class Scope:
                 return False
 
         return True
+
+    def copy(self) -> "Scope":
+        """Creates a copy of the scope.
+
+        Returns:
+            ``Scope`` object representing the copy of the scope.
+        """
+        return Scope(list(self.query), list(self.evidence))
