@@ -4,7 +4,7 @@ All valid SPFlow modules in the ``base`` backend should inherit from this class 
 """
 from abc import ABC, abstractmethod
 from functools import reduce
-from typing import List, Optional, Tuple, Union
+from typing import Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -18,6 +18,7 @@ from spflow.meta.dispatch import (
 )
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.meta.dispatch.sampling_context import init_default_sampling_context
+from spflow.meta.data.scope import Scope
 
 
 class Module(nn.Module, ABC):
@@ -49,6 +50,28 @@ class Module(nn.Module, ABC):
             inputs = []
 
         self.inputs = nn.ModuleList(inputs)
+
+    @property
+    @abstractmethod
+    def n_out(self) -> int:
+        """Returns the number of outputs for this module."""
+        pass
+
+    @property
+    # @abstractmethod
+    def scope(self) -> Scope:
+        """Returns the scope of the module."""
+        return self._scope
+
+    @scope.setter
+    def scope(self, scope: Scope):
+        """Sets the scope of the module."""
+        self._scope = scope
+
+    @property
+    def scopes_out(self) -> list[Scope]:
+        """Returns the output scopes this module represents."""
+        return [self.scope]
 
     @property
     def device(self):
@@ -89,7 +112,7 @@ class Module(nn.Module, ABC):
         child_cum_outputs = torch.cumsum(child_num_outputs, -1)
 
         # get child module for corresponding input
-        child_ids = torch.sum(child_cum_outputs <= torch.reshape(input_ids, (-1, 1)), dim=1)
+        child_ids = torch.sum(child_cum_outputs <= input_ids.view(-1, 1), dim=1)
         # get output id of child module for corresponding input
         output_ids = input_ids - (child_cum_outputs[child_ids] - child_num_outputs[child_ids])
 
@@ -188,6 +211,7 @@ def likelihood(
 @dispatch  # type: ignore
 def sample(
     module: Module,
+    is_mpe: bool = False,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
@@ -202,6 +226,9 @@ def sample(
         data:
             Two-dimensional NumPy array containing potential evidence.
             Each row corresponds to a sample.
+        is_mpe:
+            Boolean value indicating whether or not to perform maximum a posteriori estimation (MPE).
+            Defaults to False.
         check_support:
             Boolean value indicating whether or not if the data is in the support of the leaf distributions.
             Defaults to True.
@@ -218,6 +245,7 @@ def sample(
     return sample(
         module,
         1,
+        is_mpe=is_mpe,
         check_support=check_support,
         dispatch_ctx=dispatch_ctx,
         sampling_ctx=sampling_ctx,
@@ -228,6 +256,7 @@ def sample(
 def sample(
     module: Module,
     num_samples: int = 1,
+    is_mpe: bool = False,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
@@ -242,6 +271,9 @@ def sample(
         data:
             Two-dimensional NumPy array containing potential evidence.
             Each row corresponds to a sample.
+        is_mpe:
+            Boolean value indicating whether or not to perform maximum a posteriori estimation (MPE).
+            Defaults to False.
         check_support:
             Boolean value indicating whether or not if the data is in the support of the leaf distributions.
             Defaults to True.
@@ -254,7 +286,9 @@ def sample(
         Two-dimensional NumPy array containing the sampled values.
         Each row corresponds to a sample.
     """
-    combined_module_scope = reduce(lambda s1, s2: s1.join(s2), module.scopes_out)
+    combined_module_scope = reduce(
+        lambda s1, s2: s1.join(s2), module.scopes_out
+    )  # TODO: why is scopes_out expected to be in a module but is currently only defined in the node class?
 
     data = torch.full(
         (num_samples, int(max(combined_module_scope.query) + 1)), torch.nan, device=module.device
@@ -266,6 +300,7 @@ def sample(
     return sample(
         module,
         data,
+        is_mpe=is_mpe,
         check_support=check_support,
         dispatch_ctx=dispatch_ctx,
         sampling_ctx=sampling_ctx,
