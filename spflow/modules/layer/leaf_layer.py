@@ -118,9 +118,12 @@ def sample(
         assert samples.shape[1] == sampling_ctx.output_ids.shape[1]
         samples = samples.gather(dim=-1, index=sampling_ctx.output_ids.unsqueeze(-1)).squeeze(-1)
 
+    if samples.ndim == 1:
+        samples = samples.unsqueeze(1)
+
     # Set data at correct scope
     sampling_mask_at_scope = sampling_mask[:, leaf.scope.query]
-    data[marg_ids] = samples[sampling_mask_at_scope]
+    data[marg_ids] = samples[sampling_mask_at_scope].type(data.dtype)
 
     return data
 
