@@ -15,8 +15,11 @@ def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support) -
     # reshape weights
     weights = weights.reshape((-1, 1))
     if check_support:
+        # create dimension for check_support
+        scope_data = scope_data.unsqueeze(2)
         if torch.any(~leaf.distribution.check_support(scope_data)):
             raise ValueError("Encountered values outside of the support.")
+        scope_data = scope_data.squeeze(2)
     # NaN entries (no information)
     nan_mask = torch.isnan(scope_data)
     if torch.all(nan_mask):

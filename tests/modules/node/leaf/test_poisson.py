@@ -10,7 +10,7 @@ from pytest import raises
 
 from spflow import maximum_likelihood_estimation, sample
 from spflow.meta.data import Scope
-from spflow.modules.node.leaf.poisson import Poisson
+from spflow.modules.node.leaf.poisson_old import Poisson
 
 
 def make_leaf(rate=1.0):

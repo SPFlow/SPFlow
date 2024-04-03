@@ -10,7 +10,7 @@ from pytest import raises
 
 from spflow import maximum_likelihood_estimation, sample
 from spflow.meta.data import Scope
-from spflow.modules.node.leaf.exponential import Exponential
+from spflow.modules.node.leaf.exponential_old import Exponential
 
 
 def make_leaf(rate=1.0):

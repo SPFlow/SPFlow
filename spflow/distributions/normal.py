@@ -1,27 +1,12 @@
 #!/usr/bin/env python3
 
-from abc import ABC
-from typing import Callable, List, Optional, Tuple, Union
-
 import torch
 from torch import Tensor, nn
-import numpy as np
 
 from spflow.distributions.distribution import Distribution
 from spflow.meta.data import FeatureContext, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
-from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch import SamplingContext
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.dispatch.dispatch_context import (
-    DispatchContext,
-    init_default_dispatch_context,
-)
-from spflow.meta.dispatch.sampling_context import init_default_sampling_context
-from spflow.modules.leaf_module import LeafModule
-from spflow.modules.module import Module
-from spflow.modules.node.leaf.utils import apply_nan_strategy, init_parameter
-from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.modules.node.leaf.utils import init_parameter
 
 
 class Normal(Distribution):
@@ -74,13 +59,6 @@ class Normal(Distribution):
 
     @classmethod
     def accepts(cls, signatures: list[FeatureContext]) -> bool:
-        """Checks if a specified signature can be represented by the module.
-
-        ``Normal`` can represent a single univariate node with ``MetaType.Continuous`` or ``NormalType`` domain.
-
-        Returns:
-            Boolean indicating whether the module can represent the specified signature (True) or not (False).
-        """
         # leaf only has one output
         if len(signatures) != 1:
             return False
@@ -109,14 +87,6 @@ class Normal(Distribution):
 
     @classmethod
     def from_signatures(cls, signatures: list[FeatureContext]) -> "Normal":
-        """Creates an instance from a specified signature.
-
-        Returns:
-            ``Normal`` instance.
-
-        Raises:
-            Signatures not accepted by the module.
-        """
         if not cls.accepts(signatures):
             raise ValueError(f"'Normal' cannot be instantiated from the following signatures: {signatures}.")
 

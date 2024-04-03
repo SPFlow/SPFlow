@@ -4,7 +4,7 @@ import numpy as np
 import scipy
 from spflow.meta.data import Scope
 from spflow import sample, maximum_likelihood_estimation
-from spflow.modules.node.leaf.negative_binomial import NegativeBinomial
+from spflow.modules.node.leaf.negative_binomial_old import NegativeBinomial
 from pytest import raises
 import torch
 from tests.fixtures import set_seed

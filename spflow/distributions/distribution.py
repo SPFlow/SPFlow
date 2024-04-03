@@ -30,10 +30,9 @@ class Distribution(nn.Module, ABC):
         """Generates samples of shape (n_samples, *event_shape)"""
         return self.distribution.sample((n_samples,))
 
-    @abstractmethod
     def mode(self):
         """Returns the mode of the distribution."""
-        pass
+        return self.distribution.mode
 
     def log_prob(self, x):
         return self.distribution.log_prob(x)
@@ -97,7 +96,9 @@ class Distribution(nn.Module, ABC):
         nan_mask = torch.isnan(data)
 
         valid = torch.ones_like(data, dtype=torch.bool)
-        valid[~nan_mask] = self.distribution.support.check(data[~nan_mask])
+
+        # check only first entry of num_leaf node dim since all leaf node repetition have the same support
+        valid[~nan_mask] = self.distribution.support.check(data)[...,[0]][~nan_mask]
 
         # check for infinite values
         valid[~nan_mask & valid] &= ~data[~nan_mask & valid].isinf()
