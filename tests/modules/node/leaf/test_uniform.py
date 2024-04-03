@@ -5,7 +5,7 @@ import numpy as np
 import scipy
 from spflow.meta.data import Scope
 from spflow import sample, maximum_likelihood_estimation
-from spflow.modules.node.leaf.uniform import Uniform
+from spflow.modules.node.leaf.uniform_old import Uniform
 from pytest import raises
 import torch
 

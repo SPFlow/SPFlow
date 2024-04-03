@@ -133,24 +133,28 @@ def log_likelihood(
     # ----- marginalization -----
     marg_mask = torch.isnan(data)
 
-    # ----- log probabilities -----
-
-    if check_support:
-        # create mask based on distribution's support
-        valid_mask = leaf.distribution.check_support(data[~marg_mask])
-
-        if not torch.all(valid_mask):
-            raise ValueError(
-                f"Encountered data instances that are not in the support of the Gaussian distribution."
-            )
-
     # If there are any marg_ids, set them to 0.0 to ensure that distribution.log_prob call is succesfull and doesn't throw errors
     # due to NaNs
     if marg_mask.any():
-        data[marg_mask] = 0.0
+        data[marg_mask] = 0.0 # ToDo in-support value
+
+    # ----- log probabilities -----
 
     # Unsqueeze scope_data to make space for num_nodes dimension
     data = data.unsqueeze(2)
+
+    if check_support:
+        # create mask based on distribution's support
+        valid_mask = leaf.distribution.check_support(data)
+
+        if not torch.all(valid_mask):
+            raise ValueError(
+                f"Encountered data instances that are not in the support of the distribution."
+            )
+
+
+
+
 
     # compute probabilities for values inside distribution support
     log_prob = leaf.distribution.log_prob(data.float())

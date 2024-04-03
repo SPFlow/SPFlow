@@ -10,7 +10,7 @@ from pytest import raises
 
 from spflow import maximum_likelihood_estimation, sample
 from spflow.meta.data import Scope
-from spflow.modules.node.leaf.log_normal import LogNormal
+from spflow.modules.node.leaf.log_normal_old import LogNormal
 
 
 def make_leaf(mean=0.0, std=1.0):

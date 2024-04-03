@@ -3,7 +3,7 @@ import numpy as np
 import scipy
 from spflow.meta.data import Scope
 from spflow import log_likelihood, sample, maximum_likelihood_estimation
-from spflow.modules.node.leaf.categorical import Categorical
+from spflow.modules.node.leaf.categorical_old import Categorical
 from pytest import raises
 import torch
 from tests.fixtures import set_seed
