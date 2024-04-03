@@ -10,7 +10,7 @@ from pytest import raises
 
 from spflow import maximum_likelihood_estimation, sample
 from spflow.meta.data import Scope
-from spflow.modules.node.leaf.hypergeometric import Hypergeometric
+from spflow.modules.node.leaf.hypergeometric_old import Hypergeometric
 from tests.fixtures import set_seed
 import scipy
 

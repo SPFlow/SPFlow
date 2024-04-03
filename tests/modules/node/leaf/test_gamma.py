@@ -9,7 +9,7 @@ from pytest import raises
 
 from spflow import maximum_likelihood_estimation, sample
 from spflow.meta.data import Scope
-from spflow.modules.node.leaf.gamma import Gamma
+from spflow.modules.node.leaf.gamma_old import Gamma
 
 from tests.fixtures import set_seed
 
