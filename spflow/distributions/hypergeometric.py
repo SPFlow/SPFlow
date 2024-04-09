@@ -240,39 +240,41 @@ class _HypergeometricDistribution():
 
         return result
 
+
     def sample(self, n_samples):
-        # ToDo: Implement a more efficient sampling method
-        data = torch.zeros(n_samples[0], *self.event_shape, device=self.K.device)
-        if len(self.event_shape) == 1:
-            for leaf_idx in range(self.event_shape[0]):
-                rand_perm = (
-                    torch.argsort(
-                        torch.rand(n_samples[0], self.N.to(torch.int32).item()),
-                        dim=1,
-                    )
-                        .to(self.N.device)
-                )
+            """
+            Efficiently samples from the hypergeometric distribution in parallel for all scope_idx and leaf_idx.
+            Args:
+                n_samples (tuple): Number of samples to generate.
 
-                # assuming that first K indices are the K objects of interest, count how many of these indices were "drawn" in the first n draws (with replacement since all indices are unique per row)
-                data = ((rand_perm[:, : self.n.to(torch.int32).item()] < self.K).sum(dim=1))
-        else:
-            for scope_idx in range(self.event_shape[0]):
-                for leaf_idx in range(self.event_shape[1]):
-                    rand_perm = (
-                        torch.argsort(
-                            torch.rand(
-                                n_samples[0],
-                                self.N[scope_idx, leaf_idx].to(torch.int32).item(),
-                            ),
-                            dim=1,
-                        )
-                            .to(self.N.device)
-                    )
+            Returns:
+                torch.Tensor: Sampled values.
+            """
+            # Ensure n_samples is a tuple for consistency in operations
+            if not isinstance(n_samples, tuple):
+                n_samples = (n_samples,)
 
-                    # assuming that first K indices are the K objects of interest, count how many of these indices were "drawn" in the first n draws (with replacement since all indices are unique per row)
-                    data[:, scope_idx,leaf_idx] = ((rand_perm[:, : self.n[scope_idx, leaf_idx].to(torch.int32).item()] < self.K[scope_idx, leaf_idx]).sum(dim=1))
+            # Prepare the tensor to store the samples
+            sample_shape = n_samples + self.event_shape
+            data = torch.zeros(sample_shape, device=self.K.device)
 
-        return data
+            # Generate random indices for each sample, scope, and leaf
+            rand_indices = torch.argsort(torch.rand(*sample_shape, self.N.max().to(torch.int32).item(), device=self.K.device), dim=-1)
 
+            # Use broadcasting to create masks where draws are of interest
+            K_expanded = self.K.unsqueeze(0).expand(*n_samples, *self.K.shape)
+            n_expanded = self.n.unsqueeze(0).expand(*n_samples, *self.n.shape)
 
+            # Create a mask for the "drawn" indices, considering the first K indices as objects of interest
+            drawn_mask = rand_indices < K_expanded.unsqueeze(-1)
 
+            # Count the "drawn" indices for each sample, within the first 'n' draws
+            n_drawn = drawn_mask[..., :n_expanded.max().to(torch.int32).item()].sum(dim=-1)
+
+            # Adjust the shape of n_drawn to match the desired sample shape
+            n_drawn_shape_adjusted = n_drawn[..., :self.n.shape[-1]]
+
+            # Ensure the counts do not exceed the limits defined by n and K for each scope and leaf
+            data = torch.where(n_drawn_shape_adjusted < n_expanded, n_drawn_shape_adjusted, n_expanded)
+
+            return data
