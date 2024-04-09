@@ -147,6 +147,9 @@ class NegativeBinomial(Distribution):
         # total (weighted) number of instances times number of trials per instance
         n_total = weights.sum() * self.n
 
+        if bias_correction:
+            n_total -= 1
+
         # count (weighted) number of total successes
         n_success = (weights * data).sum(0)
 
