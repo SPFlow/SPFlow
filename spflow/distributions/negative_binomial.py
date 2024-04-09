@@ -141,9 +141,6 @@ class NegativeBinomial(Distribution):
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))  # (batch, 1, 1, ...) for broadcasting
             weights = torch.ones(_shape, device=data.device)
 
-        # normalize weights to sum to n_samples
-        weights /= weights.sum()
-
         # total (weighted) number of instances times number of trials per instance
         n_total = weights.sum() * self.n
 
