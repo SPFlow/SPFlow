@@ -242,39 +242,39 @@ class _HypergeometricDistribution():
 
 
     def sample(self, n_samples):
-            """
-            Efficiently samples from the hypergeometric distribution in parallel for all scope_idx and leaf_idx.
-            Args:
-                n_samples (tuple): Number of samples to generate.
+        """
+        Efficiently samples from the hypergeometric distribution in parallel for all scope_idx and leaf_idx.
+        Args:
+            n_samples (tuple): Number of samples to generate.
 
-            Returns:
-                torch.Tensor: Sampled values.
-            """
-            # Ensure n_samples is a tuple for consistency in operations
-            if not isinstance(n_samples, tuple):
-                n_samples = (n_samples,)
+        Returns:
+            torch.Tensor: Sampled values.
+        """
+        # Ensure n_samples is a tuple for consistency in operations
+        if not isinstance(n_samples, tuple):
+            n_samples = (n_samples,)
 
-            # Prepare the tensor to store the samples
-            sample_shape = n_samples + self.event_shape
-            data = torch.zeros(sample_shape, device=self.K.device)
+        # Prepare the tensor to store the samples
+        sample_shape = n_samples + self.event_shape
+        data = torch.zeros(sample_shape, device=self.K.device)
 
-            # Generate random indices for each sample, scope, and leaf
-            rand_indices = torch.argsort(torch.rand(*sample_shape, self.N.max().to(torch.int32).item(), device=self.K.device), dim=-1)
+        # Generate random indices for each sample, scope, and leaf
+        rand_indices = torch.argsort(torch.rand(*sample_shape, self.N.max().to(torch.int32).item(), device=self.K.device), dim=-1)
 
-            # Use broadcasting to create masks where draws are of interest
-            K_expanded = self.K.unsqueeze(0).expand(*n_samples, *self.K.shape)
-            n_expanded = self.n.unsqueeze(0).expand(*n_samples, *self.n.shape)
+        # Use broadcasting to create masks where draws are of interest
+        K_expanded = self.K.unsqueeze(0).expand(*n_samples, *self.K.shape)
+        n_expanded = self.n.unsqueeze(0).expand(*n_samples, *self.n.shape)
 
-            # Create a mask for the "drawn" indices, considering the first K indices as objects of interest
-            drawn_mask = rand_indices < K_expanded.unsqueeze(-1)
+        # Create a mask for the "drawn" indices, considering the first K indices as objects of interest
+        drawn_mask = rand_indices < K_expanded.unsqueeze(-1)
 
-            # Count the "drawn" indices for each sample, within the first 'n' draws
-            n_drawn = drawn_mask[..., :n_expanded.max().to(torch.int32).item()].sum(dim=-1)
+        # Count the "drawn" indices for each sample, within the first 'n' draws
+        n_drawn = drawn_mask[..., :n_expanded.max().to(torch.int32).item()].sum(dim=-1)
 
-            # Adjust the shape of n_drawn to match the desired sample shape
-            n_drawn_shape_adjusted = n_drawn[..., :self.n.shape[-1]]
+        # Adjust the shape of n_drawn to match the desired sample shape
+        n_drawn_shape_adjusted = n_drawn[..., :self.n.shape[-1]]
 
-            # Ensure the counts do not exceed the limits defined by n and K for each scope and leaf
-            data = torch.where(n_drawn_shape_adjusted < n_expanded, n_drawn_shape_adjusted, n_expanded)
+        # Ensure the counts do not exceed the limits defined by n and K for each scope and leaf
+        data = torch.where(n_drawn_shape_adjusted < n_expanded, n_drawn_shape_adjusted, n_expanded)
 
-            return data
+        return data
