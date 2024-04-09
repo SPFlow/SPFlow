@@ -110,18 +110,19 @@ class Geometric(Distribution):
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))  # (batch, 1, 1, ...) for broadcasting
             weights = torch.ones(_shape, device=data.device)
 
-        # total (weighted) number of instances
+        # total
         n_total = weights.sum()
 
+        # count (weighted) number of total successes
+        n_success = (weights * data).sum(0)
+
+        # estimate (weighted) success probability
+        p_est = n_total / (n_success + n_total)
+
+
         if bias_correction:
-            n_total -= 1
-
-        # total number of trials in data
-        n_trials = (weights * data).sum(dim=0)
-
-        # avoid division by zero
-        p_est = 1e-8 * torch.ones(data.shape[1], device=data.device)
-        p_est[n_trials != 0] = n_total / n_trials
+            b = p_est * (1 - p_est) / n_total
+            p_est -= b
 
         # edge case (if all values are the same, not enough samples or very close to each other)
         if torch.any(zero_mask := torch.isclose(p_est, torch.tensor(0.0))):
