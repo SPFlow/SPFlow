@@ -101,7 +101,7 @@ def test_sample(module_type: str, is_mpe: bool):
         evaluate_samples(leaf, data, is_mpe=is_mpe, sampling_ctx=sampling_ctx)
 
 
-@pytest.mark.parametrize("bias_correction, module_type", product([True, False], ["layer"]))
+@pytest.mark.parametrize("bias_correction, module_type", product([True, False], ["node", "layer"]))
 def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
     """Test maximum likelihood estimation of a geometric distribution.
 
@@ -110,7 +110,7 @@ def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
     """
     leaf = make_leaf(module_type)
     p = torch.rand(TOTAL_SCOPES)
-    data = make_data(p, n_samples=1000)
+    data = make_data(p, n_samples=5000)
     maximum_likelihood_estimation(leaf, data, bias_correction=bias_correction)
     assert torch.isclose(leaf.distribution.p, p[leaf.scope.query].unsqueeze(1), atol=1e-2).all()
 
