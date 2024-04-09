@@ -130,19 +130,28 @@ class NegativeBinomial(Distribution):
         return NegativeBinomial(n=n, p=p)
 
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
+        """
+        Maximum likelihood estimation for the Negative Binomial distribution.
+
+        Note: The PyTorch implementation models this as the number of successful independent and identical Bernoulli
+        trials before n failures are achieved. Scipy models this as the number of failures before n successes are achieved,
+        which aligns with common statistical definitions. Therefore, the PyTorch MLE of p_est is 1 - p_est of Scipy.
+        """
         if weights is None:
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))  # (batch, 1, 1, ...) for broadcasting
             weights = torch.ones(_shape, device=data.device)
 
-        # total (weighted) number of instances
-        #n_total = weights.sum()
-        n_total = (weights.unsqueeze(2) * (data.unsqueeze(2) + self.n)).sum(dim=0)
+        # normalize weights to sum to n_samples
+        weights /= weights.sum()
 
-        # total number of successes
-        n_success = weights.sum(dim=0) * self.n
+        # total (weighted) number of instances times number of trials per instance
+        n_total = weights.sum() * self.n
 
-        # calculate mean and standard deviation from data
-        p_est = n_success / n_total
+        # count (weighted) number of total successes
+        n_success = (weights * data).sum(0)
+
+        # estimate (weighted) success probability
+        p_est = 1 - n_total / (n_success.unsqueeze(1) + n_total)
 
         # edge case (if all values are the same, not enough samples or very close to each other)
         if torch.any(zero_mask := torch.isclose(p_est, torch.tensor(0.0))):
