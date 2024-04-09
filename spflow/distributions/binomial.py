@@ -134,6 +134,9 @@ class Binomial(Distribution):
         return Binomial(n=n, p=p)
 
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
+        """
+        Maximum likelihood estimation for the Binomial distribution. bias_correction is ignored since p = x / n is unbiased.
+        """
         if weights is None:
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))  # (batch, 1, 1, ...) for broadcasting
             weights = torch.ones(_shape, device=data.device)
@@ -151,7 +154,6 @@ class Binomial(Distribution):
         p_est = n_success.unsqueeze(1) / n_total
 
         # edge case (if all values are the same, not enough samples or very close to each other)
-
         if torch.any(zero_mask := torch.isclose(p_est, torch.tensor(0.0))):
             p_est[zero_mask] = torch.tensor(1e-8)
         elif torch.any(one_mask := torch.isclose(p_est, torch.tensor(1.0))):
