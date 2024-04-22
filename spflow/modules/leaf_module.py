@@ -33,7 +33,7 @@ class LeafModule(Module, ABC):
 
     @property
     def distribution(self) -> Distribution:
-        self._distribution
+        return self._distribution
 
     @distribution.setter
     def distribution(self, distribution: Distribution):
