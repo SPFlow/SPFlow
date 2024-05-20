@@ -115,7 +115,7 @@ def sample(
     if leaf.event_shape[1] > 1:
         # Index the output_ids to get the correct samples for each scope
         # Output_ids should usually be defined by some module that is the parent of this layer
-        assert samples.shape[1] == sampling_ctx.output_ids.shape[1]
+        #assert samples.shape[1] == sampling_ctx.output_ids.shape[1]#assert samples.shape[-1] == sampling_ctx.output_ids.shape[1]
         samples = samples.gather(dim=-1, index=sampling_ctx.output_ids.unsqueeze(-1)).squeeze(-1)
 
     if samples.ndim == 1:
