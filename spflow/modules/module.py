@@ -305,3 +305,31 @@ def sample(
         dispatch_ctx=dispatch_ctx,
         sampling_ctx=sampling_ctx,
     )
+
+@dispatch(memoize=True)  # type: ignore
+def em(
+    layer: Module,
+    data: Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> None:
+    """Performs a single expectation maximizaton (EM) step for ``ProductLayer`` in the ``torch`` backend.
+
+    Args:
+        layer:
+            Layer to perform EM step for.
+        data:
+            Two-dimensional PyTorch tensor containing the input data.
+            Each row corresponds to a sample.
+        check_support:
+            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+    """
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+
+    # recursively call EM on inputs
+
+    em(layer.inputs[0], data, check_support=check_support, dispatch_ctx=dispatch_ctx)
