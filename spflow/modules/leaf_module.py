@@ -76,7 +76,7 @@ def em(
         # Reduce expectations to shape [batch_size, 1]
         dims = list(range(1, len(expectations.shape)))
         expectations = expectations.sum(dims)
-        expectations /= expectations.sum(keepdim=True)
+        expectations /= expectations.sum(dim=None, keepdim=True)
 
         # ----- maximization step -----
 
