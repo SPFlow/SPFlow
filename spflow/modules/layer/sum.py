@@ -50,7 +50,7 @@ class SumLayer(Module):
     def __init__(
         self,
         n_nodes: int,
-        inputs: Module,
+        inputs: list[Module],
         weights: Tensor = None,
         **kwargs,
     ) -> None:
@@ -72,8 +72,7 @@ class SumLayer(Module):
         Raises:
             ValueError: Invalid arguments.
         """
-
-
+        super().__init__(inputs=inputs, **kwargs)
 
         if n_nodes < 1:
             raise ValueError("Number of nodes for 'SumLayer' must be greater of equal to 1.")
@@ -83,14 +82,12 @@ class SumLayer(Module):
 
 
         self._n_out = n_nodes
-        self.n_in = inputs.event_shape[-1] # number of outputs from input
-        self.n_scopes = inputs.event_shape[-2] # number of scopes from input
+        self.n_in = inputs[0].event_shape[-1] # number of outputs from input
+        self.n_scopes = inputs[0].event_shape[-2] # number of scopes from input
         self.event_shape = (self.n_in, self.n_scopes, self._n_out)
 
         # compute scope
-        self.scope = inputs.scope
-
-        super().__init__(inputs=[inputs], **kwargs)
+        self.scope = inputs[0].scope
 
         self.normalization_dim = 2
 
