@@ -40,7 +40,7 @@ class ProductLayer(Module):
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, inputs: Module, **kwargs) -> None:
+    def __init__(self, inputs: list[Module], **kwargs) -> None:
         r"""Initializes ``ProductLayer`` object.
 
         Args:
@@ -52,9 +52,10 @@ class ProductLayer(Module):
         Raises:
             ValueError: Invalid arguments.
         """
+        super().__init__(inputs=inputs, **kwargs)
 
-        self.n_in = inputs.event_shape[-1]
-        self.n_scopes = inputs.event_shape[-2]
+        self.n_in = inputs[0].event_shape[-1]
+        self.n_scopes = inputs[0].event_shape[-2]
         self._n_out = self.n_in
 
         self.event_shape = (self.n_in, self.n_scopes, self.n_out)
@@ -64,9 +65,7 @@ class ProductLayer(Module):
 
 
         # compute scope
-        self.scope = inputs.scope
-
-        super().__init__(inputs=[inputs], **kwargs)
+        self.scope = inputs[0].scope
 
 
     @property
