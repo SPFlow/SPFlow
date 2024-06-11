@@ -12,6 +12,7 @@ from spflow import maximum_likelihood_estimation, sample, marginalize
 from spflow.meta.data import Scope
 from spflow.modules.layer.leaf.uniform import Uniform as UniformLayer
 from spflow.modules.node.leaf.uniform import Uniform as UniformNode
+from spflow.modules.layer.vectorized.leaf.uniform import Uniform as VectorizedUniformLayer
 
 # Constants
 NUM_LEAVES = 2
@@ -47,6 +48,23 @@ def make_params(module_type: str, start=None, end=None) -> tuple[torch.Tensor, t
             end_max = 10 * torch.ones(1)  # Upper bound is 10
             end = end_min + (end_max - end_min) * torch.rand(1)
             return start, end
+    elif module_type == "vector":
+        if start is not None and end is not None:
+            if start.shape != (NUM_SCOPES, 1):
+                start = start.repeat(NUM_SCOPES, 1)
+            if end.shape != (NUM_SCOPES, 1):
+                end = end.repeat(NUM_SCOPES, 1)
+            return start, end
+        else:
+            # Generate a float tensor of random numbers between 0 and 5
+            start = 5 * torch.rand((NUM_SCOPES, 1))
+
+            # Generate a float tensor of random numbers between the first tensor and 10
+            # Ensure that the second random number is greater than the first
+            end_min = start + 1
+            end_max = 10 * torch.ones((NUM_SCOPES, 1))  # Upper bound is 10
+            end = end_min + (end_max - end_min) * torch.rand((NUM_SCOPES, 1))
+            return start, end
     elif module_type == "layer":
         if start is not None and end is not None:
             if start.shape != (NUM_SCOPES, NUM_LEAVES):
@@ -81,6 +99,10 @@ def make_leaf(module_type: str, start=None, end=None) -> Union[UniformNode, Unif
         start, end = make_params(module_type, start=start, end=end)
         scope = Scope([1])
         return UniformNode(scope=scope, start=start, end=end)
+    elif module_type == "vector":
+        start, end = make_params(module_type, start=start, end=end)
+        scope = Scope(list(range(1, NUM_SCOPES + 1)))
+        return VectorizedUniformLayer(scope=scope, start=start, end=end)
     elif module_type == "layer":
         start, end = make_params(module_type, start=start, end=end)
         scope = Scope(list(range(1, NUM_SCOPES + 1)))
@@ -115,13 +137,13 @@ def make_data(start=None, end=None, n_samples=5) -> torch.Tensor:
     return torch.distributions.Uniform(low=start, high=end).sample((n_samples,))
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_log_likelihood(module_type: str):
     """Test the log likelihood of a uniform distribution."""
     evaluate_log_likelihood(make_leaf(module_type, start=START_TENSOR, end=END_TENSOR), make_data(start= START_TENSOR, end=END_TENSOR))
 
 
-@pytest.mark.parametrize("module_type,is_mpe", product(["node","layer"], [False]))
+@pytest.mark.parametrize("module_type,is_mpe", product(["node", "vector", "layer"], [False]))
 def test_sample(module_type: str, is_mpe: bool):
     """Test sampling from a uniform distribution."""
 
@@ -139,7 +161,7 @@ def test_sample(module_type: str, is_mpe: bool):
         evaluate_samples(leaf, data, is_mpe=is_mpe, sampling_ctx=sampling_ctx)
 
 
-@pytest.mark.parametrize("bias_correction, module_type", product([True, False], ["node", "layer"]))
+@pytest.mark.parametrize("bias_correction, module_type", product([True, False], ["node", "vector", "layer"]))
 def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
     """Test maximum likelihood estimation of a uniform distribution.
 
@@ -153,7 +175,7 @@ def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
 
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_constructor(module_type: str):
     """Test the constructor of a uniform distribution."""
     # Check that parameters are set correctly
@@ -172,19 +194,20 @@ def test_constructor(module_type: str):
         make_leaf(module_type=module_type, start=None, end=end)  # missing mean
         make_leaf(module_type=module_type, start=start, end=None)  # missing std
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_marginalize(module_type: str):
     """Test marginalization of a uniform distribution."""
     leaf = make_leaf(module_type)
     scope_og = leaf.scope.copy()
     marg_rvs = [1, 2]
     leaf_marg = marginalize(leaf, marg_rvs)
+    num_leaves = NUM_LEAVES if module_type == "layer" else 1
 
     if module_type == "node":
         assert leaf_marg == None
     else:
-        assert leaf_marg.distribution.start.shape == (NUM_SCOPES - len(marg_rvs), NUM_LEAVES)
-        assert leaf_marg.distribution.end.shape == (NUM_SCOPES - len(marg_rvs), NUM_LEAVES)
+        assert leaf_marg.distribution.start.shape == (NUM_SCOPES - len(marg_rvs), num_leaves)
+        assert leaf_marg.distribution.end.shape == (NUM_SCOPES - len(marg_rvs), num_leaves)
 
         # TODO: ensure, that the correct scopes were marginalized
         assert leaf_marg.scope.query == [q for q in scope_og.query if q not in marg_rvs]

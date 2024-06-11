@@ -13,6 +13,7 @@ from spflow import maximum_likelihood_estimation, sample, marginalize
 from spflow.meta.data import Scope
 from spflow.modules.layer.leaf.gamma import Gamma as GammaLayer
 from spflow.modules.node.leaf.gamma import Gamma as GammaNode
+from spflow.modules.layer.vectorized.leaf.gamma import Gamma as VectorizedGamma
 
 # Constants
 NUM_LEAVES = 2
@@ -45,6 +46,13 @@ def make_params(module_type: str, alpha=None, beta=None) -> tuple[torch.Tensor, 
             return alpha, beta
         else:
             return torch.rand(NUM_SCOPES, NUM_LEAVES) + 1e-8, torch.rand(NUM_SCOPES, NUM_LEAVES) + 1e-8
+    elif module_type == "vector":
+        if alpha is not None and beta is not None:
+            assert alpha.shape == (NUM_SCOPES, 1)
+            assert beta.shape == (NUM_SCOPES, 1)
+            return alpha, beta
+        else:
+            return torch.rand(NUM_SCOPES, 1) + 1e-8, torch.rand(NUM_SCOPES, 1) + 1e-8
     else:
         raise ValueError(f"Invalid module_type: {module_type}")
 
@@ -68,6 +76,11 @@ def make_leaf(module_type: str, alpha=None, beta=None) -> Union[GammaNode, Gamma
         beta = beta if beta is not None else torch.rand(NUM_SCOPES, NUM_LEAVES) + 1e-8
         scope = Scope(list(range(1, NUM_SCOPES + 1)))
         return GammaLayer(scope=scope, alpha=alpha, beta=beta)
+    elif module_type == "vector":
+        alpha = alpha if alpha is not None else torch.rand(NUM_SCOPES, 1) + 1e-8
+        beta = beta if beta is not None else torch.rand(NUM_SCOPES, 1) + 1e-8
+        scope = Scope(list(range(1, NUM_SCOPES + 1)))
+        return VectorizedGamma(scope=scope, alpha=alpha, beta=beta)
     else:
         raise ValueError(f"Invalid module_type: {module_type}")
 
@@ -88,13 +101,13 @@ def make_data(alpha=None, beta=None, n_samples=5) -> torch.Tensor:
     return torch.distributions.Gamma(concentration=alpha, rate=beta).sample((n_samples,))
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_log_likelihood(module_type: str):
     """Test the log likelihood of a gamma distribution."""
     evaluate_log_likelihood(make_leaf(module_type), make_data())
 
 
-@pytest.mark.parametrize("module_type,is_mpe", product(["node", "layer"], [True, False]))
+@pytest.mark.parametrize("module_type,is_mpe", product(["node", "vector", "layer"], [True, False]))
 def test_sample(module_type: str, is_mpe: bool):
     """Test sampling from a gamma distribution."""
     alpha, beta = make_params(module_type)
@@ -109,7 +122,7 @@ def test_sample(module_type: str, is_mpe: bool):
         evaluate_samples(leaf, data, is_mpe=is_mpe, sampling_ctx=sampling_ctx)
 
 
-@pytest.mark.parametrize("bias_correction, module_type", product([False, True], ["node", "layer"]))
+@pytest.mark.parametrize("bias_correction, module_type", product([False, True], ["node", "vector", "layer"]))
 def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
     """Test maximum likelihood estimation of a gamma distribution.
 
@@ -125,7 +138,7 @@ def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
     assert torch.isclose(leaf.distribution.beta, beta[leaf.scope.query].unsqueeze(1), atol=1e-2).all()
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_constructor(module_type: str):
     """Test the constructor of a gamma distribution."""
     # Check that parameters are set correctly
@@ -146,7 +159,7 @@ def test_constructor(module_type: str):
         make_leaf(module_type=module_type, alpha=alpha, beta=None)  # missing beta
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_requires_grad(module_type: str):
     """Test whether the alpha and beta of a gamma distribution require gradients."""
     leaf = make_leaf(module_type)
@@ -154,19 +167,20 @@ def test_requires_grad(module_type: str):
     assert leaf.distribution.beta.requires_grad
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_marginalize(module_type: str):
     """Test marginalization of a gamma distribution."""
     leaf = make_leaf(module_type)
     scope_og = leaf.scope.copy()
     marg_rvs = [1, 2]
     leaf_marg = marginalize(leaf, marg_rvs)
+    num_leaves = NUM_LEAVES if module_type == "layer" else 1
 
     if module_type == "node":
         assert leaf_marg == None
     else:
-        assert leaf_marg.distribution.alpha.shape == (NUM_SCOPES - len(marg_rvs), NUM_LEAVES)
-        assert leaf_marg.distribution.beta.shape == (NUM_SCOPES - len(marg_rvs), NUM_LEAVES)
+        assert leaf_marg.distribution.alpha.shape == (NUM_SCOPES - len(marg_rvs), num_leaves)
+        assert leaf_marg.distribution.beta.shape == (NUM_SCOPES - len(marg_rvs), num_leaves)
 
         # TODO: ensure, that the correct scopes were marginalized
         assert leaf_marg.scope.query == [q for q in scope_og.query if q not in marg_rvs]

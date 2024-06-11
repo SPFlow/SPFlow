@@ -14,6 +14,7 @@ from spflow import maximum_likelihood_estimation, sample, marginalize, log_likel
 from spflow.meta.data import Scope
 from spflow.modules.layer.leaf.hypergeometric import Hypergeometric as HypergeometricLayer
 from spflow.modules.node.leaf.hypergeometric import Hypergeometric as HypergeometricNode
+from spflow.modules.layer.vectorized.leaf.hypergeometric import Hypergeometric as VectorizedHypergeometric
 
 # Constants
 NUM_LEAVES = 2
@@ -52,6 +53,14 @@ def make_params(module_type: str, K=None, N=None, n=None) -> tuple[torch.Tensor,
             return K, N, n
         else:
             return K_TENSOR.repeat(NUM_SCOPES, NUM_LEAVES), N_TENSOR.repeat(NUM_SCOPES, NUM_LEAVES), n_TENSOR.repeat(NUM_SCOPES, NUM_LEAVES)
+    elif module_type == "vector":
+        if K is not None and N is not None and n is not None:
+            assert K.shape == (NUM_SCOPES, 1)
+            assert N.shape == (NUM_SCOPES, 1)
+            assert n.shape == (NUM_SCOPES, 1)
+            return K, N, n
+        else:
+            return K_TENSOR.repeat(NUM_SCOPES, 1), N_TENSOR.repeat(NUM_SCOPES, 1), n_TENSOR.repeat(NUM_SCOPES, 1)
     else:
         raise ValueError(f"Invalid module_type: {module_type}")
 
@@ -78,6 +87,12 @@ def make_leaf(module_type: str, K=None, N=None, n=None) -> Union[HypergeometricN
         n = n if n is not None else n_TENSOR.repeat(NUM_SCOPES, NUM_LEAVES)
         scope = Scope(list(range(1, NUM_SCOPES + 1)))
         return HypergeometricLayer(scope=scope, K=K, N=N, n=n)
+    elif module_type == "vector":
+        K = K if K is not None else K_TENSOR.repeat(NUM_SCOPES, 1)
+        N = N if N is not None else N_TENSOR.repeat(NUM_SCOPES, 1)
+        n = n if n is not None else n_TENSOR.repeat(NUM_SCOPES, 1)
+        scope = Scope(list(range(1, NUM_SCOPES + 1)))
+        return VectorizedHypergeometric(scope=scope, K=K, N=N, n=n)
     else:
         raise ValueError(f"Invalid module_type: {module_type}")
 
@@ -102,7 +117,7 @@ def make_data(K=None, N=None, n=None, n_samples=5) -> torch.Tensor:
     return hypergeom(M=N.type(torch.int32), N=n.type(torch.int32), n=K.type(torch.int32)).rvs(size=(n_samples, TOTAL_SCOPES))
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_log_likelihood(module_type: str):
     """Test the log likelihood of a hypergeometric distribution."""
     node = make_leaf(module_type)
@@ -117,7 +132,7 @@ def test_log_likelihood(module_type: str):
     assert torch.allclose(lls, torch.tensor(scipy_lls).to(lls.dtype), atol=1e-4)
 
 
-@pytest.mark.parametrize("module_type,is_mpe", product(["node", "layer"], [True, False]))
+@pytest.mark.parametrize("module_type,is_mpe", product(["node", "vector","layer"], [True, False]))
 def test_sample(module_type: str, is_mpe: bool):
     """Test sampling from a hypergeometric distribution."""
     K, N, n = make_params(module_type)
@@ -146,12 +161,12 @@ def test_sample(module_type: str, is_mpe: bool):
             assert torch.isclose(samples[:, leaf.scope.query].mean(0), leaf_mean[:, i], atol=1e-1).all()
             assert torch.isclose(samples[:, leaf.scope.query].std(0), leaf_std[:, i], atol=3e-1).all()
 
-        if module_type == "node":
+        if leaf.event_shape[-1] == 1:
             # Break after first round since nodes only have a single leaf per scope
             break
 
 
-@pytest.mark.parametrize("bias_correction, module_type", product([True, False], ["node", "layer"]))
+@pytest.mark.parametrize("bias_correction, module_type", product([True, False], ["node", "vector", "layer"]))
 def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
     """Test maximum likelihood estimation of a hypergeometric distribution.
 
@@ -164,7 +179,7 @@ def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
 
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_constructor(module_type: str):
     """Test the constructor of a hypergeometric distribution."""
     # Check that parameters are set correctly
@@ -189,20 +204,21 @@ def test_constructor(module_type: str):
         make_leaf(module_type=module_type, K=K, N=N, n=n.unsqueeze(0))  # wrong n shape
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_marginalize(module_type: str):
     """Test marginalization of a hypergeometric distribution."""
     leaf = make_leaf(module_type)
     scope_og = leaf.scope.copy()
     marg_rvs = [1, 2]
     leaf_marg = marginalize(leaf, marg_rvs)
+    num_leaves = NUM_LEAVES if module_type == "layer" else 1
 
     if module_type == "node":
         assert leaf_marg == None
     else:
-        assert leaf_marg.distribution.K.shape == (NUM_SCOPES - len(marg_rvs), NUM_LEAVES)
-        assert leaf_marg.distribution.N.shape == (NUM_SCOPES - len(marg_rvs), NUM_LEAVES)
-        assert leaf_marg.distribution.n.shape == (NUM_SCOPES - len(marg_rvs), NUM_LEAVES)
+        assert leaf_marg.distribution.K.shape == (NUM_SCOPES - len(marg_rvs), num_leaves)
+        assert leaf_marg.distribution.N.shape == (NUM_SCOPES - len(marg_rvs), num_leaves)
+        assert leaf_marg.distribution.n.shape == (NUM_SCOPES - len(marg_rvs), num_leaves)
 
         # TODO: ensure, that the correct scopes were marginalized
         assert leaf_marg.scope.query == [q for q in scope_og.query if q not in marg_rvs]
