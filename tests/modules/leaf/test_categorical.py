@@ -13,6 +13,7 @@ from spflow import maximum_likelihood_estimation, sample, marginalize
 from spflow.meta.data import Scope
 from spflow.modules.layer.leaf.categorical import Categorical as CategoricalLayer
 from spflow.modules.node.leaf.categorical import Categorical as CategoricalNode
+from spflow.modules.layer.vectorized.leaf.categorical import Categorical as CategoricalVectorizedLayer
 
 # Constants
 NUM_LEAVES = 2
@@ -38,6 +39,13 @@ def make_params(module_type: str, p=None) -> torch.Tensor:
         else:
             p = torch.rand(NUM_CATEGORIES) + 1e-8
             return p/p.sum()
+    elif module_type == "vector":
+        if p is not None:
+            assert p.shape[0] == 1 or p.shape[1] == 1
+            return p
+        else:
+            p = torch.rand(NUM_SCOPES, 1, NUM_CATEGORIES) + 1e-8
+            return p/p.sum()
     elif module_type == "layer":
         if p is not None:
             assert p.shape[:2] == (NUM_SCOPES, NUM_LEAVES)
@@ -62,6 +70,11 @@ def make_leaf(module_type: str, p=None) -> Union[CategoricalNode, CategoricalLay
         p = p / p.sum()
         scope = Scope([1])
         return CategoricalNode(scope=scope, p=p)
+    elif module_type == "vector":
+        p = p if p is not None else torch.rand(NUM_SCOPES, 1, NUM_CATEGORIES) + 1e-8
+        p = p/p.sum()
+        scope = Scope(list(range(1, NUM_SCOPES + 1)))
+        return CategoricalVectorizedLayer(scope=scope, p=p)
     elif module_type == "layer":
         p = p if p is not None else torch.rand(NUM_SCOPES, NUM_LEAVES, NUM_CATEGORIES) + 1e-8
         p = p/p.sum()
@@ -87,13 +100,13 @@ def make_data(p=None, n_samples=5) -> torch.Tensor:
     return torch.distributions.Categorical(probs=p).sample((n_samples,))
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_log_likelihood(module_type: str):
     """Test the log likelihood of a categorical distribution."""
     evaluate_log_likelihood(make_leaf(module_type), make_data())
 
 
-@pytest.mark.parametrize("module_type,is_mpe", product(["layer", "node"], [True, False]))
+@pytest.mark.parametrize("module_type,is_mpe", product(["layer", "vector", "node"], [True, False]))
 def test_sample(module_type: str, is_mpe: bool):
     """Test sampling from a categorical distribution."""
     p = make_params(module_type)
@@ -109,7 +122,7 @@ def test_sample(module_type: str, is_mpe: bool):
 
 
 
-@pytest.mark.parametrize("bias_correction, module_type", product([True, False], ["node", "layer"]))
+@pytest.mark.parametrize("bias_correction, module_type", product([True, False], ["node", "vector", "layer"]))
 def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
     """Test maximum likelihood estimation of a categorical distribution.
 
@@ -125,7 +138,7 @@ def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
     assert torch.isclose(leaf.distribution.p, p[leaf.scope.query].unsqueeze(1), atol=1e-1).all()
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_constructor(module_type: str):
     """Test the constructor of a categorical distribution."""
     # Check that parameters are set correctly
@@ -143,7 +156,7 @@ def test_constructor(module_type: str):
         make_leaf(module_type=module_type, p=None)  # missing p
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_requires_grad(module_type: str):
     """Test whether p of a categorical distribution require gradients."""
     leaf = make_leaf(module_type)
@@ -157,11 +170,12 @@ def test_marginalize(module_type: str):
     scope_og = leaf.scope.copy()
     marg_rvs = [1, 2]
     leaf_marg = marginalize(leaf, marg_rvs)
+    num_leaves = NUM_LEAVES if module_type == "layer" else 1
 
     if module_type == "node":
         assert leaf_marg == None
     else:
-        assert leaf_marg.distribution.p.shape == (NUM_SCOPES - len(marg_rvs), NUM_LEAVES, NUM_CATEGORIES)
+        assert leaf_marg.distribution.p.shape == (NUM_SCOPES - len(marg_rvs), num_leaves, NUM_CATEGORIES)
 
         # TODO: ensure, that the correct scopes were marginalized
         assert leaf_marg.scope.query == [q for q in scope_og.query if q not in marg_rvs]

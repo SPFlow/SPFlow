@@ -13,6 +13,7 @@ from spflow import maximum_likelihood_estimation, sample, marginalize
 from spflow.meta.data import Scope
 from spflow.modules.layer.leaf.normal import Normal as NormalLayer
 from spflow.modules.node.leaf.normal import Normal as NormalNode
+from spflow.modules.layer.vectorized.leaf.normal import Normal as VectorizedNormal
 
 # Constants
 NUM_LEAVES = 2
@@ -45,6 +46,14 @@ def make_params(module_type: str, mean=None, std=None) -> tuple[torch.Tensor, to
             return mean, std
         else:
             return torch.randn(NUM_SCOPES, NUM_LEAVES), torch.rand(NUM_SCOPES, NUM_LEAVES) + 1e-8
+    elif module_type == "vector":
+        if mean is not None and std is not None:
+            assert mean.shape == (NUM_SCOPES, 1)
+            assert std.shape == (NUM_SCOPES, 1)
+            return mean, std
+        else:
+            return torch.randn(NUM_SCOPES, 1), torch.rand(NUM_SCOPES, 1) + 1e-8
+
     else:
         raise ValueError(f"Invalid module_type: {module_type}")
 
@@ -68,6 +77,11 @@ def make_leaf(module_type: str, mean=None, std=None) -> Union[NormalNode, Normal
         std = std if std is not None else torch.rand(NUM_SCOPES, NUM_LEAVES) + 1e-8
         scope = Scope(list(range(1, NUM_SCOPES + 1)))
         return NormalLayer(scope=scope, mean=mean, std=std)
+    elif module_type == "vector":
+        mean = mean if mean is not None else torch.randn(NUM_SCOPES, 1)
+        std = std if std is not None else torch.rand(NUM_SCOPES, 1) + 1e-8
+        scope = Scope(list(range(1, NUM_SCOPES + 1)))
+        return VectorizedNormal(scope=scope, mean=mean, std=std)
     else:
         raise ValueError(f"Invalid module_type: {module_type}")
 
@@ -88,13 +102,13 @@ def make_data(mean=None, std=None, n_samples=5) -> torch.Tensor:
     return torch.distributions.Normal(loc=mean, scale=std).sample((n_samples,))
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "layer", "vector"])
 def test_log_likelihood(module_type: str):
     """Test the log likelihood of a normal distribution."""
     evaluate_log_likelihood(make_leaf(module_type), make_data())
 
 
-@pytest.mark.parametrize("module_type,is_mpe", product(["node", "layer"], [True, False]))
+@pytest.mark.parametrize("module_type,is_mpe", product(["node", "vector", "layer"], [True, False]))
 def test_sample(module_type: str, is_mpe: bool):
     """Test sampling from a normal distribution."""
     mean, std = make_params(module_type)
@@ -118,12 +132,12 @@ def test_sample(module_type: str, is_mpe: bool):
             # Don't check std if MPE
             assert torch.isclose(samples[:, leaf.scope.query].std(0), std[:, i], atol=1e-1).all()
 
-        if module_type == "node":
-            # Break after first round since nodes only have a single leaf per scope
+        if leaf.event_shape[-1] == 1:
+            # Break after first round since nodes and vectors only have a single leaf per scope
             break
 
 
-@pytest.mark.parametrize("bias_correction, module_type", product([True, False], ["node", "layer"]))
+@pytest.mark.parametrize("bias_correction, module_type", product([True, False], ["node", "layer", "vector"]))
 def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
     """Test maximum likelihood estimation of a normal distribution.
 
@@ -141,7 +155,7 @@ def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
     assert torch.isclose(leaf.distribution.std, data_scope_std, atol=1e-2).all()
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "layer", "vector"])
 def test_constructor(module_type: str):
     """Test the constructor of a normal distribution."""
     # Check that parameters are set correctly
@@ -162,7 +176,7 @@ def test_constructor(module_type: str):
         make_leaf(module_type=module_type, mean=mean, std=None)  # missing std
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "layer", "vector"])
 def test_requires_grad(module_type: str):
     """Test whether the mean and std of a normal distribution require gradients."""
     leaf = make_leaf(module_type)
@@ -170,19 +184,19 @@ def test_requires_grad(module_type: str):
     assert leaf.distribution.std.requires_grad
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "layer", "vector"])
 def test_marginalize(module_type: str):
     """Test marginalization of a normal distribution."""
     leaf = make_leaf(module_type)
     scope_og = leaf.scope.copy()
     marg_rvs = [1, 2]
     leaf_marg = marginalize(leaf, marg_rvs)
-
+    num_leaves = NUM_LEAVES if module_type == "layer" else 1
     if module_type == "node":
         assert leaf_marg == None
     else:
-        assert leaf_marg.distribution.mean.shape == (NUM_SCOPES - len(marg_rvs), NUM_LEAVES)
-        assert leaf_marg.distribution.std.shape == (NUM_SCOPES - len(marg_rvs), NUM_LEAVES)
+        assert leaf_marg.distribution.mean.shape == (NUM_SCOPES - len(marg_rvs), num_leaves)
+        assert leaf_marg.distribution.std.shape == (NUM_SCOPES - len(marg_rvs), num_leaves)
 
         # TODO: ensure, that the correct scopes were marginalized
         assert leaf_marg.scope.query == [q for q in scope_og.query if q not in marg_rvs]

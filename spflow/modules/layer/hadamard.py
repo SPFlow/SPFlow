@@ -1,11 +1,13 @@
-"""Contains SPN-like hadamard layer for SPFlow in the ``torch`` backend.
+"""Contains SPN-like product layer for SPFlow in the ``torch`` backend.
 """
+import itertools
 from copy import deepcopy
+from functools import reduce
 from typing import List, Optional, Union
 from collections.abc import Iterable
 
 import numpy as np
-import tensorly as tl
+import torch
 
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
@@ -14,28 +16,20 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from spflow.utils import Tensor
-from spflow import tensor as T
+
+from torch import Tensor
+from spflow import log_likelihood
 from spflow.modules.module import Module
-from spflow.tensor.ops import Tensor
+from spflow.utils.projections import (
+    proj_convex_to_real,
+    proj_real_to_convex,
+)
 
 
 class HadamardLayer(Module):
-    """Layer representing multiple SPN-like product nodes in the ``torch`` backend as element-wise products of inputs from different partitions.
+    r"""Layer representing multiple SPN-like product nodes over all inputs in the ``torch`` backend.
 
-    A partition is a group of inputs over the same scope. Different partitions have pair-wise disjoint scopes.
-    The layer represents element-wise products selecting a single input from each partition.
-    This means that all partitions must represent an equal number of inputs or a single input (in which case the input is broadcast).
-    The resulting outputs all have the same scopes.
-
-    Example:
-
-        layer = HadamardLayer([[node1, node2], [node3], [node4, node5]])
-
-        In this example the layer will have 2 product nodes over the following inputs (in this order):
-
-            node1, node3, node4
-            node2, node3, node5
+    Represents multiple products of its inputs over pair-wise disjoint scopes.
 
     Methods:
         inputs():
@@ -46,80 +40,36 @@ class HadamardLayer(Module):
             Integer indicating the number of outputs. Equal to the number of nodes represented by the layer.
         scopes_out:
             List of scopes representing the output scopes.
-        modules_per_partition:
-            List of integers keeping track of the number of total inputs each input partition represents.
-        partition_scopes:
-            List of scopes keeping track of the scopes each partition represents.
     """
 
-    def __init__(self, child_partitions: list[list[Module]], **kwargs) -> None:
+    def __init__(self, inputs: list[Module], **kwargs) -> None:
         r"""Initializes ``HadamardLayer`` object.
 
         Args:
-            child_partitions:
-                Non-empty list of lists of modules that are inputs to the layer.
-                The output scopes for all child modules in a partition need to be qual.
-                The output scopes for different partitions need to be pair-wise disjoint.
-                All partitions must have the same number of total outputs or a single output
-                (in which case the output is broadcast).
+            n_nodes:
+                Integer specifying the number of nodes the layer should represent.
+            inputs:
+                Non-empty list of modules that are inputs to the layer.
+                The output scopes for all child modules need to be pair-wise disjoint.
         Raises:
             ValueError: Invalid arguments.
         """
-        if len(child_partitions) == 0:
-            raise ValueError("No partitions for 'HadamardLayer' specified.")
+        super().__init__(inputs=inputs, **kwargs)
 
-        scope = Scope()
-        max_size = 1
-        self.partition_sizes = []
-        self.modules_per_partition = []
-        self.partition_scopes = []
+        self.n_in = inputs[0].event_shape[-1]
+        self.n_scopes = inputs[0].event_shape[-2]
+        self._n_out = self.n_in ** self.n_scopes
 
-        # parse partitions
-        for partition in child_partitions:
-            # check if partition is empty
-            if len(partition) == 0:
-                raise ValueError("All partitions for 'PartitionLayer' must be non-empty")
+        self.event_shape = (self.n_in, self.n_scopes, self.n_out)
+        self.combinations = list(itertools.product(range(self.n_in), repeat=self.n_scopes))
 
-            self.modules_per_partition.append(len(partition))
-            partition_scope = Scope()
-            size = 0
+        if not inputs:
+            raise ValueError("'HadamardLayer' requires at least one child to be specified.")
 
-            # iterate over modules in this partition
-            for child in partition:
-                # increase total number of outputs of this partition
-                size += child.n_out
 
-                # for each output scope
-                for s in child.scopes_out:
-                    # check if query scope is the same
-                    if partition_scope.equal_query(s) or partition_scope.isempty():
-                        partition_scope = partition_scope.join(s)
-                    else:
-                        raise ValueError("Scopes of modules inside a partition must have same query scope.")
+        # compute scope
+        self.scope = inputs[0].scope
 
-            # add partition size to list
-            if size == 1 or size == max_size or max_size == 1:
-                # either max_size is 1, then set max size to size (greater or equal to 1) or max_size is greater than 1 in which case size must be max_size or 1
-                max_size = max(size, max_size)
-                self.partition_sizes.append(size)
-            else:
-                raise ValueError(
-                    f"Total number of outputs per partition must be 1 or match the number of outputs of other partitions, but was {size}."
-                )
-
-            self.partition_scopes.append(partition_scope)
-
-            # check if partition is pairwise disjoint to the overall scope so far (makes sure all partitions have pair-wise disjoint scopes)
-            if partition_scope.isdisjoint(scope):
-                scope = scope.join(partition_scope)
-            else:
-                raise ValueError("Scopes of partitions must be pair-wise disjoint.")
-
-        super().__init__(inputs=sum(child_partitions, []), **kwargs)
-
-        self.n_in = sum(self.partition_sizes)
-        self._n_out = max_size
-        self.scope = scope
 
     @property
     def n_out(self) -> int:
@@ -132,20 +82,17 @@ class HadamardLayer(Module):
         return [self.scope for _ in range(self.n_out)]
 
     def parameters(self):
-        params = []
-        for child in self.inputs:
-            params.extend(list(child.parameters()))
-        return params
+        return self.inputs[0].parameters()
 
 
-@dispatch(memoize=True)  # typ: ignore
+@dispatch(memoize=True)  # type: ignore
 def marginalize(
     layer: HadamardLayer,
     marg_rvs: Iterable[int],
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> Union[HadamardLayer, Module, None]:
-    """Structural marginalization for SPN-like Hadamard layer objects in the ``torch`` backend.
+    """Structural marginalization for SPN-like product layer objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
     If the layer's scope contains non of the random variables to marginalize, then the layer is returned unaltered.
@@ -166,63 +113,44 @@ def marginalize(
             Optional dispatch context.
 
     Returns:
-        (Marginalized) Hadamard layer or None if it is completely marginalized.
+        (Marginalized) product layer or None if it is completely marginalized.
     """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # compute layer scope (same for all outputs)
     layer_scope = layer.scope
-
+    marg_child = None
     mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
 
     # layer scope is being fully marginalized over
     if len(mutual_rvs) == len(layer_scope.query):
-        return None
+        # passing this loop means marginalizing over the whole scope of this branch
+        pass
     # node scope is being partially marginalized
     elif mutual_rvs:
-        marg_partitions = []
 
-        inputs = list(layer.inputs)
-        partitions = np.split(inputs, np.cumsum(layer.modules_per_partition[:-1]))
+        # marginalize child modules
+        marg_child_layer = marginalize(layer.inputs[0], marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
-        for partition_scope, partition_inputs in zip(layer.partition_scopes, partitions):
-            partition_inputs = partition_inputs.tolist()
-            partition_mutual_rvs = set(partition_scope.query).intersection(set(marg_rvs))
+        # if marginalized child is not None
+        if marg_child_layer:
+            marg_child = marg_child_layer
 
-            # partition scope is being fully marginalized over
-            if len(partition_mutual_rvs) == len(partition_scope.query):
-                # drop partition entirely
-                continue
-            # node scope is being partially marginalized
-            elif partition_mutual_rvs:
-                # marginalize child modules
-                marg_partitions.append(
-                    [
-                        marginalize(
-                            child,
-                            marg_rvs,
-                            prune=prune,
-                            dispatch_ctx=dispatch_ctx,
-                        )
-                        for child in partition_inputs
-                    ]
-                )
-            else:
-                marg_partitions.append(deepcopy(partition_inputs))
-
-        # if product node has only one child after marginalization and pruning is true, return child directly
-        if len(marg_partitions) == 1 and len(marg_partitions[0]) == 1 and prune:
-            return marg_partitions[0][0]
-        else:
-            return HadamardLayer(child_partitions=marg_partitions)
     else:
-        return deepcopy(layer)
+        marg_child = layer.inputs[0]
+    if marg_child == None:
+        return None
 
+    # ToDo: check if this is correct / prune if only one scope is left?
+    elif prune and marg_child.event_shape[-2] == 1:
+        return marg_child
+    else:
+        return HadamardLayer(inputs=[marg_child])
 
 @dispatch(memoize=True)  # type: ignore
 def updateBackend(
-    hadamard_layer: HadamardLayer, dispatch_ctx: Optional[DispatchContext] = None
+    product_layer: HadamardLayer, dispatch_ctx: Optional[DispatchContext] = None
 ) -> HadamardLayer:
     """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
 
@@ -232,85 +160,66 @@ def updateBackend(
         dispatch_ctx:
             Dispatch context.
     """
-
-    inputs = hadamard_layer.inputs
-    partitions = np.split(inputs, np.cumsum(hadamard_layer.modules_per_partition[:-1]))
-
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return HadamardLayer(
-        child_partitions=[
-            [updateBackend(child, dispatch_ctx=dispatch_ctx) for child in partition]
-            for partition in partitions
-        ]
+        n_nodes=product_layer.n_out,
+        inputs=[updateBackend(child, dispatch_ctx=dispatch_ctx) for child in product_layer.inputs],
     )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toNodeBased(hadamard_layer: HadamardLayer, dispatch_ctx: Optional[DispatchContext] = None):
+def toNodeBased(product_layer: HadamardLayer, dispatch_ctx: Optional[DispatchContext] = None):
     from spflow.structure.spn.layer import HadamardLayer as HadamardLayerNode
 
-    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+    """Conversion for ``HadamardLayer`` from ``layerbased`` to ``nodebased``.
 
     Args:
-        product_node:
-            Product node to be converted.
+        prduct_layer:
+            Sum node to be converted.
         dispatch_ctx:
             Dispatch context.
     """
-
-    inputs = hadamard_layer.inputs
-    partitions = np.split(inputs, np.cumsum(hadamard_layer.modules_per_partition[:-1]))
-
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return HadamardLayerNode(
-        child_partitions=[
-            [toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in partition] for partition in partitions
-        ]
+        n_nodes=product_layer.n_out,
+        inputs=[toNodeBased(child, dispatch_ctx=dispatch_ctx) for child in product_layer.inputs],
     )
 
 
 @dispatch(memoize=True)  # type: ignore
-def toLayerBased(
-    hadamard_layer: HadamardLayer, dispatch_ctx: Optional[DispatchContext] = None
-) -> HadamardLayer:
-    """Conversion for ``SumNode`` from ``torch`` backend to ``base`` backend.
+def toLayerBased(product_layer: HadamardLayer, dispatch_ctx: Optional[DispatchContext] = None) -> HadamardLayer:
+    """Conversion for ``HadamardLayer`` from ``layerbased`` to ``nodebased``.
 
     Args:
-        product_node:
-            Product node to be converted.
+        prduct_layer:
+            Sum node to be converted.
         dispatch_ctx:
             Dispatch context.
     """
-
-    inputs = hadamard_layer.inputs
-    partitions = np.split(inputs, np.cumsum(hadamard_layer.modules_per_partition[:-1]))
-
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     return HadamardLayer(
-        child_partitions=[
-            [toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in partition]
-            for partition in partitions
-        ]
+        n_nodes=product_layer.n_out,
+        inputs=[toLayerBased(child, dispatch_ctx=dispatch_ctx) for child in product_layer.inputs],
     )
 
 
 @dispatch  # type: ignore
 def sample(
-    hadamard_layer: HadamardLayer,
+    product_layer: HadamardLayer,
     data: Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
 ) -> Tensor:
-    """Samples from SPN-like element-wise product layers in the ``torch`` backend given potential evidence.
+    """Samples from SPN-like product layers in the ``torch`` backend given potential evidence.
 
     Can only sample from at most one output at a time, since all scopes are equal and overlap.
     Recursively samples from each input.
     Missing values (i.e., NaN) are filled with sampled values.
 
     Args:
-        hadamard_layer:
-            Hadamard layer to sample from.
+        product_layer:
+            Product layer to sample from.
         data:
             Two-dimensional PyTorch tensor containing potential evidence.
             Each row corresponds to a sample.
@@ -334,60 +243,36 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # all nodes in sum layer have same scope
-    if any([len(out) != 1 for out in sampling_ctx.output_ids]):
-        raise ValueError("'HadamardLayer only allows single output sampling.")
-
-    # TODO: precompute indices
-    partition_indices = T.array_split(
-        T.arange(0, hadamard_layer.n_in),
-        T.cumsum(T.tensor(hadamard_layer.partition_sizes), axis=0, dtype=int)[:-1],
+    #if any([len(out) != 1 for out in sampling_ctx.output_ids]):
+    #    raise ValueError("'HadamardLayer only allows single output sampling.")
+    combinations_tensor = torch.tensor(product_layer.combinations)
+    output_ids = combinations_tensor[sampling_ctx.output_ids, torch.arange(combinations_tensor.size(1))]
+    sampling_ctx.output_ids = output_ids
+    sample(
+        product_layer.inputs[0],
+        data,
+        check_support=check_support,
+        dispatch_ctx=dispatch_ctx,
+        sampling_ctx=sampling_ctx,
     )
-    # pad indices for partitions with total output size 1
-    partition_indices = [
-        indices.repeat(1 + hadamard_layer.n_out - len(indices)) for indices in partition_indices
-    ]
-
-    input_ids_per_node = [T.hstack(id_tuple) for id_tuple in zip(*partition_indices)]
-
-    inputs = hadamard_layer.inputs
-
-    # sample accoding to sampling_context
-    for node_id, instances in sampling_ctx.group_output_ids(hadamard_layer.n_out):
-        # get input ids for this node
-        input_ids = input_ids_per_node[node_id]
-        child_ids, output_ids = hadamard_layer.input_to_output_ids(input_ids.tolist())
-
-        # group by child ids
-        for child_id in np.unique(child_ids):
-            child_output_ids = np.array(output_ids)[np.array(child_ids) == child_id].tolist()
-
-            # sample from partition node
-            sample(
-                inputs[child_id],
-                data,
-                check_support=check_support,
-                dispatch_ctx=dispatch_ctx,
-                sampling_ctx=SamplingContext(instances, [child_output_ids for _ in instances]),
-            )
-
     return data
 
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
-    partition_layer: HadamardLayer,
+    product_layer: HadamardLayer,
     data: Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> Tensor:
-    """Computes log-likelihoods for SPN-like element-wise product layers in the ``torch`` backend given input data.
+    """Computes log-likelihoods for SPN-like product layers in the ``torch`` backend given input data.
 
     Log-likelihoods for product nodes are the sum of its input likelihoods (product in linear space).
     Missing values (i.e., NaN) are marginalized over.
 
     Args:
-        hadamard_layer:
-            Hadamard layer to perform inference for.
+        product_layer:
+            Product layer to perform inference for.
         data:
             Two-dimensional PyTorch tensor containing the input data.
             Each row corresponds to a sample.
@@ -404,28 +289,43 @@ def log_likelihood(
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    inputs = partition_layer.inputs
-    partitions = np.split(inputs, np.cumsum(partition_layer.modules_per_partition[:-1]))
-
     # compute child log-likelihoods
-    partition_lls = [
-        T.concatenate(
-            [
-                log_likelihood(
-                    child,
-                    data,
-                    check_support=check_support,
-                    dispatch_ctx=dispatch_ctx,
-                )
-                for child in T.tolist(partition)
-            ],
-            axis=1,
-        )
-        for partition in partitions
-    ]
+    ll = log_likelihood(
+            product_layer.inputs[0],
+            data,
+            check_support=check_support,
+            dispatch_ctx=dispatch_ctx,
+        ) # shape: (batch_size, inputs.num_scopes, inputs.num_outputs)
 
-    # pad partition lls to correct shape (relevant for partitions of total output size 1)
-    partition_lls = [T.pad_edge(lls, (0, partition_layer.n_out - lls.shape[1])) for lls in partition_lls]
+    # multiply childen (sum in log-space)
 
-    # multiply element-wise (sum element-wise in log-space)
-    return T.sum(T.stack(partition_lls), axis=0)
+    #idea: calc outer product
+    lls = elementwise_combinations_sum(product_layer, ll)
+    return lls
+
+
+def elementwise_combinations_sum(product_layer, vectors):
+    """
+    Computes all possible elementwise combinations of the input vectors and sums the corresponding elements.
+
+    Args:
+    vectors (torch.Tensor): A tensor of shape (n, m), where m is the number of vectors
+                            and n is the dimensionality of each vector.
+
+    Returns:
+    torch.Tensor: A tensor containing all possible elementwise combinations,
+                  where each combination is summed element-wise.
+    """
+    _,n, m = vectors.shape
+
+    # Generate all possible combinations of indices for each dimension
+    combinations = product_layer.combinations
+    # Initialize result list
+    result = []
+
+    for comb in combinations:
+        summed_comb = torch.sum(vectors[:, range(n), comb], dim=1)
+        result.append(summed_comb)
+
+    return torch.stack(result, dim=1)
+
