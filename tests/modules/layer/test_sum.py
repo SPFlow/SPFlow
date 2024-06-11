@@ -20,7 +20,7 @@ TOTAL_SCOPES = 5
 def make_sum(num_nodes=3, weights=None, inputs=None):
     if inputs is None:
         inputs = make_normal_leaf("layer", num_scopes=NUM_SCOPES, num_leaves=NUM_LEAVES)
-    return SumLayer(n_nodes=num_nodes, inputs=inputs, weights=weights)
+    return SumLayer(n_nodes=num_nodes, inputs=[inputs], weights=weights)
 
 
 def test_log_likelihood():
@@ -102,6 +102,7 @@ def test_marginalize(prune):
 
     # default scope: [1, 2, 3]
     sum_layer = make_sum()
+    weights_shape = sum_layer.weights.shape
 
     # Marginalize first scope
     marginalized_sum_layer = marginalize(sum_layer, [1], prune=prune)
@@ -109,10 +110,16 @@ def test_marginalize(prune):
     # Scope query should not contain [1]
     assert len(set(marginalized_sum_layer.scope.query).intersection([1])) == 0
 
+    # Weights num_scopes dimension should be reduced by 1
+    assert marginalized_sum_layer.weights.shape == (weights_shape[0], weights_shape[1] - 1, weights_shape[2])
+
     marginalized_sum_layer2 = marginalize(marginalized_sum_layer, [2], prune=prune)
 
     # Scope query should not contain [1, 2]
     assert len(set(marginalized_sum_layer2.scope.query).intersection([1, 2])) == 0
+
+    # Weights num_scopes dimension should be reduced by 2
+    assert marginalized_sum_layer2.weights.shape == (weights_shape[0], weights_shape[1] - 2, weights_shape[2])
 
     # Scope query should contain  None
     marginalized_sum_layer3 = marginalize(marginalized_sum_layer2, [3], prune=prune)
@@ -121,6 +128,8 @@ def test_marginalize(prune):
         assert marginalized_sum_layer3 is None
     else:
         assert len(set(marginalized_sum_layer3.scope.query).intersection([1, 2, 3])) == 0
+        # Weights num_scopes dimension should be reduced by 3
+        assert marginalized_sum_layer3.weights.shape == (weights_shape[0], weights_shape[1] - 3, weights_shape[2])
 
 if __name__ == "__main__":
     unittest.main()

@@ -51,7 +51,7 @@ class SumLayer(Module):
         self,
         n_nodes: int,
         inputs: list[Module],
-        weights: Tensor = None,
+        weights: Optional[Union[Tensor, list[list[float]], list[float]]] = None,
         **kwargs,
     ) -> None:
         r"""Initializes ``SumLayer`` object.
@@ -72,38 +72,46 @@ class SumLayer(Module):
         Raises:
             ValueError: Invalid arguments.
         """
-        super().__init__(inputs=inputs, **kwargs)
-
         if n_nodes < 1:
             raise ValueError("Number of nodes for 'SumLayer' must be greater of equal to 1.")
 
-        if not input:
+        if not inputs:
             raise ValueError("'SumLayer' requires at least one input to be specified.")
 
+        super().__init__(inputs=inputs, **kwargs)
 
         self._n_out = n_nodes
-        self.n_in = inputs[0].event_shape[-1] # number of outputs from input
-        self.n_scopes = inputs[0].event_shape[-2] # number of scopes from input
-        self.event_shape = (self.n_in, self.n_scopes, self._n_out)
-
-        # compute scope
-        self.scope = inputs[0].scope
-
-        self.normalization_dim = 2
+        self.n_in = sum(input.n_out for input in self.inputs)
 
         # parse weights
         if weights is None:
             weights = (
-                    # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                    torch.rand((self.event_shape[2], self.event_shape[1], self.event_shape[0]), device=self.device)
-                    + 1e-08
+                torch.random.random_tensor((self.n_out, self.n_in), dtype=self.dtype, device=self.device)
+                + 1e-08
             )  # avoid zeros
-            weights /= torch.sum(weights, axis=self.normalization_dim, keepdims=True)
+            weights /= torch.sum(weights, axis=-1, keepdims=True)
 
         # register auxiliary parameters for weights as torch parameters
-        self.logits = torch.nn.Parameter()
+        self._weights = torch.nn.Parameter()
         # initialize weights
         self.weights = weights
+
+        # compute scope
+        scope = None
+
+        for input in inputs:
+            for s in input.scopes_out:
+                if scope is None:
+                    scope = s
+                else:
+                    if not scope.equal_query(s):
+                        raise ValueError(
+                            f"'SumLayer' requires input scopes to have the same query variables."
+                        )
+
+                scope = scope.join(s)
+
+        self.scope = scope
 
     @property
     def n_out(self) -> int:
@@ -116,21 +124,15 @@ class SumLayer(Module):
         return [self.scope for _ in range(self.n_out)]
 
     @property
-    def log_weights(self) -> Tensor:
+    def weights(self) -> np.ndarray:
         """Returns the weights of all nodes as a two-dimensional PyTorch tensor."""
         # project auxiliary weights onto weights that sum up to one
-        return torch.nn.functional.log_softmax(self.logits, dim=self.normalization_dim)
-
-    @property
-    def weights(self) -> Tensor:
-        """Returns the weights of all nodes as a two-dimensional PyTorch tensor."""
-        # project auxiliary weights onto weights that sum up to one
-        return torch.nn.functional.softmax(self.logits, dim=self.normalization_dim)
+        return proj_real_to_convex(self._weights)
 
     @weights.setter
     def weights(
         self,
-        values: Tensor,
+        values: Union[Tensor, list[list[float]], list[float]],
     ) -> None:
         """Sets the weights of all nodes to specified values.
 
@@ -145,18 +147,45 @@ class SumLayer(Module):
         Raises:
             ValueError: Invalid values.
         """
-        if values.shape != (self.event_shape[2], self.event_shape[1], self.event_shape[0]):
-            raise ValueError(f"Invalid shape for weights: {values.shape}.")
+        if isinstance(values, list) or isinstance(values, np.ndarray):
+            values = torch.tensor(values, dtype=self.dtype, device=self.device)
+        if values.ndim != 1 and values.ndim != 2:
+            raise ValueError(
+                f"Torch tensor of weight values for 'SumLayer' is expected to be one- or two-dimensional, but is {values.ndim}-dimensional."
+            )
         if not torch.all(values > 0):
             raise ValueError("Weights for 'SumLayer' must be all positive.")
-        """
         if not torch.allclose(
-            torch.tensor(torch.sum(values, axis=self.normalization_dim), device=self.device),
-            torch.tensor(1.0, device=self.device),
+            torch.tensor(torch.sum(values, axis=-1), dtype=self.dtype, device=self.device),
+            torch.tensor(1.0, dtype=self.dtype, device=self.device),
         ):
             raise ValueError("Weights for 'SumLayer' must sum up to one in last dimension.")
-        """
-        self.logits.data = proj_convex_to_real(values)
+        if not (values.shape[-1] == self.n_in):
+            raise ValueError(
+                "Number of weights for 'SumLayer' in last dimension does not match total number of input outputs."
+            )
+
+        # same weights for all sum nodes
+        if values.ndim == 1:
+            self._weights.data = (
+                proj_convex_to_real(values.repeat((self.n_out, 1)).clone()).type(self.dtype).to(self.device)
+            )
+        if values.ndim == 2:
+            # same weights for all sum nodes
+            if values.shape[0] == 1:
+                self._weights.data = (
+                    proj_convex_to_real(values.repeat((self.n_out, 1)).clone())
+                    .type(self.dtype)
+                    .to(self.device)
+                )
+            # different weights for all sum nodes
+            elif values.shape[0] == self.n_out:
+                self._weights.data = proj_convex_to_real(values.clone()).type(self.dtype).to(self.device)
+            # incorrect number of specified weights
+            else:
+                raise ValueError(
+                    f"Incorrect number of weights for 'SumLayer'. Size of first dimension must be either 1 or {self.n_out}, but is {values.shape[0]}."
+                )
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -187,43 +216,33 @@ def marginalize(
     Returns:
         (Marginalized) sum layer or None if it is completely marginalized.
     """
-
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    # compute layer scope (same for all outputs)
+    # compute node scope (node only has single output)
     layer_scope = layer.scope
-    marg_child = None
-    # for idx,s in enumerate(layer_scope):
-    mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
-    layer_weights = layer.weights
 
-    # layer scope is being fully marginalized over
+    mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
+
+    # node scope is being fully marginalized
     if len(mutual_rvs) == len(layer_scope.query):
-        # passing this loop means marginalizing over the whole scope of this branch
-        pass
+        return None
     # node scope is being partially marginalized
     elif mutual_rvs:
-        # marginalize child modules
-        # for child in layer.structured_inputs[idx]:
-        marg_child_layer = marginalize(layer.inputs[0], marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+        # TODO: pruning
+        marg_inputs = []
 
-        # if marginalized child is not None
-        if marg_child_layer:
-            marg_child = marg_child_layer
-            indices = [layer.scope.query.index(el) for el in list(mutual_rvs)]
-            mask = torch.ones_like(torch.tensor(layer_scope.query), dtype=torch.bool)
-            mask[indices] = False
-            layer_weights = layer_weights[:,mask,:]
+        # marginalize input modules
+        for input in layer.inputs:
+            marg_input = marginalize(input, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
+            # if marginalized input is not None
+            if marg_input:
+                marg_inputs.append(marg_input)
+
+        return SumLayer(n_nodes=layer.n_out, inputs=marg_inputs, weights=layer.weights)
     else:
-        marg_child = layer.inputs[0]
-
-    if marg_child == None:
-        return None
-
-    else:
-        return SumLayer(n_nodes=layer.n_out, inputs=[marg_child], weights=layer_weights)
+        return deepcopy(layer)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -304,21 +323,52 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # all nodes in sum layer have same scope
-    #if any([len(out) != 1 for out in sampling_ctx.output_ids]):
-    #    raise ValueError("'SumLayer only allows single output sampling.")
+    if any([len(out) != 1 for out in sampling_ctx.output_ids]):
+        raise ValueError("'SumLayer only allows single output sampling.")
 
-    inputs = sum_layer.inputs[0]
+    # create mask for instane ids
+    instance_ids_mask = torch.zeros(data.shape[0], dtype=bool)
+    instance_ids_mask[sampling_ctx.instance_ids] = True
 
-    # returns for each output node the input branch to be sampled from
-    output_ids = torch.distributions.Categorical(sum_layer.weights[sampling_ctx.output_ids][:,0,...]).sample()
-
-    sample(
-        inputs,
-        data,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
-        sampling_ctx=SamplingContext(sampling_ctx.instance_ids, output_ids),
+    # compute log likelihoods for sum "nodes"
+    partition_ll = torch.cat(
+        [
+            log_likelihood(
+                input,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for input in sum_layer.inputs
+        ],
+        dim=1,
     )
+
+    inputs = sum_layer.inputs
+
+    for node_id, instances in sampling_ctx.group_output_ids(sum_layer.n_out):
+        # sample branches
+        input_ids = torch.multinomial(
+            sum_layer.weights[node_id] * torch.exp(partition_ll[instances]),
+            num_samples=1,
+        ).flatten()
+
+        # get correct input id and corresponding output id
+        input_ids, output_ids = sum_layer.input_to_output_ids(input_ids)
+
+        # group by input ids
+        for input_id in torch.unique(torch.tensor(input_ids)):
+            input_instance_ids = instances[input_ids == input_id]
+            input_output_ids = torch.unsqueeze(output_ids[input_ids == input_id], 1)
+
+            # sample from partition node
+            sample(
+                inputs[int(input_id)],
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+                sampling_ctx=SamplingContext(input_instance_ids, input_output_ids),
+            )
 
     return data
 
@@ -355,53 +405,19 @@ def log_likelihood(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # compute input log-likelihoods
-    ll = log_likelihood( # shape: (batch_size, child_num_scopes, child_num_nodes)
-        sum_layer.inputs[0],
-        data,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
+    input_lls = torch.cat(
+        [
+            log_likelihood(
+                input,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for input in sum_layer.inputs
+        ],
+        dim=1,
     )
-    weighted_lls = ll.unsqueeze(1) + sum_layer.log_weights.unsqueeze(0)
 
-    # sum over inputs
-    return torch.logsumexp(weighted_lls, dim=-1).permute(0,2,1) # shape: (batch_size, num_scopes, num_nodes)
+    weighted_lls = input_lls.unsqueeze(1) + sum_layer.weights.log()
 
-@dispatch(memoize=True)  # type: ignore
-def em(
-    layer: SumLayer,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> None:
-    """Performs a single expectation maximizaton (EM) step for ``SumLayer`` in the ``torch`` backend.
-
-    Args:
-        layer:
-            Layer to perform EM step for.
-        data:
-            Two-dimensional PyTorch tensor containing the input data.
-            Each row corresponds to a sample.
-        check_support:
-            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
-            Defaults to True.
-        dispatch_ctx:
-            Optional dispatch context.
-    """
-
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-
-    with torch.no_grad():
-        # ----- expectation step -----
-        child_lls = dispatch_ctx.cache["log_likelihood"][layer.inputs[0]] # shape: (batch_size, 1, num_scopes, num_nodes_child)
-        node_lls = dispatch_ctx.cache["log_likelihood"][layer]
-        log_expectations = layer.log_weights.unsqueeze(0) + torch.log(node_lls.grad).permute(0,2,1).unsqueeze(-1) + child_lls.unsqueeze(1) - node_lls.permute(0,2,1).unsqueeze(-1)
-        log_expectations = log_expectations.logsumexp(0)
-        log_expectations = log_expectations - log_expectations.logsumexp(0)
-
-        # ----- maximization step -----
-        layer.weights = torch.exp(log_expectations)
-
-        # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients
-
-    em(layer.inputs[0], data, check_support=check_support, dispatch_ctx=dispatch_ctx)
+    return torch.logsumexp(weighted_lls, dim=-1)

@@ -4,8 +4,7 @@ from copy import deepcopy
 from typing import List, Optional, Union
 from collections.abc import Iterable
 
-import numpy as np
-import torch
+import tensorly as tl
 
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
@@ -14,14 +13,10 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-
-from torch import Tensor
-from spflow import log_likelihood
 from spflow.modules.module import Module
-from spflow.utils.projections import (
-    proj_convex_to_real,
-    proj_real_to_convex,
-)
+from spflow.utils import Tensor
+from spflow import tensor as T
+from spflow.tensor.ops import Tensor
 
 
 class ProductLayer(Module):
@@ -40,7 +35,7 @@ class ProductLayer(Module):
             List of scopes representing the output scopes.
     """
 
-    def __init__(self, inputs: list[Module], **kwargs) -> None:
+    def __init__(self, n_nodes: int, inputs: list[Module], **kwargs) -> None:
         r"""Initializes ``ProductLayer`` object.
 
         Args:
@@ -52,21 +47,27 @@ class ProductLayer(Module):
         Raises:
             ValueError: Invalid arguments.
         """
-        super().__init__(inputs=inputs, **kwargs)
+        if n_nodes < 1:
+            raise ValueError("Number of nodes for 'ProductLayer' must be greater of equal to 1.")
 
-        self.n_in = inputs[0].event_shape[-2]
-        self.n_scopes = inputs[0].event_shape[-2]
-        self._n_out = inputs[0].event_shape[-1]
-
-        self.event_shape = (self.n_in, self.n_scopes, self.n_out)
+        self._n_out = n_nodes
 
         if not inputs:
             raise ValueError("'ProductLayer' requires at least one child to be specified.")
 
+        super().__init__(inputs=inputs, **kwargs)
 
         # compute scope
-        self.scope = inputs[0].scope
+        scope = Scope()
 
+        for child in inputs:
+            for s in child.scopes_out:
+                if not scope.isdisjoint(s):
+                    raise ValueError(f"'ProductNode' requires child scopes to be pair-wise disjoint.")
+
+                scope = scope.join(s)
+
+        self.scope = scope
 
     @property
     def n_out(self) -> int:
@@ -79,7 +80,10 @@ class ProductLayer(Module):
         return [self.scope for _ in range(self.n_out)]
 
     def parameters(self):
-        return self.inputs[0].parameters()
+        params = []
+        for child in self.inputs:
+            params.extend(list(child.parameters()))
+        return params
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -117,33 +121,32 @@ def marginalize(
 
     # compute layer scope (same for all outputs)
     layer_scope = layer.scope
-    marg_child = None
+
     mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
 
     # layer scope is being fully marginalized over
     if len(mutual_rvs) == len(layer_scope.query):
-        # passing this loop means marginalizing over the whole scope of this branch
-        pass
+        return None
     # node scope is being partially marginalized
     elif mutual_rvs:
+        marg_inputs = []
 
         # marginalize child modules
-        marg_child_layer = marginalize(layer.inputs[0], marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+        for child in layer.inputs:
+            marg_child = marginalize(child, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
-        # if marginalized child is not None
-        if marg_child_layer:
-            marg_child = marg_child_layer
+            # if marginalized child is not None
+            if marg_child:
+                marg_inputs.append(marg_child)
 
+        # if product node has only one child after marginalization and pruning is true, return child directly
+        if len(marg_inputs) == 1 and prune:
+            return marg_inputs[0]
+        else:
+            return ProductLayer(n_nodes=layer.n_out, inputs=marg_inputs)
     else:
-        marg_child = layer.inputs[0]
-    if marg_child == None:
-        return None
+        return deepcopy(layer)
 
-    # ToDo: check if this is correct / prune if only one scope is left?
-    elif prune and marg_child.event_shape[-2] == 1:
-        return marg_child
-    else:
-        return ProductLayer(inputs=[marg_child])
 
 @dispatch(memoize=True)  # type: ignore
 def updateBackend(
@@ -240,17 +243,22 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # all nodes in sum layer have same scope
-    #if any([len(out) != 1 for out in sampling_ctx.output_ids]):
-    #    raise ValueError("'ProductLayer only allows single output sampling.")
+    if any([len(out) != 1 for out in sampling_ctx.output_ids]):
+        raise ValueError("'ProductLayer only allows single output sampling.")
 
+    # all product nodes are over (all) inputs
+    for child in product_layer.inputs:
+        sample(
+            child,
+            data,
+            check_support=check_support,
+            dispatch_ctx=dispatch_ctx,
+            sampling_ctx=SamplingContext(
+                sampling_ctx.instance_ids,
+                [list(range(child.n_out)) for _ in sampling_ctx.instance_ids],
+            ),
+        )
 
-    sample(
-        product_layer.inputs[0],
-        data,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
-        sampling_ctx=sampling_ctx,
-    )
     return data
 
 
@@ -286,12 +294,18 @@ def log_likelihood(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # compute child log-likelihoods
-    ll = log_likelihood(
-            product_layer.inputs[0],
-            data,
-            check_support=check_support,
-            dispatch_ctx=dispatch_ctx,
-        ) # shape: (batch_size, inputs.num_scopes, inputs.num_outputs)
+    child_lls = T.concatenate(
+        [
+            log_likelihood(
+                child,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            for child in product_layer.inputs
+        ],
+        axis=1,
+    )
 
     # multiply childen (sum in log-space)
-    return torch.sum(ll, dim=1) # shape: (batch_size, product_layer.num_outputs)
+    return T.tile(T.sum(child_lls, axis=1, keepdims=True), repeats=product_layer.n_out)
