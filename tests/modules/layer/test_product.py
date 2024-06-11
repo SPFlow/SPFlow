@@ -21,7 +21,7 @@ TOTAL_SCOPES = 5
 def make_product(inputs=None):
     if inputs is None:
         inputs = make_normal_leaf("layer", num_scopes=NUM_SCOPES, num_leaves=NUM_LEAVES)
-    return ProductLayer(inputs=inputs)
+    return ProductLayer(inputs=[inputs])
 
 def test_log_likelihood():
     product_layer = make_product()

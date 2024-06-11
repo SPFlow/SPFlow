@@ -12,6 +12,8 @@ from spflow import maximum_likelihood_estimation, sample, marginalize
 from spflow.meta.data import Scope
 from spflow.modules.layer.leaf.exponential import Exponential as ExponentialLayer
 from spflow.modules.node.leaf.exponential import Exponential as ExponentialNode
+from spflow.modules.layer.vectorized.leaf.exponential import Exponential as VectorizedExponential
+
 
 # Constants
 NUM_LEAVES = 2
@@ -41,6 +43,12 @@ def make_params(module_type: str, rate=None) -> torch.Tensor:
             return rate
         else:
             return torch.rand(NUM_SCOPES, NUM_LEAVES) + 1e-8
+    elif module_type == "vector":
+        if rate is not None:
+            assert rate.shape == (NUM_SCOPES, 1)
+            return rate
+        else:
+            return torch.rand(NUM_SCOPES, 1) + 1e-8
     else:
         raise ValueError(f"Invalid module_type: {module_type}")
 
@@ -61,6 +69,10 @@ def make_leaf(module_type: str, rate=None) -> Union[ExponentialNode, Exponential
         rate = rate if rate is not None else torch.rand(NUM_SCOPES, NUM_LEAVES) + 1e-8
         scope = Scope(list(range(1, NUM_SCOPES + 1)))
         return ExponentialLayer(scope=scope, rate=rate)
+    elif module_type == "vector":
+        rate = rate if rate is not None else torch.rand(NUM_SCOPES, 1) + 1e-8
+        scope = Scope(list(range(1, NUM_SCOPES + 1)))
+        return VectorizedExponential(scope=scope, rate=rate)
     else:
         raise ValueError(f"Invalid module_type: {module_type}")
 
@@ -79,13 +91,13 @@ def make_data(rate=None, n_samples=5) -> torch.Tensor:
     return torch.distributions.Exponential(rate=rate).sample((n_samples,))
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_log_likelihood(module_type: str):
     """Test the log likelihood of a exponential distribution."""
     evaluate_log_likelihood(make_leaf(module_type), make_data())
 
 
-@pytest.mark.parametrize("module_type,is_mpe", product(["node", "layer"], [True, False]))
+@pytest.mark.parametrize("module_type,is_mpe", product(["node", "vector", "layer"], [True, False]))
 def test_sample(module_type: str, is_mpe: bool):
     """Test sampling from a exponential distribution."""
     rate = make_params(module_type)
@@ -100,7 +112,7 @@ def test_sample(module_type: str, is_mpe: bool):
         evaluate_samples(leaf, data, is_mpe=is_mpe, sampling_ctx=sampling_ctx)
 
 
-@pytest.mark.parametrize("bias_correction, module_type", product([True, False], ["node", "layer"])) # product([True, False], ["node", "layer"])
+@pytest.mark.parametrize("bias_correction, module_type", product([True, False], ["node", "vector", "layer"])) # product([True, False], ["node", "layer"])
 def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
     """Test maximum likelihood estimation of a exponential distribution.
 
@@ -114,7 +126,7 @@ def test_maximum_likelihood_estimation(bias_correction: bool, module_type: str):
     assert torch.isclose(rate[leaf.scope.query].unsqueeze(1), leaf.distribution.rate, atol=1e-1).all()
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_constructor(module_type: str):
     """Test the constructor of a exponential distribution."""
     # Check that parameters are set correctly
@@ -131,25 +143,26 @@ def test_constructor(module_type: str):
         make_leaf(module_type=module_type, rate=None)  # missing std
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_requires_grad(module_type: str):
     """Test whether the rate of a exponential distribution require gradients."""
     leaf = make_leaf(module_type)
     assert leaf.distribution.rate.requires_grad
 
 
-@pytest.mark.parametrize("module_type", ["node", "layer"])
+@pytest.mark.parametrize("module_type", ["node", "vector", "layer"])
 def test_marginalize(module_type: str):
     """Test marginalization of a exponential distribution."""
     leaf = make_leaf(module_type)
     scope_og = leaf.scope.copy()
     marg_rvs = [1, 2]
     leaf_marg = marginalize(leaf, marg_rvs)
+    num_leaves = NUM_LEAVES if module_type == "layer" else 1
 
     if module_type == "node":
         assert leaf_marg == None
     else:
-        assert leaf_marg.distribution.rate.shape == (NUM_SCOPES - len(marg_rvs), NUM_LEAVES)
+        assert leaf_marg.distribution.rate.shape == (NUM_SCOPES - len(marg_rvs), num_leaves)
 
         # TODO: ensure, that the correct scopes were marginalized
         assert leaf_marg.scope.query == [q for q in scope_og.query if q not in marg_rvs]
