@@ -1,2 +1,2 @@
-from .em import expectation_maximization
-from .optimization import gradient_descent
+from .expectation_maximization import expectation_maximization
+from .gradient_descent import train_gradient_descent
