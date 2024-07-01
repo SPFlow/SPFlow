@@ -7,7 +7,7 @@ Typical usage example:
         pass
 """
 import warnings
-from typing import Any, Callable
+from typing import Callable
 
 from plum import dispatch as plum_dispatch  # type: ignore
 

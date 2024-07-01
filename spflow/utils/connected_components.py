@@ -4,7 +4,6 @@ Typical usage example:
 
     cc_list = connected_components(adjacency_matrix)
 """
-from typing import List, Set
 
 import scipy
 from spflow.tensor import Tensor

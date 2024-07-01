@@ -1,7 +1,7 @@
 """TODO
 """
 from inspect import isclass
-from typing import Dict, List, Optional, Type, Union
+from typing import Optional, Union
 
 from spflow.meta.data.feature_types import FeatureType
 from spflow.meta.data.meta_type import MetaType

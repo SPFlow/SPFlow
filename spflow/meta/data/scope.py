@@ -4,11 +4,8 @@ Typical usage example:
 
     scope = Scope(query_rvs, evidence_rvs)
 """
-from typing import List, Optional, Type, Union
 from collections.abc import Iterable
-
-from spflow.meta.data.feature_types import FeatureType
-from spflow.meta.data.meta_type import MetaType
+from typing import Optional
 
 
 class Scope:
@@ -77,10 +74,6 @@ class Scope:
         Returns:
             String containg the string representation of scope.
         """
-        # return "Scope({}|{})".format(
-        #     self.query if self.query else "{}",
-        #     self.evidence if self.evidence else "{}",
-        # )  # pragma: no cover
         if len(self.evidence) == 0:
             if len(self.query) == 1:
                 return str(self.query[0])
