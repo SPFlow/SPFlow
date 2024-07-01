@@ -3,6 +3,7 @@
 Used for internal projections of PyTorch parameters.
 """
 from typing import Optional, Union
+
 import torch
 from torch import Tensor
 
