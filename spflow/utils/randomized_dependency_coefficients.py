@@ -7,14 +7,15 @@ Typical usage example:
 from itertools import combinations
 from typing import Callable
 
+import torch
+
 import numpy as np
-from spflow import tensor as T
 from sklearn.cross_decomposition import CCA
 
 from spflow.utils.empirical_cdf import empirical_cdf
 
 
-def randomized_dependency_coefficients(data, k: int = 20, s: float = 1 / 6, phi: Callable = T.sin):
+def randomized_dependency_coefficients(data, k: int = 20, s: float = 1 / 6, phi: Callable = torch.sin):
     """Computes the randomized dependency coefficients (RDCs) for a given data set.
 
     Returns the randomized dependency coefficients (RDCs) computed from a specified data set, as described in (Lopez-Paz et al., 2013): "The Randomized Dependence Coefficient"
@@ -40,7 +41,7 @@ def randomized_dependency_coefficients(data, k: int = 20, s: float = 1 / 6, phi:
         ValueError: Invalid inputs.
     """
     # default arguments according to paper
-    if T.any(T.isnan(data)):
+    if torch.any(torch.isnan(data)):
         raise ValueError(
             "Randomized dependency coefficients cannot be computed for data with missing values."
         )
@@ -49,27 +50,27 @@ def randomized_dependency_coefficients(data, k: int = 20, s: float = 1 / 6, phi:
     ecdf = empirical_cdf(data)
 
     # bring ecdf values into correct shape and pad with ones (for biases)
-    ecdf_features = T.stack([ecdf.T, T.ones(ecdf.T.shape, dtype=data.dtype)], axis=-1)
+    ecdf_features = torch.stack([ecdf.T, torch.ones(ecdf.torch.shape, dtype=data.dtype)], axis=-1)
 
     # compute random weights (and biases) generated from normal distribution
-    rand_gaussians = T.randn((T.shape(data)[1], 2, k), dtype=float)  # 2 for weight (of size 1) and bias
+    rand_gaussians = torch.randn((data.shape[1], 2, k), dtype=float)  # 2 for weight (of size 1) and bias
 
     # compute linear combinations of ecdf feature using generated weights
-    features = T.stack([T.dot(features, weights) for features, weights in zip(ecdf_features, rand_gaussians)])
-    features *= T.sqrt(
-        T.tensor(s, data.dtype)
+    features = torch.stack([torch.dot(features, weights) for features, weights in zip(ecdf_features, rand_gaussians)])
+    features *= torch.sqrt(
+        torch.tensor(s, data.dtype)
     )  # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
 
     # apply non-linearity phi
     features = phi(features)
 
     # create matrix holding the pair-wise dependency coefficients
-    rdcs = T.eye(T.shape(data)[1], dtype=data.dtype)
+    rdcs = torch.eye(data.shape[1], dtype=data.dtype)
 
     cca = CCA(n_components=1)
 
     # compute rdcs for all pairs of features
-    for i, j in combinations(range(T.shape(data)[1]), 2):
+    for i, j in combinations(range(data.shape[1]), 2):
         i_cca, j_cca = cca.fit_transform(features[i], features[j])
         rdcs[j][i] = rdcs[i][j] = np.corrcoef(i_cca.T, j_cca.T)[0, 1]
 
