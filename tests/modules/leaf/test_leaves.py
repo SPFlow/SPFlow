@@ -81,12 +81,9 @@ def test_maximum_likelihood_estimation(cls, out_features: int, out_channels: int
     maximum_likelihood_estimation(module, data, bias_correction=bias_correction)
 
     # Check that module and sampler params are equal
-    for param_name, param in module.distribution.named_parameters():
-        assert torch.allclose(
-            getattr(module.distribution, param_name),
-            getattr(sampler.distribution, param_name).expand_as(getattr(module.distribution, param_name)),
-            atol=1e-1,
-        )
+    for param_name, param_module in module.distribution.named_parameters():
+        param_sampler = getattr(sampler.distribution, param_name)
+        assert torch.allclose(param_module, param_sampler, atol=1e-1)
 
 
 @pytest.mark.parametrize("cls, out_features, out_channels", params)
