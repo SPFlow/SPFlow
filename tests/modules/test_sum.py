@@ -9,7 +9,7 @@ import pytest
 from spflow.meta.dispatch import init_default_sampling_context
 from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
-from spflow.learn import gradient_descent
+from spflow.learn import train_gradient_descent
 from spflow.modules import Sum
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 import torch
@@ -104,7 +104,7 @@ def test_gradient_descent_optimization(
     data = make_normal_data(out_features=out_features, num_samples=20)
     dataset = torch.utils.data.TensorDataset(data)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
-    gradient_descent(module, data_loader, epochs=1)
+    train_gradient_descent(module, data_loader, epochs=1)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,is_single_input", params)
