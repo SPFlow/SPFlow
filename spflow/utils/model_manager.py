@@ -1,6 +1,6 @@
 import os
-from typing import Any, Union
 import pickle
+from typing import Union
 
 from spflow.modules.module import Module
 

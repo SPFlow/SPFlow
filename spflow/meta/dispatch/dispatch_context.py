@@ -4,7 +4,7 @@ Typical usage example:
 
     dispatch_ctx = DispatchContext()
 """
-from typing import Any, Dict, Union
+from typing import Any, Union
 
 
 class DispatchContext:
