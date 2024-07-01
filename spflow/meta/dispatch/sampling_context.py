@@ -4,8 +4,9 @@ Typical usage example:
 
     sampling_ctx = SamplingDispatch(instance_ids, output_ids)
 """
+from typing import Optional, Union
+
 import torch
-from typing import List, Optional, Tuple, Union
 from torch import Tensor
 
 
@@ -86,7 +87,7 @@ class SamplingContext:
 
         Args:
             return_indices:
-                Boolean indicating whether or not to additionally return the indices of the unique lists.
+                Boolean indicating whether to additionally return the indices of the unique lists.
                 Defaults to False.
 
         Returns:
@@ -108,6 +109,13 @@ class SamplingContext:
             return unique_lists, indices
         else:
             return unique_lists
+
+    def __repr__(self) -> str:
+        return f"SamplingContext(instance_ids.shape={self.instance_ids.shape}, output_ids.shape={self.output_ids.shape})"
+
+    def copy(self):
+        """Returns a copy of the sampling context."""
+        return SamplingContext(self.instance_ids.clone(), self.output_ids.clone())
 
 
 def default_sampling_context(n: int) -> SamplingContext:
