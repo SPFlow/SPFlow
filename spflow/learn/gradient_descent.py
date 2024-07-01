@@ -1,0 +1,91 @@
+from typing import Optional
+
+import torch
+
+from collections.abc import Callable
+
+from torch import Tensor
+
+from spflow import log_likelihood
+from spflow.modules.module import Module
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def negative_log_likelihood_loss(model: Module, data: Tensor) -> torch.Tensor:
+    """
+    Compute the negative log-likelihood loss of a model given the data.
+
+    Args:
+        model: Model to evaluate.
+        data: Data to evaluate the model on.
+
+    Returns:
+        Negative log-likelihood loss.
+    """
+    return -1 * log_likelihood(model, data).sum()
+
+
+def train_gradient_descent(
+    model: Module,
+    dataloader: torch.utils.data.DataLoader,
+    epochs: int = -1,
+    verbose: bool = False,
+    optimizer: Optional[torch.optim.Optimizer] = None,
+    lr: float = 1e-3,
+    loss_fn: Callable[[Module, Tensor], Tensor] = negative_log_likelihood_loss,
+    callback_batch: Optional[Callable[[Tensor, int], None]] = None,
+    callback_epoch: Optional[Callable[[list[Tensor], int], None]] = None,
+):
+    """
+    Train a model using gradient descent.
+
+    Args:
+        model: Model to train.
+        dataloader: Dataloader providing the data.
+        epochs: Number of epochs to train.
+        verbose: Boolean value indicating whether to print the log-likelihood for each epoch.
+        optimizer: Optimizer to use for training. If None, an Adam optimizer is used.
+        lr: Learning rate for the optimizer if `optimizer` is not already set.
+        callback_batch: Callback function to call after each batch which takes the list of losses tensor and the global step.
+    """
+    model.train()
+
+    if optimizer is None:
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    steps = 0
+    for epoch in range(epochs):
+        # Collect losses for each epoch
+        losses_epoch = []
+        for (data,) in dataloader:
+            # Reset gradients
+            optimizer.zero_grad()
+
+            # Compute negative log likelihood
+            loss = loss_fn(model, data)
+
+            # Collect loss
+            losses_epoch.append(loss)
+
+            # Compute gradients
+            loss.backward()
+
+            # Update weights
+            optimizer.step()
+
+            # Count global steps
+            steps += 1
+
+            # Call callback function after each batch
+            if callback_batch is not None:
+                callback_batch(loss, steps)
+
+        # Call callback function after each epoch
+        if callback_epoch is not None:
+            callback_epoch(losses_epoch, epoch)
+
+        if verbose:
+            logger.info(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()}")
