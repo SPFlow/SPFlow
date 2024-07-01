@@ -2,6 +2,7 @@ import unittest
 from itertools import product
 
 from spflow.exceptions import InvalidParameterCombinationError
+from spflow.learn import train_gradient_descent
 from tests.fixtures import auto_set_test_seed
 
 from spflow.meta.dispatch import init_default_sampling_context
@@ -95,6 +96,22 @@ def test_requires_grad(cls, out_features: int, out_channels: int):
 
     for param in module.distribution.parameters():
         assert param.requires_grad
+
+
+@pytest.mark.parametrize("cls,out_features,out_channels", params)
+def test_gradient_descent_optimization(
+    cls, out_features: int,out_channels: int,
+):
+
+    # Skip leaves without parameters
+    if cls in [leaf.Hypergeometric, leaf.Uniform]:
+        return
+
+    module = make_leaf(cls, out_channels=out_channels, out_features=out_features)
+    data = make_data(cls=cls, out_features=out_features, n_samples=20)
+    dataset = torch.utils.data.TensorDataset(data)
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
+    train_gradient_descent(module, data_loader, epochs=1)
 
 
 @pytest.mark.parametrize(
