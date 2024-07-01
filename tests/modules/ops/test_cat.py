@@ -7,7 +7,7 @@ import pytest
 from spflow.meta.dispatch import init_default_sampling_context
 from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
-from spflow.learn import gradient_descent
+from spflow.learn import train_gradient_descent
 from spflow.modules import Sum
 from spflow.modules.leaf import Categorical, Binomial
 from spflow.modules.ops.cat import Cat
@@ -92,7 +92,7 @@ def test_gradient_descent_optimization(out_channels: int, out_features: int, dim
 
     dataset = torch.utils.data.TensorDataset(data)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
-    gradient_descent(module, data_loader, epochs=10)
+    train_gradient_descent(module, data_loader, epochs=10)
 
 
 def test_invalid_constructor_same_scope_dim1():
