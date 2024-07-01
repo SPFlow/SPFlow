@@ -1,9 +1,7 @@
-#!/usr/bin/env python3
-
-from typing import Iterable
-from torch import Tensor, nn
-import torch
 from abc import ABC, abstractmethod
+
+import torch
+from torch import Tensor, nn
 
 
 class Distribution(nn.Module, ABC):
@@ -37,7 +35,22 @@ class Distribution(nn.Module, ABC):
     def log_prob(self, x):
         return self.distribution.log_prob(x)
 
+    @property
+    def out_features(self):
+        return self.event_shape[0]
+
+    @property
+    def out_channels(self):
+        if len(self.event_shape) == 1:
+            return 1
+        else:
+            return self.event_shape[1]
+
     @abstractmethod
+    def params(self):
+        """Returns the parameters of the distribution."""
+        pass
+
     def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
         """Returns the marginalized parameters of the distribution.
 
@@ -48,7 +61,7 @@ class Distribution(nn.Module, ABC):
         Returns:
             Dictionary from parameter name to tensor containing the marginalized parameters.
         """
-        pass
+        return {k: v[indices] for k, v in self.params().items()}
 
     @abstractmethod
     def accepts(self, signatures):
@@ -98,7 +111,7 @@ class Distribution(nn.Module, ABC):
         valid = torch.ones_like(data, dtype=torch.bool)
 
         # check only first entry of num_leaf node dim since all leaf node repetition have the same support
-        valid[~nan_mask] = self.distribution.support.check(data)[...,[0]][~nan_mask]
+        valid[~nan_mask] = self.distribution.support.check(data)[..., [0]][~nan_mask]
 
         # check for infinite values
         valid[~nan_mask & valid] &= ~data[~nan_mask & valid].isinf()

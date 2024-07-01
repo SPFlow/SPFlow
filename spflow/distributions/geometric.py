@@ -1,12 +1,10 @@
-#!/usr/bin/env python3
-
 import torch
 from torch import Tensor, nn
 
 from spflow.distributions.distribution import Distribution
 from spflow.meta.data import FeatureContext, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
-from spflow.modules.node.leaf.utils import init_parameter
+from spflow.utils.leaf import init_parameter
 
 
 class Geometric(Distribution):
@@ -22,7 +20,7 @@ class Geometric(Distribution):
             event_shape = p.shape
         super().__init__(event_shape=event_shape)
 
-        p = init_parameter(param=p, event_shape=event_shape, init=lambda:torch.tensor(0.5))
+        p = init_parameter(param=p, event_shape=event_shape, init=torch.rand)
 
         self.log_p = nn.Parameter(torch.empty_like(p))  # initialize empty, set with setter in next line
         self.p = p.clone().detach()
@@ -63,17 +61,17 @@ class Geometric(Distribution):
 
         # leaf is a single non-conditional univariate node
         if (
-                len(domains) != 1
-                or len(feature_ctx.scope.query) != len(domains)
-                or len(feature_ctx.scope.evidence) != 0
+            len(domains) != 1
+            or len(feature_ctx.scope.query) != len(domains)
+            or len(feature_ctx.scope.evidence) != 0
         ):
             return False
 
         # leaf is a discrete Geometric distribution
         if not (
-                domains[0] == FeatureTypes.Discrete
-                or domains[0] == FeatureTypes.Geometric
-                or isinstance(domains[0], FeatureTypes.Geometric)
+            domains[0] == FeatureTypes.Discrete
+            or domains[0] == FeatureTypes.Geometric
+            or isinstance(domains[0], FeatureTypes.Geometric)
         ):
             return False
 
@@ -119,7 +117,6 @@ class Geometric(Distribution):
         # estimate (weighted) success probability
         p_est = n_total / (n_success + n_total)
 
-
         if bias_correction:
             b = p_est * (1 - p_est) / n_total
             p_est -= b
@@ -133,10 +130,13 @@ class Geometric(Distribution):
 
         if len(self.event_shape) == 2:
             # Repeat p
-            p_est = p_est.unsqueeze(1).repeat(1, self.event_shape[1])
+            p_est = p_est.unsqueeze(1).repeat(1, self.out_channels)
 
         # set parameters of leaf node
         self.p = p_est
+
+    def params(self):
+        return {"p": self.p}
 
     def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
         return {"p": self.p[indices]}

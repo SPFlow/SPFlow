@@ -1,12 +1,11 @@
-#!/usr/bin/env python3
-
 import torch
 from torch import Tensor, nn
 
 from spflow.distributions.distribution import Distribution
+from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data import FeatureContext, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
-from spflow.modules.node.leaf.utils import init_parameter
+from spflow.utils.leaf import init_parameter
 
 
 class Normal(Distribution):
@@ -17,14 +16,13 @@ class Normal(Distribution):
             scope: Scope object specifying the scope of the distribution.
             mean: Tensor containing the mean (:math:`\mu`) of the distribution.
             std: Tensor containing the standard deviation (:math:`\sigma`) of the distribution.
-            n_out: Number of nodes per scope. Only relevant if mean and std is None.
+            event_shape: Shape of the event space.
         """
         if event_shape is None:
             event_shape = mean.shape
         super().__init__(event_shape=event_shape)
-        assert (mean is None and std is None) ^ (
-            mean is not None and std is not None
-        ), "Either mean and std must be specified or neither."
+        if not (mean is None and std is None) ^ (mean is not None and std is not None):
+            raise InvalidParameterCombinationError("Either mean and std must be specified or neither.")
 
         mean = init_parameter(param=mean, event_shape=event_shape, init=torch.randn)
         std = init_parameter(param=std, event_shape=event_shape, init=torch.rand)
@@ -138,12 +136,15 @@ class Normal(Distribution):
 
         if len(self.event_shape) == 2:
             # Repeat mean and std
-            mean_est = mean_est.unsqueeze(1).repeat(1, self.event_shape[1])
-            std_est = std_est.unsqueeze(1).repeat(1, self.event_shape[1])
+            mean_est = mean_est.unsqueeze(1).repeat(1, self.out_channels)
+            std_est = std_est.unsqueeze(1).repeat(1, self.out_channels)
 
         # set parameters of leaf node
         self.mean.data = mean_est
         self.std = std_est
+
+    def params(self):
+        return {"mean": self.mean, "std": self.std}
 
     def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
         return {"mean": self.mean[indices], "std": self.std[indices]}

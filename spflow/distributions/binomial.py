@@ -1,11 +1,9 @@
-#!/usr/bin/env python3
-
 import torch
 from torch import Tensor, nn
 
 from spflow.distributions.distribution import Distribution
 from spflow.meta.data import FeatureContext, FeatureTypes
-from spflow.modules.node.leaf.utils import init_parameter
+from spflow.utils.leaf import init_parameter
 from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
@@ -25,7 +23,12 @@ class Binomial(Distribution):
         super().__init__(event_shape=event_shape)
         p = init_parameter(param=p, event_shape=event_shape, init=torch.rand)
 
-        self._n = torch.broadcast_to(n,event_shape).clone()
+        if not torch.isfinite(n).all() or n.lt(0.0).any():
+            raise ValueError(f"Values for 'n' must be finite and greater than 0, but was: {n}")
+
+        n = torch.broadcast_to(n, event_shape).clone()
+        self.register_buffer("_n", n)
+        self.n = n
         self.log_p = nn.Parameter(torch.empty_like(p))  # initialize empty, set with setter in next line
         self.p = p.clone().detach()
 
@@ -73,7 +76,7 @@ class Binomial(Distribution):
             ValueError: Invalid arguments.
         """
 
-        if n.lt(0.0).any() or not torch.isfinite(n): # ToDo is 0 a valid value for n?
+        if torch.any(n < 1.0) or not torch.isfinite(n).any():  # ToDo is 0 a valid value for n?
             raise ValueError(
                 f"Value of 'n' for 'Binomial' distribution must to be greater than 0, but was: {n}"
             )
@@ -86,7 +89,6 @@ class Binomial(Distribution):
 
     @classmethod
     def accepts(cls, signatures: list[FeatureContext]) -> bool:
-
         # leaf only has one output
         if len(signatures) != 1:
             return False
@@ -112,7 +114,6 @@ class Binomial(Distribution):
 
     @classmethod
     def from_signatures(cls, signatures: list[FeatureContext]) -> "Binomial":
-
         if not cls.accepts(signatures):
             raise ValueError(
                 f"'Binomial' cannot be instantiated from the following signatures: {signatures}."
@@ -157,11 +158,13 @@ class Binomial(Distribution):
         if torch.any(zero_mask := torch.isclose(p_est, torch.tensor(0.0))):
             p_est[zero_mask] = torch.tensor(1e-8)
         elif torch.any(one_mask := torch.isclose(p_est, torch.tensor(1.0))):
-            p_est[one_mask] = torch.tensor(1-1e-8)
+            p_est[one_mask] = torch.tensor(1 - 1e-8)
 
         # set parameters of leaf node
         self.p = p_est
 
+    def params(self) -> dict[str, Tensor]:
+        return {"n": self.n, "p": self.p}
+
     def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
         return {"n": self.n[indices], "p": self.p[indices]}
-
