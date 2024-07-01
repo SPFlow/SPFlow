@@ -39,6 +39,7 @@ def __import_from_module(module):
         if hasattr(module, func_name):
             globals()[func_name] = getattr(module, func_name)
 
+
 def __walk_packages(path, prefix):
     """Recursively walk through packages and import specified functions.
 
