@@ -1,8 +1,5 @@
-#!/usr/bin/env python3
-
 import torch
 from torch import Tensor
-import numpy as np
 
 from spflow.distributions.distribution import Distribution
 from spflow.meta.data import FeatureContext, FeatureTypes
@@ -32,7 +29,6 @@ class Hypergeometric(Distribution):
         self.K = K
         self.N = N
         self.n = n
-
 
     def check_inputs(self, K: Tensor, N: Tensor, n: Tensor):
         if torch.any(N < 0) or not torch.all(torch.isfinite(N)):
@@ -75,12 +71,9 @@ class Hypergeometric(Distribution):
                     "All values of 'N' for 'HypergeometricLayer' over the same scope must be identical."
                 )
 
-
     @property
     def distribution(self):
         return _HypergeometricDistribution(self.K, self.N, self.n, self.event_shape)
-
-
 
     @classmethod
     def accepts(cls, signatures: list[FeatureContext]) -> bool:
@@ -94,9 +87,9 @@ class Hypergeometric(Distribution):
 
         # leaf is a single non-conditional univariate node
         if (
-                len(domains) != 1
-                or len(feature_ctx.scope.query) != len(domains)
-                or len(feature_ctx.scope.evidence) != 0
+            len(domains) != 1
+            or len(feature_ctx.scope.query) != len(domains)
+            or len(feature_ctx.scope.evidence) != 0
         ):
             return False
 
@@ -128,29 +121,29 @@ class Hypergeometric(Distribution):
 
         return Hypergeometric(N=N, K=K, n=n)
 
-
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
-
         """
         All parameters of the Uniform distribution are regarded as fixed and will not be estimated.
         Therefore, this method does nothing, but check for the validity of the data.
         """
         data = data.unsqueeze(2)
-        if torch.any(~ self.check_support(data)):
+        if torch.any(~self.check_support(data)):
             raise ValueError("Encountered values outside of the support for uniform distribution.")
 
         # do nothing since there are no learnable parameters
         pass
 
+    def params(self):
+        return {"K": self.K, "N": self.N, "n": self.n}
+
     def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
         return {"K": self.K[indices], "N": self.N[indices], "n": self.n[indices]}
 
     def check_support(
-            self,
-            data: torch.Tensor,
+        self,
+        data: torch.Tensor,
     ) -> torch.Tensor:
-        r"""Checks if specified data is in support of the represented distributions.
-        """
+        r"""Checks if specified data is in support of the represented distributions."""
 
         valid = torch.ones(data.shape, dtype=torch.bool, device=data.device)
 
@@ -169,9 +162,9 @@ class Hypergeometric(Distribution):
 
         # check if values are in valid range
         valid[~nan_mask & valid] &= (
-                (
-                        data
-                        >= torch.max(
+            (
+                data
+                >= torch.max(
                     torch.vstack(
                         [
                             torch.zeros(self.event_shape, dtype=data.dtype, device=data.device),
@@ -180,18 +173,18 @@ class Hypergeometric(Distribution):
                     ),
                     dim=0,
                 )[0].unsqueeze(0)
-                )
-                & (  # type: ignore
-                        data <= torch.min(torch.vstack([n_nodes, K_nodes]), dim=0)[0].unsqueeze(0)  # type: ignore
-                )
-        )[...,:1][~nan_mask & valid]
+            )
+            & (  # type: ignore
+                data <= torch.min(torch.vstack([n_nodes, K_nodes]), dim=0)[0].unsqueeze(0)  # type: ignore
+            )
+        )[..., :1][~nan_mask & valid]
 
         return valid
 
 
-class _HypergeometricDistribution():
+class _HypergeometricDistribution:
     def __init__(self, K: torch.Tensor, N: torch.Tensor, n: torch.Tensor, event_shape: tuple[int, ...]):
-        #super(_HypergeometricDistribution, self).__init__(event_shape=K.shape)
+        # super(_HypergeometricDistribution, self).__init__(event_shape=K.shape)
         self.N = N
         self.K = K
         self.n = n
@@ -206,7 +199,6 @@ class _HypergeometricDistribution():
         K = self.K
         n = self.n
 
-
         N_minus_K = N - K  # type: ignore
         n_minus_k = n - k  # type: ignore
 
@@ -218,28 +210,27 @@ class _HypergeometricDistribution():
         lgamma_N_m_K_p_2 = torch.lgamma(N_minus_K + 2)
 
         result = (
-                torch.lgamma(K + 1)  # type: ignore
-                + lgamma_1
-                - lgamma_K_p_2  # type: ignore
-                + torch.lgamma(N_minus_K + 1)  # type: ignore
-                + lgamma_1
-                - lgamma_N_m_K_p_2  # type: ignore
-                + torch.lgamma(N - n + 1)  # type: ignore
-                + torch.lgamma(n + 1)  # type: ignore
-                - lgamma_N_p_2  # type: ignore
-                - torch.lgamma(k + 1)  # .float()
-                - torch.lgamma(K - k + 1)
-                + lgamma_K_p_2  # type: ignore
-                - torch.lgamma(n_minus_k + 1)
-                - torch.lgamma(N_minus_K - n + k + 1)
-                + lgamma_N_m_K_p_2  # type: ignore
-                - torch.lgamma(N + 1)  # type: ignore
-                - lgamma_1
-                + lgamma_N_p_2  # type: ignore
+            torch.lgamma(K + 1)  # type: ignore
+            + lgamma_1
+            - lgamma_K_p_2  # type: ignore
+            + torch.lgamma(N_minus_K + 1)  # type: ignore
+            + lgamma_1
+            - lgamma_N_m_K_p_2  # type: ignore
+            + torch.lgamma(N - n + 1)  # type: ignore
+            + torch.lgamma(n + 1)  # type: ignore
+            - lgamma_N_p_2  # type: ignore
+            - torch.lgamma(k + 1)  # .float()
+            - torch.lgamma(K - k + 1)
+            + lgamma_K_p_2  # type: ignore
+            - torch.lgamma(n_minus_k + 1)
+            - torch.lgamma(N_minus_K - n + k + 1)
+            + lgamma_N_m_K_p_2  # type: ignore
+            - torch.lgamma(N + 1)  # type: ignore
+            - lgamma_1
+            + lgamma_N_p_2  # type: ignore
         )
 
         return result
-
 
     def sample(self, n_samples):
         """
@@ -259,7 +250,9 @@ class _HypergeometricDistribution():
         data = torch.zeros(sample_shape, device=self.K.device)
 
         # Generate random indices for each sample, scope, and leaf
-        rand_indices = torch.argsort(torch.rand(*sample_shape, self.N.max().to(torch.int32).item(), device=self.K.device), dim=-1)
+        rand_indices = torch.argsort(
+            torch.rand(*sample_shape, self.N.max().to(torch.int32).item(), device=self.K.device), dim=-1
+        )
 
         # Use broadcasting to create masks where draws are of interest
         K_expanded = self.K.unsqueeze(0).expand(*n_samples, *self.K.shape)
@@ -269,10 +262,10 @@ class _HypergeometricDistribution():
         drawn_mask = rand_indices < K_expanded.unsqueeze(-1)
 
         # Count the "drawn" indices for each sample, within the first 'n' draws
-        n_drawn = drawn_mask[..., :n_expanded.max().to(torch.int32).item()].sum(dim=-1)
+        n_drawn = drawn_mask[..., : n_expanded.max().to(torch.int32).item()].sum(dim=-1)
 
         # Adjust the shape of n_drawn to match the desired sample shape
-        n_drawn_shape_adjusted = n_drawn[..., :self.n.shape[-1]]
+        n_drawn_shape_adjusted = n_drawn[..., : self.n.shape[-1]]
 
         # Ensure the counts do not exceed the limits defined by n and K for each scope and leaf
         data = torch.where(n_drawn_shape_adjusted < n_expanded, n_drawn_shape_adjusted, n_expanded)

@@ -1,14 +1,18 @@
-#!/usr/bin/env python3
-
 import torch
 from torch import Tensor
+
 from spflow.distributions.distribution import Distribution
 from spflow.meta.data import FeatureContext, FeatureTypes
 
 
 class Uniform(Distribution):
-    def __init__(self, start: Tensor, end: Tensor, support_outside: Tensor = torch.tensor(True),
-                 event_shape: tuple[int, ...] = None):
+    def __init__(
+        self,
+        start: Tensor,
+        end: Tensor,
+        support_outside: Tensor = torch.tensor(True),
+        event_shape: tuple[int, ...] = None,
+    ):
         r"""Initializes ``Uniform`` leaf node.
 
         Args:
@@ -47,10 +51,12 @@ class Uniform(Distribution):
         if not (start < end).all():
             raise ValueError(f"Start must be smaller than end. Got start={start} and end={end}.")
 
-
     @property
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.Uniform(self.start, self.end)
+
+    def mode(self):
+        return (self.start + self.end) / 2
 
     @classmethod
     def accepts(cls, signatures: list[FeatureContext]) -> bool:
@@ -64,9 +70,9 @@ class Uniform(Distribution):
 
         # leaf is a single non-conditional univariate node
         if (
-                len(domains) != 1
-                or len(feature_ctx.scope.query) != len(domains)
-                or len(feature_ctx.scope.evidence) != 0
+            len(domains) != 1
+            or len(feature_ctx.scope.query) != len(domains)
+            or len(feature_ctx.scope.evidence) != 0
         ):
             return False
 
@@ -102,18 +108,17 @@ class Uniform(Distribution):
         Therefore, this method does nothing, but check for the validity of the data.
         """
         data = data.unsqueeze(2)
-        if torch.any(~ self.check_support(data)):
+        if torch.any(~self.check_support(data)):
             raise ValueError("Encountered values outside of the support for uniform distribution.")
 
         # do nothing since there are no learnable parameters
         pass
 
     def check_support(
-            self,
-            data: torch.Tensor,
+        self,
+        data: torch.Tensor,
     ) -> torch.Tensor:
-        r"""Checks if specified data is in support of the represented distributions.
-        """
+        r"""Checks if specified data is in support of the represented distributions."""
 
         # torch distribution support is an interval, despite representing a distribution over a half-open interval
         # end is adjusted to the next largest number to make sure that desired end is part of the distribution interval
@@ -122,9 +127,7 @@ class Uniform(Distribution):
 
         # check if values are within valid range
         # check only first entry of num_leaf node dim since all leaf node repetition have the same support
-        valid &= ((data >= self.start) & (
-                data < self.end
-        ))[..., [0]]
+        valid &= ((data >= self.start) & (data < self.end))[..., [0]]
         valid |= self.support_outside
 
         # nan entries (regarded as valid)
@@ -135,6 +138,9 @@ class Uniform(Distribution):
         valid[~nan_mask & valid] &= ~(data[~nan_mask & valid].isinf())
 
         return valid
+
+    def params(self):
+        return {"start": self.start, "end": self.end}
 
     def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
         return {"start": self.start[indices], "end": self.end[indices]}

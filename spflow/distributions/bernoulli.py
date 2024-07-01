@@ -1,13 +1,10 @@
-#!/usr/bin/env python3
-
 import torch
 from torch import Tensor, nn
 
 from spflow.distributions.distribution import Distribution
 from spflow.meta.data import FeatureContext, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
-
-from spflow.modules.node.leaf.utils import init_parameter
+from spflow.utils.leaf import init_parameter
 
 
 class Bernoulli(Distribution):
@@ -82,7 +79,6 @@ class Bernoulli(Distribution):
 
     @classmethod
     def from_signatures(cls, signatures: list[FeatureContext]) -> "Bernoulli":
-
         if not cls.accepts(signatures):
             raise ValueError(
                 f"'Bernoulli' cannot be instantiated from the following signatures: {signatures}."
@@ -130,10 +126,10 @@ class Bernoulli(Distribution):
 
         if len(self.event_shape) == 2:
             # Repeat p
-            p_est = p_est.unsqueeze(1).repeat(1, self.event_shape[1])
+            p_est = p_est.unsqueeze(1).repeat(1, self.out_channels)
 
         # set parameters of leaf node
         self.p = p_est
 
-    def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
-        return {"p": self.p[indices]}
+    def params(self) -> dict[str, Tensor]:
+        return {"p": self.p}

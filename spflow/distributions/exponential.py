@@ -1,12 +1,10 @@
-#!/usr/bin/env python3
-
 import torch
 from torch import Tensor, nn
 
 from spflow.distributions.distribution import Distribution
 from spflow.meta.data import FeatureContext, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
-from spflow.modules.node.leaf.utils import init_parameter
+from spflow.utils.leaf import init_parameter
 
 
 class Exponential(Distribution):
@@ -22,7 +20,7 @@ class Exponential(Distribution):
             event_shape = rate.shape
         super().__init__(event_shape=event_shape)
 
-        rate = init_parameter(param=rate, event_shape=event_shape, init=torch.randn)
+        rate = init_parameter(param=rate, event_shape=event_shape, init=torch.rand)
 
         self.log_rate = nn.Parameter(torch.empty_like(rate))  # initialize empty, set with setter in next line
         self.rate = rate.clone().detach()
@@ -125,10 +123,13 @@ class Exponential(Distribution):
 
         if len(self.event_shape) == 2:
             # Repeat rate
-            rate_est = rate_est.unsqueeze(1).repeat(1, self.event_shape[1])
+            rate_est = rate_est.unsqueeze(1).repeat(1, self.out_channels)
 
         # set parameters of leaf node
         self.rate = rate_est
+
+    def params(self) -> dict[str, Tensor]:
+        return {"rate": self.rate}
 
     def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
         return {"rate": self.rate[indices]}

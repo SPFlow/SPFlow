@@ -1,27 +1,27 @@
-#!/usr/bin/env python3
-
-from typing import List
-
 import torch
 from torch import Tensor, nn
 
 from spflow.distributions.distribution import Distribution
 from spflow.meta.data import FeatureContext, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
+from spflow.utils.leaf import init_parameter
 
 
 class Categorical(Distribution):
-    def __init__(self, p: Tensor, event_shape: tuple[int, ...] = None):
+    def __init__(self, p: Tensor, K: int = None, event_shape: tuple[int, ...] = None):
         r"""Initializes ``Categorical`` leaf node.
 
         Args:
-            scope: Scope object specifying the scope of the distribution.
             p: Tensor containing the event probabilities of the distribution. Has shape (event_shape, k) where k is the number of categories.
-            n_out: Number of nodes per scope. Only relevant if mean and std is None.
+            K: The number of categories. If None, it is inferred from the shape of the parameter tensor.
+            event_shape: The shape of the event. If None, it is inferred from the shape of the parameter tensor.
         """
         if event_shape is None:
             event_shape = p.shape[:2]
         super().__init__(event_shape=event_shape)
+
+        # Initialize parameter
+        p = init_parameter(param=p, event_shape=(*event_shape, K), init=torch.rand)
 
         self.log_p = nn.Parameter(torch.empty_like(p))  # initialize empty, set with setter in next line
         self.p = p.clone().detach()
@@ -36,27 +36,22 @@ class Categorical(Distribution):
         """Set the probabilities."""
         # project auxiliary parameter onto actual parameter range
         if not torch.isfinite(p).all():
-            raise ValueError(f"Values for 'std' must be finite, but was: {p}")
+            raise ValueError(f"Values for 'p' must be finite, but was: {p}")
 
-        if torch.all(p <= 0.0):
-            raise ValueError(f"Value for 'std' must be greater than 0.0, but was: {p}")
+        if torch.any(p < 0.0) or torch.any(p > 1.0):
+            raise ValueError(f"Value for 'p' must be in [0.0, 1.0], but was: {p}")
 
         # make sure that p adds up to 1
-        if len(self.event_shape) == 1:
-            p = p / p.sum(dim=-1)
-
-        else:
-            p = p / p.sum(dim=-1).unsqueeze(2)
+        p = p / p.sum(-1, keepdim=True)
 
         self.log_p.data = p.log()
-
 
     @property
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.Categorical(self.p)
 
     @classmethod
-    def accepts(cls, signatures: List[FeatureContext]) -> bool:
+    def accepts(cls, signatures: list[FeatureContext]) -> bool:
         # leaf only has one output
         if len(signatures) != 1:
             return False
@@ -66,23 +61,29 @@ class Categorical(Distribution):
         domains = feature_ctx.get_domains()
 
         # leaf is a single non-conditional univariate node
-        if len(domains) != 1 or len(feature_ctx.scope.query) != len(domains) or len(feature_ctx.scope.evidence) != 0:
+        if (
+            len(domains) != 1
+            or len(feature_ctx.scope.query) != len(domains)
+            or len(feature_ctx.scope.evidence) != 0
+        ):
             return False
 
         # leaf is a discrete Categorical distribution
         if not (
-                domains[0] == FeatureTypes.Discrete
-                or domains[0] == FeatureTypes.Categorical
-                or isinstance(domains[0], FeatureTypes.Categorical)
+            domains[0] == FeatureTypes.Discrete
+            or domains[0] == FeatureTypes.Categorical
+            or isinstance(domains[0], FeatureTypes.Categorical)
         ):
             return False
 
         return True
 
     @classmethod
-    def from_signatures(cls, signatures: List[FeatureContext]) -> "Categorical":
+    def from_signatures(cls, signatures: list[FeatureContext]) -> "Categorical":
         if not cls.accepts(signatures):
-            raise ValueError(f"'Categorical' cannot be instantiated from the following signatures: {signatures}.")
+            raise ValueError(
+                f"'Categorical' cannot be instantiated from the following signatures: {signatures}."
+            )
 
         # get single output signature
         feature_ctx = signatures[0]
@@ -138,10 +139,13 @@ class Categorical(Distribution):
 
         if len(self.event_shape) == 2:
             # Repeat mean and std
-            p_est = p_est.unsqueeze(1).repeat(1, self.event_shape[1], 1)
+            p_est = p_est.unsqueeze(1).repeat(1, self.out_channels, 1)
 
         # set parameters of leaf node and make sure they add up to 1
         self.p = p_est
+
+    def params(self) -> dict[str, Tensor]:
+        return {"p": self.p}
 
     def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
         return {"p": self.p[indices]}

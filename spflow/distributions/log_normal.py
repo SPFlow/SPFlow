@@ -1,12 +1,10 @@
-#!/usr/bin/env python3
-
 import torch
 from torch import Tensor, nn
 
 from spflow.distributions.distribution import Distribution
 from spflow.meta.data import FeatureContext, FeatureTypes
 from spflow.meta.data.meta_type import MetaType
-from spflow.modules.node.leaf.utils import init_parameter
+from spflow.utils.leaf import init_parameter
 
 
 class LogNormal(Distribution):
@@ -66,17 +64,17 @@ class LogNormal(Distribution):
 
         # leaf is a single non-conditional univariate node
         if (
-                len(domains) != 1
-                or len(feature_ctx.scope.query) != len(domains)
-                or len(feature_ctx.scope.evidence) != 0
+            len(domains) != 1
+            or len(feature_ctx.scope.query) != len(domains)
+            or len(feature_ctx.scope.evidence) != 0
         ):
             return False
 
         # leaf is a continuous Log-Normal distribution
         if not (
-                domains[0] == FeatureTypes.Continuous
-                or domains[0] == FeatureTypes.LogNormal
-                or isinstance(domains[0], FeatureTypes.LogNormal)
+            domains[0] == FeatureTypes.Continuous
+            or domains[0] == FeatureTypes.LogNormal
+            or isinstance(domains[0], FeatureTypes.LogNormal)
         ):
             return False
 
@@ -134,12 +132,15 @@ class LogNormal(Distribution):
 
         if len(self.event_shape) == 2:
             # Repeat mean and std
-            mean_est = mean_est.unsqueeze(1).repeat(1, self.event_shape[1])
-            std_est = std_est.unsqueeze(1).repeat(1, self.event_shape[1])
+            mean_est = mean_est.unsqueeze(1).repeat(1, self.out_channels)
+            std_est = std_est.unsqueeze(1).repeat(1, self.out_channels)
 
         # set parameters of leaf node
         self.mean.data = mean_est
         self.std = std_est
+
+    def params(self):
+        return {"mean": self.mean, "std": self.std}
 
     def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
         return {"mean": self.mean[indices], "std": self.std[indices]}

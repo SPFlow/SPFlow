@@ -1,11 +1,9 @@
-#!/usr/bin/env python3
-
 import torch
 from torch import Tensor, nn
 
 from spflow.distributions.distribution import Distribution
 from spflow.meta.data import FeatureContext, FeatureTypes
-from spflow.modules.node.leaf.utils import init_parameter
+from spflow.utils.leaf import init_parameter
 
 
 class NegativeBinomial(Distribution):
@@ -16,15 +14,13 @@ class NegativeBinomial(Distribution):
             scope: Scope object specifying the scope of the distribution.
             n: Tensor representing the numbers of  successes (greater or equal to 0).
             p: Tensor containing the success probability (:math:`p`) of each trial in :math:`[0,1]`.
-            n_out: Number of nodes per scope. Only relevant if mean and std is None.
-
         """
         if event_shape is None:
             event_shape = p.shape
         super().__init__(event_shape=event_shape)
         p = init_parameter(param=p, event_shape=event_shape, init=torch.rand)
 
-        self._n = torch.broadcast_to(n,event_shape).clone()
+        self._n = torch.broadcast_to(n, event_shape).clone()
         self.log_p = nn.Parameter(torch.empty_like(p))  # initialize empty, set with setter in next line
         self.p = p.clone().detach()
 
@@ -72,7 +68,7 @@ class NegativeBinomial(Distribution):
             ValueError: Invalid arguments.
         """
 
-        if n.lt(0.0).any() or not torch.isfinite(n): # ToDo is 0 a valid value for n?
+        if n.lt(0.0).any() or not torch.isfinite(n):  # ToDo is 0 a valid value for n?
             raise ValueError(
                 f"Value of 'n' for 'NegativeBinomial' distribution must to be greater than 0, but was: {n}"
             )
@@ -95,9 +91,9 @@ class NegativeBinomial(Distribution):
 
         # leaf is a single non-conditional univariate node
         if (
-                len(domains) != 1
-                or len(feature_ctx.scope.query) != len(domains)
-                or len(feature_ctx.scope.evidence) != 0
+            len(domains) != 1
+            or len(feature_ctx.scope.query) != len(domains)
+            or len(feature_ctx.scope.evidence) != 0
         ):
             return False
 
@@ -162,6 +158,8 @@ class NegativeBinomial(Distribution):
         # set parameters of leaf node
         self.p = p_est
 
+    def params(self):
+        return {"n": self.n, "p": self.p}
+
     def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
         return {"n": self.n[indices], "p": self.p[indices]}
-

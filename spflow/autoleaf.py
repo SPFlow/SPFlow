@@ -1,102 +1,102 @@
 """TODO
 """
-from typing import Dict, List, Optional, Union
+from typing import Optional, Union
 
 # ----- non-conditional modules -----
 from spflow.structure.spn.layer.leaf import (
     #    Bernoulli,
     BernoulliLayer,
 )
-from spflow.structure.spn.node import Bernoulli
 from spflow.structure.spn.layer.leaf import (
     BinomialLayer,
 )
-from spflow.structure.spn.node import Binomial
 
 # ----- conditional modules -----
 from spflow.structure.spn.layer.leaf import (
     CondBernoulliLayer,
 )
-from spflow.structure.spn.node import CondBernoulli
 from spflow.structure.spn.layer.leaf import (
     CondBinomialLayer,
 )
-from spflow.structure.spn.node import CondBinomial
 from spflow.structure.spn.layer.leaf import (
     CondExponentialLayer,
 )
-from spflow.structure.spn.node import CondExponential
 from spflow.structure.spn.layer.leaf import (
     CondGammaLayer,
 )
-from spflow.structure.spn.node import CondGamma
 from spflow.structure.spn.layer.leaf import (
     CondGaussianLayer,
 )
-from spflow.structure.spn.node import CondGaussian
 from spflow.structure.spn.layer.leaf import (
     CondGeometricLayer,
 )
-from spflow.structure.spn.node import CondGeometric
 from spflow.structure.spn.layer.leaf import (
     CondLogNormalLayer,
 )
-from spflow.structure.spn.node import CondLogNormal
 from spflow.structure.spn.layer.leaf import (
     CondMultivariateGaussianLayer,
 )
-from spflow.structure.spn.node import CondMultivariateGaussian
 from spflow.structure.spn.layer.leaf import (
     CondNegativeBinomialLayer,
 )
-from spflow.structure.spn.node import CondNegativeBinomial
 from spflow.structure.spn.layer.leaf import (
     CondPoissonLayer,
 )
-from spflow.structure.spn.node import CondPoisson
 from spflow.structure.spn.layer.leaf import (
     ExponentialLayer,
 )
-from spflow.structure.spn.node import Exponential
 from spflow.structure.spn.layer.leaf import (
     GammaLayer,
 )
-from spflow.structure.spn.node import Gamma
 from spflow.structure.spn.layer.leaf import (
     GaussianLayer,
 )
-from spflow.structure.spn.node import Gaussian
 from spflow.structure.spn.layer.leaf import (
     GeometricLayer,
 )
-from spflow.structure.spn.node import Geometric
 from spflow.structure.spn.layer.leaf import (
     HypergeometricLayer,
 )
-from spflow.structure.spn.node import Hypergeometric
 from spflow.structure.spn.layer.leaf import (
     LogNormalLayer,
 )
-from spflow.structure.spn.node import LogNormal
 from spflow.structure.spn.layer.leaf import (
     MultivariateGaussianLayer,
 )
-from spflow.structure.spn.node import MultivariateGaussian
 from spflow.structure.spn.layer.leaf import (
     NegativeBinomialLayer,
 )
-from spflow.structure.spn.node import NegativeBinomial
 from spflow.structure.spn.layer.leaf import (
     PoissonLayer,
 )
-from spflow.structure.spn.node import Poisson
 from spflow.structure.spn.layer.leaf import (
     UniformLayer,
 )
+from spflow.structure.spn.node import Bernoulli
+from spflow.structure.spn.node import Binomial
+from spflow.structure.spn.node import CondBernoulli
+from spflow.structure.spn.node import CondBinomial
+from spflow.structure.spn.node import CondExponential
+from spflow.structure.spn.node import CondGamma
+from spflow.structure.spn.node import CondGaussian
+from spflow.structure.spn.node import CondGeometric
+from spflow.structure.spn.node import CondLogNormal
+from spflow.structure.spn.node import CondMultivariateGaussian
+from spflow.structure.spn.node import CondNegativeBinomial
+from spflow.structure.spn.node import CondPoisson
+from spflow.structure.spn.node import Exponential
+from spflow.structure.spn.node import Gamma
+from spflow.structure.spn.node import Gaussian
+from spflow.structure.spn.node import Geometric
+from spflow.structure.spn.node import Hypergeometric
+from spflow.structure.spn.node import LogNormal
+from spflow.structure.spn.node import MultivariateGaussian
+from spflow.structure.spn.node import NegativeBinomial
+from spflow.structure.spn.node import Poisson
 from spflow.structure.spn.node import Uniform
 
-from spflow.modules.module import Module
 from spflow.meta.data.feature_context import FeatureContext
+from spflow.modules.module import Module
 
 
 class AutoLeaf:
