@@ -1,7 +1,6 @@
 """Meta types for data feature types.
 """
 from enum import Enum
-from typing import Tuple
 
 
 class MetaType(Enum):

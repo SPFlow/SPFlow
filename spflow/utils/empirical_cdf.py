@@ -6,8 +6,9 @@ Typical usage example:
 """
 
 from scipy.stats import rankdata
-from spflow import tensor as T
 from spflow.tensor import Tensor
+
+from spflow import tensor as T
 
 
 def empirical_cdf(data: Tensor) -> Tensor:
