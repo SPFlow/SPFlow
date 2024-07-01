@@ -10,6 +10,7 @@ __author__ = "TODO"
 
 import importlib
 import pkgutil
+
 import spflow.modules as spflow_modules
 
 # List of functions to import from modules that we dispatch in the modules
@@ -33,14 +34,10 @@ def __import_from_module(module):
         module (module): The module from which to import functions.
 
     """
-    try:
-        for func_name in dispatched_functions_to_be_imported:
-            if hasattr(module, func_name):
-                globals()[func_name] = getattr(module, func_name)
-    except ImportError:
-        # Ignore ImportError if a function doesn't exist in the module
-        pass
-
+    for func_name in dispatched_functions_to_be_imported:
+        # Check if the module has the function
+        if hasattr(module, func_name):
+            globals()[func_name] = getattr(module, func_name)
 
 def __walk_packages(path, prefix):
     """Recursively walk through packages and import specified functions.
@@ -57,14 +54,10 @@ def __walk_packages(path, prefix):
     """
     for module_info in pkgutil.walk_packages(path, prefix):
         module_name = module_info.name
-        try:
-            module = importlib.import_module(module_name)
-            __import_from_module(module)
-            if module_info.ispkg:
-                __walk_packages(module.__path__, module.__name__ + ".")
-        except ImportError:
-            # Ignore ImportError if a module or package cannot be imported
-            pass
+        module = importlib.import_module(module_name)
+        __import_from_module(module)
+        if module_info.ispkg:
+            __walk_packages(module.__path__, module.__name__ + ".")
 
 
 # Start the recursive walking from the base module
