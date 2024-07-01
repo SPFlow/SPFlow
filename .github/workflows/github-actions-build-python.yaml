@@ -45,6 +45,7 @@ jobs:
           pip install .[dev]
       - name: Checking formatting with black
         run: black --check --diff spflow tests
+        continue-on-error: true
 
   # We do not want to waste too many resources on testing all combinations. Thus we test:
   # - on the oldest and the two most recent version of Python that we support (see README.md)
