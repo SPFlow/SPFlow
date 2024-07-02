@@ -55,7 +55,8 @@ def test_sample(out_channels: int, out_features: int):
         data = torch.full((n_samples, module.out_features), torch.nan)
         sampling_ctx.output_ids = torch.randint(low=0, high=2, size=(n_samples, module.out_features))
         samples = sample(module, data, sampling_ctx=sampling_ctx)
-        assert samples.shape == data.shape
+        assert samples.shape[:2] == data.shape
+        assert samples.shape[2] == 2
         samples_query = samples[:, module.scope.query]
         assert torch.isfinite(samples_query).all()
 
