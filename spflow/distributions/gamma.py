@@ -134,25 +134,6 @@ class Gamma(Distribution):
         # Computation of alpha and beta according to Wikipedia:
         # https://en.wikipedia.org/wiki/Gamma_distribution#Maximum_likelihood_estimation
 
-        # mean = (weights * data).sum(dim=0) / n_total
-        # log_mean = mean.log()  # Log of the mean
-        # mean_log = (weights * data.log()).sum(dim=0) / n_total  # Mean of the log
-
-        # start values
-        # alpha_prev = torch.zeros(data.shape[1], device=data.device)
-        # s = log_mean - mean_log
-        # alpha_est = (3 - s + torch.sqrt((s - 3) ** 2 + 24 * s)) / (12 * s)
-
-        # # iteratively compute alpha estimate
-        # while torch.any(torch.abs(alpha_prev - alpha_est) > 1e-6):
-        #     # mask to only further refine relevant estimates
-        #     m = torch.abs(alpha_prev - alpha_est) > 1e-6
-        #     alpha_prev = alpha_est.clone()
-        #     a = alpha_est[m]
-        #     alpha_est[m] = a - (a.log() - torch.digamma(a) - s[m]) / (1 / a - torch.polygamma(n=1, input=a))
-
-        # beta_est = alpha_est / mean
-
         mean_xlnx = (weights * data.log() * data).sum(dim=0) / n_total
         mean_x = (weights * data).sum(dim=0) / n_total
         mean_ln_x = (weights * data.log()).sum(dim=0) / n_total
@@ -160,9 +141,6 @@ class Gamma(Distribution):
         theta_est = mean_xlnx - mean_x * mean_ln_x
         alpha_est = mean_x / theta_est
         beta_est = 1 / theta_est
-
-        # # compute beta estimate
-        # beta_est = alpha_est / mean
 
         # edge case (if all values are the same, not enough samples or very close to each other)
         if torch.any(zero_mask := torch.isclose(beta_est, torch.tensor(0.0))):
