@@ -7,7 +7,9 @@ Typical usage example:
         pass
 """
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
+
 
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,

@@ -5,7 +5,7 @@ Typical usage example:
     coeffs = randomized_dependency_coefficients(data, k, s, phi)
 """
 from itertools import combinations
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 

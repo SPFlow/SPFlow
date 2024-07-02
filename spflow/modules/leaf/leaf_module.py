@@ -1,5 +1,6 @@
 from abc import ABC
-from typing import Callable, Optional, Union
+from typing import Optional, Union
+from collections.abc import Callable
 
 import torch
 from torch import Tensor
