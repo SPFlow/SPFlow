@@ -8,14 +8,14 @@ import unittest
 import pytest
 from spflow.meta.dispatch import init_default_sampling_context
 from spflow.meta.data import Scope
-from spflow.modules.cross_product import CrossProduct
+from spflow.modules.outer_product import OuterProduct
 from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_data, make_leaf
 from spflow.modules.leaf import Normal
 import torch
 
-cls_values = [CrossProduct, ElementwiseProduct]
+cls_values = [OuterProduct, ElementwiseProduct]
 in_channels_values = [1, 4]
 out_channels_values = [1, 5]
 out_features_values = [1, 6]
@@ -82,7 +82,7 @@ def test_sample_single_inputs(cls, in_channels: int, out_features: int, split_me
     )
 
     data = torch.full((n_samples, out_features), torch.nan)
-    sampling_ctx.output_ids = torch.randint(low=0, high=in_channels, size=(n_samples, out_features // 2))
+    sampling_ctx.output_ids = torch.randint(low=0, high=module.out_channels, size=(n_samples, out_features // 2))
     samples = sample(module, data, sampling_ctx=sampling_ctx)
 
     assert samples.shape == data.shape
