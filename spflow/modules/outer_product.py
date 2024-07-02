@@ -12,7 +12,7 @@ from spflow.modules.base_product import BaseProduct, _get_input_log_likelihoods
 from spflow.modules.module import Module
 
 
-class CrossProduct(BaseProduct):
+class OuterProduct(BaseProduct):
     def __init__(
         self,
         inputs: Union[Module, tuple[Module, Module], list[Module]],
@@ -21,7 +21,7 @@ class CrossProduct(BaseProduct):
             Union[tuple[list[int], list[int]], torch.IntTensor, tuple[torch.IntTensor, torch.IntTensor]]
         ] = None,
     ) -> None:
-        r"""Initializes ``CrossProduct`` module.
+        r"""Initializes ``OuterProduct`` module.
 
         Args:
             inputs:
@@ -77,7 +77,7 @@ class CrossProduct(BaseProduct):
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
-    module: CrossProduct,
+    module: OuterProduct,
     data: Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
