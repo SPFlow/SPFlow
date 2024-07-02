@@ -130,6 +130,3 @@ class Exponential(Distribution):
 
     def params(self) -> dict[str, Tensor]:
         return {"rate": self.rate}
-
-    def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
-        return {"rate": self.rate[indices]}

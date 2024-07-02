@@ -141,6 +141,3 @@ class Uniform(Distribution):
 
     def params(self):
         return {"start": self.start, "end": self.end}
-
-    def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
-        return {"start": self.start[indices], "end": self.end[indices]}
