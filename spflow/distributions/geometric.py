@@ -137,6 +137,3 @@ class Geometric(Distribution):
 
     def params(self):
         return {"p": self.p}
-
-    def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
-        return {"p": self.p[indices]}

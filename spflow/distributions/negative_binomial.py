@@ -160,6 +160,3 @@ class NegativeBinomial(Distribution):
 
     def params(self):
         return {"n": self.n, "p": self.p}
-
-    def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
-        return {"n": self.n[indices], "p": self.p[indices]}
