@@ -1,4 +1,5 @@
-from typing import Callable, Tuple
+from typing import Tuple
+from collections.abc import Callable
 
 import torch
 from torch import Tensor
