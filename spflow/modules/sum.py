@@ -95,6 +95,14 @@ class Sum(Module):
             self.sum_dim = 3
             self.weights_shape = (self._out_features, self._in_channels, out_channels, len(inputs))
 
+            # Store unraveled in- and out-channel indices
+            self.register_buffer(
+                name="unraveled_channel_indices",
+                tensor=torch.tensor(
+                    [(i, j) for i in range(self.inputs.out_channels) for j in range(out_channels)]
+                ),
+            )
+
         # compute scope
         self.scope = self.inputs.scope
 
@@ -241,6 +249,28 @@ def sample(
         idxs = sampling_ctx.output_ids[..., None, None]
         idxs = idxs.expand(-1, -1, module._in_channels, -1)
         logits = logits.gather(dim=3, index=idxs).squeeze(3)
+
+        if dispatch_ctx.cache["log_likelihood"][module.inputs] is not None:
+            input_lls = dispatch_ctx.cache["log_likelihood"][module.inputs]
+
+            # Compute log posterior by reweighting logits with input lls
+            log_prior = logits
+            log_posterior = log_prior + input_lls
+            log_posterior = log_posterior.log_softmax(dim=2)
+            logits = log_posterior
+
+        # Sample from categorical distribution defined by weights to obtain indices into input channels
+        sampling_ctx.output_ids = torch.distributions.Categorical(logits=logits).sample()
+
+        # Sample from input module
+        samples = sample(
+            module.inputs,
+            data,
+            check_support=check_support,
+            dispatch_ctx=dispatch_ctx,
+            sampling_ctx=sampling_ctx,
+        )
+
     else:
         logits = module.logits.unsqueeze(0).expand(sampling_ctx.output_ids.shape[0], -1, -1, -1, -1)
         logits = logits.view(-1, module.out_features, module.out_channels, logits.shape[-1])
@@ -248,17 +278,45 @@ def sample(
         idxs = idxs.expand(-1, -1, -1, logits.shape[-1])
         logits = logits.gather(dim=2, index=idxs).squeeze(3).squeeze(2)
 
-    # Sample from categorical distribution defined by weights to obtain indices into input channels
-    sampling_ctx.output_ids = torch.distributions.Categorical(logits=logits).sample()
+        oids_mapped = module.unraveled_channel_indices[sampling_ctx.output_ids]
+        # Take the first element of the tuple (input_channel_idx, output_channel_idx)
+        # This is the out_channels index for all inputs in the Stack module
+        oids_in_channels = oids_mapped[..., 0]
 
-    # Sample from input module
-    sample(
-        module.inputs,
-        data,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
-        sampling_ctx=sampling_ctx,
-    )
+        if dispatch_ctx.cache["log_likelihood"][module.inputs] is not None:
+            input_lls = dispatch_ctx.cache["log_likelihood"][module.inputs]
+
+            oids_in_channels_input_lls = (
+                oids_in_channels.unsqueeze(2).unsqueeze(3).expand(-1, -1, -1, input_lls.shape[3])
+            )
+            input_lls = input_lls.gather(dim=2, index=oids_in_channels_input_lls).squeeze(2)
+
+            # Compute log posterior by reweighting logits with input lls
+            log_prior = logits
+            log_posterior = log_prior + input_lls
+            log_posterior = log_posterior.log_softmax(dim=2)
+            logits = log_posterior
+
+        # Sample from categorical distribution defined by weights to obtain indices into the Stack dimension
+        oids_stack = torch.distributions.Categorical(logits=logits).sample()
+        sampling_ctx.output_ids = oids_in_channels
+
+        # Sample from input module
+        samples = sample(
+            module.inputs,
+            data,
+            check_support=check_support,
+            dispatch_ctx=dispatch_ctx,
+            sampling_ctx=sampling_ctx,
+        )
+
+        # Index into the correct stack dimension given by parent module
+        samples = samples.gather(dim=-1, index=oids_stack.unsqueeze(-1)).squeeze(-1)
+
+    # Update only relevant samples
+    data[sampling_ctx.instance_ids[:, None], module.scope.query] = samples[
+        sampling_ctx.instance_ids[:, None], module.scope.query
+    ]
 
     return data
 
