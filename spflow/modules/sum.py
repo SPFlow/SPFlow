@@ -193,7 +193,7 @@ def marginalize(
 
     # compute module scope (same for all outputs)
     module_scope = module.scope
-    marg_child = None
+    marg_input = None
 
     # for idx,s in enumerate(module_scope):
     mutual_rvs = set(module_scope.query).intersection(set(marg_rvs))
@@ -206,28 +206,27 @@ def marginalize(
 
     # node scope is being partially marginalized
     elif mutual_rvs:
-        # marginalize child modules
-        marg_child_module = marginalize(module.inputs, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+        # marginalize input modules
+        marg_input = marginalize(module.inputs, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
-        # if marginalized child is not None
-        if marg_child_module:
-            marg_child = marg_child_module
+        # if marginalized input is not None
+        if marg_input:
             indices = [module.scope.query.index(el) for el in list(mutual_rvs)]
             mask = torch.ones_like(torch.tensor(module_scope.query), dtype=torch.bool)
             mask[indices] = False
             module_weights = module_weights[mask]
 
     else:
-        marg_child = module.inputs
+        marg_input = module.inputs
 
-    if marg_child is None:
+    if marg_input is None:
         return None
 
     else:
         if module.has_single_input:
-            return Sum(inputs=marg_child, weights=module_weights)
+            return Sum(inputs=marg_input, weights=module_weights)
         else:
-            return Sum(inputs=[inp for inp in marg_child.inputs], weights=module_weights)
+            return Sum(inputs=[inp for inp in marg_input.inputs], weights=module_weights)
 
 
 @dispatch  # type: ignore
@@ -250,13 +249,16 @@ def sample(
         idxs = idxs.expand(-1, -1, module._in_channels, -1)
         logits = logits.gather(dim=3, index=idxs).squeeze(3)
 
-        if "log_likelihood" in dispatch_ctx.cache and dispatch_ctx.cache["log_likelihood"][module.inputs] is not None:
+        if (
+            "log_likelihood" in dispatch_ctx.cache
+            and dispatch_ctx.cache["log_likelihood"][module.inputs] is not None
+        ):
             input_lls = dispatch_ctx.cache["log_likelihood"][module.inputs]
 
-            # Compute log posterior by reweighting logits with input lls
+            # Compute log posterior by reweighing logits with input lls
             log_prior = logits
             log_posterior = log_prior + input_lls
-            log_posterior = log_posterior.log_softmax(dim=2)
+            log_posterior = log_posterior.log_softmax(dim=2)  # TODO: Can we leave this out since Cat normalizes anyway?
             logits = log_posterior
 
         # Sample from categorical distribution defined by weights to obtain indices into input channels
@@ -283,7 +285,10 @@ def sample(
         # This is the out_channels index for all inputs in the Stack module
         oids_in_channels = oids_mapped[..., 0]
 
-        if "log_likelihood" in dispatch_ctx.cache and dispatch_ctx.cache["log_likelihood"][module.inputs] is not None:
+        if (
+            "log_likelihood" in dispatch_ctx.cache
+            and dispatch_ctx.cache["log_likelihood"][module.inputs] is not None
+        ):
             input_lls = dispatch_ctx.cache["log_likelihood"][module.inputs]
 
             oids_in_channels_input_lls = (
