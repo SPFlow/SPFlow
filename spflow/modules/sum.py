@@ -250,7 +250,7 @@ def sample(
         idxs = idxs.expand(-1, -1, module._in_channels, -1)
         logits = logits.gather(dim=3, index=idxs).squeeze(3)
 
-        if dispatch_ctx.cache["log_likelihood"][module.inputs] is not None:
+        if "log_likelihood" in dispatch_ctx.cache and dispatch_ctx.cache["log_likelihood"][module.inputs] is not None:
             input_lls = dispatch_ctx.cache["log_likelihood"][module.inputs]
 
             # Compute log posterior by reweighting logits with input lls
@@ -283,7 +283,7 @@ def sample(
         # This is the out_channels index for all inputs in the Stack module
         oids_in_channels = oids_mapped[..., 0]
 
-        if dispatch_ctx.cache["log_likelihood"][module.inputs] is not None:
+        if "log_likelihood" in dispatch_ctx.cache and dispatch_ctx.cache["log_likelihood"][module.inputs] is not None:
             input_lls = dispatch_ctx.cache["log_likelihood"][module.inputs]
 
             oids_in_channels_input_lls = (
