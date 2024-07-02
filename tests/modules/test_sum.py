@@ -6,7 +6,7 @@ from itertools import product
 from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.meta.data import Scope
 import pytest
-from spflow.meta.dispatch import init_default_sampling_context
+from spflow.meta.dispatch import init_default_sampling_context, init_default_dispatch_context
 from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
@@ -75,6 +75,51 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, is_singl
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]
         assert torch.isfinite(samples_query).all()
+
+
+@pytest.mark.parametrize(
+    "in_channels,out_channels,is_single_input",
+    list(product(in_channels_values, out_channels_values, is_single_input_values)),
+)
+def test_conditional_sample(in_channels: int, out_channels: int, is_single_input: bool):
+    out_features = 6
+    n_samples = 100
+    module = make_sum(
+        in_channels=in_channels,
+        out_channels=out_channels,
+        out_features=out_features,
+        is_single_input=is_single_input,
+    )
+    sampling_ctx = init_default_sampling_context(sampling_ctx=None, n=n_samples)
+
+    for i in range(module.out_channels):
+        # Create some data
+        data = torch.randn(n_samples, module.out_features)
+
+        # Set first three scopes to nan
+        data[:, [0, 1, 2]] = torch.nan
+
+        data_copy = data.clone()
+
+        # Perform log-likelihood computation
+        dispatch_ctx = init_default_dispatch_context()
+        _ = log_likelihood(module, data, dispatch_ctx=dispatch_ctx)
+
+        # Check that log_likelihood is cached
+        assert dispatch_ctx.cache["log_likelihood"][module] is not None
+        assert dispatch_ctx.cache["log_likelihood"][module].isfinite().all()
+
+        sampling_ctx.output_ids = torch.randint(
+            low=0, high=module.out_channels, size=(n_samples, module.out_features)
+        )
+        samples = sample(module, data, sampling_ctx=sampling_ctx, dispatch_ctx=dispatch_ctx)
+        assert samples.shape == data.shape
+
+        samples_query = samples[:, module.scope.query]
+        assert torch.isfinite(samples_query).all()
+
+        # Check, that the last three scopes (those that were conditioned on) are still the same
+        assert torch.allclose(data_copy[:, [3, 4, 5]], samples[:, [3, 4, 5]])
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,is_single_input", params)
