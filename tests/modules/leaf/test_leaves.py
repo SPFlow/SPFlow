@@ -136,22 +136,26 @@ def test_marginalize(cls, out_channels: int, prune: bool, marg_rvs):
     """Test marginalization of a normal distribution."""
     out_features = 3
     module = make_leaf(cls, out_channels=out_channels, out_features=out_features)
-    marg_rvs = [1, 2]
     marginalizeed_module = marginalize(module, marg_rvs)
 
     # If the number of marginalized rvs is equal to the number of out_features, the module should be None
     if len(marg_rvs) == out_features:
         assert marginalizeed_module is None
+        return
 
     # Check, that the parameters have len(marg_rvs) fewer scopes
     for param_name, param in marginalizeed_module.distribution.named_parameters():
         assert param.shape[0] == out_features - len(marg_rvs)
 
+    # Check, that the correct scopes were marginalized
+    marg_scope = Scope(list(set(module.scope.query) - set(marg_rvs)))
+    assert marginalizeed_module.scope == marg_scope
+
 
 @pytest.mark.parametrize(
     "cls,out_features,out_channels", product(cls_values, out_features_values, out_channels_values)
 )
-def test_normal_constructor_valid_params(cls, out_features: int, out_channels: int):
+def test_constructor_valid_params(cls, out_features: int, out_channels: int):
     """Test the constructor of the distribution with valid parameters."""
 
     # Construct module A
@@ -172,7 +176,7 @@ def test_normal_constructor_valid_params(cls, out_features: int, out_channels: i
 @pytest.mark.parametrize(
     "cls,out_features,out_channels", product(cls_values, out_features_values, out_channels_values)
 )
-def test_normal_constructor_nan_param(cls, out_features: int, out_channels: int):
+def test_constructor_nan_param(cls, out_features: int, out_channels: int):
     """Test the constructor of a Normal distribution with NaN mean."""
     # Construct module A
     module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features)
@@ -190,7 +194,7 @@ def test_normal_constructor_nan_param(cls, out_features: int, out_channels: int)
 @pytest.mark.parametrize(
     "cls,out_features,out_channels", product(cls_values, out_features_values, out_channels_values)
 )
-def test_normal_constructor_inf_param(cls, out_features: int, out_channels: int):
+def test_constructor_inf_param(cls, out_features: int, out_channels: int):
     """Test the constructor of a Normal distribution with NaN mean."""
     # Construct module A
     module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features)
@@ -208,7 +212,7 @@ def test_normal_constructor_inf_param(cls, out_features: int, out_channels: int)
 @pytest.mark.parametrize(
     "cls,out_features,out_channels", product(cls_values, out_features_values, out_channels_values)
 )
-def test_normal_constructor_neginf_param(cls, out_features: int, out_channels: int):
+def test_constructor_neginf_param(cls, out_features: int, out_channels: int):
     """Test the constructor of a Normal distribution with NaN mean."""
     # Construct module A
     module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features)
