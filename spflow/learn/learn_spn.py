@@ -1,7 +1,8 @@
 """Contains the LearnSPN structure and parameter learner for SPFlow in the ``base`` backend.
 """
 from functools import partial
-from typing import Any, Callable, Optional, Union
+from typing import Any, Optional, Union
+from collections.abc import Callable
 
 from sklearn.cluster import KMeans
 from spflow.base.learning.general.node.leaf.gaussian import (
