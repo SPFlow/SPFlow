@@ -4,7 +4,7 @@ Typical usage example:
 
     dispatch_ctx = DispatchContext()
 """
-from typing import Any, Union
+from typing import Any, Union, Optional
 
 
 class DispatchContext:
@@ -110,7 +110,7 @@ def default_dispatch_context() -> DispatchContext:
     return DispatchContext()
 
 
-def init_default_dispatch_context(dispatch_ctx: Union[DispatchContext, None]) -> DispatchContext:
+def init_default_dispatch_context(dispatch_ctx: Optional[DispatchContext] = None) -> DispatchContext:
     """Initializes dispatch context, if it is not already initialized.
 
     Args
