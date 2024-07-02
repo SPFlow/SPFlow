@@ -34,10 +34,10 @@ def expectation_maximization(
             Integer representing the maximum number of iterations.
             Defaults to -1, in which case the optimization is performed until convergence.
         check_support:
-            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Boolean value indicating whether if the data is in the support of the leaf distributions.
             Defaults to True.
         verbose:
-            Boolean value indicating whether or not to print the log-likelihood for each iteration step.
+            Boolean value indicating whether to print the log-likelihood for each iteration step.
             Defaults to False.
 
     Returns:
