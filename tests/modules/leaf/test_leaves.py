@@ -97,9 +97,10 @@ def test_requires_grad(cls, out_features: int, out_channels: int):
 
 @pytest.mark.parametrize("cls,out_features,out_channels", params)
 def test_gradient_descent_optimization(
-    cls, out_features: int,out_channels: int,
+    cls,
+    out_features: int,
+    out_channels: int,
 ):
-
     # Skip leaves without parameters
     if cls in [leaf.Hypergeometric, leaf.Uniform]:
         return
@@ -108,7 +109,16 @@ def test_gradient_descent_optimization(
     data = make_data(cls=cls, out_features=out_features, n_samples=20)
     dataset = torch.utils.data.TensorDataset(data)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
+
+    # Clone module parameters before training
+    params_before = {k: v.clone() for (k, v) in module.distribution.params().items()}
+
     train_gradient_descent(module, data_loader, epochs=1)
+
+    # Check that the parameters have changed
+    for param_name, param in module.distribution.params().items():
+        if param.requires_grad:
+            assert not torch.allclose(param, params_before[param_name])
 
 
 @pytest.mark.parametrize(
