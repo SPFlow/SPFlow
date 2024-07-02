@@ -13,7 +13,6 @@ class Normal(Distribution):
         r"""Initializes ``Normal`` leaf node.
 
         Args:
-            scope: Scope object specifying the scope of the distribution.
             mean: Tensor containing the mean (:math:`\mu`) of the distribution.
             std: Tensor containing the standard deviation (:math:`\sigma`) of the distribution.
             event_shape: Shape of the event space.
