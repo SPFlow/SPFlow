@@ -165,6 +165,3 @@ class Binomial(Distribution):
 
     def params(self) -> dict[str, Tensor]:
         return {"n": self.n, "p": self.p}
-
-    def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
-        return {"n": self.n[indices], "p": self.p[indices]}

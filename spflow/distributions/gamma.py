@@ -189,6 +189,3 @@ class Gamma(Distribution):
 
     def params(self) -> dict[str, Tensor]:
         return {"alpha": self.alpha, "beta": self.beta}
-
-    def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
-        return {"alpha": self.alpha[indices], "beta": self.beta[indices]}
