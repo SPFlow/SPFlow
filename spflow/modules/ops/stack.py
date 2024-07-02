@@ -69,6 +69,10 @@ def sample(
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
 ) -> Tensor:
+    """
+    Unlike other modules, Stack return samples for each stack input, i.e. the output is a tensor of shape (batch,
+    out_features, len(inputs)).
+    """
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
@@ -85,16 +89,7 @@ def sample(
         samples.append(x)
 
     samples = torch.stack(samples, dim=-1)
-
-    # output ids are of shape (batch, out_features) and each element i is in [0, len(inputs))
-    oids = sampling_ctx.output_ids.unsqueeze(-1)
-    samples = samples.gather(-1, oids).squeeze(-1)
-
-    # Update only relevant samples
-    data[sampling_ctx.instance_ids[:, None], module.scope.query] = samples[
-        sampling_ctx.instance_ids[:, None], module.scope.query
-    ]
-    return data
+    return samples
 
 
 @dispatch(memoize=True)  # type: ignore
