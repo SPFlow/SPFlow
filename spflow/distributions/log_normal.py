@@ -141,6 +141,3 @@ class LogNormal(Distribution):
 
     def params(self):
         return {"mean": self.mean, "std": self.std}
-
-    def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
-        return {"mean": self.mean[indices], "std": self.std[indices]}

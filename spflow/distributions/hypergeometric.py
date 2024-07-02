@@ -136,9 +136,6 @@ class Hypergeometric(Distribution):
     def params(self):
         return {"K": self.K, "N": self.N, "n": self.n}
 
-    def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
-        return {"K": self.K[indices], "N": self.N[indices], "n": self.n[indices]}
-
     def check_support(
         self,
         data: torch.Tensor,
