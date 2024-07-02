@@ -53,6 +53,7 @@ def train_gradient_descent(
     """
     model.train()
 
+    # If no optimizer is provided, use Adam by default
     if optimizer is None:
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
