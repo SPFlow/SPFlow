@@ -220,7 +220,7 @@ def test_constructor_neginf_param(cls, out_features: int, out_channels: int):
     # Get parameters of module A
     nan_params = module_a.distribution.params()
     for key, value in nan_params.items():
-        nan_params[key] = -1 * torch.full_like(value, torch.inf)
+        nan_params[key] = torch.full_like(value, -1 * torch.inf)
 
     # Construct module B with parameters of module A is initialization
     with pytest.raises(ValueError):
@@ -230,19 +230,19 @@ def test_constructor_neginf_param(cls, out_features: int, out_channels: int):
 @pytest.mark.parametrize(
     "cls,out_features,out_channels", product(cls_values, out_features_values, out_channels_values)
 )
-def test_normal_constructor_missing_param_and_out_channels(cls, out_features: int, out_channels: int):
+def test_constructor_missing_param_and_out_channels(cls, out_features: int, out_channels: int):
     """Test the constructor of a Normal distribution with NaN mean."""
     # Construct module A
     module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features)
 
     # Get parameters of module A
-    nan_params = module_a.distribution.params()
-    for key, value in nan_params.items():
-        nan_params[key] = None
+    none_params = module_a.distribution.params()
+    for key, value in none_params.items():
+        none_params[key] = None
 
     # Construct module B with parameters of module A is initialization
     with pytest.raises(InvalidParameterCombinationError):
-        module_b = cls(scope=module_a.scope, **nan_params)
+        module_b = cls(scope=module_a.scope, **none_params)
 
 
 if __name__ == "__main__":
