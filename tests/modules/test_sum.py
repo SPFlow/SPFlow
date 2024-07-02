@@ -149,7 +149,16 @@ def test_gradient_descent_optimization(
     data = make_normal_data(out_features=out_features, num_samples=20)
     dataset = torch.utils.data.TensorDataset(data)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
+
+    # Store weights before
+    weights_before = module.weights.clone()
+
+    # Run optimization
     train_gradient_descent(module, data_loader, epochs=1)
+
+    # Check that weights have changed
+    if in_channels > 1:  # If in_channels is 1, the weight is 1.0 anyway
+        assert not torch.allclose(module.weights, weights_before)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,is_single_input", params)
