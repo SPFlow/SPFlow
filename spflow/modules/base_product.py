@@ -97,8 +97,9 @@ class BaseProduct(Module, ABC):
                 )
 
             if split_method == "split_indices":
-
-                # TODO: Check that splits_indices covers all features
+                # Check that splits_indices covers all features
+                if not len(split_indices[0]) + len(split_indices[1]) == self.inputs.out_features:
+                    raise ValueError(f"Split indices must be the cover range(0, {self.inputs.out_features}).")
 
                 # Convert split indices to torch tensor
                 if isinstance(split_indices, tuple):
