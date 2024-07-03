@@ -82,7 +82,9 @@ def test_sample_single_inputs(cls, in_channels: int, out_features: int, split_me
     )
 
     data = torch.full((n_samples, out_features), torch.nan)
-    sampling_ctx.output_ids = torch.randint(low=0, high=module.out_channels, size=(n_samples, out_features // 2))
+    sampling_ctx.output_ids = torch.randint(
+        low=0, high=module.out_channels, size=(n_samples, out_features // 2)
+    )
     samples = sample(module, data, sampling_ctx=sampling_ctx)
 
     assert samples.shape == data.shape
