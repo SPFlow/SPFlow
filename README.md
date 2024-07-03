@@ -669,6 +669,7 @@ See also the list of [contributors](https://github.com/SPFlow/SPFlow/contributor
 * **[Claas Voelcker](https://cvoelcker.de)** - *TU Darmstadt*
 * **Simon Roesler** - *Karlsruhe Institute of Technology*
 * **[Alexander L. Hayes](https://hayesall.com)** - *Indiana University, Bloomington*
+* **[Alexander Zeikowsky](https://github.com/AlexTUD19)** - *TU Darmstadt*
 
 ## License
 
