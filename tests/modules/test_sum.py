@@ -7,7 +7,7 @@ from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.meta.data import Scope
 import pytest
 from spflow.meta.dispatch import init_default_sampling_context, init_default_dispatch_context
-from spflow import log_likelihood, sample, marginalize
+from spflow import log_likelihood, sample, marginalize, sample_with_evidence
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum
@@ -52,7 +52,8 @@ def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, 
         is_single_input=is_single_input,
     )
     data = make_normal_data(out_features=out_features)
-    lls = log_likelihood(module, data)
+    ctx = init_default_dispatch_context()
+    lls = log_likelihood(module, data, dispatch_ctx=ctx)
     assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
 
 
@@ -103,16 +104,18 @@ def test_conditional_sample(in_channels: int, out_channels: int, is_single_input
 
         # Perform log-likelihood computation
         dispatch_ctx = init_default_dispatch_context()
-        _ = log_likelihood(module, data, dispatch_ctx=dispatch_ctx)
+
+        sampling_ctx.output_ids = torch.randint(
+            low=0, high=module.out_channels, size=(n_samples, module.out_features)
+        )
+
+        samples = sample_with_evidence(module, data, is_mpe=False, check_support=False, dispatch_ctx=dispatch_ctx, sampling_ctx=sampling_ctx)
 
         # Check that log_likelihood is cached
         assert dispatch_ctx.cache["log_likelihood"][module] is not None
         assert dispatch_ctx.cache["log_likelihood"][module].isfinite().all()
 
-        sampling_ctx.output_ids = torch.randint(
-            low=0, high=module.out_channels, size=(n_samples, module.out_features)
-        )
-        samples = sample(module, data, sampling_ctx=sampling_ctx, dispatch_ctx=dispatch_ctx)
+        # Check for correct shape
         assert samples.shape == data.shape
 
         samples_query = samples[:, module.scope.query]
