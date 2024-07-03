@@ -233,6 +233,7 @@ def marginalize(
 def sample(
     module: Sum,
     data: Tensor,
+    is_mpe: bool = False,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
@@ -262,7 +263,12 @@ def sample(
             logits = log_posterior
 
         # Sample from categorical distribution defined by weights to obtain indices into input channels
-        sampling_ctx.output_ids = torch.distributions.Categorical(logits=logits).sample()
+        if is_mpe:
+            # Take the argmax of the logits to obtain the most probable index
+            sampling_ctx.output_ids = torch.argmax(logits, dim=-1)
+        else:
+            # Sample from categorical distribution defined by weights to obtain indices into input channels
+            sampling_ctx.output_ids = torch.distributions.Categorical(logits=logits).sample()
 
         # Sample from input module
         samples = sample(
