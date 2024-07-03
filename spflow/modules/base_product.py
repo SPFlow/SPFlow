@@ -29,6 +29,8 @@ class BaseProduct(Module, ABC):
     ) -> None:
         r"""Initializes ``BaseProduct`` object.
 
+        TODO: update description to be general
+
         Args:
             inputs:
                 Can be either a Module or a list of Modules.
@@ -95,6 +97,9 @@ class BaseProduct(Module, ABC):
                 )
 
             if split_method == "split_indices":
+
+                # TODO: Check that splits_indices covers all features
+
                 # Convert split indices to torch tensor
                 if isinstance(split_indices, tuple):
                     if isinstance(split_indices[0], list):
@@ -128,7 +133,6 @@ class BaseProduct(Module, ABC):
 
             # Derive output shape from inputs
             self._out_features = self.inputs.out_features // 2
-            self._out_channels = self.inputs.out_channels
         else:
             if split_method is not None or split_indices is not None:
                 raise InvalidParameterCombinationError(
@@ -147,7 +151,6 @@ class BaseProduct(Module, ABC):
 
             # Derive output shape from inputs
             self._out_features = self.inputs[0].out_features
-            self._out_channels = self.inputs[0].out_channels
 
         # Obtain scope
         if self.has_single_input:
@@ -201,6 +204,7 @@ def marginalize(
 def sample(
     module: BaseProduct,
     data: Tensor,
+    is_mpe: bool = False,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
@@ -232,6 +236,7 @@ def sample(
         sample(
             module.inputs[0],
             data,
+            is_mpe=is_mpe,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,
             sampling_ctx=sampling_ctx,
@@ -242,6 +247,7 @@ def sample(
         sample(
             module.inputs[1],
             data,
+            is_mpe=is_mpe,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,
             sampling_ctx=sampling_ctx,
@@ -276,7 +282,6 @@ def _get_input_log_likelihoods(
         # Split the input according to `split_indices` at feature dimension
         ll_left = ll[:, module.split_indices[0]]
         ll_right = ll[:, module.split_indices[1]]
-        return [ll_left, ll_right]
     else:
         ll_left = log_likelihood(
             module.inputs[0],
@@ -290,7 +295,8 @@ def _get_input_log_likelihoods(
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,
         )
-        return [ll_left, ll_right]
+
+    return [ll_left, ll_right]
 
 
 @dispatch(memoize=True)  # type: ignore
