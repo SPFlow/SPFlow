@@ -74,6 +74,7 @@ def marginalize(
 def sample(
     product_layer: Product,
     data: Tensor,
+    is_mpe: bool = False,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
@@ -85,6 +86,7 @@ def sample(
     sample(
         product_layer.inputs,
         data,
+        is_mpe=is_mpe,
         check_support=check_support,
         dispatch_ctx=dispatch_ctx,
         sampling_ctx=sampling_ctx,
