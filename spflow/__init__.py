@@ -18,6 +18,7 @@ dispatched_functions_to_be_imported = [
     "log_likelihood",
     "em",
     "sample",
+    "sample_with_evidence",
     "maximum_likelihood_estimation",
     "marginalize",
 ]
