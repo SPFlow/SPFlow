@@ -218,6 +218,57 @@ def sample_with_evidence(
     )
 
 
+@dispatch  # type: ignore
+def sample(
+    module: Module,
+    num_samples: int = 1,
+    is_mpe: bool = False,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+    sampling_ctx: Optional[SamplingContext] = None,
+) -> Tensor:
+    r"""Samples specified numbers of instances from modules in the ``base`` backend without any evidence.
+
+    Samples a specified number of instance from the module by creating an empty two-dimensional NumPy array (i.e., filled with NaN values) of appropriate size and filling it.
+
+    Args:
+        module:
+            Module to sample from.
+        num_samples:
+            Number of samples to generate.
+        is_mpe:
+            Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
+            Defaults to False.
+        check_support:
+            Boolean value indicating whether if the data is in the support of the leaf distributions.
+            Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+        sampling_ctx:
+            Optional sampling context containing the instances (i.e., rows) of ``data`` to fill with sampled values and the output indices of the node to sample from.
+
+    Returns:
+        Two-dimensional NumPy array containing the sampled values.
+        Each row corresponds to a sample.
+    """
+    data = torch.full(
+        (num_samples, len(module.scope.query)), torch.nan, device=module.device
+    )
+
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+
+    return sample(
+        module,
+        data,
+        is_mpe=is_mpe,
+        check_support=check_support,
+        dispatch_ctx=dispatch_ctx,
+        sampling_ctx=sampling_ctx,
+    )
+
+
+
 @dispatch(memoize=True)  # type: ignore
 def em(
     module: Module,
