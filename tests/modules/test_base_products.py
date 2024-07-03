@@ -197,6 +197,16 @@ def test_invalid_split_indices_should_be_none(cls):
         )
 
 
+@pytest.mark.parametrize("cls", cls_values)
+def test_invalid_split_indices_too_few(cls):
+    with pytest.raises(ValueError):
+        cls(
+            inputs=make_normal_leaf(scope=Scope([0, 1, 2, 3]), out_channels=3),
+            split_method="split_indices",
+            split_indices=([0], [2]),
+        )
+
+
 @pytest.mark.parametrize("cls,prune", product(cls_values, [True, False]))
 def test_marginalize_single_input(cls, prune: bool):
     # TODO: implement marginalization
