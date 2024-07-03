@@ -109,7 +109,14 @@ def test_conditional_sample(in_channels: int, out_channels: int, is_single_input
             low=0, high=module.out_channels, size=(n_samples, module.out_features)
         )
 
-        samples = sample_with_evidence(module, data, is_mpe=False, check_support=False, dispatch_ctx=dispatch_ctx, sampling_ctx=sampling_ctx)
+        samples = sample_with_evidence(
+            module,
+            data,
+            is_mpe=False,
+            check_support=False,
+            dispatch_ctx=dispatch_ctx,
+            sampling_ctx=sampling_ctx,
+        )
 
         # Check that log_likelihood is cached
         assert dispatch_ctx.cache["log_likelihood"][module] is not None

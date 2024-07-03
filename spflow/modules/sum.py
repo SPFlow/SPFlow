@@ -259,7 +259,9 @@ def sample(
             # Compute log posterior by reweighing logits with input lls
             log_prior = logits
             log_posterior = log_prior + input_lls
-            log_posterior = log_posterior.log_softmax(dim=2)  # TODO: Can we leave this out since Cat normalizes anyway?
+            log_posterior = log_posterior.log_softmax(
+                dim=2
+            )  # TODO: Can we leave this out since Cat normalizes anyway?
             logits = log_posterior
 
         # Sample from categorical distribution defined by weights to obtain indices into input channels
