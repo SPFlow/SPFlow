@@ -206,11 +206,11 @@ def sample_with_evidence(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # Perform forward log_likelihood pass to populate dispatch context cache for possible conditional samples
-    log_likelihood(module, evidence=evidence, check_support=check_support, dispatch_ctx=dispatch_ctx)
+    log_likelihood(module, evidence, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
     return sample(
         module,
-        num_samples=evidence.shape[0],
+        evidence,
         is_mpe=is_mpe,
         check_support=check_support,
         dispatch_ctx=dispatch_ctx,
