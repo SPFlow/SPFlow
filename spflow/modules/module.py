@@ -171,6 +171,54 @@ def sample(
 
 
 @dispatch  # type: ignore
+def sample_with_evidence(
+    module: Module,
+    evidence: Tensor,
+    is_mpe: bool = False,
+    check_support: bool = False,
+    dispatch_ctx: Optional[DispatchContext] = None,
+    sampling_ctx: Optional[SamplingContext] = None,
+) -> Tensor:
+    r"""Samples from modules backend with evidence.
+
+    This is effectively calling log_likelihood to populate the dispatch context cache and then sampling from the module.
+
+    Args:
+        module:
+            Module to sample from.
+        evidence:
+            Evidence tensor.
+        is_mpe:
+            Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
+            Defaults to False.
+        check_support:
+            Boolean value indicating whether if the data is in the support of the leaf distributions.
+            Defaults to True.
+        dispatch_ctx:
+            Optional dispatch context.
+        sampling_ctx:
+            Optional sampling context containing the instances (i.e., rows) of ``data`` to fill with sampled values and the output indices of the node to sample from.
+
+    Returns:
+        Two-dimensional NumPy array containing the sampled values.
+        Each row corresponds to a sample.
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+
+    # Perform forward log_likelihood pass to populate dispatch context cache for possible conditional samples
+    log_likelihood(module, evidence=evidence, check_support=check_support, dispatch_ctx=dispatch_ctx)
+
+    return sample(
+        module,
+        num_samples=evidence.shape[0],
+        is_mpe=is_mpe,
+        check_support=check_support,
+        dispatch_ctx=dispatch_ctx,
+        sampling_ctx=sampling_ctx,
+    )
+
+
+@dispatch  # type: ignore
 def sample(
     module: Module,
     num_samples: int = 1,
