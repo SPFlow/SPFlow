@@ -1,5 +1,0 @@
-@startuml sampling_context
-
-class memoize << decorator >>
-
-@enduml
