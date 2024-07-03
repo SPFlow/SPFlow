@@ -251,9 +251,7 @@ def sample(
         Two-dimensional NumPy array containing the sampled values.
         Each row corresponds to a sample.
     """
-    data = torch.full(
-        (num_samples, len(module.scope.query)), torch.nan, device=module.device
-    )
+    data = torch.full((num_samples, len(module.scope.query)), torch.nan, device=module.device)
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
@@ -266,7 +264,6 @@ def sample(
         dispatch_ctx=dispatch_ctx,
         sampling_ctx=sampling_ctx,
     )
-
 
 
 @dispatch(memoize=True)  # type: ignore
