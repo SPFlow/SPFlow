@@ -189,7 +189,7 @@ def sample(
     oids = module.map_out_channels_to_in_channels(sampling_ctx.output_ids)
 
     if module.has_single_input:
-        sampling_ctx.output_ids = oids.view(oids.size(0), module.inputs.out_features)
+        sampling_ctx.output_ids = oids.reshape(oids.size(0), module.inputs.out_features)
 
         # Invert permutation given by split_indices
         sampling_ctx.output_ids = sampling_ctx.output_ids[:, module.split_indices_inverted]
