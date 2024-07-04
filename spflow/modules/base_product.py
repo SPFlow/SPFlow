@@ -114,18 +114,17 @@ class BaseProduct(Module, ABC):
 
             # Check if inputs have equal number of features
             if self.inputs[0].out_features != self.inputs[1].out_features:
-                if not (self.inputs[0].out_features == 1 or self.inputs[1].out_features == 1):
-                    raise ValueError(
-                        f"Inputs must have equal number of features or one of them must be '1', but were "
-                        f"{self.inputs[0].out_features} and {self.inputs[1].out_features}."
-                    )
+                raise ValueError(
+                    f"Inputs must have equal number of features, but were "
+                    f"{self.inputs[0].out_features} and {self.inputs[1].out_features}."
+                )
 
             # Check that scopes are disjoint
             if not self.inputs[0].scope.isdisjoint(self.inputs[1].scope):
                 raise ScopeError("Input scopes must be disjoint.")
 
-            # Derive output shape from inputs (take max since either of them can be 1 for broadcasting)
-            self._out_features = max(self.inputs[0].out_features, self.inputs[1].out_features)
+            # Derive output shape from inputs
+            self._out_features = self.inputs[0].out_features
 
         # Obtain scope
         if self.has_single_input:
