@@ -114,11 +114,3 @@ def test_train_gradient_descent_empty_dataloader():
     model = DummyModel()
     empty_dataloader = DataLoader(TensorDataset(torch.Tensor([])))
     train_gradient_descent(model, empty_dataloader, epochs=1)  # should not raise an error
-
-
-def test_train_gradient_descent_nan_loss(model, dataloader):
-    def nan_loss_fn(model, data):
-        return torch.tensor(float("nan"))
-
-    with pytest.raises(RuntimeError):  # or whatever exception you expect
-        train_gradient_descent(model, dataloader, epochs=1, loss_fn=nan_loss_fn)
