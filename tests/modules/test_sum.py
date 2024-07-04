@@ -44,6 +44,20 @@ def make_sum(in_channels=None, out_channels=None, out_features=None, weights=Non
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,is_single_input", params)
 def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, is_single_input: bool):
+    module = make_sum(
+        in_channels=in_channels,
+        out_channels=out_channels,
+        out_features=out_features,
+        is_single_input=is_single_input,
+    )
+    data = make_normal_data(out_features=out_features)
+    ctx = init_default_dispatch_context()
+    lls = log_likelihood(module, data, dispatch_ctx=ctx)
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
+
+
+@pytest.mark.parametrize("out_channels,out_features", product(out_channels_values, out_features_values))
+def test_log_likelihood_broadcasting_channels(out_channels: int, out_features: int, is_single_input: bool):
     out_channels = 3
     module = make_sum(
         in_channels=in_channels,
