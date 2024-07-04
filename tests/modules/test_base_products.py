@@ -69,6 +69,30 @@ def test_log_likelihood_two_inputs(cls, in_channels: int, out_features: int):
     assert lls.shape == (data.shape[0], out_features, module.out_channels)
 
 
+@pytest.mark.parametrize("cls,out_features", product(cls_values, out_features_values))
+def test_log_likelihood_two_inputs_broadcasting_channels(cls, out_features: int):
+    # Define the scopes
+    in_channels_a = 1
+    in_channels_b = 3
+    scope_a = Scope(list(range(out_features)))
+    scope_b = Scope(list(range(out_features, out_features * 2)))
+
+    # Define the inputs
+    inputs_a = make_leaf(cls=Normal, out_channels=in_channels_a, scope=scope_a)
+    inputs_b = make_leaf(cls=Normal, out_channels=in_channels_b, scope=scope_b)
+    inputs = [inputs_a, inputs_b]
+
+    # Create the module
+    module = cls(inputs=inputs)
+
+    # Create the data
+    data = make_data(cls=Normal, out_features=out_features * 2)
+
+    # Compute the log-likelihood
+    lls = log_likelihood(module, data)
+    assert lls.shape == (data.shape[0], out_features, module.out_channels)
+
+
 @pytest.mark.parametrize(
     "cls,in_channels,out_features,split_method",
     product(cls_values, in_channels_values, [2, 6], ["random", "split_indices"]),
@@ -102,6 +126,35 @@ def test_sample_two_inputs(cls, in_channels: int, out_features: int):
     module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, split_method=None)
 
     data = torch.full((n_samples, out_features * 2), torch.nan)
+    sampling_ctx.output_ids = torch.randint(
+        low=0, high=module.out_channels, size=(n_samples, module.out_features)
+    )
+    samples = sample(module, data, sampling_ctx=sampling_ctx)
+
+    assert samples.shape == data.shape
+    samples_query = samples[:, module.scope.query]
+    assert torch.isfinite(samples_query).all()
+
+
+@pytest.mark.parametrize("cls,out_features", product(cls_values, out_features_values))
+def test_sample_two_inputs_broadcasting_channels(cls, out_features: int):
+    # Define the scopes
+    in_channels_a = 1
+    in_channels_b = 3
+    scope_a = Scope(list(range(out_features)))
+    scope_b = Scope(list(range(out_features, out_features * 2)))
+
+    # Define the inputs
+    inputs_a = make_leaf(cls=Normal, out_channels=in_channels_a, scope=scope_a)
+    inputs_b = make_leaf(cls=Normal, out_channels=in_channels_b, scope=scope_b)
+    inputs = [inputs_a, inputs_b]
+
+    # Create the module
+    module = cls(inputs=inputs)
+
+    n_samples = 5
+    data = torch.full((n_samples, out_features * 2), torch.nan)
+    sampling_ctx = init_default_sampling_context(sampling_ctx=None, n=n_samples)
     sampling_ctx.output_ids = torch.randint(
         low=0, high=module.out_channels, size=(n_samples, module.out_features)
     )
@@ -196,6 +249,28 @@ def test_invalid_split_indices_should_be_none(cls):
             inputs=make_normal_leaf(scope=Scope([0, 1]), out_channels=3),
             split_method="random",
             split_indices=([0, 1], [2, 3]),
+        )
+
+@pytest.mark.parametrize("cls", cls_values)
+def test_invalid_out_features_number(cls):
+    with pytest.raises(ValueError):
+        cls(
+            inputs=[
+                make_normal_leaf(scope=Scope([0]), out_channels=3),
+                make_normal_leaf(scope=Scope([1, 2, 3]), out_channels=3),
+            ],
+        )
+
+
+@pytest.mark.parametrize("cls", cls_values)
+def test_invalid_split_method_should_be_none(cls):
+    with pytest.raises(InvalidParameterCombinationError):
+        cls(
+            inputs=[
+                make_normal_leaf(scope=Scope([0]), out_channels=3),
+                make_normal_leaf(scope=Scope([1]), out_channels=3),
+            ],
+            split_method="split_indices",
         )
 
 
