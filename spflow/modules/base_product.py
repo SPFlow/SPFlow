@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Optional, Union
 
 import torch
@@ -114,16 +114,18 @@ class BaseProduct(Module, ABC):
 
             # Check if inputs have equal number of features
             if self.inputs[0].out_features != self.inputs[1].out_features:
-                raise ValueError(
-                    f"Inputs must have equal number of features, but were {self.inputs[0].out_features} and {self.inputs[1].out_features}."
-                )
+                if not (self.inputs[0].out_features == 1 or self.inputs[1].out_features == 1):
+                    raise ValueError(
+                        f"Inputs must have equal number of features or one of them must be '1', but were "
+                        f"{self.inputs[0].out_features} and {self.inputs[1].out_features}."
+                    )
 
             # Check that scopes are disjoint
             if not self.inputs[0].scope.isdisjoint(self.inputs[1].scope):
                 raise ScopeError("Input scopes must be disjoint.")
 
-            # Derive output shape from inputs
-            self._out_features = self.inputs[0].out_features
+            # Derive output shape from inputs (take max since either of them can be 1 for broadcasting)
+            self._out_features = max(self.inputs[0].out_features, self.inputs[1].out_features)
 
         # Obtain scope
         if self.has_single_input:
@@ -131,19 +133,17 @@ class BaseProduct(Module, ABC):
         else:
             self.scope = self.inputs[0].scope.join(self.inputs[1].scope)
 
-        # Store
-        if self.has_single_input:
-            in_channels_left = self.inputs.out_channels
-            in_channels_right = self.inputs.out_channels
-        else:
-            in_channels_left = self.inputs[0].out_channels
-            in_channels_right = self.inputs[1].out_channels
+    @abstractmethod
+    def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
+        r"""Map output ids to input ids.
 
-        # Store unraveled channel indices
-        self.register_buffer(
-            name="unraveled_channel_indices",
-            tensor=torch.tensor([(i, j) for i in range(in_channels_left) for j in range(in_channels_right)]),
-        )
+        Args:
+            output_ids: Output ids.
+
+        Returns:
+            Mapped input ids.
+        """
+        pass
 
     @property
     def out_features(self) -> int:
@@ -187,10 +187,10 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # Map to (i, j) to index left/right inputs
-    oids_mapped = module.unraveled_channel_indices[sampling_ctx.output_ids]
+    oids = module.map_out_channels_to_in_channels(sampling_ctx.output_ids)
 
     if module.has_single_input:
-        sampling_ctx.output_ids = oids_mapped.view(oids_mapped.size(0), module.inputs.out_features)
+        sampling_ctx.output_ids = oids.view(oids.size(0), module.inputs.out_features)
 
         # Invert permutation given by split_indices
         sampling_ctx.output_ids = sampling_ctx.output_ids[:, module.split_indices_inverted]
@@ -205,7 +205,7 @@ def sample(
         )
     else:
         # Sample from left
-        sampling_ctx.output_ids = oids_mapped[:, :, 0]
+        sampling_ctx.output_ids = oids[:, :, 0]
         sample(
             module.inputs[0],
             data,
@@ -216,7 +216,7 @@ def sample(
         )
 
         # Sample from right
-        sampling_ctx.output_ids = oids_mapped[:, :, 1]
+        sampling_ctx.output_ids = oids[:, :, 1]
         sample(
             module.inputs[1],
             data,
