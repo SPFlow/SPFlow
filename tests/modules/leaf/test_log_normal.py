@@ -94,7 +94,3 @@ def test_constructor_missing_std(out_features: int, out_channels: int):
     with pytest.raises(InvalidParameterCombinationError):
         scope = Scope(list(range(out_features)))
         LogNormal(scope=scope, mean=mean, std=None)
-
-
-if __name__ == "__main__":
-    unittest.main()
