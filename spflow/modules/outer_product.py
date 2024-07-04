@@ -66,6 +66,19 @@ class OuterProduct(BaseProduct):
         """
         super().__init__(inputs=inputs, split_method=split_method, split_indices=split_indices)
 
+        if self.has_single_input:
+            in_channels_left = self.inputs.out_channels
+            in_channels_right = self.inputs.out_channels
+        else:
+            in_channels_left = self.inputs[0].out_channels
+            in_channels_right = self.inputs[1].out_channels
+
+        # Store unraveled channel indices
+        self.register_buffer(
+            name="unraveled_channel_indices",
+            tensor=torch.tensor([(i, j) for i in range(in_channels_left) for j in range(in_channels_right)]),
+        )
+
     @property
     def out_channels(self) -> int:
         """Returns the number of output nodes for this module."""
@@ -73,6 +86,9 @@ class OuterProduct(BaseProduct):
             return self.inputs.out_channels**2
         else:
             return self.inputs[0].out_channels * self.inputs[1].out_channels
+
+    def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
+        return self.unraveled_channel_indices[output_ids]
 
 
 @dispatch(memoize=True)  # type: ignore
