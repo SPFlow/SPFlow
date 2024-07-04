@@ -87,7 +87,21 @@ class ElementwiseProduct(BaseProduct):
             return max(self.inputs[0].out_channels, self.inputs[1].out_channels)
 
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
-        return output_ids.unsqueeze(-1).expand(-1, -1, 2)
+        if self.has_single_input:
+            return output_ids.unsqueeze(-1).expand(-1, -1, 2)
+        else:
+            if self.inputs[0].out_channels == 1 and self.inputs[1].out_channels > 1:
+                # First input is broadcast to the second input
+                return torch.stack(
+                    [torch.zeros_like(output_ids), output_ids], dim=-1
+                )
+            elif self.inputs[0].out_channels > 1 and self.inputs[1].out_channels == 1:
+                # Second input is broadcast to the first input
+                return torch.stack(
+                    [output_ids, torch.zeros_like(output_ids)], dim=-1
+                )
+            else:
+                return output_ids.unsqueeze(-1).expand(-1, -1, 2)
 
 
 @dispatch(memoize=True)  # type: ignore
