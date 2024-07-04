@@ -70,12 +70,13 @@ class ElementwiseProduct(BaseProduct):
         super().__init__(inputs=inputs, split_method=split_method, split_indices=split_indices)
 
         # Check if inputs have equal number of out_channels
-        if self.inputs[0].out_channels != self.inputs[1].out_channels:
-            if not (self.inputs[0].out_channels == 1 or self.inputs[1].out_channels == 1):
-                raise ValueError(
-                    f"Inputs must have equal number of channels or one of them must be '1', but were "
-                    f"{self.inputs[0].out_channels} and {self.inputs[1].out_channels}."
-                )
+        if not self.has_single_input:
+            if self.inputs[0].out_channels != self.inputs[1].out_channels:
+                if not (self.inputs[0].out_channels == 1 or self.inputs[1].out_channels == 1):
+                    raise ValueError(
+                        f"Inputs must have equal number of channels or one of them must be '1', but were "
+                        f"{self.inputs[0].out_channels} and {self.inputs[1].out_channels}."
+                    )
 
     @property
     def out_channels(self) -> int:
