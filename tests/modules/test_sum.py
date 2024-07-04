@@ -296,7 +296,3 @@ def test_marginalize(prune, in_channels: int, out_channels: int, is_single_input
     # Check that all other dims stayed the same
     for d in range(1, len(weights_shape)):
         assert marginalized_module.weights.shape[d] == weights_shape[d]
-
-
-if __name__ == "__main__":
-    unittest.main()

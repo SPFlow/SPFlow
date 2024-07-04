@@ -71,7 +71,3 @@ def test_uniform_constructor_start_greater_than_end(out_features: int, out_chann
     start, end = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
         make_leaf(start=end, end=start)
-
-
-if __name__ == "__main__":
-    unittest.main()

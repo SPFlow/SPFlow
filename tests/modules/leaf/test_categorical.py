@@ -43,7 +43,3 @@ def test_constructor_p_smaller_than_zero(out_features: int, out_channels: int):
     p = torch.rand(out_features, out_channels)
     with pytest.raises(ValueError):
         make_module(p=p - 1.5)
-
-
-if __name__ == "__main__":
-    unittest.main()

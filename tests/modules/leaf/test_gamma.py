@@ -54,7 +54,3 @@ def test_constructor_zero_beta(out_features: int, out_channels: int):
     alpha, beta = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
         make_module(alpha=alpha, beta=torch.full_like(beta, 0.0))
-
-
-if __name__ == "__main__":
-    unittest.main()

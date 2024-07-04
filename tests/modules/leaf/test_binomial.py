@@ -60,7 +60,3 @@ def test_constructor_n_negative(out_features: int, out_channels: int):
     n, p = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
         make_module(n=torch.full_like(n, 0.0), p=p)
-
-
-if __name__ == "__main__":
-    unittest.main()

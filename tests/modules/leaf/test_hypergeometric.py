@@ -96,7 +96,3 @@ def test_constructor_K_greater_than_N(out_features: int, out_channels: int):
     K, N, n = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
         make_leaf(K=N + 1, N=N, n=n)
-
-
-if __name__ == "__main__":
-    unittest.main()

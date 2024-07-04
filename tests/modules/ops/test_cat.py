@@ -212,7 +212,3 @@ def test_marginalize_one_of_two_inputs():
     marg_rvs_bin = inputs_bin.scope.query
     marginalized_module = marginalize(module, marg_rvs_bin, prune=True)
     assert isinstance(marginalized_module, type(inputs_cat))
-
-
-if __name__ == "__main__":
-    unittest.main()
