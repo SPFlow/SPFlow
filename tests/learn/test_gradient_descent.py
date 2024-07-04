@@ -28,7 +28,7 @@ class DummyModel(Module):
 
 
 # Mock the log_likelihood function
-@dispatch
+@dispatch(memoize=True)
 def log_likelihood(model: DummyModel, data: torch.Tensor):
     return model(data)
 
