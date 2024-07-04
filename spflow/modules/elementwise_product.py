@@ -83,7 +83,11 @@ class ElementwiseProduct(BaseProduct):
         if self.has_single_input:
             return self.inputs.out_channels
         else:
-            return self.inputs[0].out_channels
+            # Max since one of the inputs can also only have a single output channel which is then broadcasted
+            return max(self.inputs[0].out_channels, self.inputs[1].out_channels)
+
+    def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
+        return output_ids.unsqueeze(-1).expand(-1, -1, 2)
 
 
 @dispatch(memoize=True)  # type: ignore
