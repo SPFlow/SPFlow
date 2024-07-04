@@ -32,7 +32,3 @@ def test_constructor_p_greater_than_one(out_features: int, out_channels: int):
     p = torch.rand(out_features, out_channels)
     with pytest.raises(ValueError):
         make_module(p=1.0 + p)
-
-
-if __name__ == "__main__":
-    unittest.main()

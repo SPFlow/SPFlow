@@ -139,7 +139,3 @@ def test_marginalize():
 
     # TODO: ensure, that the correct scopes were marginalized
     assert leaf_marg.scope.query == [q for q in scope_og.query if q not in marg_rvs]
-
-
-if __name__ == "__main__":
-    unittest.main()

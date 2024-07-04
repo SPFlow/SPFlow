@@ -28,7 +28,3 @@ def test_save_model(tmp_model_file, example_model):
 def test_load_model(tmp_model_file, example_model):
     save_model(example_model, tmp_model_file)
     load_model(tmp_model_file)
-
-
-if __name__ == "__main__":
-    unittest.main()

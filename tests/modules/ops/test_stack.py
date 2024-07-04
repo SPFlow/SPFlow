@@ -166,7 +166,3 @@ def test_marginalize(prune, out_channels: int, marg_rvs: list[int]):
 
     # Scope query should not contain marginalized rv
     assert len(set(marginalized_module.scope.query).intersection(marg_rvs)) == 0
-
-
-if __name__ == "__main__":
-    unittest.main()
