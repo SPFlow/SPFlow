@@ -243,7 +243,3 @@ def test_constructor_missing_param_and_out_channels(cls, out_features: int, out_
     # Construct module B with parameters of module A is initialization
     with pytest.raises(InvalidParameterCombinationError):
         module_b = cls(scope=module_a.scope, **none_params)
-
-
-if __name__ == "__main__":
-    unittest.main()

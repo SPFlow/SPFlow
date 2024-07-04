@@ -213,7 +213,3 @@ def test_invalid_split_indices_too_few(cls):
 def test_marginalize_single_input(cls, prune: bool):
     # TODO: implement marginalization
     pass
-
-
-if __name__ == "__main__":
-    unittest.main()
