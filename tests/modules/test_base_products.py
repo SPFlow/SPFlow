@@ -251,6 +251,7 @@ def test_invalid_split_indices_should_be_none(cls):
             split_indices=([0, 1], [2, 3]),
         )
 
+
 @pytest.mark.parametrize("cls", cls_values)
 def test_invalid_out_features_number(cls):
     with pytest.raises(ValueError):
@@ -279,6 +280,16 @@ def test_invalid_split_indices_too_few(cls):
     with pytest.raises(ValueError):
         cls(
             inputs=make_normal_leaf(scope=Scope([0, 1, 2, 3]), out_channels=3),
+            split_method="split_indices",
+            split_indices=([0], [2]),
+        )
+
+
+@pytest.mark.parametrize("cls", cls_values)
+def test_uneven_input_features(cls):
+    with pytest.raises(ValueError):
+        cls(
+            inputs=make_normal_leaf(scope=Scope([0, 1, 2]), out_channels=3),
             split_method="split_indices",
             split_indices=([0], [2]),
         )
