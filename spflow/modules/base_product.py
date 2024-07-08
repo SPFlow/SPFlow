@@ -59,10 +59,11 @@ class BaseProduct(Module, ABC):
         self.has_single_input = not isinstance(inputs, list)
 
         if self.has_single_input:
-
             # Check that out_features is even
             if not self.inputs.out_features % 2 == 0:
-                raise ValueError(f"Number of input out_features must be even but was {self.inputs.out_features}.")
+                raise ValueError(
+                    f"Number of input out_features must be even but was {self.inputs.out_features}."
+                )
 
             if split_method is None:
                 raise InvalidParameterCombinationError(
@@ -238,7 +239,7 @@ def _get_input_log_likelihoods(
     data: Tensor,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
-):
+) -> list[Tensor]:
     """
     Prepare the input log-likelihoods for the product module.
 
