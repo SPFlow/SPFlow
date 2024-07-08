@@ -75,52 +75,6 @@ class Hypergeometric(Distribution):
     def distribution(self):
         return _HypergeometricDistribution(self.K, self.N, self.n, self.event_shape)
 
-    @classmethod
-    def accepts(cls, signatures: list[FeatureContext]) -> bool:
-        # leaf only has one output
-        if len(signatures) != 1:
-            return False
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domains = feature_ctx.get_domains()
-
-        # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
-            return False
-
-        # leaf is a discrete Hypergeometric distribution
-        # NOTE: only accept instances of 'FeatureTypes.Hypergeometric', otherwise required parameters 'N','K','n' are not specified. Reject 'FeatureTypes.Discrete' for the same reason.
-        if not isinstance(domains[0], FeatureTypes.Hypergeometric):
-            return False
-
-        return True
-
-    @classmethod
-    def from_signatures(cls, signatures: list[FeatureContext]) -> "Hypergeometric":
-        if not cls.accepts(signatures):
-            raise ValueError(
-                f"'Hypergeometric' cannot be instantiated from the following signatures: {signatures}."
-            )
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domain = feature_ctx.get_domains()[0]
-
-        # read or initialize parameters
-        if isinstance(domain, FeatureTypes.Hypergeometric):
-            N, K, n = domain.N, domain.K, domain.n
-        else:
-            raise ValueError(
-                f"Unknown signature type {domain} for 'Hypergeometric' that was not caught during acception checking."
-            )
-
-        return Hypergeometric(N=N, K=K, n=n)
-
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         """
         All parameters of the Uniform distribution are regarded as fixed and will not be estimated.

@@ -63,32 +63,6 @@ class Distribution(nn.Module, ABC):
         """
         return {k: v[indices] for k, v in self.params().items()}
 
-    @abstractmethod
-    def accepts(self, signatures):
-        """Checks if the leaf node accepts the given signatures.
-
-        Args:
-            signatures:
-                List of FeatureContext objects representing the signatures to check.
-
-        Returns:
-            Boolean indicating if the leaf node accepts the given signatures.
-        """
-        pass
-
-    @abstractmethod
-    def from_signatures(self, signatures):
-        """Creates a new leaf node from the given signatures.
-
-        Args:
-            signatures:
-                List of FeatureContext objects representing the signatures to create the leaf node from.
-
-        Returns:
-            A new leaf node created from the given signatures.
-        """
-        pass
-
     def check_support(self, data: Tensor) -> Tensor:
         r"""Checks if specified data is in support of the represented distribution.
 

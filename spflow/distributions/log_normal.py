@@ -52,61 +52,6 @@ class LogNormal(Distribution):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.LogNormal(self.mean, self.std)
 
-    @classmethod
-    def accepts(cls, signatures: list[FeatureContext]) -> bool:
-        # leaf only has one output
-        if len(signatures) != 1:
-            return False
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domains = feature_ctx.get_domains()
-
-        # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
-            return False
-
-        # leaf is a continuous Log-Normal distribution
-        if not (
-            domains[0] == FeatureTypes.Continuous
-            or domains[0] == FeatureTypes.LogNormal
-            or isinstance(domains[0], FeatureTypes.LogNormal)
-        ):
-            return False
-
-        return True
-
-    @classmethod
-    def from_signatures(cls, signatures: list[FeatureContext]) -> "LogNormal":
-        if not cls.accepts(signatures):
-            raise ValueError(
-                f"'LogNormal' cannot be instantiated from the following signatures: {signatures}."
-            )
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domain = feature_ctx.get_domains()[0]
-
-        # read or initialize parameters
-        if domain == MetaType.Continuous:
-            mean, std = 0.0, 1.0
-        elif domain == FeatureTypes.LogNormal:
-            # instantiate object
-            domain = domain()
-            mean, std = domain.mean, domain.std
-        elif isinstance(domain, FeatureTypes.LogNormal):
-            mean, std = domain.mean, domain.std
-        else:
-            raise ValueError(
-                f"Unknown signature type {domain} for 'LogNormal' that was not caught during acception checking."
-            )
-
-        return LogNormal(mean=mean, std=std)
-
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         if weights is None:
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))  # (batch, 1, 1, ...) for broadcasting

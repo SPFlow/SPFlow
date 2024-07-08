@@ -70,59 +70,6 @@ class Gamma(Distribution):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.Gamma(self.alpha, self.beta)
 
-    @classmethod
-    def accepts(cls, signatures: list[FeatureContext]) -> bool:
-        # leaf only has one output
-        if len(signatures) != 1:
-            return False
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domains = feature_ctx.get_domains()
-
-        # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
-            return False
-
-        # leaf is a continuous Gamma distribution
-        if not (
-            domains[0] == FeatureTypes.Continuous
-            or domains[0] == FeatureTypes.Gamma
-            or isinstance(domains[0], FeatureTypes.Gamma)
-        ):
-            return False
-
-        return True
-
-    @classmethod
-    def from_signatures(cls, signatures: list[FeatureContext]) -> "Gamma":
-        if not cls.accepts(signatures):
-            raise ValueError(f"'Gamma' cannot be instantiated from the following signatures: {signatures}.")
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domain = feature_ctx.get_domains()[0]
-
-        # read or initialize parameters
-        if domain == MetaType.Continuous:
-            alpha, beta = 1.0, 1.0
-        elif domain == FeatureTypes.Gamma:
-            # instantiate object
-            domain = domain()
-            alpha, beta = domain.alpha, domain.beta
-        elif isinstance(domain, FeatureTypes.Gamma):
-            alpha, beta = domain.alpha, domain.beta
-        else:
-            raise ValueError(
-                f"Unknown signature type {domain} for 'Gamma' that was not caught during acception checking."
-            )
-
-        return Gamma(alpha=alpha, beta=beta)
-
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         if weights is None:
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))  # (batch, 1, 1, ...) for broadcasting

@@ -87,53 +87,6 @@ class Binomial(Distribution):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.Binomial(total_count=self.n, probs=self.p)
 
-    @classmethod
-    def accepts(cls, signatures: list[FeatureContext]) -> bool:
-        # leaf only has one output
-        if len(signatures) != 1:
-            return False
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domains = feature_ctx.get_domains()
-
-        # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
-            return False
-
-        # leaf is a discrete Binomial distribution
-        # NOTE: only accept instances of 'FeatureTypes.Binomial', otherwise required parameter 'n' is not specified. Reject 'FeatureTypes.Discrete' for the same reason.
-        if not isinstance(domains[0], FeatureTypes.Binomial):
-            return False
-
-        return True
-
-    @classmethod
-    def from_signatures(cls, signatures: list[FeatureContext]) -> "Binomial":
-        if not cls.accepts(signatures):
-            raise ValueError(
-                f"'Binomial' cannot be instantiated from the following signatures: {signatures}."
-            )
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domain = feature_ctx.get_domains()[0]
-
-        # read or initialize parameters
-        if isinstance(domain, FeatureTypes.Binomial):
-            n = domain.n
-            p = domain.p
-        else:
-            raise ValueError(
-                f"Unknown signature type {domain} for 'Binomial' that was not caught during acception checking."
-            )
-
-        return Binomial(n=n, p=p)
-
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         """
         Maximum likelihood estimation for the Binomial distribution. bias_correction is ignored since p = x / n is unbiased.
