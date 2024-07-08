@@ -22,8 +22,12 @@ class Stack(Module):
         # Check that all inputs have the same shape
         if not all([module.out_features == self.inputs[0].out_features for module in self.inputs]):
             raise ValueError("All inputs must have the same number of features.")
-        if not all([module.out_channels == self.inputs[0].out_channels for module in self.inputs]):
-            raise ValueError("All inputs must have the same number of channels.")
+
+        self._out_channels = max([module.out_channels for module in self.inputs])
+        if not all([module.out_channels in (1, self._out_channels) for module in self.inputs]):
+            raise ValueError(
+                "All inputs must have the same number of channels or a single channel which is then broadcast."
+            )
         if not Scope.all_equal([module.scope for module in self.inputs]):
             raise ValueError("All inputs must have the same scope.")
 
@@ -36,7 +40,7 @@ class Stack(Module):
 
     @property
     def out_channels(self) -> int:
-        return self.inputs[0].out_channels
+        return self._out_channels
 
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}"
@@ -55,7 +59,13 @@ def log_likelihood(
     # get log likelihoods for all inputs
     lls = []
     for input_module in module.inputs:
-        lls.append(log_likelihood(input_module, data, check_support, dispatch_ctx))
+        ll = log_likelihood(input_module, data, check_support, dispatch_ctx)
+
+        # Check if we need to expand to enable broadcasting along channels
+        if ll.shape[2] == 1:
+            ll = ll.expand(-1, -1, module.out_channels)
+
+        lls.append(ll)
 
     # Concatenate log likelihoods
     return torch.stack(lls, dim=-1)
