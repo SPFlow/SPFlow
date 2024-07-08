@@ -75,7 +75,9 @@ class Sum(Module):
             if not all([module.out_features == inputs[0].out_features for module in inputs]):
                 raise ValueError("All inputs must have the same number of features.")
 
-            if not all([module.out_channels in (1, inputs[0].out_channels) for module in inputs]):
+            if not all(
+                [module.out_channels in (1, max(m.out_channels for m in inputs)) for module in inputs]
+            ):
                 raise ValueError(
                     "All inputs must have the same number of channels or 1 channel (in which case the "
                     "operation is broadcast)."
