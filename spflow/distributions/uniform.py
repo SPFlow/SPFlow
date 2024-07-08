@@ -58,50 +58,6 @@ class Uniform(Distribution):
     def mode(self):
         return (self.start + self.end) / 2
 
-    @classmethod
-    def accepts(cls, signatures: list[FeatureContext]) -> bool:
-        # leaf only has one output
-        if len(signatures) != 1:
-            return False
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domains = feature_ctx.get_domains()
-
-        # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
-            return False
-
-        # leaf is a continuous Uniform distribution
-        # NOTE: only accept instances of 'FeatureTypes.Uniform', otherwise required parameters 'start','end' are not specified. Reject 'FeatureTypes.Continuous' for the same reason.
-        if not isinstance(domains[0], FeatureTypes.Uniform):
-            return False
-
-        return True
-
-    @classmethod
-    def from_signatures(cls, signatures: list[FeatureContext]) -> "Uniform":
-        if not cls.accepts(signatures):
-            raise ValueError(f"'Uniform' cannot be instantiated from the following signatures: {signatures}.")
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domain = feature_ctx.get_domains()[0]
-
-        # read or initialize parameters
-        if isinstance(domain, FeatureTypes.Uniform):
-            start, end = domain.start, domain.end
-        else:
-            raise ValueError(
-                f"Unknown signature type {domain} for 'Uniform' that was not caught during acception checking."
-            )
-
-        return Uniform(start=start, end=end)
-
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         """
         All parameters of the Uniform distribution are regarded as fixed and will not be estimated.
