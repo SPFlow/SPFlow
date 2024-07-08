@@ -1,3 +1,4 @@
+from spflow.modules.leaf import Normal
 from tests.fixtures import auto_set_test_seed
 import unittest
 
@@ -10,8 +11,8 @@ from spflow.meta.dispatch import init_default_sampling_context, init_default_dis
 from spflow import log_likelihood, sample, marginalize, sample_with_evidence
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
-from spflow.modules import Sum
-from tests.utils.leaves import make_normal_leaf, make_normal_data
+from spflow.modules import Sum, ElementwiseProduct
+from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf
 import torch
 
 in_channels_values = [1, 4]
@@ -56,15 +57,36 @@ def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, 
     assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
 
 
-@pytest.mark.parametrize("out_channels,out_features", product(out_channels_values, out_features_values))
-def test_log_likelihood_broadcasting_channels(out_channels: int, out_features: int, is_single_input: bool):
-    out_channels = 3
-    module = make_sum(
-        in_channels=in_channels,
-        out_channels=out_channels,
-        out_features=out_features,
-        is_single_input=is_single_input,
-    )
+@pytest.mark.parametrize(
+    "in_channels,out_channels,out_features", product(in_channels_values, out_channels_values, [2, 4])
+)
+def test_log_likelihood_two_product_inputs(in_channels: int, out_channels: int, out_features: int):
+    inputs_a = make_leaf(cls=Normal, out_channels=in_channels, out_features=out_features)
+    inputs_b = make_leaf(cls=Normal, out_channels=in_channels, out_features=out_features)
+    prod_a = ElementwiseProduct(inputs=inputs_a, split_method="random")
+    prod_b = ElementwiseProduct(inputs=inputs_b, split_method="random")
+    inputs = [prod_a, prod_b]
+
+    module = Sum(out_channels=out_channels, inputs=inputs)
+
+    data = make_normal_data(out_features=out_features)
+    ctx = init_default_dispatch_context()
+    lls = log_likelihood(module, data, dispatch_ctx=ctx)
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
+
+
+@pytest.mark.parametrize("out_channels", out_channels_values)
+def test_log_likelihood_broadcasting_channels(out_channels: int):
+    in_channels_a = 1
+    in_channels_b = 3
+    out_features = 2
+    inputs_a = make_leaf(cls=Normal, out_channels=in_channels_a, out_features=out_features)
+    inputs_b = make_leaf(cls=Normal, out_channels=in_channels_b, out_features=out_features)
+    prod_a = ElementwiseProduct(inputs=inputs_a, split_method="random")
+    prod_b = ElementwiseProduct(inputs=inputs_b, split_method="random")
+    inputs = [prod_a, prod_b]
+
+    module = Sum(out_channels=out_channels, inputs=inputs)
     data = make_normal_data(out_features=out_features)
     ctx = init_default_dispatch_context()
     lls = log_likelihood(module, data, dispatch_ctx=ctx)
