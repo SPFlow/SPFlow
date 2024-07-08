@@ -46,60 +46,6 @@ class Exponential(Distribution):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.Exponential(self.rate)
 
-    @classmethod
-    def accepts(cls, signatures: list[FeatureContext]) -> bool:
-        # leaf only has one output
-        if len(signatures) != 1:
-            return False
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domains = feature_ctx.get_domains()
-
-        # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
-            return False
-
-        # leaf is a discrete Exponential distribution
-        if not (
-            domains[0] == FeatureTypes.Continuous
-            or domains[0] == FeatureTypes.Exponential
-            or isinstance(domains[0], FeatureTypes.Exponential)
-        ):
-            return False
-
-        return True
-
-    @classmethod
-    def from_signatures(cls, signatures: list[FeatureContext]) -> "Exponential":
-        if not cls.accepts(signatures):
-            raise ValueError(
-                f"'Exponential' cannot be instantiated from the following signatures: {signatures}."
-            )
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domain = feature_ctx.get_domains()[0]
-
-        # read or initialize parameters
-        if domain == MetaType.Continuous:
-            rate = 1.0
-        elif domain == FeatureTypes.Exponential:
-            # instantiate object
-            rate = domain().l
-        elif isinstance(domain, FeatureTypes.Exponential):
-            rate = domain.l
-        else:
-            raise ValueError(
-                f"Unknown signature type {domain} for 'Exponential' that was not caught during acception checking."
-            )
-
-        return Exponential(rate=rate)
-
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         if weights is None:
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))  # (batch, 1, 1, ...) for broadcasting
