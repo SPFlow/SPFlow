@@ -93,14 +93,10 @@ class ElementwiseProduct(BaseProduct):
         else:
             if self.inputs[0].out_channels == 1 and self.inputs[1].out_channels > 1:
                 # First input is broadcast to the second input
-                return torch.stack(
-                    [torch.zeros_like(output_ids), output_ids], dim=-1
-                )
+                return torch.stack([torch.zeros_like(output_ids), output_ids], dim=-1)
             elif self.inputs[0].out_channels > 1 and self.inputs[1].out_channels == 1:
                 # Second input is broadcast to the first input
-                return torch.stack(
-                    [output_ids, torch.zeros_like(output_ids)], dim=-1
-                )
+                return torch.stack([output_ids, torch.zeros_like(output_ids)], dim=-1)
             else:
                 return output_ids.unsqueeze(-1).expand(-1, -1, 2)
 
@@ -117,8 +113,13 @@ def log_likelihood(
 
     lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx)
 
+    # Check if we need to expand to enable broadcasting along channels
+    for i, ll in enumerate(lls):
+        if ll.shape[2] == 1:
+            lls[i] = ll.expand(-1, -1, module.out_channels)
+
     # Compute the elementwise sum of left and right split
-    output = sum(lls)
+    output = torch.sum(torch.stack(lls, dim=-1), dim=-1)
 
     # View as [b, n, m]
     output = output.view(output.size(0), module.out_features, module.out_channels)
