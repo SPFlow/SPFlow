@@ -46,58 +46,6 @@ class Poisson(Distribution):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.Poisson(self.rate)
 
-    @classmethod
-    def accepts(cls, signatures: list[FeatureContext]) -> bool:
-        # leaf only has one output
-        if len(signatures) != 1:
-            return False
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domains = feature_ctx.get_domains()
-
-        # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
-            return False
-
-        # leaf is a discrete Poisson distribution
-        if not (
-            domains[0] == FeatureTypes.Discrete
-            or domains[0] == FeatureTypes.Poisson
-            or isinstance(domains[0], FeatureTypes.Poisson)
-        ):
-            return False
-
-        return True
-
-    @classmethod
-    def from_signatures(cls, signatures: list[FeatureContext]) -> "Poisson":
-        if not cls.accepts(signatures):
-            raise ValueError(f"'Poisson' cannot be instantiated from the following signatures: {signatures}.")
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domain = feature_ctx.get_domains()[0]
-
-        # read or initialize parameters
-        if domain == MetaType.Discrete:
-            rate = 1.0
-        elif domain == FeatureTypes.Poisson:
-            # instantiate object
-            rate = domain().rate
-        elif isinstance(domain, FeatureTypes.Poisson):
-            rate = domain.rate
-        else:
-            raise ValueError(
-                f"Unknown signature type {domain} for 'Poisson' that was not caught during acception checking."
-            )
-
-        return Poisson(rate=rate)
-
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         if weights is None:
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))  # (batch, 1, 1, ...) for broadcasting

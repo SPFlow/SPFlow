@@ -54,61 +54,6 @@ class Normal(Distribution):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.Normal(self.mean, self.std)
 
-    @classmethod
-    def accepts(cls, signatures: list[FeatureContext]) -> bool:
-        # leaf only has one output
-        if len(signatures) != 1:
-            return False
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domains = feature_ctx.get_domains()
-
-        # leaf is a single non-conditional univariate node
-        if (
-            len(domains) != 1
-            or len(feature_ctx.scope.query) != len(domains)
-            or len(feature_ctx.scope.evidence) != 0
-        ):
-            return False
-
-        # leaf is a continuous Normal distribution
-        if not (
-            domains[0] == FeatureTypes.Continuous
-            or domains[0] == FeatureTypes.Normal
-            or isinstance(domains[0], FeatureTypes.Normal)
-        ):
-            return False
-
-        return True
-
-    @classmethod
-    def from_signatures(cls, signatures: list[FeatureContext]) -> "Normal":
-        if not cls.accepts(signatures):
-            raise ValueError(f"'Normal' cannot be instantiated from the following signatures: {signatures}.")
-
-        # get single output signature
-        feature_ctx = signatures[0]
-        domain = feature_ctx.get_domains()[0]
-
-        # read or initialize parameters
-        if domain == MetaType.Continuous:
-            mean, std = 0.0, 1.0  # TODO: adapt to event_shape
-            # How do we get the event_shape here?
-            # mean = torch.tensor(mean).view([1]* len(self.event_shape)).repeat(self.event_shape)
-        elif domain == FeatureTypes.Normal:
-            # instantiate object
-            domain = domain()
-            mean, std = domain.mean, domain.std
-        elif isinstance(domain, FeatureTypes.Normal):
-            mean, std = domain.mean, domain.std
-        else:
-            raise ValueError(
-                f"Unknown signature type {domain} for 'Normal' that was not caught during acception checking."
-            )
-
-        return Normal(mean=mean, std=std)
-
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         # TODO: make some assertions about the event_shape and the data
         if weights is None:
