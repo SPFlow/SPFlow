@@ -7,7 +7,7 @@ from itertools import product
 from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.meta.data import Scope
 import pytest
-from spflow.meta.dispatch import init_default_sampling_context, init_default_dispatch_context
+from spflow.meta.dispatch import init_default_sampling_context, init_default_dispatch_context, SamplingContext
 from spflow import log_likelihood, sample, marginalize, sample_with_evidence
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
@@ -102,16 +102,66 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, is_singl
         out_features=out_features,
         is_single_input=is_single_input,
     )
-    sampling_ctx = init_default_sampling_context(sampling_ctx=None, n=n_samples)
     for i in range(module.out_channels):
         data = torch.full((n_samples, module.out_features), torch.nan)
-        sampling_ctx.output_ids = torch.randint(
-            low=0, high=module.out_channels, size=(n_samples, module.out_features)
-        )
+        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+        mask = torch.full((n_samples, module.out_features), True)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
         samples = sample(module, data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]
         assert torch.isfinite(samples_query).all()
+
+
+@pytest.mark.parametrize(
+    "in_channels,out_channels,out_features", product(in_channels_values, out_channels_values, [2, 8])
+)
+def test_sample_two_product_inputs(in_channels: int, out_channels: int, out_features: int):
+    n_samples = 100
+    inputs_a = make_leaf(cls=Normal, out_channels=in_channels, out_features=out_features)
+    inputs_b = make_leaf(cls=Normal, out_channels=in_channels, out_features=out_features)
+    prod_a = ElementwiseProduct(inputs=inputs_a, split_method="random")
+    prod_b = ElementwiseProduct(inputs=inputs_b, split_method="random")
+    inputs = [prod_a, prod_b]
+
+    module = Sum(out_channels=out_channels, inputs=inputs)
+
+    for i in range(module.out_channels):
+        data = torch.full((n_samples, out_features), torch.nan)
+        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+        mask = torch.full((n_samples, module.out_features), True)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
+        samples = sample(module, data, sampling_ctx=sampling_ctx)
+        assert samples.shape == data.shape
+        samples_query = samples[:, module.scope.query]
+        assert torch.isfinite(samples_query).all()
+
+
+@pytest.mark.parametrize("out_channels", out_channels_values)
+def test_sample_two_inputs_broadcasting_channels(out_channels: int):
+    # Define the scopes
+    in_channels_a = 1
+    in_channels_b = 3
+    out_features = 10
+
+    # Define the inputs
+    inputs_a = make_leaf(cls=Normal, out_channels=in_channels_a, out_features=out_features)
+    inputs_b = make_leaf(cls=Normal, out_channels=in_channels_b, out_features=out_features)
+    inputs = [inputs_a, inputs_b]
+
+    # Create the module
+    module = Sum(inputs=inputs, out_channels=out_channels)
+
+    n_samples = 5
+    data = torch.full((n_samples, out_features), torch.nan)
+    channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+    mask = torch.full((n_samples, module.out_features), True)
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
+    samples = sample(module, data, sampling_ctx=sampling_ctx)
+
+    assert samples.shape == data.shape
+    samples_query = samples[:, module.scope.query]
+    assert torch.isfinite(samples_query).all()
 
 
 @pytest.mark.parametrize(
@@ -127,7 +177,6 @@ def test_conditional_sample(in_channels: int, out_channels: int, is_single_input
         out_features=out_features,
         is_single_input=is_single_input,
     )
-    sampling_ctx = init_default_sampling_context(sampling_ctx=None, n=n_samples)
 
     for i in range(module.out_channels):
         # Create some data
@@ -141,9 +190,9 @@ def test_conditional_sample(in_channels: int, out_channels: int, is_single_input
         # Perform log-likelihood computation
         dispatch_ctx = init_default_dispatch_context()
 
-        sampling_ctx.output_ids = torch.randint(
-            low=0, high=module.out_channels, size=(n_samples, module.out_features)
-        )
+        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+        mask = torch.full(channel_index.shape, True)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
 
         samples = sample_with_evidence(
             module,
