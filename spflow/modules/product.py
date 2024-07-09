@@ -72,7 +72,7 @@ def marginalize(
 
 @dispatch  # type: ignore
 def sample(
-    product_layer: Product,
+    module: Product,
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
@@ -83,8 +83,13 @@ def sample(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
+    # Expand mask and channels to match input module shape
+    mask = sampling_ctx.mask.expand(data.shape[0], module.inputs.out_features)
+    channel_index = sampling_ctx.channel_index.expand(data.shape[0], module.inputs.out_features)
+    sampling_ctx.update(channel_index=channel_index, mask=mask)
+
     sample(
-        product_layer.inputs,
+        module.inputs,
         data,
         is_mpe=is_mpe,
         check_support=check_support,

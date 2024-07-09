@@ -2,7 +2,7 @@ from tests.fixtures import auto_set_test_seed
 import unittest
 from itertools import product
 
-from spflow.meta.dispatch import init_default_sampling_context
+from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
 from spflow import log_likelihood, sample, marginalize
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 from spflow.learn import expectation_maximization
@@ -34,10 +34,11 @@ def test_log_likelihood(in_channels: int, out_features: int):
 def test_sample(in_channels: int, out_features: int):
     n_samples = 10
     product_layer = make_product(in_channels=in_channels, out_features=out_features)
-    sampling_ctx = init_default_sampling_context(sampling_ctx=None, n=n_samples)
     for i in range(product_layer.out_channels):
         data = torch.full((n_samples, out_features), torch.nan)
-        sampling_ctx.output_ids = torch.full((n_samples, out_features), fill_value=i)
+        channel_index = torch.full((n_samples, out_features), fill_value=i)
+        mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
         samples = sample(product_layer, data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, product_layer.scope.query]
