@@ -10,6 +10,11 @@ import torch
 from torch import Tensor
 
 
+def _check_mask_bool(mask):
+    if not mask.dtype == torch.bool:
+        raise ValueError("Mask must be of type torch.bool.")
+
+
 class SamplingContext:
     """Class for storing context information during sampling.
 
@@ -19,130 +24,139 @@ class SamplingContext:
         instance_ids:
             List of integers representing the instances of a data set to sample.
             Required to correctly place sampled values into target data set and take potential evidence into account.
-        output_ids:
+        channel_index:
             List of lists of integers representing the output ids for the corresponding instances to sample from (relevant for multi-output module).
             As a shorthand convention, ``[]`` implies to sample from all outputs for a given instance.
     """
 
     def __init__(
         self,
-        # instance_ids: list[int],
-        instance_ids: Tensor,
-        output_ids: Optional[Tensor] = None,
+        num_samples: Optional[int] = None,
+        device: Optional[torch.device] = None,
+        channel_index: Optional[Tensor] = None,
+        mask: Optional[Tensor] = None,
     ) -> None:
         """Initializes 'SamplingContext' object.
 
         Args:
-            instance_ids:
-                List of integers representing the instances of a data set to sample.
-                Required to correctly place sampled values into target data set and take potential evidence into account.
-            output_ids:
-                Optional list of lists of integers representing the output ids for the corresponding instances to sample from (relevant for multi-output module).
-                As a shorthand convention, an empty list (``[]``) implies to sample from all outputs for the corresponding instance.
-                Defaults to None, in which case the output indices for all instances are set to an empty list (``[]``).
-
-        Raises:
-            ValueError: Number of instance indices does not match number of output indices.
+            num_samples:
+                Integer specifying the number of samples to initialize.
+            device:
+                Device to store the tensors on.
+            channel_index:
+                Tensor containing the channel indices to sample from.
+            mask:
+                Tensor containing the mask to apply to the samples.
+                If None, all samples are considered.
         """
-        if output_ids is None:
-            # assume sampling over all outputs (i.e. [])
-            output_ids = torch.tensor([[] for _ in instance_ids])
 
-        if len(output_ids) != len(instance_ids):
-            raise ValueError(
-                f"Number of specified instance ids {len(instance_ids)} does not match specified number of output ids {len(output_ids)}."
-            )
+        if channel_index is not None and mask is not None:
+            if not channel_index.shape == mask.shape:
+                raise ValueError("channel_index and mask must have the same shape.")
 
-        self.instance_ids = instance_ids
-        self.output_ids = output_ids
+            if num_samples is not None and num_samples != channel_index.shape[0]:
+                raise ValueError(
+                    "num_samples must be equal to the number of samples in channel_index or be ommitted."
+                )
 
-    def group_output_ids(self, n_total: int) -> list[tuple[Union[int, None], list[int]]]:
-        """Groups instances in the sampling context by their output indices.
+        if channel_index is not None and mask is None:
+            if num_samples is not None and num_samples != channel_index.shape[0]:
+                raise ValueError(
+                    "num_samples must be equal to the number of samples in channel_index or be ommitted."
+                )
+            num_samples = channel_index.shape[0]
 
-        Args:
-            n_total:
-                Integer indicating the number of outputs of the module in question.
-                Required to initialize the output ids in case of an empty list of output ids (in which case all output ids are sampled from).
+        if channel_index is None and mask is not None:
+            if num_samples is not None and num_samples != mask.shape[0]:
+                raise ValueError("num_samples must be equal to the number of samples in mask or be ommitted.")
+            num_samples = mask.shape[0]
 
-        Returns:
-            List of pairs (tuples) of an output index (or None) and a list of all instance indices that sample from the corresponding output index.
-        """
-        output_id_dict = {}
-
-        for instance_id, instance_output_ids in zip(self.instance_ids, self.output_ids):
-            if instance_output_ids == []:
-                instance_output_ids = list(range(n_total))
-            for output_id in instance_output_ids:
-                if output_id in output_id_dict:
-                    output_id_dict[output_id].append(instance_id)
-                else:
-                    output_id_dict[output_id] = [instance_id]
-
-        return tuple(output_id_dict.items())
-
-    def unique_outputs_ids(
-        self, return_indices: bool = False
-    ) -> Union[list[list[int]], tuple[list[list[int]], list[list[int]]]]:
-        """Return the list of unique lists of output indices, not the individual indices
-
-        Args:
-            return_indices:
-                Boolean indicating whether to additionally return the indices of the unique lists.
-                Defaults to False.
-
-        Returns:
-            List of lists of integers, containing the unique lists of output indices in the sampling context.
-            If ``return_indices`` is set to True, then an additional list of lists of integers is return, containing the indices for the unique lists.
-        """
-        unique_lists = []
-        indices = []
-
-        for i, output_ids in enumerate(self.output_ids):
-            if not output_ids in unique_lists:
-                unique_lists.append(output_ids)
-                indices.append([i])
-            else:
-                idx = unique_lists.index(output_ids)
-                indices[idx].append(i)
-
-        if return_indices:
-            return unique_lists, indices
+        if (channel_index is None) ^ (mask is None):
+            # channel_index and mask must be both None or both not None
+            raise ValueError("channel_index and mask must be both None or both not None.")
+        elif channel_index is not None and mask is not None:
+            # channel_index and mask are both not None
+            _check_mask_bool(mask)
+            self._mask = mask
+            self._channel_index = channel_index
+            self.device = device
         else:
-            return unique_lists
+            # channel_index and mask are both None
+            self._mask = torch.full((num_samples, 1), True, dtype=torch.bool, device=device)
+            self._channel_index = torch.zeros((num_samples, 1), dtype=torch.long, device=device)
+            self.device = self.mask.device
 
-    def __repr__(self) -> str:
-        return f"SamplingContext(instance_ids.shape={self.instance_ids.shape}, output_ids.shape={self.output_ids.shape})"
+    def update(self, channel_index: Tensor, mask: Tensor):
+        """Updates the sampling context with new channel index and mask.
+
+        Args:
+            channel_index:
+                Tensor containing the channel indices to sample from.
+            mask:
+                Tensor containing the mask to apply to the samples.
+        """
+        if not channel_index.shape == mask.shape:
+            raise ValueError("channel_index and mask must have the same shape.")
+
+        _check_mask_bool(mask)
+
+        self._channel_index = channel_index
+        self._mask = mask
+
+    @property
+    def channel_index(self):
+        return self._channel_index
+
+    @channel_index.setter
+    def channel_index(self, channel_index):
+        if channel_index.shape != self._mask.shape:
+            raise ValueError("New channel_index and previous mask must have the same shape.")
+        self._channel_index = channel_index
+
+    @property
+    def mask(self):
+        return self._mask
+
+    @mask.setter
+    def mask(self, mask):
+        if mask.shape[0] != self._channel_index.shape[0]:
+            raise ValueError("New mask and previous channel_index must have the same shape.")
+        _check_mask_bool(mask)
+        self._mask = mask
+
+    @property
+    def samples_mask(self):
+        return self.mask.sum(1) > 0
+
+    @property
+    def channel_index_masked(self):
+        return self.channel_index[self.samples_mask]
 
     def copy(self):
         """Returns a copy of the sampling context."""
-        return SamplingContext(self.instance_ids.clone(), self.output_ids.clone())
+        return SamplingContext(channel_index=self.channel_index.clone(), mask=self.mask.clone())
+
+    def __repr__(self) -> str:
+        return f"SamplingContext(channel_index.shape={self.channel_index.shape}), mask.shape={self.mask.shape}), num_samples={self.channel_index.shape[0]})"
 
 
-def default_sampling_context(n: int) -> SamplingContext:
-    """Returns an initialized ``SamplingContext`` object.
-
-    Args:
-        n:
-            Integer specifying the number of instance indices to intialize.
-
-    Returns:
-        Sampling context initialized with instance indices from 0 to ``n`` and corresponding output indices as ``[]``.
-    """
-    return SamplingContext(
-        torch.tensor(list(range(n)), dtype=torch.long), torch.tensor([[] for _ in range(n)], dtype=torch.long)
-    )
-
-
-def init_default_sampling_context(sampling_ctx: Union[SamplingContext, None], n: int) -> SamplingContext:
+def init_default_sampling_context(
+    sampling_ctx: Optional[SamplingContext], num_samples: Optional[int] = None
+) -> SamplingContext:
     """Initializes sampling context, if it is not already initialized.
 
     Args
         sampling_ctx:
             ``SamplingContext`` object or None.
-        n:
-            Integer specifying the number of instance indices to intialize.
+        num_samples:
+            Integer specifying the number of samples.
 
     Returns:
         Original sampling context if not None or a new initialized sampling context.
     """
-    return sampling_ctx if sampling_ctx is not None else default_sampling_context(n=n)
+
+    # Ensure, that either sampling_ctx or num_samples is not None
+    if sampling_ctx is not None:
+        return sampling_ctx
+    else:
+        return SamplingContext(num_samples=num_samples)
