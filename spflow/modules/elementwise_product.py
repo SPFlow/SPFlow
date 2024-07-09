@@ -87,18 +87,31 @@ class ElementwiseProduct(BaseProduct):
             # Max since one of the inputs can also only have a single output channel which is then broadcasted
             return max(self.inputs[0].out_channels, self.inputs[1].out_channels)
 
-    def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
+    def map_out_channels_to_in_channels(self, index: Tensor) -> Tensor:
         if self.has_single_input:
-            return output_ids.unsqueeze(-1).expand(-1, -1, 2)
+            return index.unsqueeze(-1).expand(-1, -1, 2)
         else:
             if self.inputs[0].out_channels == 1 and self.inputs[1].out_channels > 1:
                 # First input is broadcast to the second input
-                return torch.stack([torch.zeros_like(output_ids), output_ids], dim=-1)
+                return torch.stack([torch.zeros_like(index), index], dim=-1)
             elif self.inputs[0].out_channels > 1 and self.inputs[1].out_channels == 1:
                 # Second input is broadcast to the first input
-                return torch.stack([output_ids, torch.zeros_like(output_ids)], dim=-1)
+                return torch.stack([index, torch.zeros_like(index)], dim=-1)
             else:
-                return output_ids.unsqueeze(-1).expand(-1, -1, 2)
+                return index.unsqueeze(-1).expand(-1, -1, 2)
+
+    def map_out_mask_to_in_mask(self, mask: Tensor):
+        if self.has_single_input:
+            return mask.unsqueeze(-1).expand(-1, -1, 2)
+        else:
+            if self.inputs[0].out_channels == 1 and self.inputs[1].out_channels > 1:
+                # First input is broadcast to the second input
+                return torch.stack([torch.full_like(mask, fill_value=True), mask], dim=-1)
+            elif self.inputs[0].out_channels > 1 and self.inputs[1].out_channels == 1:
+                # Second input is broadcast to the first input
+                return torch.stack([mask, torch.full_like(mask, fill_value=True)], dim=-1)
+            else:
+                return mask.unsqueeze(-1).expand(-1, -1, 2)
 
 
 @dispatch(memoize=True)  # type: ignore

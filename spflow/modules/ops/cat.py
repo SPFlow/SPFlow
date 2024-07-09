@@ -103,57 +103,42 @@ def sample(
 
     if module.dim == 1:
         split_size = module.out_features // len(module.inputs)
-        output_ids_per_module = sampling_ctx.output_ids.split(split_size, dim=module.dim)
+        channel_index_per_module = sampling_ctx.channel_index.split(split_size, dim=module.dim)
+        mask_per_module = sampling_ctx.mask.split(split_size, dim=module.dim)
     elif module.dim == 2:
         # Concatenation happens at out_channels
         # Therefore, we need to use modulo to get the correct output_ids
-        output_ids_per_module = []
+        channel_index_per_module = []
+        mask_per_module = []
 
         # Get split assignments
         split_size = module.out_channels // len(module.inputs)
-        split_assignment = sampling_ctx.output_ids // split_size
-        for _ in module.inputs:
-            oids = sampling_ctx.output_ids
+        split_assignment = sampling_ctx.channel_index // split_size
+        for i, _ in enumerate(module.inputs):
+            oids = sampling_ctx.channel_index
             oids_mod = oids.remainder(split_size)
-            output_ids_per_module.append(oids_mod)
+            channel_index_per_module.append(oids_mod)
+            mask = split_assignment == i & sampling_ctx.mask
+            mask_per_module.append(mask)
+
 
     else:
         raise ValueError("Invalid dimension for concatenation.")
 
-    samples = []
+    # Iterate over inputs
     for i in range(len(module.inputs)):
         input_module = module.inputs[i]
-        output_ids = output_ids_per_module[i]
         sampling_ctx_copy = sampling_ctx.copy()
-        sampling_ctx_copy.output_ids = output_ids
+        sampling_ctx_copy.update(channel_index=channel_index_per_module[i], mask=mask_per_module[i])
 
-        x = sample(
+        sample(
             input_module,
-            data.clone(),  # Clone data to avoid modifying the original data
+            data,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,
             sampling_ctx=sampling_ctx_copy,
         )
 
-        if module.dim == 1:
-            # Filter by scope query
-            x = x[..., input_module.scope.query]
-        samples.append(x)
-
-    if module.dim == 1:
-        # Concatenate samples
-        samples = torch.cat(samples, dim=module.dim)
-    elif module.dim == 2:
-        # Stack splits
-        samples = torch.stack(samples, dim=module.dim)
-
-        # Gather samples based on split assignments
-        samples = samples.gather(index=split_assignment.unsqueeze(-1), dim=2).squeeze(-1)
-
-    # Update only relevant samples
-    data[sampling_ctx.instance_ids[:, None], module.scope.query] = samples[
-        sampling_ctx.instance_ids[:, None], module.scope.query
-    ]
     return data
 
 
