@@ -6,7 +6,7 @@ from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 import unittest
 
 import pytest
-from spflow.meta.dispatch import init_default_sampling_context
+from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
 from spflow.meta.data import Scope
 from spflow.modules.outer_product import OuterProduct
 from spflow import log_likelihood, sample, marginalize
@@ -99,16 +99,15 @@ def test_log_likelihood_two_inputs_broadcasting_channels(cls, out_features: int)
 )
 def test_sample_single_inputs(cls, in_channels: int, out_features: int, split_method: str):
     n_samples = 10
-    sampling_ctx = init_default_sampling_context(sampling_ctx=None, n=n_samples)
 
     module = make_module(
         cls=cls, out_features=out_features, in_channels=in_channels, split_method=split_method
     )
 
     data = torch.full((n_samples, out_features), torch.nan)
-    sampling_ctx.output_ids = torch.randint(
-        low=0, high=module.out_channels, size=(n_samples, out_features // 2)
-    )
+    mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool)
+    channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
     samples = sample(module, data, sampling_ctx=sampling_ctx)
 
     assert samples.shape == data.shape
@@ -121,14 +120,13 @@ def test_sample_single_inputs(cls, in_channels: int, out_features: int, split_me
 )
 def test_sample_two_inputs(cls, in_channels: int, out_features: int):
     n_samples = 5
-    sampling_ctx = init_default_sampling_context(sampling_ctx=None, n=n_samples)
 
     module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, split_method=None)
 
     data = torch.full((n_samples, out_features * 2), torch.nan)
-    sampling_ctx.output_ids = torch.randint(
-        low=0, high=module.out_channels, size=(n_samples, module.out_features)
-    )
+    mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool)
+    channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
     samples = sample(module, data, sampling_ctx=sampling_ctx)
 
     assert samples.shape == data.shape
@@ -154,10 +152,9 @@ def test_sample_two_inputs_broadcasting_channels(cls, out_features: int):
 
     n_samples = 5
     data = torch.full((n_samples, out_features * 2), torch.nan)
-    sampling_ctx = init_default_sampling_context(sampling_ctx=None, n=n_samples)
-    sampling_ctx.output_ids = torch.randint(
-        low=0, high=module.out_channels, size=(n_samples, module.out_features)
-    )
+    channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+    mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool)
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
     samples = sample(module, data, sampling_ctx=sampling_ctx)
 
     assert samples.shape == data.shape

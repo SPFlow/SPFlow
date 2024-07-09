@@ -192,13 +192,18 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # Map to (i, j) to index left/right inputs
-    oids = module.map_out_channels_to_in_channels(sampling_ctx.output_ids)
+    channel_index = module.map_out_channels_to_in_channels(sampling_ctx.channel_index)
+    mask = module.map_out_mask_to_in_mask(sampling_ctx.mask)  # TODO: is this correct?
 
     if module.has_single_input:
-        sampling_ctx.output_ids = oids.reshape(oids.size(0), module.inputs.out_features)
+        channel_index = channel_index.reshape(channel_index.size(0), module.inputs.out_features)
+        mask = mask.reshape(mask.size(0), module.inputs.out_features)
 
         # Invert permutation given by split_indices
-        sampling_ctx.output_ids = sampling_ctx.output_ids[:, module.split_indices_inverted]
+        channel_index = channel_index[:, module.split_indices_inverted]
+        # mask = mask[:, module.split_indices_inverted]  # Apparently this is wrong?
+
+        sampling_ctx.update(mask=mask, channel_index=channel_index)
 
         # Sample from input module
         sample(
@@ -210,7 +215,7 @@ def sample(
         )
     else:
         # Sample from left
-        sampling_ctx.output_ids = oids[:, :, 0]
+        sampling_ctx.update(channel_index=channel_index[:, :, 0], mask=mask[:, :, 0])
         sample(
             module.inputs[0],
             data,
@@ -221,7 +226,7 @@ def sample(
         )
 
         # Sample from right
-        sampling_ctx.output_ids = oids[:, :, 1]
+        sampling_ctx.update(channel_index=channel_index[:, :, 1], mask=mask[:, :, 1])
         sample(
             module.inputs[1],
             data,

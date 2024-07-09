@@ -90,6 +90,9 @@ class OuterProduct(BaseProduct):
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         return self.unraveled_channel_indices[output_ids]
 
+    def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
+        return mask.unsqueeze(-1).expand(-1, -1, 2)
+
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(

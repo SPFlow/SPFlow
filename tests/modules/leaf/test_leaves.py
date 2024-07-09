@@ -5,7 +5,7 @@ from spflow.exceptions import InvalidParameterCombinationError
 from spflow.learn import train_gradient_descent
 from tests.fixtures import auto_set_test_seed
 
-from spflow.meta.dispatch import init_default_sampling_context
+from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
 from tests.utils.leaves import evaluate_log_likelihood
 import pytest
 import torch
@@ -50,10 +50,11 @@ def test_sample(cls, out_features: int, out_channels: int, is_mpe: bool):
     module = make_leaf(cls, out_channels=out_channels, out_features=out_features)
 
     # Setup sampling context
-    n_samples = 100
-    sampling_ctx = init_default_sampling_context(sampling_ctx=None, n=n_samples)
+    n_samples = 10
     data = torch.full((n_samples, out_features), torch.nan)
-    sampling_ctx.output_ids = torch.randint(low=0, high=out_channels, size=(n_samples, out_features))
+    channel_index = torch.randint(low=0, high=out_channels, size=(n_samples, out_features))
+    mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
 
     # Sample
     samples = sample(module, data, is_mpe=is_mpe, check_support=True, sampling_ctx=sampling_ctx)
