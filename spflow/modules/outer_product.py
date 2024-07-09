@@ -1,3 +1,4 @@
+from itertools import product
 from typing import Optional, Union
 
 import torch
@@ -16,10 +17,6 @@ class OuterProduct(BaseProduct):
     def __init__(
         self,
         inputs: Union[Module, tuple[Module, Module], list[Module]],
-        split_method: Optional[str] = None,
-        split_indices: Optional[
-            Union[tuple[list[int], list[int]], torch.IntTensor, tuple[torch.IntTensor, torch.IntTensor]]
-        ] = None,
     ) -> None:
         r"""Initializes ``OuterProduct`` module.
 
@@ -40,58 +37,32 @@ class OuterProduct(BaseProduct):
                     inputs = ((3, 4), (1, 5))
                     output = (3, 4 * 5)  # broadcasted
 
-                (2) If `inputs` is a single Module, the input is split into two equal-sized subsets. This can be either done by specifying the `split_indices` argument or by specifying the `split_method` argument.
-
-                Example shapes:
-                    inputs = (4, 3), split_method = "split_indices", split_indices = ([0, 1], [2, 3])
-                    splits = [(2, 3), (2, 3)]
-                    output = (2, 3 * 3)
-
-                    inputs = (4, 3), split_method = "random", split_indices = None
-                    splits = [(2, 3), (2, 3)]  # random split
-                    output = (2, 3 * 3)
-
-            split_method:
-                Method to split the input into two equal-sized subsets.
-                Possible values are "split_indices" and "random".
-                Defaults to "split_indices".
-
-            split_indices:
-                Indices to split the input into two equal-sized subsets.
-                If split_method is set to "split_indices", this argument is required.
-                Defaults to None.
 
         Raises:
             ValueError: Invalid arguments.
         """
-        super().__init__(inputs=inputs, split_method=split_method, split_indices=split_indices)
-
-        if self.has_single_input:
-            in_channels_left = self.inputs.out_channels
-            in_channels_right = self.inputs.out_channels
-        else:
-            in_channels_left = self.inputs[0].out_channels
-            in_channels_right = self.inputs[1].out_channels
+        super().__init__(inputs=inputs)
 
         # Store unraveled channel indices
+        unraveled_channel_indices = list(product(*[list(range(self._max_out_channels)) for _ in self.inputs]))
         self.register_buffer(
             name="unraveled_channel_indices",
-            tensor=torch.tensor([(i, j) for i in range(in_channels_left) for j in range(in_channels_right)]),
+            tensor=torch.tensor(unraveled_channel_indices),
         )
 
     @property
     def out_channels(self) -> int:
         """Returns the number of output nodes for this module."""
-        if self.has_single_input:
-            return self.inputs.out_channels**2
-        else:
-            return self.inputs[0].out_channels * self.inputs[1].out_channels
+        ocs = 1
+        for inp in self.inputs:
+            ocs *= inp.out_channels
+        return ocs
 
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         return self.unraveled_channel_indices[output_ids]
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
-        return mask.unsqueeze(-1).expand(-1, -1, 2)
+        return mask.unsqueeze(-1).expand(-1, -1, len(self.inputs))
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -106,9 +77,12 @@ def log_likelihood(
 
     lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx)
 
-    # Compute the outer sum of left and right log-likelihoods
-    # [b, n, m1] + [b, n, m2] -> [b, n, m1, 1] + [b, n, 1, m2]  -> [b, n, m1, m2]
-    output = lls[0].unsqueeze(2) + lls[1].unsqueeze(3)
+    # Compute the outer sum of pairwise log-likelihoods
+    # [b, n, m1] + [b, n, m2] -> [b, n, m1, 1] + [b, n, 1, m2]  -> [b, n, m1, m2] -> [b, n, 1, m1*m2] ...
+    output = lls[0].unsqueeze(2)
+    for i in range(1, len(lls)):
+        output = output + lls[i].unsqueeze(3)
+        output = output.view(output.size(0), output.size(1), 1, -1)
 
     # View as [b, n, m1 * m2]
     output = output.view(output.size(0), module.out_features, module.out_channels)

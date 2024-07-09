@@ -5,6 +5,7 @@ import torch
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterCombinationError, ScopeError
+from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -21,122 +22,46 @@ class BaseProduct(Module, ABC):
 
     def __init__(
         self,
-        inputs: Union[Module, tuple[Module, Module], list[Module]],
-        split_method: Optional[str] = None,
-        split_indices: Optional[
-            Union[tuple[list[int], list[int]], torch.IntTensor, tuple[torch.IntTensor, torch.IntTensor]]
-        ] = None,
+        inputs: list[Module],
     ) -> None:
         r"""Initializes ``BaseProduct`` object.
 
         Args:
             inputs:
-                Can be either a Module or a list of Modules.
-                The scopes for all child modules need to be pair-wise disjoint.
-
-            split_method:
-                Method to split the input into two equal-sized subsets.
-                Possible values are "split_indices" and "random".
-                Defaults to "split_indices".
-
-            split_indices:
-                Indices to split the input into two equal-sized subsets.
-                If split_method is set to "split_indices", this argument is required.
-                Defaults to None.
+                List of Modules. The scopes for all child modules need to be pair-wise disjoint.
 
         Raises:
             ValueError: Invalid arguments.
         """
         super().__init__()
-        if isinstance(inputs, list):
-            self.inputs = nn.ModuleList(inputs)
-        else:
-            self.inputs = inputs
 
-        # Save split method
-        self.split_method = split_method
+        if not input:
+            raise ValueError(f"'{self.__class__.__name__}' requires at least one input to be specified.")
 
-        self.has_single_input = not isinstance(inputs, list)
+        self.inputs = nn.ModuleList(inputs)
 
-        if self.has_single_input:
-            # Check that out_features is even
-            if not self.inputs.out_features % 2 == 0:
-                raise ValueError(
-                    f"Number of input out_features must be even but was {self.inputs.out_features}."
-                )
+        # Check if all inputs have equal number of features
+        if not all(inp.out_features == self.inputs[0].out_features for inp in self.inputs):
+            raise ValueError(
+                f"Inputs must have equal number of features, but were "
+                f"{[inp.out_features for inp in self.inputs]}."
+            )
 
-            if split_method is None:
-                raise InvalidParameterCombinationError(
-                    "If inputs is a single Module, split_method must be specified."
-                )
-            elif split_method == "split_indices" and split_indices is None:
-                raise InvalidParameterCombinationError(
-                    "If split_method is 'split_indices', split_indices must be specified."
-                )
+        # Check that scopes are disjoint
+        if not Scope.all_pairwise_disjoint([inp.scope for inp in self.inputs]):
+            raise ScopeError("Input scopes must be disjoint.")
 
-            if split_method == "split_indices":
-                # Check that splits_indices covers all features
-                if not len(split_indices[0]) + len(split_indices[1]) == self.inputs.out_features:
-                    raise ValueError(f"Split indices must be the cover range(0, {self.inputs.out_features}).")
+        # Derive output shape from inputs
+        self._out_features = self.inputs[0].out_features
 
-                # Convert split indices to torch tensor
-                if isinstance(split_indices, tuple):
-                    if isinstance(split_indices[0], list):
-                        split_indices = torch.stack(
-                            [torch.tensor(split_indices[0]), torch.tensor(split_indices[1])], dim=0
-                        )
-                    elif isinstance(split_indices[0], torch.IntTensor):
-                        split_indices = torch.stack(split_indices, dim=0)
-                    elif isinstance(split_indices, torch.Tensor):
-                        split_indices = split_indices
+        self._max_out_channels = max(inp.out_channels for inp in self.inputs)
 
-            elif split_method == "random":
-                # Randomly split the input into two equal-sized subsets
-                if split_indices is not None:
-                    raise InvalidParameterCombinationError(
-                        "If split_method is 'random', split_indices must be set to None, but was not."
-                    )
+        # Join all scopes
+        scope = self.inputs[0].scope
+        for inp in self.inputs[1:]:
+            scope = scope.join(inp.scope)
 
-                split_indices = torch.randperm(self.inputs.out_features).view(2, -1)
-            else:
-                raise ValueError(
-                    f"Invalid split method. Must be either 'split_indices' or 'random' but was {split_method}."
-                )
-
-            # Register indices as buffer
-            self.register_buffer("split_indices", split_indices)
-
-            # Invert permutation
-            split_indices_inverted = torch.argsort(split_indices.flatten())
-            self.register_buffer("split_indices_inverted", split_indices_inverted)
-
-            # Derive output shape from inputs
-            self._out_features = self.inputs.out_features // 2
-        else:
-            if split_method is not None or split_indices is not None:
-                raise InvalidParameterCombinationError(
-                    "If inputs is a list of Modules, split_method and split_indices must be set to None."
-                )
-
-            # Check if inputs have equal number of features
-            if self.inputs[0].out_features != self.inputs[1].out_features:
-                raise ValueError(
-                    f"Inputs must have equal number of features, but were "
-                    f"{self.inputs[0].out_features} and {self.inputs[1].out_features}."
-                )
-
-            # Check that scopes are disjoint
-            if not self.inputs[0].scope.isdisjoint(self.inputs[1].scope):
-                raise ScopeError("Input scopes must be disjoint.")
-
-            # Derive output shape from inputs
-            self._out_features = self.inputs[0].out_features
-
-        # Obtain scope
-        if self.has_single_input:
-            self.scope = self.inputs.scope
-        else:
-            self.scope = self.inputs[0].scope.join(self.inputs[1].scope)
+        self.scope = scope
 
     @abstractmethod
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
@@ -150,13 +75,25 @@ class BaseProduct(Module, ABC):
         """
         pass
 
+    @abstractmethod
+    def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
+        r"""Map output mask to input mask.
+
+        Args:
+            mask: Output mask.
+
+        Returns:
+            Mapped input mask.
+        """
+        pass
+
     @property
     def out_features(self) -> int:
         """Returns the number of output features for this module."""
         return self._out_features
 
     def extra_repr(self) -> str:
-        return f"{super().extra_repr()}, split_method={self.split_method}"
+        return f"{super().extra_repr()}"
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -198,22 +135,10 @@ def sample(
     cid_per_module = []
     mask_per_module = []
 
-    if module.has_single_input:
-        inputs = [module.inputs]
-        channel_index = channel_index.reshape(channel_index.size(0), module.inputs.out_features)
-        mask = mask.reshape(mask.size(0), module.inputs.out_features)
-
-        # Invert permutation given by split_indices
-        channel_index = channel_index[:, module.split_indices_inverted]
-        # mask = mask[:, module.split_indices_inverted]  # TODO: Apparently this is wrong?
-        cid_per_module.append(channel_index)
-        mask_per_module.append(mask)
-    else:
-        inputs = module.inputs
-        for i in range(len(module.inputs)):
-            cid_per_module.append(channel_index[..., i])
-            mask_per_module.append(mask[..., i])
-
+    inputs = module.inputs
+    for i in range(len(module.inputs)):
+        cid_per_module.append(channel_index[..., i])
+        mask_per_module.append(mask[..., i])
 
     # Iterate over inputs, their channel indices and masks
     for inp, cid, mask in zip(inputs, cid_per_module, mask_per_module):
@@ -245,32 +170,17 @@ def _get_input_log_likelihoods(
         check_support: Whether to check the support of the input module.
         dispatch_ctx: The dispatch context.
     """
-    if module.has_single_input:
+    lls = []
+    for inp in module.inputs:
         ll = log_likelihood(
-            module.inputs,
+            inp,
             data,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,
         )
+        lls.append(ll)
 
-        # Split the input according to `split_indices` at feature dimension
-        ll_left = ll[:, module.split_indices[0]]
-        ll_right = ll[:, module.split_indices[1]]
-    else:
-        ll_left = log_likelihood(
-            module.inputs[0],
-            data,
-            check_support=check_support,
-            dispatch_ctx=dispatch_ctx,
-        )
-        ll_right = log_likelihood(
-            module.inputs[1],
-            data,
-            check_support=check_support,
-            dispatch_ctx=dispatch_ctx,
-        )
-
-    return [ll_left, ll_right]
+    return lls
 
 
 @dispatch(memoize=True)  # type: ignore
