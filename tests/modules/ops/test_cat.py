@@ -4,7 +4,7 @@ import unittest
 from itertools import product
 from spflow.meta.data import Scope
 import pytest
-from spflow.meta.dispatch import init_default_sampling_context
+from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
 from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
@@ -58,12 +58,11 @@ def test_sample(out_channels: int, out_features: int, dim: int):
         out_features=out_features,
         dim=dim,
     )
-    sampling_ctx = init_default_sampling_context(sampling_ctx=None, n=n_samples)
     for i in range(module.out_channels):
         data = torch.full((n_samples, module.out_features), torch.nan)
-        sampling_ctx.output_ids = torch.randint(
-            low=0, high=module.out_channels, size=(n_samples, module.out_features)
-        )
+        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+        mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
         samples = sample(module, data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]

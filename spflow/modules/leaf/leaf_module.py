@@ -225,7 +225,7 @@ def maximum_likelihood_estimation(
 
 @dispatch  # type: ignore
 def sample(
-    leaf: LeafModule,
+    module: LeafModule,
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
@@ -237,16 +237,16 @@ def sample(
     Samples missing values proportionally to its probability distribution function (PDF).
 
     Args:
-        leaf:
-            Leaf node to sample from.
+        module:
+            Leaf module to sample from.
         data:
             Two-dimensional PyTorch tensor containing potential evidence.
             Each row corresponds to a sample.
         is_mpe:
-            Boolean value indicating whether or not to perform maximum a posteriori estimation (MPE).
+            Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
             Defaults to False.
         check_support:
-            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+            Boolean value indicating whether if the data is in the support of the leaf distributions.
             Defaults to True.
         dispatch_ctx:
             Optional dispatch context.
@@ -260,43 +260,48 @@ def sample(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    if any([i >= data.shape[0] for i in sampling_ctx.instance_ids]):
-        raise ValueError("Some instance ids are out of bounds for data tensor.")
+    out_of_scope = list(filter(lambda x: x not in module.scope.query, range(data.shape[1])))
+    marg_mask = torch.isnan(data)
+    marg_mask[:, out_of_scope] = False
 
-    inverse_scope_query = list(filter(lambda x: x not in leaf.scope.query, range(data.shape[1])))
-    # marg_ids = torch.isnan(data[:, leaf.scope.query])
-    marg_ids = torch.isnan(data)
-    marg_ids[:, inverse_scope_query] = False
+    # Mask that tells us which feature at which sample is relevant and should be sampled
+    samples_mask = marg_mask
+    samples_mask[:, module.scope.query] &= sampling_ctx.mask
+    # samples_mask = sampling_ctx.mask & marg_mask
 
-    instance_ids_mask = torch.zeros(data.shape[0], 1, device=leaf.device, dtype=torch.bool)
-    instance_ids_mask[sampling_ctx.instance_ids] = True
+    # Count number of samples to draw
+    instance_mask = samples_mask.sum(1) > 0
+    n_samples = instance_mask.sum()  # count number of rows which have at least one true value
 
-    sampling_mask = marg_ids & instance_ids_mask
-    n_samples = torch.sum(sampling_mask.sum(1) > 0)  # count number of rows which have at least one true value
     if is_mpe:
-        samples = leaf.distribution.mode()
+        # Get mode of distribution as MPE
+        samples = module.distribution.mode()
 
         # Add batch dimension
         samples = samples.unsqueeze(0).repeat(n_samples, *([1] * (samples.dim())))
     else:
-        samples = leaf.distribution.sample(n_samples=n_samples)
+        # Sample from distribution
+        samples = module.distribution.sample(n_samples=n_samples)
 
-    # Use output_ids from sampling context to index into the correct outputs for each scope
-    # I.e.: For each sample and for each
-    assert samples.shape[0] == sampling_ctx.output_ids.shape[0]
-    assert samples.shape[0] == data.shape[0]
+    assert samples.shape[0] == sampling_ctx.channel_index[instance_mask].shape[0]
 
-    if leaf.out_channels > 1:
-        # Index the output_ids to get the correct samples for each scope
-        # Output_ids should usually be defined by some module that is the parent of this layer
-        # assert samples.shape[1] == sampling_ctx.output_ids.shape[1]#assert samples.shape[-1] == sampling_ctx.output_ids.shape[1]
-        samples = samples.gather(dim=-1, index=sampling_ctx.output_ids.unsqueeze(-1)).squeeze(-1)
+    if module.out_channels == 1:
+        # If the output of the input module has a single channel, set the output_ids to zero since this input was
+        # broadcasted to match the channel dimension of the other inputs
+        sampling_ctx.channel_index.zero_()
 
-    samples = samples.view(samples.shape[0], samples.shape[1])
+    # Index the channel_index to get the correct samples for each scope
+    samples = samples.gather(dim=-1, index=sampling_ctx.channel_index[instance_mask].unsqueeze(-1)).squeeze(
+        -1
+    )
 
-    # Set data at correct scope
-    sampling_mask_at_scope = sampling_mask[:, leaf.scope.query]
-    data[marg_ids] = samples[sampling_mask_at_scope].type(data.dtype)
+    # Ensure, that no data is overwritten
+    if data[samples_mask].isfinite().any():
+        raise RuntimeError("Data already contains values at the specified mask. This should not happen.")
+
+    # Update data inplace
+    samples_mask_subset = samples_mask[instance_mask][:, module.scope.query]
+    data[samples_mask] = samples[samples_mask_subset].to(data.dtype)
 
     return data
 
