@@ -1,3 +1,4 @@
+from spflow.modules.elementwise_sum import ElementwiseSum
 from spflow.modules.leaf import Normal
 from tests.fixtures import auto_set_test_seed
 import unittest
@@ -11,7 +12,7 @@ from spflow.meta.dispatch import init_default_sampling_context, init_default_dis
 from spflow import log_likelihood, sample, marginalize, sample_with_evidence
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
-from spflow.modules import Sum, ElementwiseProduct
+from spflow.modules import ElementwiseProduct
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf
 import torch
 
@@ -21,7 +22,7 @@ out_features_values = [1, 6]
 params = list(product(in_channels_values, out_channels_values, out_features_values))
 
 
-def make_sum(in_channels=None, out_channels=None, out_features=None, weights=None):
+def make_sum(in_channels=None, out_channels=None, out_features=None, weights=None, scopes=None):
     if isinstance(weights, list):
         weights = torch.tensor(weights)
         if weights.dim() == 1:
@@ -32,12 +33,22 @@ def make_sum(in_channels=None, out_channels=None, out_features=None, weights=Non
     if weights is not None:
         out_features = weights.shape[0]
 
-    inputs = make_normal_leaf(out_features=out_features, out_channels=in_channels)
+    if scopes is None:
+        scope_a = Scope(list(range(out_features)))
+        scope_b = Scope(list(range(out_features)))
+    else:
+        scope_a, scope_b = scopes
+    inputs_a = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_a)
+    inputs_b = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_b)
+    inputs = [inputs_a, inputs_b]
 
-    return Sum(out_channels=out_channels, inputs=inputs, weights=weights)
+    return ElementwiseSum(out_channels=out_channels, inputs=inputs, weights=weights)
 
 
-@pytest.mark.parametrize("in_channels,out_channels,out_features", params)
+@pytest.mark.parametrize(
+    "in_channels,out_channels,out_features",
+    product(in_channels_values, out_channels_values, out_features_values),
+)
 def test_log_likelihood(in_channels: int, out_channels: int, out_features: int):
     module = make_sum(
         in_channels=in_channels,
@@ -53,16 +64,52 @@ def test_log_likelihood(in_channels: int, out_channels: int, out_features: int):
 @pytest.mark.parametrize(
     "in_channels,out_channels,out_features", product(in_channels_values, out_channels_values, [2, 4])
 )
-def test_log_likelihood_product_inputs(in_channels: int, out_channels: int, out_features: int):
+def test_log_likelihood_two_product_inputs(in_channels: int, out_channels: int, out_features: int):
     inputs_a = make_leaf(cls=Normal, out_channels=in_channels, scope=Scope(range(0, out_features // 2)))
     inputs_b = make_leaf(
         cls=Normal, out_channels=in_channels, scope=Scope(range(out_features // 2, out_features))
     )
     inputs = [inputs_a, inputs_b]
-    prod = ElementwiseProduct(inputs=inputs)
+    prod_0 = ElementwiseProduct(inputs=inputs)
 
-    module = Sum(out_channels=out_channels, inputs=prod)
+    inputs_a = make_leaf(cls=Normal, out_channels=in_channels, scope=Scope(range(0, out_features // 2)))
+    inputs_b = make_leaf(
+        cls=Normal, out_channels=in_channels, scope=Scope(range(out_features // 2, out_features))
+    )
+    inputs = [inputs_a, inputs_b]
+    prod_1 = ElementwiseProduct(inputs=inputs)
 
+    inputs = [prod_0, prod_1]
+
+    module = ElementwiseSum(out_channels=out_channels, inputs=inputs)
+
+    data = make_normal_data(out_features=out_features)
+    ctx = init_default_dispatch_context()
+    lls = log_likelihood(module, data, dispatch_ctx=ctx)
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
+
+
+@pytest.mark.parametrize("out_channels", out_channels_values)
+def test_log_likelihood_broadcasting_channels(out_channels: int):
+    in_channels_a = 1
+    in_channels_b = 3
+    out_features = 2
+    inputs_a_0 = make_leaf(cls=Normal, out_channels=in_channels_a, scope=Scope(range(0, out_features // 2)))
+    inputs_a_1 = make_leaf(
+        cls=Normal, out_channels=in_channels_a, scope=Scope(range(out_features // 2, out_features))
+    )
+    inputs = [inputs_a_0, inputs_a_1]
+    prod_0 = ElementwiseProduct(inputs=inputs)
+
+    inputs_b_0 = make_leaf(cls=Normal, out_channels=in_channels_b, scope=Scope(range(0, out_features // 2)))
+    inputs_b_1 = make_leaf(
+        cls=Normal, out_channels=in_channels_b, scope=Scope(range(out_features // 2, out_features))
+    )
+    inputs = [inputs_b_0, inputs_b_1]
+    prod_1 = ElementwiseProduct(inputs=inputs)
+    inputs = [prod_0, prod_1]
+
+    module = ElementwiseSum(out_channels=out_channels, inputs=inputs)
     data = make_normal_data(out_features=out_features)
     ctx = init_default_dispatch_context()
     lls = log_likelihood(module, data, dispatch_ctx=ctx)
@@ -77,6 +124,7 @@ def test_sample(in_channels: int, out_channels: int, out_features: int):
         out_channels=out_channels,
         out_features=out_features,
     )
+
     for i in range(module.out_channels):
         data = torch.full((n_samples, module.out_features), torch.nan)
         channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
@@ -91,16 +139,24 @@ def test_sample(in_channels: int, out_channels: int, out_features: int):
 @pytest.mark.parametrize(
     "in_channels,out_channels,out_features", product(in_channels_values, out_channels_values, [2, 8])
 )
-def test_sample_product_inputs(in_channels: int, out_channels: int, out_features: int):
+def test_sample_two_product_inputs(in_channels: int, out_channels: int, out_features: int):
     n_samples = 100
     inputs_a = make_leaf(cls=Normal, out_channels=in_channels, scope=Scope(range(0, out_features // 2)))
     inputs_b = make_leaf(
         cls=Normal, out_channels=in_channels, scope=Scope(range(out_features // 2, out_features))
     )
     inputs = [inputs_a, inputs_b]
-    prod = ElementwiseProduct(inputs=inputs)
+    prod_0 = ElementwiseProduct(inputs=inputs)
 
-    module = Sum(out_channels=out_channels, inputs=prod)
+    inputs_a = make_leaf(cls=Normal, out_channels=in_channels, scope=Scope(range(0, out_features // 2)))
+    inputs_b = make_leaf(
+        cls=Normal, out_channels=in_channels, scope=Scope(range(out_features // 2, out_features))
+    )
+    inputs = [inputs_a, inputs_b]
+    prod_1 = ElementwiseProduct(inputs=inputs)
+    inputs = [prod_0, prod_1]
+
+    module = ElementwiseSum(out_channels=out_channels, inputs=inputs)
 
     for i in range(module.out_channels):
         data = torch.full((n_samples, out_features), torch.nan)
@@ -111,6 +167,33 @@ def test_sample_product_inputs(in_channels: int, out_channels: int, out_features
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]
         assert torch.isfinite(samples_query).all()
+
+
+@pytest.mark.parametrize("out_channels", out_channels_values)
+def test_sample_two_inputs_broadcasting_channels(out_channels: int):
+    # Define the scopes
+    in_channels_a = 1
+    in_channels_b = 3
+    out_features = 10
+
+    # Define the inputs
+    inputs_a = make_leaf(cls=Normal, out_channels=in_channels_a, out_features=out_features)
+    inputs_b = make_leaf(cls=Normal, out_channels=in_channels_b, out_features=out_features)
+    inputs = [inputs_a, inputs_b]
+
+    # Create the module
+    module = ElementwiseSum(inputs=inputs, out_channels=out_channels)
+
+    n_samples = 5
+    data = torch.full((n_samples, out_features), torch.nan)
+    channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+    mask = torch.full((n_samples, module.out_features), True)
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
+    samples = sample(module, data, sampling_ctx=sampling_ctx)
+
+    assert samples.shape == data.shape
+    samples_query = samples[:, module.scope.query]
+    assert torch.isfinite(samples_query).all()
 
 
 @pytest.mark.parametrize(
@@ -166,7 +249,11 @@ def test_conditional_sample(in_channels: int, out_channels: int):
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features", params)
-def test_expectation_maximization(in_channels: int, out_channels: int, out_features: int):
+def test_expectation_maximization(
+    in_channels: int,
+    out_channels: int,
+    out_features: int,
+):
     module = make_sum(
         in_channels=in_channels,
         out_channels=out_channels,
@@ -177,7 +264,11 @@ def test_expectation_maximization(in_channels: int, out_channels: int, out_featu
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features", params)
-def test_gradient_descent_optimization(in_channels: int, out_channels: int, out_features: int):
+def test_gradient_descent_optimization(
+    in_channels: int,
+    out_channels: int,
+    out_features: int,
+):
     module = make_sum(
         in_channels=in_channels,
         out_channels=out_channels,
@@ -200,8 +291,8 @@ def test_gradient_descent_optimization(in_channels: int, out_channels: int, out_
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features", params)
 def test_weights(in_channels: int, out_channels: int, out_features: int):
-    weights = torch.ones((out_features, in_channels, out_channels))
-    weights = weights / weights.sum(dim=1, keepdim=True)
+    weights = torch.ones((out_features, in_channels, out_channels, 2))
+    weights = weights / weights.sum(dim=3, keepdim=True)
 
     module = make_sum(
         weights=weights,
@@ -226,13 +317,35 @@ def test_invalid_weights_negative(in_channels: int, out_channels: int, out_featu
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features", params)
+def test_invalid_input_channels_mismatch(in_channels: int, out_channels: int, out_features: int):
+    input_a = make_normal_leaf(out_features=out_features, out_channels=in_channels + 1)
+    input_b = make_normal_leaf(out_features=out_features, out_channels=in_channels + 2)
+    with pytest.raises(ValueError):
+        ElementwiseSum(out_channels=out_channels, inputs=[input_a, input_b])
+
+
+@pytest.mark.parametrize("in_channels,out_channels,out_features", params)
+def test_invalid_input_features_mismatch(in_channels: int, out_channels: int, out_features: int):
+    input_a = make_normal_leaf(out_features=out_features + 1, out_channels=in_channels)
+    input_b = make_normal_leaf(out_features=out_features + 2, out_channels=in_channels)
+    with pytest.raises(ValueError):
+        ElementwiseSum(out_channels=out_channels, inputs=[input_a, input_b])
+
+
+@pytest.mark.parametrize("in_channels,out_channels,out_features", params)
 def test_invalid_specification_of_out_channels_and_weights(
     in_channels: int, out_channels: int, out_features: int
 ):
     with pytest.raises(ValueError):
         weights = torch.rand((out_features, in_channels, out_channels))
         weights = weights / weights.sum(dim=2, keepdim=True)
-        Sum(weights=weights, inputs=make_normal_leaf(out_features=out_features, out_channels=3))
+        ElementwiseSum(
+            weights=weights,
+            inputs=[
+                make_normal_leaf(out_features=out_features, out_channels=out_channels + 1),
+                make_normal_leaf(out_features=out_features, out_channels=out_channels + 1),
+            ],
+        )
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features", params)
@@ -240,6 +353,20 @@ def test_invalid_parameter_combination(in_channels: int, out_channels: int, out_
     weights = torch.rand((out_features, in_channels, out_channels)) + 1.0
     with pytest.raises(InvalidParameterCombinationError):
         make_sum(weights=weights, out_channels=out_channels, in_channels=in_channels)
+
+
+@pytest.mark.parametrize(
+    "in_channels,out_channels,out_features",
+    product(in_channels_values, out_channels_values, out_features_values),
+)
+def test_same_scope_error(in_channels: int, out_channels: int, out_features: int):
+    with pytest.raises(ScopeError):
+        input_a = make_normal_leaf(scope=Scope(range(0, out_features)), out_channels=in_channels)
+        input_b = make_normal_leaf(
+            scope=Scope(range(out_features, out_features * 2)), out_channels=in_channels
+        )
+        with pytest.raises(ValueError):
+            ElementwiseSum(out_channels=out_channels, inputs=[input_a, input_b])
 
 
 @pytest.mark.parametrize(
