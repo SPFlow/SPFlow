@@ -195,40 +195,31 @@ def sample(
     channel_index = module.map_out_channels_to_in_channels(sampling_ctx.channel_index)
     mask = module.map_out_mask_to_in_mask(sampling_ctx.mask)  # TODO: is this correct?
 
+    cid_per_module = []
+    mask_per_module = []
+
     if module.has_single_input:
+        inputs = [module.inputs]
         channel_index = channel_index.reshape(channel_index.size(0), module.inputs.out_features)
         mask = mask.reshape(mask.size(0), module.inputs.out_features)
 
         # Invert permutation given by split_indices
         channel_index = channel_index[:, module.split_indices_inverted]
-        # mask = mask[:, module.split_indices_inverted]  # Apparently this is wrong?
-
-        sampling_ctx.update(mask=mask, channel_index=channel_index)
-
-        # Sample from input module
-        sample(
-            module.inputs,
-            data,
-            check_support=check_support,
-            dispatch_ctx=dispatch_ctx,
-            sampling_ctx=sampling_ctx,
-        )
+        # mask = mask[:, module.split_indices_inverted]  # TODO: Apparently this is wrong?
+        cid_per_module.append(channel_index)
+        mask_per_module.append(mask)
     else:
-        # Sample from left
-        sampling_ctx.update(channel_index=channel_index[:, :, 0], mask=mask[:, :, 0])
-        sample(
-            module.inputs[0],
-            data,
-            is_mpe=is_mpe,
-            check_support=check_support,
-            dispatch_ctx=dispatch_ctx,
-            sampling_ctx=sampling_ctx,
-        )
+        inputs = module.inputs
+        for i in range(len(module.inputs)):
+            cid_per_module.append(channel_index[..., i])
+            mask_per_module.append(mask[..., i])
 
-        # Sample from right
-        sampling_ctx.update(channel_index=channel_index[:, :, 1], mask=mask[:, :, 1])
+
+    # Iterate over inputs, their channel indices and masks
+    for inp, cid, mask in zip(inputs, cid_per_module, mask_per_module):
+        sampling_ctx.update(channel_index=cid, mask=mask)
         sample(
-            module.inputs[1],
+            inp,
             data,
             is_mpe=is_mpe,
             check_support=check_support,
