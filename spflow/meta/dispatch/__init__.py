@@ -7,7 +7,6 @@ from .dispatch_context import (
 from .memoize import memoize
 from .sampling_context import (
     SamplingContext,
-    default_sampling_context,
     init_default_sampling_context,
 )
 from .substitutable import substitutable
