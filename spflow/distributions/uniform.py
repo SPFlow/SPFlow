@@ -2,7 +2,6 @@ import torch
 from torch import Tensor
 
 from spflow.distributions.distribution import Distribution
-from spflow.meta.data import FeatureContext, FeatureTypes
 
 
 class Uniform(Distribution):

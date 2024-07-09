@@ -3,7 +3,7 @@ from torch import Tensor, nn
 
 from spflow.distributions.distribution import Distribution
 from spflow.exceptions import InvalidParameterCombinationError
-from spflow.meta.data import FeatureContext, FeatureTypes
+
 from spflow.meta.data.meta_type import MetaType
 from spflow.utils.leaf import init_parameter
 
