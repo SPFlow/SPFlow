@@ -16,16 +16,12 @@ class ElementwiseProduct(BaseProduct):
     def __init__(
         self,
         inputs: Union[Module, tuple[Module, Module], list[Module]],
-        split_method: Optional[str] = None,
-        split_indices: Optional[
-            Union[tuple[list[int], list[int]], torch.IntTensor, tuple[torch.IntTensor, torch.IntTensor]]
-        ] = None,
     ) -> None:
         r"""Initializes ``ElementwiseProduct`` object.
 
         Args:
             inputs:
-                Can be either a Module or a list of Modules.
+                List of Modules.
                 The scopes for all child modules need to be pair-wise disjoint.
 
                 (1) If `inputs` is a list of Modules, they have to be of disjoint scopes and have equal number of features or a single feature wich will the be broadcast and an equal number of channels or a single channel which will be broadcast.
@@ -43,75 +39,41 @@ class ElementwiseProduct(BaseProduct):
                     inputs = ((3, 1), (1, 4))
                     output = (3, 4)  # broadcasted
 
-                (2) If `inputs` is a single Module, the input is split into two equal-sized subsets. This can be either done by specifying the `split_indices` argument or by specifying the `split_method` argument.
-
-                Example shapes:
-                    inputs = (4, 3), split_method = "split_indices", split_indices = ([0, 1], [2, 3])
-                    splits = [(2, 3), (2, 3)]
-                    output = (2, 3)
-
-                    inputs = (4, 3), split_method = "random", split_indices = None
-                    splits = [(2, 3), (2, 3)]  # random split
-                    output = (2, 3)
-
-            split_method:
-                Method to split the input into two equal-sized subsets.
-                Possible values are "split_indices" and "random".
-                Defaults to "split_indices".
-
-            split_indices:
-                Indices to split the input into two equal-sized subsets.
-                If split_method is set to "split_indices", this argument is required.
-                Defaults to None.
 
         Raises:
             ValueError: Invalid arguments.
         """
-        super().__init__(inputs=inputs, split_method=split_method, split_indices=split_indices)
+        super().__init__(inputs=inputs)
 
-        # Check if inputs have equal number of out_channels
-        if not self.has_single_input:
-            if self.inputs[0].out_channels != self.inputs[1].out_channels:
-                if not (self.inputs[0].out_channels == 1 or self.inputs[1].out_channels == 1):
-                    raise ValueError(
-                        f"Inputs must have equal number of channels or one of them must be '1', but were "
-                        f"{self.inputs[0].out_channels} and {self.inputs[1].out_channels}."
-                    )
+        # Check if all inputs either have equal number of out_channels or 1
+        if not all(inp.out_channels in (1, self._max_out_channels) for inp in self.inputs):
+            raise ValueError(
+                f"Inputs must have equal number of channels or one of them must be '1', but were {[inp.out_channels for inp in self.inputs]}"
+            )
 
     @property
     def out_channels(self) -> int:
         """Returns the number of output nodes for this module."""
-        if self.has_single_input:
-            return self.inputs.out_channels
-        else:
-            # Max since one of the inputs can also only have a single output channel which is then broadcasted
-            return max(self.inputs[0].out_channels, self.inputs[1].out_channels)
+        # Max since one of the inputs can also only have a single output channel which is then broadcasted
+        return self._max_out_channels
 
     def map_out_channels_to_in_channels(self, index: Tensor) -> Tensor:
-        if self.has_single_input:
-            return index.unsqueeze(-1).expand(-1, -1, 2)
-        else:
-            if self.inputs[0].out_channels == 1 and self.inputs[1].out_channels > 1:
-                # First input is broadcast to the second input
-                return torch.stack([torch.zeros_like(index), index], dim=-1)
-            elif self.inputs[0].out_channels > 1 and self.inputs[1].out_channels == 1:
-                # Second input is broadcast to the first input
-                return torch.stack([index, torch.zeros_like(index)], dim=-1)
+        cids = []
+        for inp in self.inputs:
+            if inp.out_channels == 1:
+                cids.append(torch.zeros_like(index))
             else:
-                return index.unsqueeze(-1).expand(-1, -1, 2)
+                cids.append(index)
+        return torch.stack(cids, dim=-1)
 
-    def map_out_mask_to_in_mask(self, mask: Tensor):
-        if self.has_single_input:
-            return mask.unsqueeze(-1).expand(-1, -1, 2)
-        else:
-            if self.inputs[0].out_channels == 1 and self.inputs[1].out_channels > 1:
-                # First input is broadcast to the second input
-                return torch.stack([torch.full_like(mask, fill_value=True), mask], dim=-1)
-            elif self.inputs[0].out_channels > 1 and self.inputs[1].out_channels == 1:
-                # Second input is broadcast to the first input
-                return torch.stack([mask, torch.full_like(mask, fill_value=True)], dim=-1)
+    def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
+        masks = []
+        for inp in self.inputs:
+            if inp.out_channels == 1:
+                masks.append(torch.full_like(mask, fill_value=True))
             else:
-                return mask.unsqueeze(-1).expand(-1, -1, 2)
+                masks.append(mask)
+        return torch.stack(masks, dim=-1)
 
 
 @dispatch(memoize=True)  # type: ignore
