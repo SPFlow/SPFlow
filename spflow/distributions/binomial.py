@@ -2,7 +2,6 @@ import torch
 from torch import Tensor, nn
 
 from spflow.distributions.distribution import Distribution
-from spflow.meta.data import FeatureContext, FeatureTypes
 from spflow.utils.leaf import init_parameter
 from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
@@ -15,7 +14,6 @@ class Binomial(Distribution):
             scope: Scope object specifying the scope of the distribution.
             n: Tensor containing the number (:math:`n`) of total trials.
             p: Tensor containing the success probability (:math:`p`) of each trial in :math:`[0,1]`.
-            n_out: Number of nodes per scope. Only relevant if mean and std is None.
 
         """
         if event_shape is None:

@@ -2,8 +2,9 @@ import torch
 from torch import Tensor, nn
 
 from spflow.distributions.distribution import Distribution
-from spflow.meta.data import FeatureContext, FeatureTypes
+
 from spflow.utils.leaf import init_parameter
+from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
 class NegativeBinomial(Distribution):
@@ -20,7 +21,12 @@ class NegativeBinomial(Distribution):
         super().__init__(event_shape=event_shape)
         p = init_parameter(param=p, event_shape=event_shape, init=torch.rand)
 
-        self._n = torch.broadcast_to(n, event_shape).clone()
+        if not torch.isfinite(n).all() or n.lt(0.0).any():
+            raise ValueError(f"Values for 'n' must be finite and greater than 0, but was: {n}")
+
+        n = torch.broadcast_to(n, event_shape).clone()
+        self.register_buffer("_n", n)
+        self.n = n
         self.log_p = nn.Parameter(torch.empty_like(p))  # initialize empty, set with setter in next line
         self.p = p.clone().detach()
 
@@ -28,7 +34,7 @@ class NegativeBinomial(Distribution):
     def p(self) -> Tensor:
         """Returns the success proability."""
         # project auxiliary parameter onto actual parameter range
-        return torch.exp(self.log_p)  # type: ignore
+        return proj_real_to_bounded(self.log_p, lb=0.0, ub=1.0)  # type: ignore
 
     @p.setter
     def p(self, p: Tensor):
@@ -44,12 +50,12 @@ class NegativeBinomial(Distribution):
         if isinstance(p, float):
             p = Tensor(p)
 
-        if p.lt(0.0).any() or p.ge(1.0).any() or not torch.isfinite(p).all():
+        if p.lt(0.0).any() or p.gt(1.0).any() or not torch.isfinite(p).all():
             raise ValueError(
-                f"Value of 'p' for 'NegativeBinomial' distribution must to be between 0.0 and 1.0, but was: {p}"
+                f"Value of 'p' for 'Binomial' distribution must to be between 0.0 and 1.0, but was: {p}"
             )
 
-        self.log_p.data = torch.log(p)  # type: ignore
+        self.log_p.data = proj_bounded_to_real(p, lb=0.0, ub=1.0)  # type: ignore
 
     @property
     def n(self) -> Tensor:
@@ -68,9 +74,9 @@ class NegativeBinomial(Distribution):
             ValueError: Invalid arguments.
         """
 
-        if n.lt(0.0).any() or not torch.isfinite(n):  # ToDo is 0 a valid value for n?
+        if torch.any(n < 1.0) or not torch.isfinite(n).any():  # ToDo is 0 a valid value for n?
             raise ValueError(
-                f"Value of 'n' for 'NegativeBinomial' distribution must to be greater than 0, but was: {n}"
+                f"Value of 'n' for 'Binomial' distribution must to be greater than 0, but was: {n}"
             )
 
         self._n = n
