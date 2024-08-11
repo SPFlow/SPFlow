@@ -6,12 +6,10 @@ Typical usage example:
 """
 
 from scipy.stats import rankdata
-from spflow.tensor import Tensor
-
-from spflow import tensor as T
+import torch
 
 
-def empirical_cdf(data: Tensor) -> Tensor:
+def empirical_cdf(data: torch.Tensor) -> torch.Tensor:
     """Computes the empirical cummulative distribution function (CDF) for specified input data.
 
     Returns the values of all input data according to the empirical cummulative distribution function (CDF) computed from said data.
@@ -28,16 +26,16 @@ def empirical_cdf(data: Tensor) -> Tensor:
     # empirical cumulative distribution function (step function that increases by 1/N at each unique data step in order)
     # here: done using scipy's 'rankdata' function (preferred over numpy's argsort due to tie-breaking)
 
-    nan_mask = T.isnan(data)
+    nan_mask = torch.isnan(data)
 
     # rank data values from min to max
-    ecd = T.tensor(rankdata(data, axis=0, method="max"), dtype=float)
+    ecd = torch.tensor(rankdata(data, axis=0, method="max"), dtype=torch.float)
 
     # set nan values to 0
     ecd[nan_mask] = 0
 
     # normalize rank values (not counting nan entries) to get ecd values
-    n_entries = T.sum(~nan_mask, axis=0, keepdims=True)
+    n_entries = torch.sum(~nan_mask, axis=0, keepdims=True)
     n_entries[n_entries == 0] = 1
 
     # normalize rank values (not counting nan entries) to get ecd values

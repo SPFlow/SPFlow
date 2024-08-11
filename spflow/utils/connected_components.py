@@ -6,10 +6,10 @@ Typical usage example:
 """
 
 import scipy
-from spflow.tensor import Tensor
+import torch
 
 
-def connected_components(adjacency_matrix: Tensor) -> list[set[int]]:
+def connected_components(adjacency_matrix: torch.Tensor) -> list[set[int]]:
     """Computes all connected components in an undirected graph.
 
     See also https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csgraph.connected_components.html
