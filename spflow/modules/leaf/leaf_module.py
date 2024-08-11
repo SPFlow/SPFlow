@@ -47,6 +47,15 @@ class LeafModule(Module, ABC):
     def out_channels(self) -> int:
         return self.distribution.out_channels
 
+    def get_partial_module(self, indices: list[int]) -> Module:
+        r"""Returns a partial module with the specified indices."""
+
+        new_query = []
+        for i in indices:
+            new_query.append(self.scope.query[i])
+        new_scope = Scope(new_query, self.scope.evidence)
+        return self.__class__(scope=new_scope, out_channels=self.out_channels)
+
 
 @dispatch(memoize=True)  # type: ignore
 def em(

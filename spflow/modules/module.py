@@ -63,6 +63,7 @@ class Module(nn.Module, ABC):
         """Forward pass is simply the log-likelihood function."""
         return log_likelihood(self, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
+
     def extra_repr(self) -> str:
         return f"D={self.out_features}, C={self.out_channels}"
 
