@@ -12,6 +12,7 @@ import torch
 from sklearn.cross_decomposition import CCA
 
 from spflow.utils.empirical_cdf import empirical_cdf
+from spflow.utils.complex import complex_max, complex_min, complex_ge, complex_le
 
 
 def randomized_dependency_coefficients(data, k: int = 20, s: float = 1 / 6, phi: Callable = torch.sin):
@@ -81,9 +82,16 @@ def randomized_dependency_coefficients(data, k: int = 20, s: float = 1 / 6, phi:
     cca = CCA(n_components=1)
 
     # compute rdcs for all pairs of features
-    for i, j in combinations(range(data.shape[1]), 2):
-        i_cca, j_cca = cca.fit_transform(features[i], features[j])
-        rdcs[j][i] = rdcs[i][j] = np.corrcoef(i_cca.T, j_cca.T)[0, 1]
+    use_pytorch_cca = True
+    if use_pytorch_cca == True:
+        #rdcs = []
+        for i, j in combinations(range(data.shape[1]), 2):
+
+            rdcs[j][i] = rdcs[i][j] = pytorch_cca2(features[i], features[j])
+    else:
+        for i, j in combinations(range(data.shape[1]), 2):
+            i_cca, j_cca = cca.fit_transform(features[i], features[j])
+            rdcs[j][i] = rdcs[i][j] = np.corrcoef(i_cca.T, j_cca.T)[0, 1]
 
     return rdcs
 
@@ -182,3 +190,85 @@ def rdc_numpy(x, y, f=np.sin, k=20, s=1/6., n=1):
             k = (ub + lb) // 2
 
     return np.sqrt(np.max(eigs))
+
+def pytorch_cca(fX, fY, k=20):
+    C = torch.cov(torch.cat([fX, fY], dim=1).T)
+
+    # Due to numerical issues, if k is too large,
+    # then rank(fX) < k or rank(fY) < k, so we need
+    # to find the largest k such that the eigenvalues
+    # (canonical correlations) are real-valued
+    k0 = k
+    lb = 1
+    ub = k
+    while True:
+
+        # Compute canonical correlations
+        Cxx = C[:k, :k]
+        Cyy = C[k0:k0 + k, k0:k0 + k]
+        Cxy = C[:k, k0:k0 + k]
+        Cyx = C[k0:k0 + k, :k]
+
+        eigs = torch.linalg.eigvals(torch.matmul(torch.matmul(torch.linalg.pinv(Cxx), Cxy),
+                                        torch.matmul(torch.linalg.pinv(Cyy), Cyx)))
+        if torch.is_complex(eigs):
+            if not (torch.all(torch.isreal(eigs)) and
+                    complex_le(torch.tensor(0, dtype=torch.cfloat),  complex_min(eigs)) and
+                    complex_le(complex_max(eigs), torch.tensor(1, dtype=torch.cfloat))):
+                ub -= 1
+                k = (ub + lb) // 2
+                continue
+
+        # Binary search if k is too large
+        else:
+            if not (torch.all(torch.isreal(eigs)) and
+                    0 <= torch.min(eigs) and
+                    torch.max(eigs) <= 1):
+                ub -= 1
+                k = (ub + lb) // 2
+                continue
+        if lb == ub: break
+        lb = k
+        if ub == lb + 1:
+            k = ub
+        else:
+            k = (ub + lb) // 2
+
+    return torch.sqrt(complex_max(eigs) if torch.is_complex(eigs) else torch.max(eigs))
+
+def pytorch_cca2(fX, fY, k=20):
+    C = np.cov(np.hstack([fX, fY]).T)
+
+    # Due to numerical issues, if k is too large,
+    # then rank(fX) < k or rank(fY) < k, so we need
+    # to find the largest k such that the eigenvalues
+    # (canonical correlations) are real-valued
+    k0 = k
+    lb = 1
+    ub = k
+    while True:
+
+        # Compute canonical correlations
+        Cxx = C[:k, :k]
+        Cyy = C[k0:k0 + k, k0:k0 + k]
+        Cxy = C[:k, k0:k0 + k]
+        Cyx = C[k0:k0 + k, :k]
+
+        eigs = np.linalg.eigvals(np.dot(np.dot(np.linalg.pinv(Cxx), Cxy),
+                                        np.dot(np.linalg.pinv(Cyy), Cyx)))
+
+        # Binary search if k is too large
+        if not (np.all(np.isreal(eigs)) and
+                0 <= np.min(eigs) and
+                np.max(eigs) <= 1):
+            ub -= 1
+            k = (ub + lb) // 2
+            continue
+        if lb == ub: break
+        lb = k
+        if ub == lb + 1:
+            k = ub
+        else:
+            k = (ub + lb) // 2
+
+    return torch.tensor(np.sqrt(np.max(eigs)))
