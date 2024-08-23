@@ -23,12 +23,13 @@ from spflow.utils.randomized_dependency_coefficients import (
 from spflow.modules.leaf.leaf_module import LeafModule
 
 
+
 def partition_by_rdc(
     data: torch.torch.Tensor,
     threshold: float = 0.3,
     preprocessing: Optional[Callable] = None,
 ) -> torch.torch.Tensor:
-    """Performs partitioning usig randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the ``base`` backend.
+    """Performs partitioning using randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the ``base`` backend.
 
     Args:
         data:
@@ -162,11 +163,14 @@ def learn_spn(
     #if feature_ctx is None:
     #    feature_ctx = FeatureContext(Scope(list(range(data.shape[1]))))
 
-    if leaf_modules is list:
-        assert Scope.all_pairwise_disjoint(leaf_modules), "Leaf modules must have disjoint scopes."
-        scope = leaf_modules[0].scope
-        for leaf in leaf_modules[1:]:
-            scope = scope.join(leaf.scope)
+    if isinstance(leaf_modules, list):
+        if len(leaf_modules) > 1:
+            assert Scope.all_pairwise_disjoint(leaf_modules), "Leaf modules must have disjoint scopes."
+            scope = leaf_modules[0].scope
+            for leaf in leaf_modules[1:]:
+                scope = scope.join(leaf.scope)
+        else:
+            scope = leaf_modules[0].scope
     else:
         scope = leaf_modules.scope
         leaf_modules = [leaf_modules]
@@ -323,8 +327,9 @@ def learn_spn(
                                 min_instances_slice=min_instances_slice,
                             )
                             for cluster_id in torch.unique(labels)
-                        ]),
+                        ], dim=2),
                         weights=weights,
+                        out_channels=2
                     )
                 # conditional clusters
                 else:
