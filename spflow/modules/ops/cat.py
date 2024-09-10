@@ -93,6 +93,7 @@ def log_likelihood(
 def sample(
     module: Cat,
     data: Tensor,
+    is_mpe: bool = False,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
@@ -134,6 +135,7 @@ def sample(
         sample(
             input_module,
             data,
+            is_mpe=is_mpe,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,
             sampling_ctx=sampling_ctx_copy,

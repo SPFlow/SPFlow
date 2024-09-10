@@ -72,11 +72,15 @@ class Normal(Distribution):
         else:
             std_est = torch.sqrt((weights * torch.pow(data - mean_est, 2)).sum(0) / n_total)
 
+
         # edge case (if all values are the same, not enough samples or very close to each other)
         if torch.any(zero_mask := torch.isclose(std_est, torch.tensor(0.0))):
             std_est[zero_mask] = torch.tensor(1e-8)
         if torch.any(nan_mask := torch.isnan(std_est)):
             std_est[nan_mask] = torch.tensor(1e-8)
+            
+
+
 
         if len(self.event_shape) == 2:
             # Repeat mean and std

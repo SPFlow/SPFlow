@@ -82,7 +82,7 @@ def randomized_dependency_coefficients(data, k: int = 20, s: float = 1 / 6, phi:
     cca = CCA(n_components=1)
 
     # compute rdcs for all pairs of features
-    use_pytorch_cca = True
+    use_pytorch_cca = False
     if use_pytorch_cca == True:
         #rdcs = []
         for i, j in combinations(range(data.shape[1]), 2):
