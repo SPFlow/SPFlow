@@ -322,19 +322,23 @@ def learn_spn(
                 return create_partitioned_mv_leaf(scope, data, fit_params)
             # cluster data
             else:
+                # TODO: make out_channels a hyper-param and repeat clustering #out_channels times
                 labels = clustering_method(data)
 
                 # non-conditional clusters
                 if not scope.is_conditional():
-                    weights = (
-                        torch.Tensor([torch.sum(labels == cluster_id) / data.shape[0] for cluster_id in torch.unique(labels)])
-                        if fit_params
-                        else None
-                    )
+                    # TODO: iterate over #out_channels clusterings to construct correct weights tensor
+                    ws = []
+                    for cluster_id in torch.unique(labels):
+                        probs = torch.sum(labels == cluster_id) / data.shape[0]
+                        ws.append(probs)
 
-                    return Sum(
-                        inputs=Cat([
-                            learn_spn(
+                    weights = torch.Tensor(ws)
+
+                    # Recurse for each label
+                    sum_inputs = []
+                    for cluster_id in torch.unique(labels):
+                        sub_structure = learn_spn(
                                 data[labels == cluster_id, :],
                                 leaf_modules=leaf_modules,
                                 #feature_ctx=feature_ctx,
@@ -345,11 +349,12 @@ def learn_spn(
                                 min_features_slice=min_features_slice,
                                 min_instances_slice=min_instances_slice,
                             )
-                            for cluster_id in torch.unique(labels)
-                        ], dim=2),
-                        weights=None,#weights,
-                        out_channels=2
-                    )
+                        sum_inputs.append(sub_structure)
+
+                    # Construct sum node
+                    return Sum(inputs=Cat(sum_inputs, dim=2), weights=weights)
+
+
                 # conditional clusters
                 else:
                     pass
