@@ -120,7 +120,6 @@ def learn_spn(
     #feature_ctx: Optional[FeatureContext] = None,
     min_features_slice: int = 2,
     min_instances_slice: int = 100,
-    fit_params: bool = True,
     scope = None,
     clustering_method: Union[str, Callable] = "kmeans",
     partitioning_method: Union[str, Callable] = "rdc",
@@ -146,10 +145,6 @@ def learn_spn(
         min_instances_slice:
             Integer value specifying the minimum number of instances required to cluster.
             Defaults to 100.
-        fit_params:
-            Boolean value determining whether or not to estimate the parameters of the nodes.
-            If set to False, only the structure is learned. Can not be enabled if a conditional SPN structure is to be learned.
-            Defaults to True.
         clustering_method:
             String or callable specifying the clustering method to be used.
             If 'kmeans' k-Means clustering is used.
@@ -195,8 +190,6 @@ def learn_spn(
 
     if len(scope.query) != data.shape[1]:
         raise ValueError(f"Number of query variables in 'scope' does not match number of features in data.")
-    if scope.is_conditional() and fit_params:
-        raise ValueError("Option 'fit_params' is set to True, but is incompatible with a conditional scope.")
 
     # available off-the-shelf clustering methods provided by SPFlow
     if isinstance(clustering_method, str):
@@ -229,26 +222,15 @@ def learn_spn(
             f"Value for 'min_features_slice' must be an integer greater than 1, but was: {min_features_slice}."
         )
 
-    # helper functions
-    def fit_leaf(leaf: Module, data: torch.Tensor, scope: Scope):
-        # create empty data set with data at correct leaf scope indices
-        leaf_data = torch.zeros((data.shape[0], max(scope.query) + 1), dtype=data.dtype, device=data.device)
-        leaf_data[:, scope.query] = data[:, [scope.query.index(rv) for rv in scope.query]]
-
-        # estimate leaf node parameters from data
-        maximum_likelihood_estimation(leaf, leaf_data, check_support=check_support)
     """
-    def create_uv_leaf(scope: Scope, data: torch.Tensor, fit_params: bool = True):
+    def create_uv_leaf(scope: Scope, data: torch.Tensor):
         # create leaf node
         signature = feature_ctx.select(scope.query)
         leaf = AutoLeaf([signature])
 
-        if fit_params:
-            fit_leaf(leaf, data, scope)
-
         return leaf
     """
-    def create_partitioned_mv_leaf(scope: Scope, data: torch.Tensor, fit_params: bool = True):
+    def create_partitioned_mv_leaf(scope: Scope, data: torch.Tensor):
         # combine univariate leafs via product node
         leaves = []
         #for rv in scope.query:
@@ -262,8 +244,9 @@ def learn_spn(
             scope_inter = s.intersection(leaf_scope)
             if len(scope_inter) > 0:
                 leaf_layer = leaf_module.__class__(scope=Scope(sorted(scope_inter)), out_channels=leaf_module.out_channels)
-                if fit_params:
-                    fit_leaf(leaf_layer, data, scope)
+                # estimate leaf node parameters from data
+                maximum_likelihood_estimation(leaf_layer, data, check_support=check_support)
+
                 leaves.append(leaf_layer)
 
 
@@ -278,12 +261,12 @@ def learn_spn(
         # torchoDO: unecessary distinction between univariate and multivariate scope ??
         """
         if len(scope.query) > 1:
-            return create_partitioned_mv_leaf(scope, data, fit_params)
+            return create_partitioned_mv_leaf(scope, data)
         # univariate scope
         else:
-            return create_uv_leaf(scope, data, fit_params)
+            return create_uv_leaf(scope, data)
         """
-        return create_partitioned_mv_leaf(scope, data, fit_params)
+        return create_partitioned_mv_leaf(scope, data)
     else:
         # select correct data
         partition_ids = partitioning_method(data)
@@ -309,7 +292,6 @@ def learn_spn(
                         #feature_ctx=feature_ctx.select([scope.query[rv] for rv in partition]),
                         clustering_method=clustering_method,
                         partitioning_method=partitioning_method,
-                        fit_params=fit_params,
                         min_features_slice=min_features_slice,
                         min_instances_slice=min_instances_slice,
                     )
@@ -319,7 +301,7 @@ def learn_spn(
         else:
             # if not enough instances to cluster, create univariate leaf nodes (can be set to prevent overfitting too much or to reduce network size)
             if data.shape[0] < min_instances_slice:
-                return create_partitioned_mv_leaf(scope, data, fit_params)
+                return create_partitioned_mv_leaf(scope, data)
             # cluster data
             else:
                 # TODO: make out_channels a hyper-param and repeat clustering #out_channels times
@@ -345,7 +327,6 @@ def learn_spn(
                                 scope=scope,
                                 clustering_method=clustering_method,
                                 partitioning_method=partitioning_method,
-                                fit_params=fit_params,
                                 min_features_slice=min_features_slice,
                                 min_instances_slice=min_instances_slice,
                             )
@@ -366,7 +347,6 @@ def learn_spn(
                                 feature_ctx,
                                 clustering_method=clustering_method,
                                 partitioning_method=partitioning_method,
-                                fit_params=fit_params,
                                 min_features_slice=min_features_slice,
                                 min_instances_slice=min_instances_slice,
                             )
