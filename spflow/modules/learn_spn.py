@@ -10,8 +10,10 @@ from spflow import maximum_likelihood_estimation
 from spflow.modules import Product
 from spflow.modules import Sum
 from spflow.utils.kmeans import kmeans
+from fast_pytorch_kmeans import KMeans
 from spflow.modules.ops.cat import Cat
-
+import numpy as np
+from spflow.utils.kmeans_new import KMeans as KMeans_torch
 
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.scope import Scope
@@ -21,6 +23,7 @@ from spflow.utils.randomized_dependency_coefficients import (
     randomized_dependency_coefficients,
 )
 from spflow.modules.leaf.leaf_module import LeafModule
+from networkx import connected_components as ccnp, from_numpy_array
 
 
 
@@ -52,6 +55,8 @@ def partition_by_rdc(
     else:
         partitioning_data = data
 
+    #print("partitiong start")
+
     # get pairwise rdc values
     rdcs = randomized_dependency_coefficients(partitioning_data)
 
@@ -60,8 +65,12 @@ def partition_by_rdc(
 
     partition_ids = torch.zeros(data.shape[1], dtype=torch.int)
 
-    for i, cc in enumerate(connected_components(adj_mat)):
-        partition_ids[list(cc)] = i
+    #for i, cc in enumerate(connected_components(adj_mat)):
+    #    partition_ids[list(cc)] = i
+    for i, c in enumerate((ccnp(from_numpy_array(np.array(adj_mat))))):
+        partition_ids[list(c)] = i
+
+    #print("partitiong end")
 
     return partition_ids
 
@@ -94,7 +103,12 @@ def cluster_by_kmeans(
     else:
         clustering_data = data
 
-    _, data_labels = kmeans(clustering_data, n_clusters=n_clusters)
+    #print("kmeans start")
+    #_, data_labels = kmeans(clustering_data, n_clusters=n_clusters)
+    kmeans = KMeans(n_clusters=n_clusters, mode='euclidean', verbose=1)
+    data_labels = kmeans.fit_predict(clustering_data)
+    #
+    print("kmeans done")
 
 
     return data_labels
@@ -107,6 +121,7 @@ def learn_spn(
     min_features_slice: int = 2,
     min_instances_slice: int = 100,
     fit_params: bool = True,
+    scope = None,
     clustering_method: Union[str, Callable] = "kmeans",
     partitioning_method: Union[str, Callable] = "rdc",
     clustering_args: Optional[dict[str, Any]] = None,
@@ -162,18 +177,18 @@ def learn_spn(
     # initialize feature context
     #if feature_ctx is None:
     #    feature_ctx = FeatureContext(Scope(list(range(data.shape[1]))))
-
-    if isinstance(leaf_modules, list):
-        if len(leaf_modules) > 1:
-            assert Scope.all_pairwise_disjoint(leaf_modules), "Leaf modules must have disjoint scopes."
-            scope = leaf_modules[0].scope
-            for leaf in leaf_modules[1:]:
-                scope = scope.join(leaf.scope)
+    if scope is None:
+        if isinstance(leaf_modules, list):
+            if len(leaf_modules) > 1:
+                assert Scope.all_pairwise_disjoint([module.scope for module in leaf_modules]), "Leaf modules must have disjoint scopes."
+                scope = leaf_modules[0].scope
+                for leaf in leaf_modules[1:]:
+                    scope = scope.join(leaf.scope)
+            else:
+                scope = leaf_modules[0].scope
         else:
-            scope = leaf_modules[0].scope
-    else:
-        scope = leaf_modules.scope
-        leaf_modules = [leaf_modules]
+            scope = leaf_modules.scope
+            leaf_modules = [leaf_modules]
 
 
     #scope = feature_ctx.scope
@@ -217,7 +232,7 @@ def learn_spn(
     # helper functions
     def fit_leaf(leaf: Module, data: torch.Tensor, scope: Scope):
         # create empty data set with data at correct leaf scope indices
-        leaf_data = torch.zeros((data.shape[0], max(scope.query) + 1), dtype=leaf.dtype, device=leaf.device)
+        leaf_data = torch.zeros((data.shape[0], max(scope.query) + 1), dtype=data.dtype, device=data.device)
         leaf_data[:, scope.query] = data[:, [scope.query.index(rv) for rv in scope.query]]
 
         # estimate leaf node parameters from data
@@ -245,10 +260,12 @@ def learn_spn(
         for leaf_module in leaf_modules:
             leaf_scope = set(leaf_module.scope.query)
             scope_inter = s.intersection(leaf_scope)
-            leaf_layer = leaf_module.__class__(scope=Scope(list(scope_inter)), out_channels=leaf_module.out_channels)
-            leaves.append(leaf_layer)
-            if fit_params:
-                fit_leaf(leaf, data, scope)
+            if len(scope_inter) > 0:
+                leaf_layer = leaf_module.__class__(scope=Scope(sorted(scope_inter)), out_channels=leaf_module.out_channels)
+                if fit_params:
+                    fit_leaf(leaf_layer, data, scope)
+                leaves.append(leaf_layer)
+
 
         if len(scope.query) > 1:
             return Product(inputs= Cat(leaves, dim=1)) #ToDo: How to input the leaves?
@@ -287,7 +304,8 @@ def learn_spn(
                     # compute child trees recursively
                     learn_spn(
                         data[:, partition[0]],
-                        leaf_modules=leaf_modules[0].get_partial_module(partition[0]),
+                        leaf_modules=leaf_modules,
+                        scope=Scope([scope.query[rv] for rv in partition[0]]),
                         #feature_ctx=feature_ctx.select([scope.query[rv] for rv in partition]),
                         clustering_method=clustering_method,
                         partitioning_method=partitioning_method,
@@ -309,7 +327,7 @@ def learn_spn(
                 # non-conditional clusters
                 if not scope.is_conditional():
                     weights = (
-                        [torch.sum(labels == cluster_id) / data.shape[0] for cluster_id in torch.unique(labels)]
+                        torch.Tensor([torch.sum(labels == cluster_id) / data.shape[0] for cluster_id in torch.unique(labels)])
                         if fit_params
                         else None
                     )
@@ -320,6 +338,7 @@ def learn_spn(
                                 data[labels == cluster_id, :],
                                 leaf_modules=leaf_modules,
                                 #feature_ctx=feature_ctx,
+                                scope=scope,
                                 clustering_method=clustering_method,
                                 partitioning_method=partitioning_method,
                                 fit_params=fit_params,
@@ -328,7 +347,7 @@ def learn_spn(
                             )
                             for cluster_id in torch.unique(labels)
                         ], dim=2),
-                        weights=weights,
+                        weights=None,#weights,
                         out_channels=2
                     )
                 # conditional clusters
