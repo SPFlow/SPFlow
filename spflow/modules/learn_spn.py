@@ -67,6 +67,8 @@ def partition_by_rdc(
 
     #for i, cc in enumerate(connected_components(adj_mat)):
     #    partition_ids[list(cc)] = i
+
+    # ToDo: Write as pytorch
     for i, c in enumerate((ccnp(from_numpy_array(np.array(adj_mat))))):
         partition_ids[list(c)] = i
 
@@ -103,8 +105,6 @@ def cluster_by_kmeans(
     else:
         clustering_data = data
 
-    #print("kmeans start")
-    #_, data_labels = kmeans(clustering_data, n_clusters=n_clusters)
     kmeans = KMeans(n_clusters=n_clusters, mode='euclidean', verbose=1)
     data_labels = kmeans.fit_predict(clustering_data)
     #
@@ -117,7 +117,7 @@ def cluster_by_kmeans(
 def learn_spn(
     data: torch.Tensor,
     leaf_modules: Union[list[LeafModule], LeafModule],
-    #feature_ctx: Optional[FeatureContext] = None,
+    out_channels: int = 1,
     min_features_slice: int = 2,
     min_instances_slice: int = 100,
     scope = None,
@@ -251,22 +251,14 @@ def learn_spn(
 
 
         if len(scope.query) > 1:
-            return Product(inputs= Cat(leaves, dim=1)) #ToDo: How to input the leaves?
+            return Product(inputs= Cat(leaves, dim=1))
         else:
             return leaves[0]
 
     # features does not need to be split any further
     if len(scope.query) < min_features_slice:
-        # multivariate scope
-        # torchoDO: unecessary distinction between univariate and multivariate scope ??
-        """
-        if len(scope.query) > 1:
-            return create_partitioned_mv_leaf(scope, data)
-        # univariate scope
-        else:
-            return create_uv_leaf(scope, data)
-        """
         return create_partitioned_mv_leaf(scope, data)
+
     else:
         # select correct data
         partition_ids = partitioning_method(data)
@@ -274,30 +266,29 @@ def learn_spn(
         # compute partitions of rvs from partition id labels
         partitions = []
 
-        #for partition_id in torch.sort(torch.unique(partition_ids), axis=-1):
-        #    partitions.append(torch.where(partition_ids == partition_id)[0])
 
         for partition_id in torch.sort(torch.unique(partition_ids), axis=-1)[0]:
             partitions.append(torch.where(partition_ids == partition_id))
 
         # multiple partition (i.e., data can be partitioned)
         if len(partitions) > 1:
-            return Product(
-                inputs=Cat([
-                    # compute child trees recursively
-                    learn_spn(
-                        data[:, partition[0]],
-                        leaf_modules=leaf_modules,
-                        scope=Scope([scope.query[rv] for rv in partition[0]]),
-                        #feature_ctx=feature_ctx.select([scope.query[rv] for rv in partition]),
-                        clustering_method=clustering_method,
-                        partitioning_method=partitioning_method,
-                        min_features_slice=min_features_slice,
-                        min_instances_slice=min_instances_slice,
-                    )
-                    for partition in partitions
-                ], dim=1)
-            )
+            product_inputs = []
+            for partition in partitions:
+                sub_structure = learn_spn(
+                    data[:, partition[0]],
+                    leaf_modules=leaf_modules,
+                    scope=Scope([scope.query[rv] for rv in partition[0]]),
+                    out_channels=out_channels,
+                    clustering_method=clustering_method,
+                    partitioning_method=partitioning_method,
+                    min_features_slice=min_features_slice,
+                    min_instances_slice=min_instances_slice,
+                )
+                product_inputs.append(sub_structure)
+
+            return Product(inputs=Cat(product_inputs, dim=1))
+
+
         else:
             # if not enough instances to cluster, create univariate leaf nodes (can be set to prevent overfitting too much or to reduce network size)
             if data.shape[0] < min_instances_slice:
@@ -305,26 +296,26 @@ def learn_spn(
             # cluster data
             else:
                 # TODO: make out_channels a hyper-param and repeat clustering #out_channels times
-                labels = clustering_method(data)
+                labels_per_channel = []
+                for i in range(out_channels):
+                    labels = clustering_method(data)
+                    labels_per_channel.append(labels)
 
                 # non-conditional clusters
                 if not scope.is_conditional():
                     # TODO: iterate over #out_channels clusterings to construct correct weights tensor
-                    ws = []
-                    for cluster_id in torch.unique(labels):
-                        probs = torch.sum(labels == cluster_id) / data.shape[0]
-                        ws.append(probs)
 
-                    weights = torch.Tensor(ws)
+
 
                     # Recurse for each label
                     sum_inputs = []
+                    #for labels in labels_per_channel:
                     for cluster_id in torch.unique(labels):
                         sub_structure = learn_spn(
                                 data[labels == cluster_id, :],
                                 leaf_modules=leaf_modules,
-                                #feature_ctx=feature_ctx,
                                 scope=scope,
+                                out_channels=out_channels,
                                 clustering_method=clustering_method,
                                 partitioning_method=partitioning_method,
                                 min_features_slice=min_features_slice,
@@ -332,8 +323,26 @@ def learn_spn(
                             )
                         sum_inputs.append(sub_structure)
 
+                    ws = []
+                    for labels in labels_per_channel:
+                        w = []
+                        for cluster_id in torch.unique(labels):
+                            probs = torch.sum(labels == cluster_id) / data.shape[0]
+                            w.append(probs)
+                        ws.append(w)
+
+                    # weights = torch.Tensor(ws)
+                    weights = torch.Tensor(ws).T.unsqueeze(0)
+                    inputs = Cat(sum_inputs, dim=2)
+                    weights_stack = []
+                    for idx, child in enumerate(inputs.inputs):
+                        out_c = child.out_channels
+                        weights_stack.append(weights[: , idx, :].repeat(out_c,1)/out_c)
+
+
+                    weights = (torch.cat(weights_stack)).unsqueeze(0)
                     # Construct sum node
-                    return Sum(inputs=Cat(sum_inputs, dim=2), weights=weights)
+                    return Sum(inputs=inputs, weights=weights)
 
 
                 # conditional clusters
