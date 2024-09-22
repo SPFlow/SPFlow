@@ -246,9 +246,9 @@ def test_make_moons():
     spn = learn_spn(
         torch.tensor(X, dtype=torch.float32),
         leaf_modules=normal_layer,
+        out_channels=3,
         #partitioning_method=partitioning_fn,
         #clustering_method=clustering_fn,
-        fit_params=False,
         min_instances_slice=70, #51
     )
     #analyze_spn(spn)
@@ -302,18 +302,17 @@ def heatmap(spn, X, y):
     # Flatten the grid so that you can pass it through the SPN
     grid = np.c_[xx.ravel(), yy.ravel()]
 
-    X, y = make_moons(n_samples=1000, noise=0.1, random_state=42) #, random_state=42
+    #X, y = make_moons(n_samples=1000, noise=0.1, random_state=42) #, random_state=42
 
-    X_tensor = torch.tensor(X, dtype=torch.float32)
-    y_tensor = torch.tensor(y, dtype=torch.long)
-
-    moon_dataset = TensorDataset(X_tensor)
+    #X_tensor = torch.tensor(X, dtype=torch.float32)
+    #y_tensor = torch.tensor(y, dtype=torch.long)
+    #moon_dataset = TensorDataset(X_tensor)
 
     #expectation_maximization(spn, torch.tensor(X, dtype=torch.float32), verbose=True)
 
-    dataloader = DataLoader(moon_dataset, batch_size=128, shuffle=True)
+    #dataloader = DataLoader(moon_dataset, batch_size=128, shuffle=True)
 
-    train_gradient_descent(spn, dataloader, lr=0.01, epochs=50, verbose=True)
+    #train_gradient_descent(spn, dataloader, lr=0.01, epochs=50, verbose=True)
     # Assuming you have a trained SPN called `spn`
     # Calculate the likelihoods (probabilities) for each point in the grid
     probs = log_likelihood(spn, torch.tensor(grid, dtype=torch.float32))
