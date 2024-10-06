@@ -4,24 +4,18 @@ import unittest
 
 from itertools import product
 
-from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.meta.data import Scope
 import pytest
-from spflow.meta.dispatch import init_default_sampling_context, init_default_dispatch_context, SamplingContext
-from spflow import log_likelihood, sample, marginalize, sample_with_evidence
-from spflow import log_likelihood, sample, marginalize
-from torch.utils.data import DataLoader,TensorDataset
-from spflow.learn import expectation_maximization
+from spflow import log_likelihood, marginalize
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum, Product
 from spflow.modules.ops.cat import Cat
-from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf
-from spflow.modules.learn_spn import learn_spn
-from spflow.modules.learn_spn import cluster_by_kmeans, partition_by_rdc
+from tests.utils.leaves import make_normal_data
+from spflow.learn.learn_spn import learn_spn
+from spflow.learn.learn_spn import cluster_by_kmeans, partition_by_rdc
 from scipy.stats import multivariate_normal
 import torch
 
-from torchviz import make_dot
 from sklearn.datasets import make_moons, make_blobs
 import matplotlib.pyplot as plt
 import matplotlib
@@ -257,34 +251,6 @@ def test_make_moons():
     stds = [child.distribution.std.detach().numpy()[:,0] for child in analyze_spn(spn)]
     test = 5
 
-    """
-    for m, s in zip(means, stds):
-        plt.figure(figsize=(10, 8))
-        plot_contours(m, s)
-        plt.show()
-    """
-    #ax.set_xlim(-5, 5)
-    #ax.set_ylim(-5, 5)
-    #plt.show()
-
-    """
-    print("got here1")
-
-    expectation_maximization(spn, torch.tensor(X, dtype=torch.float32))
-    print("got here2")
-    ll = log_likelihood(spn, torch.tensor(X, dtype=torch.float32))
-    print("got here3")
-    ll = ll.squeeze(1).detach().numpy()
-
-    # Plotting the heatmap using a 2D histogram
-    plt.figure(figsize=(8, 6))
-    plt.hist2d(ll[:, 0], ll[:, 1], bins=30, cmap='viridis')
-    plt.colorbar(label='Counts')
-    plt.title('2D Histogram Heatmap')
-    plt.xlabel('X-axis')
-    plt.ylabel('Y-axis')
-    plt.show()
-    """
 def plot_contours(mean, std):
     x, y = np.mgrid[-10:10:.05, -10:10:.05]
     pos = np.dstack((x, y))
