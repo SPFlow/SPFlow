@@ -233,11 +233,6 @@ def learn_spn(
     def create_partitioned_mv_leaf(scope: Scope, data: torch.Tensor):
         # combine univariate leafs via product node
         leaves = []
-        #for rv in scope.query:
-            # create leaf node
-            #signature = feature_ctx.select([rv])
-            #leaf = AutoLeaf([signature])
-            #leaves.append(leaf)
         s = set(scope.query)
         for leaf_module in leaf_modules:
             leaf_scope = set(leaf_module.scope.query)
