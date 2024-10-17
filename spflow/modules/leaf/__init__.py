@@ -10,3 +10,4 @@ from .negative_binomial import NegativeBinomial
 from .normal import Normal
 from .poisson import Poisson
 from .uniform import Uniform
+from .cond_normal import CondNormal
