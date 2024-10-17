@@ -41,11 +41,14 @@ class BaseProduct(Module, ABC):
         self.inputs = nn.ModuleList(inputs)
 
         # Check if all inputs have equal number of features
+        # TODO: This should be relaxed to allow broadcasting
+
         if not all(inp.out_features == self.inputs[0].out_features for inp in self.inputs):
             raise ValueError(
                 f"Inputs must have equal number of features, but were "
                 f"{[inp.out_features for inp in self.inputs]}."
             )
+
 
         # Check that scopes are disjoint
         if not Scope.all_pairwise_disjoint([inp.scope for inp in self.inputs]):
