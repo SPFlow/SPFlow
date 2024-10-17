@@ -16,7 +16,7 @@ from spflow.modules.module import Module
 class OuterProduct(BaseProduct):
     def __init__(
         self,
-        inputs: Union[Module, tuple[Module, Module], list[Module]],
+        inputs: Union[Module, tuple[Module, Module], list[Module]], # ToDo: Module is not allowed here (has to be a list)
     ) -> None:
         r"""Initializes ``OuterProduct`` module.
 
