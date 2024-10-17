@@ -15,7 +15,7 @@ from spflow.learn.learn_spn import learn_spn
 from spflow.learn.learn_spn import cluster_by_kmeans, partition_by_rdc
 from scipy.stats import multivariate_normal
 import torch
-
+from collections import deque
 from sklearn.datasets import make_moons, make_blobs
 import matplotlib.pyplot as plt
 import matplotlib
@@ -245,6 +245,7 @@ def test_make_moons():
         #clustering_method=clustering_fn,
         min_instances_slice=70, #51
     )
+    spn_list = list_modules_by_depth(spn)
     #analyze_spn(spn)
     heatmap(spn, X, y)
     means = [child.distribution.mean.detach().numpy()[:,0] for child in analyze_spn(spn)]
@@ -341,6 +342,33 @@ def analyze_spn(spn):
     print(counts)
     return leaves
 
+def list_modules_by_depth(root):
+    if not root:
+        return []
+
+    # Initialize the queue with the root node, the list to store the result
+    result = []
+    queue = deque([root])
+
+    while queue:
+        # Start processing a new depth level
+        level_modules = []
+        level_size = len(queue)  # The number of nodes at this depth
+
+        for _ in range(level_size):
+            current_module = queue.popleft()
+            if not(current_module.__class__.__name__ == "Cat" or current_module.__class__.__name__ == "ModuleList"):
+                level_modules.append(current_module.__class__.__name__)
+
+            # Add children of the current module to the queue for the next level
+            for child in current_module.children():
+                queue.append(child)
+
+        # Append the list of modules at the current depth level to the result
+        if level_modules:
+            result.append(level_modules)
+
+    return result
 
 
 

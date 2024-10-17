@@ -20,6 +20,7 @@ import random
 from spflow.modules import Sum
 from spflow.modules import OuterProduct
 from spflow.modules import ElementwiseProduct
+from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 from sklearn.datasets import make_moons, make_blobs
 import matplotlib.pyplot as plt
@@ -28,7 +29,7 @@ import numpy as np
 matplotlib.use('TkAgg')
 
 def test_rat_spn():
-    out_channels = 2
+    out_channels = 4
     random_variables = list(range(7))
     scope = Scope(random_variables)
     normal_layer = Normal(scope=scope, out_channels=out_channels)
@@ -80,9 +81,13 @@ def create_spn(leaf_modules):
             input.append(l)
 
     inputs = leaf_modules
-    layer2 = Sum
-    layer1 = OuterProduct(inputs=inputs)
-    root_node = Sum(inputs=layer1, out_channels=1)
+    layer3 = OuterProduct(inputs=input)
+    layer2 = Sum(inputs= layer3, out_channels=2)
+    layer1 = Product(inputs=layer2)
+    root_node = Sum(inputs=layer1, out_channels=3)
+    out_features = 7
+    data = make_normal_data(out_features=out_features)
+    log_likelihood(root_node, data)
 
 def test_make_moons():
     torch.manual_seed(3)
