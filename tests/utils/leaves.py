@@ -90,11 +90,59 @@ def make_leaf(cls, out_channels: int = None, out_features: int = None, scope: Sc
         # Default case: just call the class
         return cls(scope=scope, out_channels=out_channels)
 
+def make_cond_leaf(cls, out_channels: int = None, out_features: int = None, scope: Scope = None) -> LeafModule:
+    assert (out_features is None) ^ (scope is None), "Either out_features or scope must be provided"
+
+    if scope is None:
+        scope = Scope(list(range(0, out_features)))
+
+    event_shape = (len(scope.query), out_channels)
+    """
+    # Check special cases
+    if cls == leaf.CondBinomial:
+        return leaf.CondBinomial(scope=scope, out_channels=out_channels, n=torch.ones(1) * 3)
+    elif cls == leaf.NegativeBinomial:
+        return leaf.NegativeBinomial(scope=scope, out_channels=out_channels, n=torch.ones(1) * 3)
+    elif cls == leaf.CondCategorical:
+        return leaf.CondCategorical(
+            scope=scope,
+            out_channels=out_channels,
+            K=3,
+        )
+    elif cls == leaf.CondHypergeometric:
+        return leaf.CondHypergeometric(
+            scope=scope,
+            n=torch.ones((len(scope.query), out_channels)) * 3,
+            N=torch.ones((len(scope.query), out_channels)) * 10,
+            K=torch.ones((len(scope.query), out_channels)) * 5,
+        )
+    elif cls == leaf.CondUniform:
+        return leaf.CondUniform(
+            scope=scope,
+            start=torch.zeros((len(scope.query), out_channels)),
+            end=torch.ones((len(scope.query), out_channels)),
+        )
+    else:
+    """
+    # Default case: just call the class
+    mean = torch.randn(event_shape)
+    std = torch.rand(event_shape)
+    cond_f = lambda data: {"mean": mean, "std": std}
+    return cls(scope=scope, cond_f=cond_f)
+
 
 def make_data(cls, out_features: int, n_samples: int = 5) -> torch.Tensor:
     scope = Scope(list(range(0, out_features)))
     return (
         make_leaf(cls=cls, scope=scope, out_channels=1)
+        .distribution.distribution.sample((n_samples,))
+        .squeeze(-1)
+    )
+
+def make_cond_data(cls, out_features: int, n_samples: int = 5) -> torch.Tensor:
+    scope = Scope(list(range(0, out_features)))
+    return (
+        make_cond_leaf(cls=cls, scope=scope, out_channels=1)
         .distribution.distribution.sample((n_samples,))
         .squeeze(-1)
     )
