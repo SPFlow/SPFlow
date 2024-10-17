@@ -17,6 +17,7 @@ class OuterProduct(BaseProduct):
     def __init__(
         self,
         inputs: Union[Module, tuple[Module, Module], list[Module]],
+        num_splits: Optional[int] = None,
     ) -> None:
         r"""Initializes ``OuterProduct`` module.
 
@@ -42,6 +43,11 @@ class OuterProduct(BaseProduct):
             ValueError: Invalid arguments.
         """
         super().__init__(inputs=inputs)
+
+        if len(inputs) == 1:
+            assert num_splits is not None and num_splits > 1
+
+        self.num_splits = num_splits
 
         # Store unraveled channel indices
         unraveled_channel_indices = list(product(*[list(range(self._max_out_channels)) for _ in self.inputs]))
@@ -76,6 +82,10 @@ def log_likelihood(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx)
+
+    if len(module.inputs) == 1:  # If input is a single module, perform binary split manually
+        # TODO: padding if module.inputs[0].out_features % module.num_splits != 0
+        lls = lls[0].split(module.inputs[0].out_features // module.num_splits, dim=1)
 
     # Compute the outer sum of pairwise log-likelihoods
     # [b, n, m1] + [b, n, m2] -> [b, n, m1, 1] + [b, n, 1, m2]  -> [b, n, m1, m2] -> [b, n, 1, m1*m2] ...
