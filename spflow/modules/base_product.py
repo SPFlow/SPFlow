@@ -54,7 +54,7 @@ class BaseProduct(Module, ABC):
         if not Scope.all_pairwise_disjoint([inp.scope for inp in self.inputs]):
             raise ScopeError("Input scopes must be disjoint.")
 
-        # Derive output shape from inputs
+        # Derive output shape from inputs #ToDo: check if this is correct
         self._out_features = self.inputs[0].out_features
 
         self._max_out_channels = max(inp.out_channels for inp in self.inputs)
