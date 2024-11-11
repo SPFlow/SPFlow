@@ -28,6 +28,7 @@ class Sum(Module):
         self,
         inputs: Module,
         out_channels: Optional[int] = None,
+        num_repetitions: Optional[int] = None,
         weights: Optional[Tensor] = None,
     ) -> None:
         """
@@ -62,8 +63,14 @@ class Sum(Module):
         self._out_features = self.inputs.out_features
         self._in_channels_total = self.inputs.out_channels
         self._out_channels_total = out_channels
-        self.weights_shape = (self._out_features, self._in_channels_total, self._out_channels_total)
+        self.num_repetitions = num_repetitions
+        # ToDo: not optional / generalization: additional dimension as tuple
+        if num_repetitions is not None:
+            self.weights_shape = (self._out_features, self._in_channels_total, self._out_channels_total, self.num_repetitions)
+        else:
+            self.weights_shape = (self._out_features, self._in_channels_total, self._out_channels_total)
         self.scope = self.inputs.scope
+        self.num_repetitions = num_repetitions
 
         # If weights are not provided, initialize them randomly
         if weights is None:
@@ -258,13 +265,17 @@ def log_likelihood(
 
     log_weights = module.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC)
 
+    #if log_weights.ndim == 5 and log_weights.shape[1] == 1:
+    #    log_weights = log_weights - torch.log(torch.tensor(10))
+
+
     # Weighted log-likelihoods
     weighted_lls = ll + log_weights  # shape: (B, F, IC, OC)
 
     # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
     output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1)  # shape: (B, F, OC)
 
-    output = output.view(data.shape[0], module.out_features, module.out_channels)
+    #output = output.view(data.shape[0], module.out_features, module.out_channels)
 
     return output
 
@@ -292,7 +303,8 @@ def em(
 
         log_weights = module.log_weights.unsqueeze(0)
         log_grads = torch.log(module_lls.grad).unsqueeze(2)
-        input_lls = input_lls.unsqueeze(-1)
+        # input_lls = input_lls.unsqueeze(-1)
+        input_lls = input_lls.unsqueeze(3)
         module_lls = module_lls.unsqueeze(2)
 
         log_expectations = log_weights + log_grads + input_lls - module_lls
