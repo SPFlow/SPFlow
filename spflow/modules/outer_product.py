@@ -62,7 +62,15 @@ class OuterProduct(BaseProduct):
         ocs = 1
         for inp in self.inputs:
             ocs *= inp.out_channels
+        # ToDo: Is this the correct?
+        if len(self.inputs) == 1:
+            ocs = ocs ** self.num_splits
         return ocs
+
+    # ToDo: Is this the correct?
+    @property
+    def out_features(self) -> int:
+        return int(self.inputs[0].out_features // self.num_splits)
 
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         return self.unraveled_channel_indices[output_ids]
@@ -92,9 +100,10 @@ def log_likelihood(
     output = lls[0].unsqueeze(2)
     for i in range(1, len(lls)):
         output = output + lls[i].unsqueeze(3)
-        output = output.view(output.size(0), output.size(1), 1, -1)
+        #output = output.view(output.size(0), output.size(1), 1, -1)
+        output = output.view(output.size(0), output.size(1), 1, -1, output.size(-1))
 
     # View as [b, n, m1 * m2]
-    output = output.view(output.size(0), module.out_features, module.out_channels)
-
+    #output = output.view(output.size(0), module.out_features, module.out_channels)
+    output = output.flatten(2,3) # [b, n, m1 * m2, r]
     return output

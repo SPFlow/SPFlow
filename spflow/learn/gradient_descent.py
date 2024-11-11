@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 
 import torch
@@ -34,6 +35,7 @@ def train_gradient_descent(
     epochs: int = -1,
     verbose: bool = False,
     optimizer: Optional[torch.optim.Optimizer] = None,
+    scheduler: Optional[torch.optim.lr_scheduler] = None,
     lr: float = 1e-3,
     loss_fn: Callable[[Module, Tensor], Tensor] = negative_log_likelihood_loss,
     callback_batch: Optional[Callable[[Tensor, int], None]] = None,
@@ -57,9 +59,14 @@ def train_gradient_descent(
     if optimizer is None:
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
+    if scheduler is None:
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[int(epochs * 0.5), int(epochs * 0.75)],
+                                                         gamma=0.1, verbose=True)
+
     steps = 0
     for epoch in range(epochs):
         # Collect losses for each epoch
+        start_time = time.time()
         losses_epoch = []
         for (data,) in dataloader:
             # Reset gradients
@@ -83,6 +90,10 @@ def train_gradient_descent(
             # Call callback function after each batch
             if callback_batch is not None:
                 callback_batch(loss, steps)
+        print("Time taken for epoch: ", time.time() - start_time)
+        scheduler.step()
+        #print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()/dataloader.batch_size}")
+        print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()}")
 
         # Call callback function after each epoch
         if callback_epoch is not None:

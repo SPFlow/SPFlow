@@ -1,11 +1,17 @@
+import time
+
+from torch.utils.data import DataLoader
+
 from spflow.meta.data import Scope
 from spflow.modules.rat.region_graph import random_region_graph
 from spflow.modules.leaf import Normal
-from spflow.modules.rat.rat_spn import RatSPN
+from spflow.modules.rat.rat_spn_new import RatSPN
+from spflow.modules.factorize import Factorize
 from collections import deque
 from spflow.meta.data import Scope
 import pytest
-from spflow import log_likelihood, marginalize
+from spflow import log_likelihood, marginalize, sample
+from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum, Product
 from spflow.modules.base_product import BaseProduct
@@ -20,7 +26,10 @@ import random
 from spflow.modules import Sum
 from spflow.modules import OuterProduct
 from spflow.modules import ElementwiseProduct
+from spflow.modules.factorize import Factorize
 from tests.utils.leaves import make_normal_leaf, make_normal_data
+from spflow.learn import train_gradient_descent
+
 
 from sklearn.datasets import make_moons, make_blobs
 import matplotlib.pyplot as plt
@@ -29,11 +38,30 @@ import numpy as np
 matplotlib.use('TkAgg')
 
 def test_rat_spn():
-    out_channels = 4
+    out_channels = 2
     random_variables = list(range(7))
     scope = Scope(random_variables)
     normal_layer = Normal(scope=scope, out_channels=out_channels)
-    create_spn([normal_layer])
+    rat_spn = RatSPN(
+        leaf_modules=[normal_layer],
+        n_root_nodes=3,
+        n_region_nodes=2,
+        n_leaf_nodes=1,
+        num_repetitions=3,
+        depth=2
+    )
+    data = make_normal_data(out_features=7, num_samples=1)
+    ll = log_likelihood(rat_spn, data)
+    test = 5
+
+    """
+    fac = Factorize(inputs=[normal_layer])
+    out_p = OuterProduct(inputs=[fac], num_splits=2)
+    sum_layer = Sum(inputs=out_p, out_channels=4, num_repetitions=3)
+    data = make_normal_data(out_features=7, num_samples=1)
+    log_likelihood(sum_layer, data)
+
+
     region_graph = random_region_graph(scope, depth=3, replicas=1)
     rat_spn = RatSPN(
         region_graph,
@@ -42,195 +70,134 @@ def test_rat_spn():
         n_region_nodes=1,
         n_leaf_nodes=1,
     )
-    rat_list = list_modules_by_depth(rat_spn)
+    rat_list = rat_spn.factorize(2)
 
     test = 5
-
-def create_spn(leaf_modules):
-
-    def get_leaves(scope):
-        leaves = []
-        s = set(scope.query)
-        for leaf_module in leaf_modules:
-            leaf_scope = set(leaf_module.scope.query)
-            scope_inter = s.intersection(leaf_scope)
-            if len(scope_inter) > 0:
-                leaf_layer = leaf_module.__class__(scope=Scope(sorted(scope_inter)),
-                                                   out_channels=leaf_module.out_channels)
-
-                leaves.append(leaf_layer)
-        return leaves
-
-
-    scope = leaf_modules[0].scope
-    for leaf in leaf_modules[1:]:
-        scope = scope.join(leaf.scope)
-
-    shuffled_rvs = scope.query.copy()
-    random.shuffle(shuffled_rvs)
-    n_splits = 4
-    split_rvs = np.array_split(shuffled_rvs, n_splits)
-    leaves = []
-    for split in split_rvs:
-        s = Scope(sorted(split))
-        leaves.append(get_leaves(s))
-
-    input = []
-    for leaf in leaves:
-        for l in leaf:
-            input.append(l)
-
-    inputs = leaf_modules
-    layer3 = OuterProduct(inputs=input)
-    layer2 = Sum(inputs= layer3, out_channels=2)
-    layer1 = Product(inputs=layer2)
-    root_node = Sum(inputs=layer1, out_channels=3)
-    out_features = 7
-    data = make_normal_data(out_features=out_features)
-    log_likelihood(root_node, data)
-
-def test_make_moons():
-    torch.manual_seed(3)
-    X, y = make_moons(n_samples=1000, noise=0.1, random_state=42) #, random_state=42
-
     """
-    # Plot the data
-    plt.figure(figsize=(8, 6))
-    plt.scatter(X[y == 0][:, 0], X[y == 0][:, 1], color='red', label='Class 0')
-    plt.scatter(X[y == 1][:, 0], X[y == 1][:, 1], color='blue', label='Class 1')
-    plt.title("make_moons dataset")
-    plt.xlabel("Feature 1")
-    plt.ylabel("Feature 2")
-    plt.legend()
+
+def make_dataset(num_features_continuous, num_features_discrete, num_clusters, num_samples):
+    # Collect data and data domains
+    BINS = 100
+    data = []
+    domains = []
+
+    # Construct continuous features
+    for i in range(num_features_continuous):
+        #domains.append(Domain.continuous_inf_support())
+        feat_i = []
+
+        # Create a multimodal feature
+        for j in range(num_clusters):
+            feat_i.append(torch.randn(num_samples) + j * 3 * torch.rand(1) + 3 * j)
+
+        data.append(torch.cat(feat_i))
+
+
+    data = torch.stack(data, dim=1)
+    #data = data.view(data.shape[0], 1, num_features_continuous + num_features_discrete)
+    data = data.view(data.shape[0], num_features_continuous + num_features_discrete, 1)
+    data = data[torch.randperm(data.shape[0])]
+    return data#, domains
+
+def visualize(data, spn):
+    #samples = sample(spn, 10000)
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 10))
+    for i, ax in enumerate([ax1, ax2, ax3, ax4]):
+
+        rng = None
+        bins = 100
+
+        #width = (data[:, :, i].max() - data[:, :, i].min()) / bins
+        width = (data[:, i].max() - data[:, i].min()) / bins
+        #hist = torch.histogram(data[:, :, i], bins=bins, density=True, range=rng)
+        hist = torch.histogram(data[:, i], bins=bins, density=True, range=rng)
+        bin_edges = hist.bin_edges
+        density = hist.hist
+
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        ax.bar(bin_centers, density, width=width * 0.8, alpha=0.5, label="Data")
+
+        dummy = torch.full((bin_centers.shape[0], data.shape[1]), np.nan)
+        dummy[:, i] = bin_centers
+        with torch.no_grad():
+            log_probs = spn(dummy)
+        probs = log_probs[:,:,0].exp().squeeze(-1).numpy() # choose a channel
+        ax.plot(bin_centers, probs, linewidth=2, label="Likelihood")
+
+
+        ax.set_xlabel("Feature Value")
+        ax.set_ylabel("Density")
+
+        ax.set_title(f"Feature {i} ")
+        ax.legend()
+    plt.tight_layout()
     plt.show()
+
+def test_rat_spn_hist():
+
+    # Scheinbar funktioniert es soweit nur mit einer repitition / Problem liegt bei repitition
+    # Mögliches Problem: Weights sind nicht richtig für repitition -> nicht richtig normalisiert
+
+    torch.manual_seed(0)
+    num_features = 4
+    out_channels = 10 #30
+
+    data = make_dataset(num_features, 0, 6, 1000).squeeze(-1)
+
+
+    dataset = torch.utils.data.TensorDataset(data)
+    dataloader = DataLoader(dataset, batch_size=128, shuffle=True)
+
+
+    random_variables = list(range(num_features))
+    scope = Scope(random_variables)
+    normal_layer = Normal(scope=scope, out_channels=out_channels)
     """
-
-    scope = Scope(list(range(2)))
-    normal_layer = Normal(scope=scope, out_channels=4)
-
-    #partitioning_fn.alternate = True
-    #partitioning_fn.partition = True
-    region_graph = random_region_graph(scope, depth=10, replicas=10)
+    epochs = 3
+    batch_size = 128
+    depth = 2
+    num_sums = 20
+    num_leaves = 10
+    num_repetitions = 10
+    lr = 0.01
+    """
+    start_time = time.time()
     rat_spn = RatSPN(
-        region_graph,
-        [normal_layer],
-        n_root_nodes=10,
-        n_region_nodes=10,
-        n_leaf_nodes=10,
+        leaf_modules=[normal_layer],
+        n_root_nodes=1,
+        n_region_nodes=20, #30
+        n_leaf_nodes=1, # ToDo: Drop this parameter or override out_channelsin leaf_modules?
+        num_repetitions=10,
+        depth=2
     )
-    analyze_spn(rat_spn.root_node)
-    heatmap(rat_spn.root_node, X, y)
+    #samples = sample(rat_spn, 10000)
 
+    print("Time to build SPN: ", time.time() - start_time)
 
+    print("Number of parameters:", sum(p.numel() for p in rat_spn.parameters() if p.requires_grad))
 
-def heatmap(spn, X, y):
+    train_gradient_descent(rat_spn, dataloader, lr=0.3, epochs=10, verbose=True) #0.2
 
-    # Create a meshgrid of points over the feature space
-    x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
-    y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
-    xx, yy = np.meshgrid(np.linspace(x_min, x_max, 200),
-                         np.linspace(y_min, y_max, 200))
+    rat_spn.eval()
 
-    # Flatten the grid so that you can pass it through the SPN
-    grid = np.c_[xx.ravel(), yy.ravel()]
+    visualize(data, rat_spn)
 
-    #X, y = make_moons(n_samples=1000, noise=0.1, random_state=42) #, random_state=42
+def test_sample():
+    num_features = 7
+    out_channels = 2
+    n_samples = 10
+    random_variables = list(range(num_features))
+    scope = Scope(random_variables)
+    normal_layer = Normal(scope=scope, out_channels=out_channels)
 
-    #X_tensor = torch.tensor(X, dtype=torch.float32)
-    #y_tensor = torch.tensor(y, dtype=torch.long)
-    #moon_dataset = TensorDataset(X_tensor)
+    fac = Factorize(inputs=[normal_layer], depth=2, num_repetitions=3)
 
-    expectation_maximization(spn, torch.tensor(X, dtype=torch.float32), verbose=True)
-
-    #dataloader = DataLoader(moon_dataset, batch_size=128, shuffle=True)
-
-    #train_gradient_descent(spn, dataloader, lr=0.01, epochs=50, verbose=True)
-    # Assuming you have a trained SPN called `spn`
-    # Calculate the likelihoods (probabilities) for each point in the grid
-    probs = log_likelihood(spn, torch.tensor(grid, dtype=torch.float32))
-
-    # Reshape the probabilities back into a grid form
-    probs = probs[:,0,0].reshape(xx.shape).detach().numpy()
-
-    # Plotting the heatmap
-    plt.figure(figsize=(10, 8))
-    #plt.contourf(xx, yy, probs, levels=100, cmap="hot", alpha=0.8)
-    #plt.colorbar(label="Probability")
-    plt.contour(xx, yy, np.exp(probs), levels=10, cmap="viridis")
-
-    # Optionally, overlay the original data points
-    plt.scatter(X[:, 0], X[:, 1], c=y, cmap="RdBu", edgecolors="w", s=50, alpha=0.8)
-
-    plt.title("SPN Probability Heatmap")
-    plt.xlabel("Feature 1")
-    plt.ylabel("Feature 2")
-    plt.show()
-    """
-    n_samples = 100
-    out_features = 2
-
-    data = torch.full((n_samples, out_features), torch.nan)
-    channel_index = torch.full((n_samples, out_features), fill_value=0)
-    mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
-    samples = sample(spn, data, sampling_ctx=sampling_ctx)
-
-    plt.figure(figsize=(8, 6))
-    plt.scatter(samples[:, 0], samples[:, 1], color='red', label='Samples')
-    plt.title("Samples from the SPN")
-    plt.xlabel("Feature 1")
-    plt.ylabel("Feature 2")
-    plt.legend()
-    plt.show()
-    """
-
-
-def analyze_spn(spn):
-    counts = {'Sum': 0, 'Product': 0, 'Cat': 0, 'Leaf': 0}
-    leaves = []
-    def iterate_spn(spn):
-        if isinstance(spn, Sum):
-            counts['Sum'] += 1
-            iterate_spn(spn.inputs)
-        elif isinstance(spn, BaseProduct):
-            counts['Product'] += 1
-            iterate_spn(spn.inputs)
-        elif isinstance(spn, Cat):
-            counts['Cat'] += 1
-            for i in spn.inputs:
-                iterate_spn(i)
-        else:
-            leaves.append(spn)
-            counts['Leaf'] += 1
-            return
-    iterate_spn(spn)
-    print(counts)
-    return leaves
-
-
-
-def list_modules_by_depth(root):
-    if not root:
-        return []
-
-    # Initialize the queue with the root node, the list to store the result
-    result = []
-    queue = deque([root])
-
-    while queue:
-        # Start processing a new depth level
-        level_modules = []
-        level_size = len(queue)  # The number of nodes at this depth
-
-        for _ in range(level_size):
-            current_module = queue.popleft()
-            level_modules.append(current_module)
-
-            # Add children of the current module to the queue for the next level
-            for child in current_module.children():
-                queue.append(child)
-
-        # Append the list of modules at the current depth level to the result
-        result.append(level_modules)
-
-    return result
+    for i in range(fac.out_channels):
+        data = torch.full((n_samples, num_features), torch.nan)
+        channel_index = torch.full((n_samples, num_features), fill_value=i)
+        mask = torch.full((n_samples, num_features), True, dtype=torch.bool)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
+        samples = sample(fac, data, sampling_ctx=sampling_ctx)
+        assert samples.shape == data.shape
+        samples_query = samples[:, fac.scope.query]
+        assert torch.isfinite(samples_query).all()
