@@ -87,8 +87,11 @@ def make_dataset(num_features_continuous, num_features_discrete, num_clusters, n
         feat_i = []
 
         # Create a multimodal feature
+        #for j in range(num_clusters):
+        #    feat_i.append(torch.randn(num_samples) + j * 3 * torch.rand(1) + 3 * j)
         for j in range(num_clusters):
-            feat_i.append(torch.randn(num_samples) + j * 3 * torch.rand(1) + 3 * j)
+            feat_i.append(torch.randn(num_samples) * 1.0 + j * 3 * torch.randint(low=1, high=10, size=(
+            1,)) / 10 + 5 * j - num_clusters * 2.5)
 
         data.append(torch.cat(feat_i))
 
@@ -134,24 +137,26 @@ def visualize(data, spn):
     plt.show()
 
 def test_rat_spn_hist():
+    # ToDo: MixtureLayer; repetition dimension for leaf layers; repitition dimension for elementwise product etc.
 
-    # Scheinbar funktioniert es soweit nur mit einer repitition / Problem liegt bei repitition
+    # Scheinbar funktioniert es soweit nur mit einer repitition / Problem liegt bei repetition
     # Mögliches Problem: Weights sind nicht richtig für repitition -> nicht richtig normalisiert
 
     torch.manual_seed(0)
     num_features = 4
-    out_channels = 10 #30
+    out_channels = 10#10
+    num_repetitions = 10
 
-    data = make_dataset(num_features, 0, 6, 1000).squeeze(-1)
+    data = make_dataset(num_features, 0, 3, 10000).squeeze(-1)
 
 
     dataset = torch.utils.data.TensorDataset(data)
-    dataloader = DataLoader(dataset, batch_size=128, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=200, shuffle=True)
 
 
     random_variables = list(range(num_features))
     scope = Scope(random_variables)
-    normal_layer = Normal(scope=scope, out_channels=out_channels)
+    normal_layer = Normal(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
     """
     epochs = 3
     batch_size = 128
@@ -165,18 +170,20 @@ def test_rat_spn_hist():
     rat_spn = RatSPN(
         leaf_modules=[normal_layer],
         n_root_nodes=1,
-        n_region_nodes=20, #30
-        n_leaf_nodes=1, # ToDo: Drop this parameter or override out_channelsin leaf_modules?
-        num_repetitions=10,
+        n_region_nodes=10, #30
+        num_repetitions=num_repetitions,#1,
         depth=2
     )
     #samples = sample(rat_spn, 10000)
 
     print("Time to build SPN: ", time.time() - start_time)
 
-    print("Number of parameters:", sum(p.numel() for p in rat_spn.parameters() if p.requires_grad))
+    print("Number of parameters:", sum(p.numel() for p in normal_layer.parameters() if p.requires_grad))
 
-    train_gradient_descent(rat_spn, dataloader, lr=0.3, epochs=10, verbose=True) #0.2
+    for name, ch in rat_spn.root_node.named_children():
+        print("Number of parameters:", name, sum(p.numel() for p in ch.parameters() if p.requires_grad))
+
+    train_gradient_descent(rat_spn, dataloader, lr=0.5, epochs=5, verbose=True) #0.2
 
     rat_spn.eval()
 

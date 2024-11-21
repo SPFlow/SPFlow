@@ -119,7 +119,7 @@ def log_likelihood(
     indices = module.indices # shape: [num_features, num_groups, num_repetitions] other formulation: [num_features_in, num_features_out, num_repetitions]
 
 
-    output = torch.einsum('fgr,bfc->bgcr', indices.float(), lls[0]) # shape: [batch_size, num_groups, num_channel, num_repetitions]
+    output = torch.einsum('fgr,bfcr->bgcr', indices.float(), lls[0]) # shape: [batch_size, num_groups, num_channel, num_repetitions]
 
 
     return output

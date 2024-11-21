@@ -155,8 +155,8 @@ def log_likelihood(
 
     # ----- log probabilities -----
 
-    # Unsqueeze scope_data to make space for num_nodes dimension
-    data = data.unsqueeze(2)
+    # Unsqueeze scope_data to make space for num_nodes and repetition dimension
+    data = data.unsqueeze(2).unsqueeze(-1)
 
     if check_support:
         # create mask based on distribution's support
