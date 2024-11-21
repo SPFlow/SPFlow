@@ -62,7 +62,6 @@ class RatSPN(Module):
             leaf_modules: List[LeafModule],
             n_root_nodes: int,
             n_region_nodes: int,
-            n_leaf_nodes: int,
             num_repetitions: int,
             depth: int,
     ) -> None:
@@ -87,7 +86,7 @@ class RatSPN(Module):
         super().__init__()
         self.n_root_nodes = n_root_nodes
         self.n_region_nodes = n_region_nodes
-        self.n_leaf_nodes = n_leaf_nodes
+        self.n_leaf_nodes = leaf_modules[0].out_channels
         #self.region_graph = region_graph
         self.leaf_modules = leaf_modules
         self.depth = depth
@@ -99,11 +98,13 @@ class RatSPN(Module):
             raise ValueError(
                 f"Specified value for 'n_region_nodes' must be at least 1, but is {n_region_nodes}."
             )
-        if n_leaf_nodes < 1:
-            raise ValueError(f"Specified value for 'n_leaf_nodes' must be at least 1, but is {n_leaf_nodes}.")
+        if self.n_leaf_nodes < 1:
+            raise ValueError(f"Specified value for 'n_leaf_nodes' must be at least 1, but is {self.n_leaf_nodes}.")
 
         self.root_node = self.create_spn()
 
+
+    # ToDo: Optional Outerproduct or ElementwiseProduct
     def create_spn(self):
         fac_layer = Factorize(inputs=self.leaf_modules, depth=self.depth, num_repetitions=self.num_repetitions)
         depth = self.depth
@@ -123,6 +124,9 @@ class RatSPN(Module):
                 out_prod = OuterProduct(inputs=[root], num_splits=2)
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
+
+        # MixtureLayer:
+        root = Sum(inputs=root, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions, sum_dim=3)
 
         return root
 
@@ -189,9 +193,10 @@ def log_likelihood(
         dispatch_ctx=dispatch_ctx,
     )
     # sum over repetitions
-    summed_ll = (torch.logsumexp(ll, dim=-1) - torch.log(torch.tensor(rat_spn.num_repetitions, dtype=ll.dtype)))
+    # ToDo: Mixing Layer (SumLayer and set sum_dim to repetition_dim)
+    #summed_ll = (torch.logsumexp(ll, dim=-1) - torch.log(torch.tensor(rat_spn.num_repetitions, dtype=ll.dtype)))
     #summed_ll = torch.logsumexp(ll, dim=-1)
-    return summed_ll
+    return ll#summed_ll
 
 
 @dispatch  # type: ignore

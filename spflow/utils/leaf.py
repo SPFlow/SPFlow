@@ -62,7 +62,7 @@ def init_parameter(param: Tensor, event_shape: Tuple[int, ...], init: Callable) 
         return param
 
 
-def parse_leaf_args(scope, out_channels, params) -> tuple[int, int]:
+def parse_leaf_args(scope, out_channels, num_repetitions, params) -> tuple[int, int, int]:
     """
     Parse the arguments of a leaf node and return the event_shape.
 
@@ -84,7 +84,11 @@ def parse_leaf_args(scope, out_channels, params) -> tuple[int, int]:
             raise InvalidParameterCombinationError(
                 "Either out_channels or distribution parameters must be given."
             )
-        event_shape = (len(scope.query), out_channels)
+        if num_repetitions is None:
+            raise InvalidParameterCombinationError(
+                "Either num_repetitions or distribution parameters must be given."
+            )
+        event_shape = (len(scope.query), out_channels, num_repetitions)
     else:
         if out_channels is not None:
             raise InvalidParameterCombinationError(
