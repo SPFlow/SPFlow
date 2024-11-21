@@ -7,7 +7,7 @@ from spflow.utils.leaf import parse_leaf_args
 
 
 class Normal(LeafModule):
-    def __init__(self, scope: Scope, out_channels: int = None, mean: Tensor = None, std: Tensor = None):
+    def __init__(self, scope: Scope, out_channels: int = None, num_repetitions: int = None, mean: Tensor = None, std: Tensor = None):
         """
         Initialize a Normal distribution leaf module.
 
@@ -17,6 +17,6 @@ class Normal(LeafModule):
             mean (Tensor, optional): The mean parameter tensor.
             std (Tensor, optional): The standard deviation parameter tensor.
         """
-        event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[mean, std])
+        event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions, params=[mean, std])
         super().__init__(scope, out_channels=event_shape[1])
         self.distribution = D.Normal(mean=mean, std=std, event_shape=event_shape)
