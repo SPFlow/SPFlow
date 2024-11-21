@@ -30,6 +30,7 @@ class Sum(Module):
         out_channels: Optional[int] = None,
         num_repetitions: Optional[int] = None,
         weights: Optional[Tensor] = None,
+        sum_dim: Optional[int] = 1,
     ) -> None:
         """
         Create a Sum module.
@@ -59,7 +60,7 @@ class Sum(Module):
 
         # Single input, sum over in_channel dimension
         self.inputs = inputs
-        self.sum_dim = 1
+        self.sum_dim = sum_dim
         self._out_features = self.inputs.out_features
         self._in_channels_total = self.inputs.out_channels
         self._out_channels_total = out_channels
