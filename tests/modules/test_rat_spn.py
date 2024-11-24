@@ -172,7 +172,8 @@ def test_rat_spn_hist():
         n_root_nodes=1,
         n_region_nodes=10, #30
         num_repetitions=num_repetitions,#1,
-        depth=2
+        depth=2,
+        outer_product=False,
     )
     #samples = sample(rat_spn, 10000)
 
@@ -192,10 +193,11 @@ def test_rat_spn_hist():
 def test_sample():
     num_features = 7
     out_channels = 2
+    num_repertitions = 3
     n_samples = 10
     random_variables = list(range(num_features))
     scope = Scope(random_variables)
-    normal_layer = Normal(scope=scope, out_channels=out_channels)
+    normal_layer = Normal(scope=scope, out_channels=out_channels, num_repetitions=num_repertitions)
 
     fac = Factorize(inputs=[normal_layer], depth=2, num_repetitions=3)
 

@@ -16,6 +16,7 @@ class ElementwiseProduct(BaseProduct):
     def __init__(
         self,
         inputs: Union[Module, tuple[Module, Module], list[Module]],
+        num_splits: Optional[int] = None,
     ) -> None:
         r"""Initializes ``ElementwiseProduct`` object.
 
@@ -45,17 +46,26 @@ class ElementwiseProduct(BaseProduct):
         """
         super().__init__(inputs=inputs)
 
+        if len(inputs) == 1:
+            assert num_splits is not None and num_splits > 1
+
         # Check if all inputs either have equal number of out_channels or 1
         if not all(inp.out_channels in (1, self._max_out_channels) for inp in self.inputs):
             raise ValueError(
                 f"Inputs must have equal number of channels or one of them must be '1', but were {[inp.out_channels for inp in self.inputs]}"
             )
 
+        self.num_splits = num_splits
+
     @property
     def out_channels(self) -> int:
         """Returns the number of output nodes for this module."""
         # Max since one of the inputs can also only have a single output channel which is then broadcasted
         return self._max_out_channels
+
+    @property
+    def out_features(self) -> int:
+        return int(self.inputs[0].out_features // self.num_splits)
 
     def map_out_channels_to_in_channels(self, index: Tensor) -> Tensor:
         cids = []
@@ -88,15 +98,25 @@ def log_likelihood(
 
     lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx)
 
+    # ToDo: Implementation for num_splits != 2
+
     # Check if we need to expand to enable broadcasting along channels
     for i, ll in enumerate(lls):
         if ll.shape[2] == 1:
-            lls[i] = ll.expand(-1, -1, module.out_channels)
+            if ll.ndim == 4:
+                lls[i] = ll.expand(-1, -1, module.out_channels, -1)
+            else:
+                lls[i] = ll.expand(-1, -1, module.out_channels)
+
+    if len(module.inputs) == 1:  # If input is a single module, perform binary split manually
+        # TODO: Case out_features % num_splits != 0 ??
+        lls = lls[0].split(module.inputs[0].out_features // module.num_splits, dim=1)
 
     # Compute the elementwise sum of left and right split
     output = torch.sum(torch.stack(lls, dim=-1), dim=-1)
 
-    # View as [b, n, m]
-    output = output.view(output.size(0), module.out_features, module.out_channels)
+    # View as [b, n, m, r]
+    # ToDo check correctness of out_features and out_channels
+    output = output.view(output.size(0), module.out_features, module.out_channels, -1)
 
     return output
