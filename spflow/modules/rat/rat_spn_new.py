@@ -64,6 +64,8 @@ class RatSPN(Module):
             n_region_nodes: int,
             num_repetitions: int,
             depth: int,
+            outer_product: Optional[bool] = False,
+            num_splits: Optional[int] = 2,
     ) -> None:
         r"""Initializer for ``RatSPN`` object.
 
@@ -87,10 +89,11 @@ class RatSPN(Module):
         self.n_root_nodes = n_root_nodes
         self.n_region_nodes = n_region_nodes
         self.n_leaf_nodes = leaf_modules[0].out_channels
-        #self.region_graph = region_graph
         self.leaf_modules = leaf_modules
         self.depth = depth
         self.num_repetitions = num_repetitions
+        self.outer_product = outer_product
+        self.num_splits = num_splits
 
         if n_root_nodes < 1:
             raise ValueError(f"Specified value of 'n_root_nodes' must be at least 1, but is {n_root_nodes}.")
@@ -101,27 +104,34 @@ class RatSPN(Module):
         if self.n_leaf_nodes < 1:
             raise ValueError(f"Specified value for 'n_leaf_nodes' must be at least 1, but is {self.n_leaf_nodes}.")
 
+        if self.num_splits < 2:
+            raise ValueError(f"Specified value for 'num_splits' must be at least 2, but is {self.num_splits}.")
+
         self.root_node = self.create_spn()
 
 
-    # ToDo: Optional Outerproduct or ElementwiseProduct
     def create_spn(self):
+
+        if self.outer_product:
+            product_layer = OuterProduct
+        else:
+            product_layer = ElementwiseProduct
         fac_layer = Factorize(inputs=self.leaf_modules, depth=self.depth, num_repetitions=self.num_repetitions)
         depth = self.depth
         root = None
 
         for i in range(depth):
             # ToDo: Implement the case for depth = 1
-            if i == 0:
-                out_prod = OuterProduct(inputs=[fac_layer], num_splits=2)
+            if i == 0 and depth > 1:
+                out_prod = product_layer(inputs=[fac_layer], num_splits=self.num_splits)
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
             elif i == depth - 1:
-                out_prod = OuterProduct(inputs=[root], num_splits=2)
+                out_prod = product_layer(inputs=[root], num_splits=self.num_splits)
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
             else:
-                out_prod = OuterProduct(inputs=[root], num_splits=2)
+                out_prod = product_layer(inputs=[root], num_splits=self.num_splits)
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
 
@@ -192,11 +202,7 @@ def log_likelihood(
         check_support=check_support,
         dispatch_ctx=dispatch_ctx,
     )
-    # sum over repetitions
-    # ToDo: Mixing Layer (SumLayer and set sum_dim to repetition_dim)
-    #summed_ll = (torch.logsumexp(ll, dim=-1) - torch.log(torch.tensor(rat_spn.num_repetitions, dtype=ll.dtype)))
-    #summed_ll = torch.logsumexp(ll, dim=-1)
-    return ll#summed_ll
+    return ll
 
 
 @dispatch  # type: ignore
