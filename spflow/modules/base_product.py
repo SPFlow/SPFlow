@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from spflow.modules.ops import Split
 from typing import Optional, Union
 
 import torch
@@ -34,6 +35,13 @@ class BaseProduct(Module, ABC):
             ValueError: Invalid arguments.
         """
         super().__init__()
+
+        if isinstance(inputs, Split):
+            inputs = [inputs]
+            self.input_is_split = True
+        else:
+            assert len(inputs) > 1, "ElementwiseProduct requires at least two inputs"
+            self.input_is_split = False
 
         if not input:
             raise ValueError(f"'{self.__class__.__name__}' requires at least one input to be specified.")
@@ -173,15 +181,25 @@ def _get_input_log_likelihoods(
         check_support: Whether to check the support of the input module.
         dispatch_ctx: The dispatch context.
     """
-    lls = []
-    for inp in module.inputs:
-        ll = log_likelihood(
-            inp,
+
+    if module.input_is_split:
+        lls = log_likelihood(
+            module.inputs,
             data,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,
         )
-        lls.append(ll)
+
+    else:
+        lls = []
+        for inp in module.inputs:
+            ll = log_likelihood(
+                inp,
+                data,
+                check_support=check_support,
+                dispatch_ctx=dispatch_ctx,
+            )
+            lls.append(ll)
 
     return lls
 
