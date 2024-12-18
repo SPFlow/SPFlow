@@ -10,14 +10,14 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.modules.base_product import BaseProduct, _get_input_log_likelihoods
 from spflow.modules.module import Module
-from spflow.modules.ops import Split
+from spflow.modules.ops.split import Split
 
 
 class ElementwiseProduct(BaseProduct):
     def __init__(
         self,
         inputs: Union[Module, tuple[Module, Module], list[Module]],
-        num_splits: Optional[int] = None,
+        num_splits: Optional[int] = 2,
     ) -> None:
         r"""Initializes ``ElementwiseProduct`` object.
 
@@ -58,7 +58,9 @@ class ElementwiseProduct(BaseProduct):
                 f"Inputs must have equal number of channels or one of them must be '1', but were {[inp.out_channels for inp in self.inputs]}"
             )
 
-        self.num_splits = 1
+        if self.num_splits == None:
+            self.num_splits = num_splits
+
 
 
     @property
@@ -69,25 +71,32 @@ class ElementwiseProduct(BaseProduct):
 
     @property
     def out_features(self) -> int:
+        #if self.input_is_split:
+        #    return int(self.inputs[0].out_features) // self.inputs[0].num_splits
+        #else:
+        #return int(self.inputs[0].out_features)
+        if self.inputs[0].out_features == 1:
+            return 1
         return int(self.inputs[0].out_features // self.num_splits)
-        # return int(self.inputs[0].out_features // self.num_splits)
 
     def map_out_channels_to_in_channels(self, index: Tensor) -> Tensor:
+
+        # Case Elementwise product with split : [0,1,2,3,4,5] -> [0,1,2] and [3,4,5] #ToDo: other splits
         cids = []
         for inp in self.inputs:
             if inp.out_channels == 1:
-                cids.append(torch.zeros_like(index))
+                cids.append(torch.zeros_like(index).repeat((1, self.num_splits)))
             else:
-                cids.append(index)
+                cids.append(index.repeat((1, self.num_splits)))
         return torch.stack(cids, dim=-1)
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
         masks = []
         for inp in self.inputs:
             if inp.out_channels == 1:
-                masks.append(torch.full_like(mask, fill_value=True))
+                masks.append(torch.full_like(mask, fill_value=True).repeat((1, self.num_splits)))
             else:
-                masks.append(mask)
+                masks.append(mask.repeat((1, self.num_splits)))
         return torch.stack(masks, dim=-1)
 
 

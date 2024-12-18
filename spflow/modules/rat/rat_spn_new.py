@@ -32,6 +32,7 @@ import random
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
+from spflow.modules.ops.split import Split
 
 from spflow.modules.leaf.leaf_module import LeafModule
 from spflow.modules.factorize import Factorize
@@ -123,15 +124,15 @@ class RatSPN(Module):
         for i in range(depth):
             # ToDo: Implement the case for depth = 1
             if i == 0 and depth > 1:
-                out_prod = product_layer(inputs=[fac_layer], num_splits=self.num_splits)
+                out_prod = product_layer(inputs=Split(inputs=fac_layer, dim=1, num_splits=self.num_splits))
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
             elif i == depth - 1:
-                out_prod = product_layer(inputs=[root], num_splits=self.num_splits)
+                out_prod = product_layer(Split(inputs=root, dim=1, num_splits=self.num_splits))
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
             else:
-                out_prod = product_layer(inputs=[root], num_splits=self.num_splits)
+                out_prod = product_layer(Split(inputs=root, dim=1, num_splits=self.num_splits))
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
 
@@ -218,8 +219,35 @@ def sample(
      dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
      sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
+    # call samples on specific repetition
+    # ToDo: Maybe choice of repetition here
+
+     mixture_layer = rat_spn.root_node
+
+     logits = mixture_layer.logits.unsqueeze(0).expand(
+            sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
+
+     if (
+             "log_likelihood" in dispatch_ctx.cache
+             and dispatch_ctx.cache["log_likelihood"][mixture_layer.inputs] is not None
+     ):
+         input_lls = dispatch_ctx.cache["log_likelihood"][mixture_layer.inputs]
+
+         # Compute log posterior by reweighing logits with input lls
+         log_prior = logits
+         log_posterior = log_prior + input_lls.unsqueeze(3)
+         log_posterior = log_posterior.log_softmax(dim=4)
+         logits = log_posterior
+
+     if is_mpe:
+         # Take the argmax of the logits to obtain the most probable index
+         sampling_ctx.repetition_idx = torch.argmax(logits, dim=-1)
+     else:
+         # Sample from categorical distribution defined by weights to obtain indices into input channels
+         sampling_ctx.repetition_idx = torch.distributions.Categorical(logits=logits).sample()
+
      return sample(
-         rat_spn.root_node,
+         rat_spn.root_node.inputs,
          data,
          check_support=check_support,
          dispatch_ctx=dispatch_ctx,

@@ -62,6 +62,8 @@ class Sum(Module):
         self.inputs = inputs
         self.sum_dim = sum_dim
         self._out_features = self.inputs.out_features
+
+
         self._in_channels_total = self.inputs.out_channels
         self._out_channels_total = out_channels
         self.num_repetitions = num_repetitions
@@ -208,9 +210,28 @@ def sample(
 
     # Index into the correct weight channels given by parent module
     # (stay in logits space since Categorical distribution accepts logits directly)
-    logits = module.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
+
+    if sampling_ctx.repetition_idx is not None:
+        """
+        if module.sum_dim != 1:
+            dims = list(range(module.logits.ndimension()))  # [0, 1, 2, 3]
+            dims[1], dims[module.sum_dim] = dims[module.sum_dim], dims[1]  # Swap dim 1 and sum_dim
+
+            # Apply the permutation
+            logits = module.logits.permute(*dims)
+            # drop repetition dimension as it became the in_channel dimension (e.g. case of MixtureLayer)
+            logits = logits.unsqueeze(0)[...,0].expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
+        else:
+            logits = module.logits.unsqueeze(0)[...,sampling_ctx.repetition_idx].expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
+        """
+        logits = module.logits.unsqueeze(0)[..., sampling_ctx.repetition_idx].expand(
+            sampling_ctx.channel_index.shape[0], -1, -1, -1)
+    else:
+        logits = module.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
     idxs = sampling_ctx.channel_index[..., None, None]
-    idxs = idxs.expand(-1, -1, module._in_channels_total, -1)
+    in_channels_total = logits.shape[2]
+    #idxs = idxs.expand(-1, -1, module._in_channels_total, -1)
+    idxs = idxs.expand(-1, -1, in_channels_total, -1)
     logits = logits.gather(dim=3, index=idxs).squeeze(3)
 
     if (
@@ -221,7 +242,7 @@ def sample(
 
         # Compute log posterior by reweighing logits with input lls
         log_prior = logits
-        log_posterior = log_prior + input_lls
+        log_posterior = log_prior + input_lls[..., sampling_ctx.repetition_idx]
         log_posterior = log_posterior.log_softmax(dim=2)
         logits = log_posterior
 
@@ -237,6 +258,7 @@ def sample(
     sample(
         module.inputs,
         data,
+        is_mpe=is_mpe,
         check_support=check_support,
         dispatch_ctx=dispatch_ctx,
         sampling_ctx=sampling_ctx,

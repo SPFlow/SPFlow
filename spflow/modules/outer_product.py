@@ -91,10 +91,6 @@ def log_likelihood(
 
     lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx)
 
-    if len(module.inputs) == 1:  # If input is a single module, perform binary split manually
-        # TODO: padding if module.inputs[0].out_features % module.num_splits != 0
-        lls = lls[0].split(module.inputs[0].out_features // module.num_splits, dim=1)
-
     # Compute the outer sum of pairwise log-likelihoods
     # [b, n, m1] + [b, n, m2] -> [b, n, m1, 1] + [b, n, 1, m2]  -> [b, n, m1, m2] -> [b, n, 1, m1*m2] ...
     output = lls[0].unsqueeze(2)
