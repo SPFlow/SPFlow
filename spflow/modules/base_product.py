@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from spflow.modules.ops import Split
+from spflow.modules.ops.split import Split
 from typing import Optional, Union
 
 import torch
@@ -39,9 +39,15 @@ class BaseProduct(Module, ABC):
         if isinstance(inputs, Split):
             inputs = [inputs]
             self.input_is_split = True
+            self.num_splits = inputs[0].num_splits
         else:
-            assert len(inputs) > 1, "ElementwiseProduct requires at least two inputs"
+            # ToDo: Find a solution for Factorize module
+            #assert len(inputs) > 1, "ElementwiseProduct requires at least two inputs"
             self.input_is_split = False
+            if inputs[0].out_features==1:
+                self.num_splits = 1
+            else:
+                self.num_splits = None
 
         if not input:
             raise ValueError(f"'{self.__class__.__name__}' requires at least one input to be specified.")
@@ -49,7 +55,6 @@ class BaseProduct(Module, ABC):
         self.inputs = nn.ModuleList(inputs)
 
         # Check if all inputs have equal number of features
-        # TODO: This should be relaxed to allow broadcasting
 
         if not all(inp.out_features == self.inputs[0].out_features for inp in self.inputs):
             raise ValueError(
@@ -141,7 +146,7 @@ def sample(
 
     # Map to (i, j) to index left/right inputs
     channel_index = module.map_out_channels_to_in_channels(sampling_ctx.channel_index)
-    mask = module.map_out_mask_to_in_mask(sampling_ctx.mask)  # TODO: is this correct?
+    mask = module.map_out_mask_to_in_mask(sampling_ctx.mask)
 
     cid_per_module = []
     mask_per_module = []
@@ -184,7 +189,7 @@ def _get_input_log_likelihoods(
 
     if module.input_is_split:
         lls = log_likelihood(
-            module.inputs,
+            module.inputs[0],
             data,
             check_support=check_support,
             dispatch_ctx=dispatch_ctx,

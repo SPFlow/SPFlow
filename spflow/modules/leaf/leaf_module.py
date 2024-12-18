@@ -156,7 +156,10 @@ def log_likelihood(
     # ----- log probabilities -----
 
     # Unsqueeze scope_data to make space for num_nodes and repetition dimension
-    data = data.unsqueeze(2).unsqueeze(-1)
+    data = data.unsqueeze(2)
+
+    if len(leaf.distribution.event_shape) > 2:
+        data = data.unsqueeze(-1)
 
     if check_support:
         # create mask based on distribution's support
@@ -269,6 +272,7 @@ def sample(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
+
     out_of_scope = list(filter(lambda x: x not in module.scope.query, range(data.shape[1])))
     marg_mask = torch.isnan(data)
     marg_mask[:, out_of_scope] = False
@@ -286,11 +290,17 @@ def sample(
         # Get mode of distribution as MPE
         samples = module.distribution.mode()
 
+        if sampling_ctx.repetition_idx is not None:
+            samples = samples[..., sampling_ctx.repetition_idx]
+
         # Add batch dimension
         samples = samples.unsqueeze(0).repeat(n_samples, *([1] * (samples.dim())))
     else:
         # Sample from distribution
         samples = module.distribution.sample(n_samples=n_samples)
+
+        if sampling_ctx.repetition_idx is not None:
+            samples = samples[..., sampling_ctx.repetition_idx]
 
     assert samples.shape[0] == sampling_ctx.channel_index[instance_mask].shape[0]
 

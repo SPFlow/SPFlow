@@ -46,19 +46,7 @@ class Factorize(BaseProduct):
             ValueError: Invalid arguments.
         """
         super().__init__(inputs=inputs)
-        """
-        if len(inputs) == 1:
-            assert num_splits is not None and num_splits > 1
 
-        self.num_splits = num_splits
-
-        # Store unraveled channel indices
-        unraveled_channel_indices = list(product(*[list(range(self._max_out_channels)) for _ in self.inputs]))
-        self.register_buffer(
-            name="unraveled_channel_indices",
-            tensor=torch.tensor(unraveled_channel_indices),
-        )
-        """
         self.depth = depth
         self.num_repetitions = num_repetitions
         self.indices = self._factorize(depth, num_repetitions) # shape: [num_features, num_groups, num_repetitions] other formulation: [num_features_in, num_features_out, num_repetitions]
@@ -116,11 +104,17 @@ def log_likelihood(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx) # lls[0] shape: [batch_size, num_features, num_channel]
+    #lls = log_likelihood(
+    #    module.inputs[0],
+    #    data,
+    #    check_support=check_support,
+    #    dispatch_ctx=dispatch_ctx,
+    #)
     indices = module.indices # shape: [num_features, num_groups, num_repetitions] other formulation: [num_features_in, num_features_out, num_repetitions]
 
 
     output = torch.einsum('fgr,bfcr->bgcr', indices.float(), lls[0]) # shape: [batch_size, num_groups, num_channel, num_repetitions]
-
+    #output = torch.einsum('fgr,bfcr->bgcr', indices.float(), lls) # shape: [batch_size, num_groups, num_channel, num_repetitions]
 
     return output
 
@@ -137,8 +131,11 @@ def sample(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    mask = sampling_ctx.mask.expand(data.shape[0], module.inputs[0].out_features)
-    channel_index = sampling_ctx.channel_index.expand(data.shape[0], module.inputs[0].out_features)
+    channel_index = torch.einsum('ij,kj->ikj',sampling_ctx.channel_index, module.indices[...,sampling_ctx.repetition_idx]).sum(dim=2)
+    mask = torch.einsum('ij,kj->ikj',sampling_ctx.mask, module.indices[...,sampling_ctx.repetition_idx]).sum(dim=2).bool()
+
+    #mask = sampling_ctx.mask.expand(data.shape[0], module.inputs[0].out_features)
+    #channel_index = sampling_ctx.channel_index.expand(data.shape[0], module.inputs[0].out_features)
     sampling_ctx.update(channel_index=channel_index, mask=mask)
 
     sample(
@@ -149,8 +146,8 @@ def sample(
         dispatch_ctx=dispatch_ctx,
         sampling_ctx=sampling_ctx,
     )
-    # ToDo: generalize for repepitions / adapd sampling context
-    data = (data.unsqueeze(-1)* module.indices[...,0]).sum(-1)
+    # ToDo: generalize for repepitions / adapdt sampling context
+    #data = (data.unsqueeze(-2)* module.indices.unsqueeze(0)).sum(-2)
     return data
 
     """

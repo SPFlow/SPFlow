@@ -85,10 +85,9 @@ def parse_leaf_args(scope, out_channels, num_repetitions, params) -> tuple[int, 
                 "Either out_channels or distribution parameters must be given."
             )
         if num_repetitions is None:
-            raise InvalidParameterCombinationError(
-                "Either num_repetitions or distribution parameters must be given."
-            )
-        event_shape = (len(scope.query), out_channels, num_repetitions)
+            event_shape = (len(scope.query), out_channels)
+        else:
+            event_shape = (len(scope.query), out_channels, num_repetitions)
     else:
         if out_channels is not None:
             raise InvalidParameterCombinationError(
