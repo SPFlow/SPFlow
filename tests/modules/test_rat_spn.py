@@ -29,6 +29,11 @@ from spflow.modules import ElementwiseProduct
 from spflow.modules.factorize import Factorize
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 from spflow.learn import train_gradient_descent
+from spflow.meta.dispatch import (
+    SamplingContext,
+    dispatch,
+    init_default_dispatch_context,
+)
 
 
 from sklearn.datasets import make_moons, make_blobs
@@ -102,13 +107,32 @@ def make_dataset(num_features_continuous, num_features_discrete, num_clusters, n
     data = data[torch.randperm(data.shape[0])]
     return data#, domains
 
-def visualize(data, spn):
+def visualize(data, spn, samples):
     #samples = sample(spn, 10000)
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(12, 10))
+
+    clip_min = -10  # Replace with desired minimum value
+    clip_max = 10  # Replace with desired maximum value
+    clipping_range = (clip_min, clip_max)
+
     for i, ax in enumerate([ax1, ax2, ax3, ax4]):
 
-        rng = None
+        rng = clipping_range
         bins = 100
+
+        # samples
+
+        width_s = (samples[:, i].max() - samples[:, i].min()) / bins
+        hist = torch.histogram(samples[:, i], bins=bins, density=True, range=rng)
+        bin_edges = hist.bin_edges
+        density = hist.hist
+
+        # Center bars on value (e.g. bar for value 0 should have its center at value 0)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        ax.bar(bin_centers, density, width=width_s * 0.8, alpha=0.5, label="Samples")
+
+
+        # data
 
         #width = (data[:, :, i].max() - data[:, :, i].min()) / bins
         width = (data[:, i].max() - data[:, i].min()) / bins
@@ -116,15 +140,17 @@ def visualize(data, spn):
         hist = torch.histogram(data[:, i], bins=bins, density=True, range=rng)
         bin_edges = hist.bin_edges
         density = hist.hist
+        
 
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
         ax.bar(bin_centers, density, width=width * 0.8, alpha=0.5, label="Data")
+
 
         dummy = torch.full((bin_centers.shape[0], data.shape[1]), np.nan)
         dummy[:, i] = bin_centers
         with torch.no_grad():
             log_probs = spn(dummy)
-        probs = log_probs[:,:,0].exp().squeeze(-1).numpy() # choose a channel
+        probs = log_probs[:,:,0,0].exp().squeeze(-1).numpy() # choose a channel and repetition
         ax.plot(bin_centers, probs, linewidth=2, label="Likelihood")
 
 
@@ -146,8 +172,9 @@ def test_rat_spn_hist():
     num_features = 4
     out_channels = 10#10
     num_repetitions = 10
+    n_samples = 10000
 
-    data = make_dataset(num_features, 0, 3, 10000).squeeze(-1)
+    data = make_dataset(num_features, 0, 3, n_samples).squeeze(-1)
 
 
     dataset = torch.utils.data.TensorDataset(data)
@@ -175,7 +202,6 @@ def test_rat_spn_hist():
         depth=2,
         outer_product=False,
     )
-    #samples = sample(rat_spn, 10000)
 
     print("Time to build SPN: ", time.time() - start_time)
 
@@ -184,28 +210,41 @@ def test_rat_spn_hist():
     for name, ch in rat_spn.root_node.named_children():
         print("Number of parameters:", name, sum(p.numel() for p in ch.parameters() if p.requires_grad))
 
-    train_gradient_descent(rat_spn, dataloader, lr=0.5, epochs=5, verbose=True) #0.2
+    #train_gradient_descent(rat_spn, dataloader, lr=0.5, epochs=5, verbose=True)
 
     rat_spn.eval()
+    dispatch_ctx = init_default_dispatch_context()
+    ll = log_likelihood(rat_spn, data, dispatch_ctx=dispatch_ctx)
 
-    visualize(data, rat_spn)
+    n_samples = data.shape[0]
+    for i in range(10):
+        sample_data = torch.full((n_samples, num_features), torch.nan)
+        channel_index = torch.full((n_samples, rat_spn.root_node.out_features), fill_value=0)
+        mask = torch.full((n_samples, rat_spn.root_node.out_features), True, dtype=torch.bool)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_idx=i)
+        samples = sample(rat_spn, sample_data, is_mpe=False, sampling_ctx=sampling_ctx, dispatch_ctx=dispatch_ctx)
+
+        visualize(data, rat_spn, samples)
 
 def test_sample():
-    num_features = 7
+    num_features = 4
     out_channels = 2
-    num_repertitions = 3
+    num_repetitions = 3
     n_samples = 10
     random_variables = list(range(num_features))
     scope = Scope(random_variables)
-    normal_layer = Normal(scope=scope, out_channels=out_channels, num_repetitions=num_repertitions)
+    normal_layer = Normal(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
 
     fac = Factorize(inputs=[normal_layer], depth=2, num_repetitions=3)
+    data = make_dataset(num_features, 0, 3, 10000).squeeze(-1)
+
+    visualize(data, fac)
 
     for i in range(fac.out_channels):
         data = torch.full((n_samples, num_features), torch.nan)
         channel_index = torch.full((n_samples, num_features), fill_value=i)
         mask = torch.full((n_samples, num_features), True, dtype=torch.bool)
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_idx=0)
         samples = sample(fac, data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, fac.scope.query]
