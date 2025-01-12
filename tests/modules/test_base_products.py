@@ -9,6 +9,7 @@ import pytest
 from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
 from spflow.meta.data import Scope
 from spflow.modules.outer_product import OuterProduct
+from spflow.modules.factorize import Factorize
 from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_data, make_leaf

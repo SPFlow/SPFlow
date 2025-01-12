@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from spflow.modules.ops.split import Split
+from spflow.modules.ops.split_halves import Split
 from typing import Optional, Union
 
 import torch

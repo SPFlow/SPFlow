@@ -15,6 +15,7 @@ from spflow.utils.leaf import apply_nan_strategy
 
 
 class LeafModule(Module, ABC):
+
     def __init__(self, scope: Union[Scope, list[int]], out_channels: int = None):
         r"""Initializes ``Normal`` leaf node.
 
@@ -55,6 +56,10 @@ class LeafModule(Module, ABC):
             new_query.append(self.scope.query[i])
         new_scope = Scope(new_query, self.scope.evidence)
         return self.__class__(scope=new_scope, out_channels=self.out_channels)
+
+    @property
+    def feature_to_scope(self) -> list[Scope]:
+        return [Scope(i) for i in self.scope.query]
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -151,7 +156,7 @@ def log_likelihood(
     # If there are any marg_ids, set them to 0.0 to ensure that distribution.log_prob call is succesfull and doesn't throw errors
     # due to NaNs
     if marg_mask.any():
-        data[marg_mask] = 0.0  # ToDo in-support value
+        data[marg_mask] = leaf.distribution._supported_value  # ToDo in-support value / support value in distribution
 
     # ----- log probabilities -----
 
@@ -288,19 +293,22 @@ def sample(
 
     if is_mpe:
         # Get mode of distribution as MPE
-        samples = module.distribution.mode()
-
+        samples = module.distribution.mode().unsqueeze(0).repeat(n_samples,1,1,1).detach()
         if sampling_ctx.repetition_idx is not None:
-            samples = samples[..., sampling_ctx.repetition_idx]
+            #samples = samples[..., sampling_ctx.repetition_idx]
+            indices = sampling_ctx.repetition_idx.expand(-1, samples.shape[1], samples.shape[2], -1)
+            samples = torch.gather(samples, dim=-1, index=indices).squeeze(-1)
 
         # Add batch dimension
-        samples = samples.unsqueeze(0).repeat(n_samples, *([1] * (samples.dim())))
+        #samples = samples.unsqueeze(0).repeat(n_samples, *([1] * (samples.dim())))
     else:
         # Sample from distribution
         samples = module.distribution.sample(n_samples=n_samples)
 
         if sampling_ctx.repetition_idx is not None:
-            samples = samples[..., sampling_ctx.repetition_idx]
+            indices = sampling_ctx.repetition_idx.expand(-1,samples.shape[1], samples.shape[2],-1)
+            samples = torch.gather(samples,dim=-1, index=indices).squeeze(-1)
+            #samples = samples[..., sampling_ctx.repetition_idx]
 
     assert samples.shape[0] == sampling_ctx.channel_index[instance_mask].shape[0]
 
