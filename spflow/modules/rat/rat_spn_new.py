@@ -26,13 +26,14 @@ from spflow.modules import Product
 from spflow.modules import Sum
 from spflow.modules import OuterProduct
 from spflow.modules import ElementwiseProduct
+from spflow.modules import ElementwiseSum
 from spflow.modules.ops.cat import Cat
 import numpy as np
 import random
 from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
-from spflow.modules.ops.split import Split
+from spflow.modules.ops.split_halves import SplitHalves
 
 from spflow.modules.leaf.leaf_module import LeafModule
 from spflow.modules.factorize import Factorize
@@ -122,22 +123,21 @@ class RatSPN(Module):
         root = None
 
         for i in range(depth):
-            # ToDo: Implement the case for depth = 1
             if i == 0 and depth > 1:
-                out_prod = product_layer(inputs=Split(inputs=fac_layer, dim=1, num_splits=self.num_splits))
+                out_prod = product_layer(inputs=SplitHalves(inputs=fac_layer, dim=1, num_splits=self.num_splits))
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
             elif i == depth - 1:
-                out_prod = product_layer(Split(inputs=root, dim=1, num_splits=self.num_splits))
+                out_prod = product_layer(SplitHalves(inputs=root, dim=1, num_splits=self.num_splits))
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
             else:
-                out_prod = product_layer(Split(inputs=root, dim=1, num_splits=self.num_splits))
+                out_prod = product_layer(SplitHalves(inputs=root, dim=1, num_splits=self.num_splits))
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
 
         # MixtureLayer:
-        root = Sum(inputs=root, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions, sum_dim=3)
+        root = Sum(inputs=root, out_channels=1, num_repetitions=self.num_repetitions, sum_dim=3)
 
         return root
 
@@ -146,6 +146,11 @@ class RatSPN(Module):
     def n_out(self) -> int:
         """Returns the number of outputs for this module. Returns one since RAT-SPNs always have a single output."""
         return 1
+
+    @property
+    def feature_to_scope(self) -> list[Scope]:
+        """Returns the mapping from features to scopes."""
+        return self.root_node.feature_to_scope
 
     @property
     def scopes_out(self) -> list[Scope]:
@@ -249,6 +254,7 @@ def sample(
      return sample(
          rat_spn.root_node.inputs,
          data,
+         is_mpe=is_mpe,
          check_support=check_support,
          dispatch_ctx=dispatch_ctx,
          sampling_ctx=sampling_ctx,

@@ -107,6 +107,15 @@ class Scope:
         """
         return len(self.query)
 
+    def remove_from_query(self, rv: int) -> None:
+        """Removes a random variable from the query of the scope.
+
+        Args:
+            rv:
+                Non-negative integer representing the random variable to remove.
+        """
+        self.query.remove(rv)
+
     def equal_query(self, other: "Scope") -> bool:
         """Checks if the query of the scope is identical to that of another.
 
@@ -183,6 +192,26 @@ class Scope:
         joint_evidence = list(set(self.evidence).union(other.evidence))
 
         return Scope(joint_query, joint_evidence)
+
+    @staticmethod
+    def join_all(scopes: Iterable["Scope"]) -> "Scope":
+        """Computes the joint scope of the scope and a sequence of scopes.
+
+        The union of multiple scopes results in the union of the queries and evidences, respectively.
+
+        Args:
+            scopes:
+                Iterable of ``Scope`` objects to compute the union with.
+
+        Returns:
+            ``Scope`` object representing the union of all scopes.
+        """
+        joint_scope = Scope()
+
+        for scope in scopes:
+            joint_scope = joint_scope.join(scope)
+
+        return joint_scope
 
     @staticmethod
     def all_pairwise_disjoint(scopes: Iterable["Scope"]) -> bool:

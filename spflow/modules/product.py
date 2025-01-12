@@ -3,6 +3,7 @@ from typing import Optional, Union
 import torch
 from torch import Tensor
 
+from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -13,6 +14,8 @@ from spflow.modules.module import Module
 
 
 class Product(Module):
+
+
     def __init__(self, inputs: Module) -> None:
         super().__init__()
         self.inputs = inputs
@@ -27,6 +30,10 @@ class Product(Module):
     @property
     def out_features(self) -> int:
         return 1
+
+    @property
+    def feature_to_scope(self) -> list[Scope]:
+        return [Scope.join_all(self.inputs.feature_to_scope)]
 
 
 @dispatch(memoize=True)  # type: ignore

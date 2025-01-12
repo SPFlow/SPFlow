@@ -9,6 +9,8 @@ from spflow.utils.leaf import init_parameter
 
 
 class Normal(Distribution):
+
+
     def __init__(self, mean: Tensor = None, std: Tensor = None, event_shape: tuple[int, ...] = None):
         r"""Initializes ``Normal`` leaf node.
 
@@ -49,6 +51,10 @@ class Normal(Distribution):
 
     def mode(self) -> Tensor:
         return self.mean
+
+    @property
+    def _supported_value(self):
+        return 0.0
 
     @property
     def distribution(self) -> torch.distributions.Distribution:
