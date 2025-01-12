@@ -6,6 +6,7 @@ import torch
 from collections.abc import Callable
 
 from torch import Tensor
+import torch.nn as nn
 
 from spflow import log_likelihood
 from spflow.modules.module import Module
@@ -28,16 +29,31 @@ def negative_log_likelihood_loss(model: Module, data: Tensor) -> torch.Tensor:
     """
     return -1 * log_likelihood(model, data).sum()
 
+def nll_loss(ll: Tensor, target:Tensor) -> torch.Tensor:
+    """
+    Compute the cross entropy loss of a model given the data.
+
+    Args:
+        model: Model to evaluate.
+        data: Data to evaluate the model on.
+
+    Returns:
+        Cross entropy loss.
+    """
+    return nn.NLLLoss()(ll.squeeze(1), target)
+
 
 def train_gradient_descent(
     model: Module,
     dataloader: torch.utils.data.DataLoader,
     epochs: int = -1,
     verbose: bool = False,
+    is_classification: bool = False,
     optimizer: Optional[torch.optim.Optimizer] = None,
     scheduler: Optional[torch.optim.lr_scheduler] = None,
     lr: float = 1e-3,
     loss_fn: Callable[[Module, Tensor], Tensor] = negative_log_likelihood_loss,
+    validation_dataloader: torch.utils.data.DataLoader = None,
     callback_batch: Optional[Callable[[Tensor, int], None]] = None,
     callback_epoch: Optional[Callable[[list[Tensor], int], None]] = None,
 ):
@@ -62,18 +78,33 @@ def train_gradient_descent(
     if scheduler is None:
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[int(epochs * 0.5), int(epochs * 0.75)],
                                                          gamma=0.1, verbose=True)
+    if is_classification:
+        loss_fn = nll_loss
 
     steps = 0
     for epoch in range(epochs):
         # Collect losses for each epoch
+
+        # counter for accuracy
+        correct = 0
+        total = 0
+
         start_time = time.time()
         losses_epoch = []
-        for (data,) in dataloader:
+        for (data, y) in dataloader:
             # Reset gradients
             optimizer.zero_grad()
 
             # Compute negative log likelihood
-            loss = loss_fn(model, data)
+            if is_classification:
+                ll = log_likelihood(model, data)
+                loss = loss_fn(ll, y)
+                predicted = torch.argmax(ll, dim=-1).squeeze()
+
+                total += y.size(0)
+                correct += (predicted == y).sum().item()
+            else:
+                loss = loss_fn(model, data)
 
             # Collect loss
             losses_epoch.append(loss)
@@ -94,6 +125,8 @@ def train_gradient_descent(
         scheduler.step()
         #print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()/dataloader.batch_size}")
         print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()}")
+        if is_classification:
+            print(f"Accuracy: {100 * correct / total}")
 
         # Call callback function after each epoch
         if callback_epoch is not None:
@@ -101,3 +134,30 @@ def train_gradient_descent(
 
         if verbose:
             logger.info(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()}")
+
+        if validation_dataloader is not None and epoch % 10 == 0:
+            model.eval()
+            total_val = 0
+            correct_val = 0
+            with torch.no_grad():
+                for (data, y) in validation_dataloader:
+                    if is_classification:
+                        ll = log_likelihood(model, data)
+                        val_loss = loss_fn(ll, y)
+                        predicted = torch.argmax(ll, dim=-1).squeeze()
+
+                        total_val += y.size(0)
+                        correct_val += (predicted == y).sum().item()
+                    else:
+                        val_loss = loss_fn(model, data)
+
+                    # Count global steps
+                    steps += 1
+
+                    # Call callback function after each batch
+                    if callback_batch is not None:
+                        callback_batch(val_loss, steps)
+            print(f"Validation Loss: {val_loss.item()}")
+            if is_classification:
+                print(f"Validation Accuracy: {100 * correct_val / total_val}")
+            model.train()

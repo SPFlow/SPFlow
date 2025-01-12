@@ -3,6 +3,7 @@ from typing import Optional, Union
 import torch
 from torch import Tensor
 
+from spflow.meta.data import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -14,6 +15,8 @@ from spflow.modules.ops.split import Split
 
 
 class ElementwiseProduct(BaseProduct):
+
+
     def __init__(
         self,
         inputs: Union[Module, tuple[Module, Module], list[Module]],
@@ -78,6 +81,21 @@ class ElementwiseProduct(BaseProduct):
         if self.inputs[0].out_features == 1:
             return 1
         return int(self.inputs[0].out_features // self.num_splits)
+
+    @property
+    def feature_to_scope(self) -> list[Scope]:
+        if isinstance(self.inputs, Split):
+            scope_lists = self.inputs.feature_to_scope
+        else:
+            scope_lists = [module.feature_to_scope for module in self.inputs]
+
+        feature_to_scope = []
+        # Group elements by index
+        grouped_scopes = list(zip(*scope_lists))
+        for scopes in grouped_scopes:
+            feature_to_scope.append(Scope.join_all(scopes))
+        return feature_to_scope
+
 
     def map_out_channels_to_in_channels(self, index: Tensor) -> Tensor:
 

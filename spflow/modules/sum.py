@@ -24,6 +24,8 @@ class Sum(Module):
     The sum module can be used to sum over the channel dimension of a single input or over the stacked inputs.
     """
 
+
+
     def __init__(
         self,
         inputs: Module,
@@ -72,6 +74,7 @@ class Sum(Module):
             self.weights_shape = (self._out_features, self._in_channels_total, self._out_channels_total, self.num_repetitions)
         else:
             self.weights_shape = (self._out_features, self._in_channels_total, self._out_channels_total)
+
         self.scope = self.inputs.scope
         self.num_repetitions = num_repetitions
 
@@ -91,6 +94,10 @@ class Sum(Module):
 
         # Initialize weights (which sets self.logits under the hood accordingly)
         self.weights = weights
+
+    @property
+    def feature_to_scope(self) -> list[Scope]:
+        return self.inputs.feature_to_scope
 
     @property
     def out_features(self) -> int:
@@ -178,11 +185,20 @@ def marginalize(
         # marginalize input modules
         marg_input = marginalize(module.inputs, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
+
+
         # if marginalized input is not None
         if marg_input:
-            indices = [module.scope.query.index(el) for el in list(mutual_rvs)]
-            mask = torch.ones_like(torch.tensor(module_scope.query), dtype=torch.bool)
-            mask[indices] = False
+            feature_to_scope = module.inputs.feature_to_scope
+            # remove mutual_rvs from feature_to_scope list
+            for rv in mutual_rvs:
+                for idx, scope in enumerate(feature_to_scope):
+                    if rv in scope:
+                        feature_to_scope[idx] = scope.remove_from_query(rv)
+
+            # construct mask with empty scopes
+            mask = [scope.isempty() for scope in feature_to_scope]
+
             module_weights = module_weights[mask]
 
     else:
@@ -224,8 +240,23 @@ def sample(
         else:
             logits = module.logits.unsqueeze(0)[...,sampling_ctx.repetition_idx].expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
         """
-        logits = module.logits.unsqueeze(0)[..., sampling_ctx.repetition_idx].expand(
-            sampling_ctx.channel_index.shape[0], -1, -1, -1)
+        #logits = module.logits.unsqueeze(0)[..., sampling_ctx.repetition_idx].expand(
+        #    sampling_ctx.channel_index.shape[0], -1, -1, -1)
+
+        ##########################################
+
+        logits = module.logits.unsqueeze(0).expand(
+            sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
+
+        indices = sampling_ctx.repetition_idx  # Shape (30000, 1, 1)
+
+        # Use gather to select the correct repetition
+        # Repeat indices to match the target dimension for gathering
+        in_channels_total = logits.shape[2]
+        indices = indices.unsqueeze(-1).expand(-1,logits.shape[1],in_channels_total, logits.shape[3],-1)  # Shape (30000, 1, 10, 1)
+        logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
+        #########################
+
     else:
         logits = module.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
     idxs = sampling_ctx.channel_index[..., None, None]
@@ -240,11 +271,19 @@ def sample(
     ):
         input_lls = dispatch_ctx.cache["log_likelihood"][module.inputs]
 
-        # Compute log posterior by reweighing logits with input lls
-        log_prior = logits
-        log_posterior = log_prior + input_lls[..., sampling_ctx.repetition_idx]
-        log_posterior = log_posterior.log_softmax(dim=2)
-        logits = log_posterior
+        if sampling_ctx.repetition_idx is not None:
+            indices = sampling_ctx.repetition_idx.expand(-1, input_lls.shape[1], input_lls.shape[2],-1)
+            input_lls = torch.gather(input_lls, dim=-1, index=indices).squeeze(-1)
+            log_prior = logits
+            log_posterior = log_prior + input_lls#[..., sampling_ctx.repetition_idx]
+            log_posterior = log_posterior.log_softmax(dim=2)
+            logits = log_posterior
+        else:
+            log_prior = logits
+            log_posterior = log_prior + input_lls
+            log_posterior = log_posterior.log_softmax(dim=2)
+            logits = log_posterior
+
 
     # Sample from categorical distribution defined by weights to obtain indices into input channels
     if is_mpe:
@@ -284,21 +323,23 @@ def log_likelihood(
         dispatch_ctx=dispatch_ctx,
     )
 
-    ll = ll.unsqueeze(3)  # shape: (B, F, IC, 1)
+    if module.sum_dim == 3:
+        log_weights = module.log_weights.squeeze(2).unsqueeze(0) # shape: (1, F, IC, R)
+        weighted_lls = ll + log_weights # shape: (B, F, input_OC, R) + (1, F, IC, R) = (B, F, OC, R)
+        output = torch.logsumexp(weighted_lls, dim=-1) # shape: (B, F, OC)
+        return output
+
+
+
+    ll = ll.unsqueeze(3)  # shape: (B, F, input_OC, 1)
 
     log_weights = module.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC)
-
-    #if log_weights.ndim == 5 and log_weights.shape[1] == 1:
-    #    log_weights = log_weights - torch.log(torch.tensor(10))
-
 
     # Weighted log-likelihoods
     weighted_lls = ll + log_weights  # shape: (B, F, IC, OC)
 
     # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
-    output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1)  # shape: (B, F, OC)
-
-    #output = output.view(data.shape[0], module.out_features, module.out_channels)
+    output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1).squeeze(-1)  # shape: (B, F, OC)
 
     return output
 
