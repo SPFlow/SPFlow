@@ -1,5 +1,5 @@
 from typing import Optional, Union, Callable, Optional
-
+from abc import abstractmethod
 import torch
 from torch import Tensor, nn
 
@@ -13,9 +13,10 @@ from spflow.meta.dispatch import (
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.modules.module import Module
 
-
+# abstract split module
 class Split(Module):
-    def __init__(self, inputs: Module, dim: int = 1, num_splits: Optional[int] = 2, split_func: Optional[Callable[[torch.Tensor], list[torch.Tensor]]] = None):
+
+    def __init__(self, inputs: Module, dim: int = 1, num_splits: Optional[int] = 2):
         """
         Split a single module along a given dimension.
 
@@ -28,46 +29,25 @@ class Split(Module):
 
         self.dim = dim
         self.num_splits = num_splits
-        self.split_func = split_func
-
 
     @property
     def out_features(self) -> int:
-        #if self.dim == 1:
+        # if self.dim == 1:
         #    return self.inputs[0].out_features // self.num_splits
-        #else:
+        # else:
         return self.inputs[0].out_features
 
     @property
     def out_channels(self) -> int:
-        #if self.dim == 2:
+        # if self.dim == 2:
         #    return self.inputs[0].out_channels // self.num_splits
-        #else:
+        # else:
         return self.inputs[0].out_channels
 
-    def extra_repr(self) -> str:
-        return f"{super().extra_repr()}, dim={self.dim}"
-
-
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-    module: Split,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> list[Tensor]:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-
-    # get log likelihoods for all inputs
-    lls = log_likelihood(module.inputs[0], data, check_support, dispatch_ctx)
-    if module.split_func is not None:
-        lls_split = module.split_func(lls)
-    else:
-        lls_split = lls.split(module.inputs[0].out_features // module.num_splits, dim=module.dim)
-
-    return lls_split
-
+    @property
+    @abstractmethod
+    def feature_to_scope(self) -> list[Scope]:
+        pass
 
 @dispatch  # type: ignore
 def sample(
@@ -97,7 +77,6 @@ def sample(
     )
     return data
 
-
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
     module: Split,
@@ -107,4 +86,29 @@ def marginalize(
 ) -> Union[None, Module]:
     # Initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    raise NotImplementedError
+
+    # compute module scope (same for all outputs)
+    module_scope = module.scope
+
+    mutual_rvs = set(module_scope.query).intersection(set(marg_rvs))
+
+    # Node scope is only being partially marginalized
+    if mutual_rvs:
+        # marginalize child modules
+
+        marg_child_module = marginalize(module.inputs[0], marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+
+            # if marginalized child is not None
+        if marg_child_module:
+            if prune and marg_child_module.out_features == 1:
+                return marg_child_module
+            else:
+                return module.__class__(inputs=marg_child_module, dim=module.dim, num_splits=module.num_splits)
+
+        # if all children were marginalized, return None
+        else:
+            return None
+
+        # if only a single input survived marginalization, return it if pruning is enabled
+    else:
+        return module

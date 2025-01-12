@@ -11,6 +11,8 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.modules.base_product import BaseProduct, _get_input_log_likelihoods
 from spflow.modules.module import Module
+from spflow.meta.data import Scope
+from spflow.modules.ops.split import Split
 
 
 class OuterProduct(BaseProduct):
@@ -71,6 +73,20 @@ class OuterProduct(BaseProduct):
     @property
     def out_features(self) -> int:
         return int(self.inputs[0].out_features // self.num_splits)
+
+    @property
+    def feature_to_scope(self) -> list[Scope]:
+        if isinstance(self.inputs, Split):
+            scope_lists = self.inputs.feature_to_scope
+        else:
+            scope_lists = [module.feature_to_scope for module in self.inputs]
+
+        outer_product = list(product(*scope_lists))
+
+        feature_to_scope = []
+        for scopes in outer_product:
+            feature_to_scope.append(Scope.join_all(scopes))
+        return feature_to_scope
 
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         return self.unraveled_channel_indices[output_ids]

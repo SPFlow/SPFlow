@@ -49,6 +49,11 @@ class Module(nn.Module, ABC):
         self._scope = scope
 
     @property
+    @abstractmethod
+    def feature_to_scope(self) -> list[Scope]:
+        pass
+
+    @property
     def device(self):
         """
         Returns the device of the model. If the model parameters are on different devices,

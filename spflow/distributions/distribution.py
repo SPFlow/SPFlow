@@ -18,6 +18,12 @@ class Distribution(nn.Module, ABC):
         """Returns the underlying torch distribution object."""
         pass
 
+    @property
+    @abstractmethod
+    def _supported_value(self):
+        """Returns the supported values of the distribution."""
+        pass
+
     @abstractmethod
     def maximum_likelihood_estimation(
         self, data: torch.Tensor, weights: torch.Tensor = None, bias_correction: bool = True

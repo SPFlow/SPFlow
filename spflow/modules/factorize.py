@@ -4,6 +4,7 @@ from typing import Optional, Union
 import torch
 from torch import Tensor
 
+from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
@@ -12,10 +13,12 @@ from spflow.meta.dispatch.dispatch_context import (
 )
 from spflow.modules.base_product import BaseProduct, _get_input_log_likelihoods
 from spflow.modules.module import Module
+from spflow.modules import Product
 import numpy as np
 
 
 class Factorize(BaseProduct):
+
     def __init__(
         self,
         inputs: list[Module],
@@ -59,6 +62,10 @@ class Factorize(BaseProduct):
     @property
     def out_features(self) -> int:
         return 2 ** self.depth
+
+    @property
+    def feature_to_scope(self) -> list[Scope]:
+        return self.inputs[0].feature_to_scope
 
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         return self.unraveled_channel_indices[output_ids]
@@ -131,8 +138,15 @@ def sample(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    channel_index = torch.einsum('ij,kj->ikj',sampling_ctx.channel_index, module.indices[...,sampling_ctx.repetition_idx]).sum(dim=2)
-    mask = torch.einsum('ij,kj->ikj',sampling_ctx.mask, module.indices[...,sampling_ctx.repetition_idx]).sum(dim=2).bool()
+    rep_indices = sampling_ctx.repetition_idx.expand(-1, module.indices.shape[0], module.indices.shape[1], -1)
+    indices = module.indices.unsqueeze(0).expand(data.shape[0], -1, -1, -1)
+    indices = torch.gather(indices, dim=-1, index=rep_indices).squeeze(-1)
+
+    #channel_index = torch.einsum('ij,kj->ikj',sampling_ctx.channel_index, module.indices[...,sampling_ctx.repetition_idx]).sum(dim=2)
+    channel_index = torch.einsum("bf,bif->bif", sampling_ctx.channel_index, indices).sum(dim=2)
+
+    #mask = torch.einsum('ij,kj->ikj',sampling_ctx.mask, module.indices[...,sampling_ctx.repetition_idx]).sum(dim=2).bool()
+    mask = torch.einsum("bf,bif->bif", sampling_ctx.mask, indices).sum(dim=2).bool()
 
     #mask = sampling_ctx.mask.expand(data.shape[0], module.inputs[0].out_features)
     #channel_index = sampling_ctx.channel_index.expand(data.shape[0], module.inputs[0].out_features)
@@ -150,17 +164,44 @@ def sample(
     #data = (data.unsqueeze(-2)* module.indices.unsqueeze(0)).sum(-2)
     return data
 
-    """
-    scopes = module.indices.permute(2, 0, 1)
-    rnge_in = torch.arange(module.out_features, device=data.device)
-    scopes = (scopes * rnge_in).sum(-1).long()
-    indices_in_gather = sampling_ctx.channel_index.gather(dim=1, index=scopes)
-    indices_in_gather = indices_in_gather.view(sampling_ctx.channel_index.shape[0], 1, -1, 1)
+@dispatch  # type: ignore
+def marginalize(
+    layer: Factorize,
+    marg_rvs: list[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[Product, Module, None]:
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+    # compute layer scope (same for all outputs)
+    layer_scope = layer.scope
+    marg_child = None
+    mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
 
-    indices_in_gather = indices_in_gather.expand(-1, data.shape[1], -1, -1)
-    indices_in_gather = indices_in_gather.repeat(1, 1, module.inputs[0].out_features, 1)
-    samples = data.gather(dim=-1, index=indices_in_gather)
-    samples.squeeze_(-1)
-    """
+    # layer scope is being fully marginalized over
+    if len(mutual_rvs) == len(layer_scope.query):
+        # passing this loop means marginalizing over the whole scope of this branch
+        pass
+    # node scope is being partially marginalized
+    elif mutual_rvs:
+        # marginalize child modules
+        marg_child_layer = marginalize(layer.inputs, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+
+        # if marginalized child is not None
+        if marg_child_layer:
+            marg_child = marg_child_layer
+
+    else:
+        marg_child = layer.inputs
+
+    if marg_child is None:
+        return None
+
+    # ToDo: check if this is correct / prune if only one scope is left?
+    elif prune and marg_child.out_features == 1:
+        return marg_child
+    else:
+        return Factorize(inputs=marg_child, depth=layer.depth, num_repetitions=layer.num_repetitions)
+
 
 

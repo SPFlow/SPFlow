@@ -150,7 +150,7 @@ def visualize(data, spn, samples):
         dummy[:, i] = bin_centers
         with torch.no_grad():
             log_probs = spn(dummy)
-        probs = log_probs[:,:,0,0].exp().squeeze(-1).numpy() # choose a channel and repetition
+        probs = log_probs[:,:,0].exp().squeeze(-1).numpy() # choose a channel and repetition
         ax.plot(bin_centers, probs, linewidth=2, label="Likelihood")
 
 
@@ -210,11 +210,11 @@ def test_rat_spn_hist():
     for name, ch in rat_spn.root_node.named_children():
         print("Number of parameters:", name, sum(p.numel() for p in ch.parameters() if p.requires_grad))
 
-    #train_gradient_descent(rat_spn, dataloader, lr=0.5, epochs=5, verbose=True)
+    train_gradient_descent(rat_spn, dataloader, lr=0.5, epochs=5, verbose=True)
 
     rat_spn.eval()
     dispatch_ctx = init_default_dispatch_context()
-    ll = log_likelihood(rat_spn, data, dispatch_ctx=dispatch_ctx)
+    #ll = log_likelihood(rat_spn, data, dispatch_ctx=dispatch_ctx)
 
     n_samples = data.shape[0]
     for i in range(10):
@@ -249,3 +249,157 @@ def test_sample():
         assert samples.shape == data.shape
         samples_query = samples[:, fac.scope.query]
         assert torch.isfinite(samples_query).all()
+
+def test_digits_sampling():
+
+    # Parameters
+
+    epochs = 50
+    lr = 0.1
+    batch_size = 128
+    depth = 5
+    n_region_nodes = 32
+    num_leaves = 32
+    num_repetitions = 10
+    n_root_nodes = 1
+    num_features = 64
+    n_samples = 16
+
+    random_variables = list(range(num_features))
+    scope = Scope(random_variables)
+
+    normal_layer = Normal(scope=scope, out_channels=num_leaves, num_repetitions=num_repetitions)
+
+    rat_spn = RatSPN(
+        leaf_modules=[normal_layer],
+        n_root_nodes=n_root_nodes,
+        n_region_nodes=n_region_nodes,  # 30
+        num_repetitions=num_repetitions,  # 1,
+        depth=depth,
+        outer_product=False,
+    )
+
+    train_dataloader, val_dataloader, test_dataloader = load_dataset(batch_size)
+    #test_digits = next(iter(train_dataloader))[0][:n_samples]
+    #visualize_digits(test_digits)
+    #return
+    optimizer = torch.optim.Adam(rat_spn.parameters(), lr=lr)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=1e-1, verbose=True)
+
+    train_gradient_descent(rat_spn, train_dataloader, lr=lr, epochs=epochs, scheduler=lr_scheduler, verbose=True)
+
+    sample_data = torch.full((n_samples, num_features), torch.nan)
+    channel_index = torch.full((n_samples, rat_spn.root_node.out_features), fill_value=0)
+    mask = torch.full((n_samples, rat_spn.root_node.out_features), True, dtype=torch.bool)
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_idx=0)
+    samples = sample(rat_spn, sample_data, is_mpe=False, sampling_ctx=sampling_ctx)
+    visualize_digits(torch.clip(samples, min=0))
+
+def test_digits_classification():
+    epochs = 20
+    lr = 0.1
+    batch_size = 128
+    depth = 5
+    n_region_nodes = 32
+    num_leaves = 32
+    num_repetitions = 10
+    n_root_nodes = 3
+    num_features = 64
+    n_samples = 16
+
+    random_variables = list(range(num_features))
+    scope = Scope(random_variables)
+
+    normal_layer = Normal(scope=scope, out_channels=num_leaves, num_repetitions=num_repetitions)
+
+    rat_spn = RatSPN(
+        leaf_modules=[normal_layer],
+        n_root_nodes=n_root_nodes,
+        n_region_nodes=n_region_nodes,  # 30
+        num_repetitions=num_repetitions,  # 1,
+        depth=depth,
+        outer_product=False,
+    )
+    train_dataloader, val_dataloader, test_dataloader = load_dataset(batch_size)
+
+    optimizer = torch.optim.Adam(rat_spn.parameters(), lr=lr)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=1e-1, verbose=True)
+
+    train_gradient_descent(rat_spn, train_dataloader, lr=lr, epochs=epochs, is_classification=True, scheduler=lr_scheduler, verbose=True, validation_dataloader=val_dataloader)
+
+    test_accuracy = get_test_accuracy(rat_spn, test_dataloader)
+    print(f"Test accuracy: {test_accuracy}")
+
+def get_test_accuracy(model, dataloader):
+    all_X = []
+    all_y = []
+    for batch in dataloader:
+        X,y = batch
+        all_X.append(X)
+        all_y.append(y)
+
+    X = torch.cat(all_X)
+    y = torch.cat(all_y)
+    ll = log_likelihood(model, X)
+    y_pred = torch.argmax(ll.squeeze(1), dim=1)
+    accuracy = (y_pred == y).float().mean().item()
+    return accuracy
+
+
+def visualize_digits(samples):
+    images = samples.reshape(-1, 8, 8)
+    images = images * 255.0
+    # Create a figure with a grid of subplots
+    fig, axes = plt.subplots(4, 4, figsize=(8, 8))  # 4x4 grid for 16 samples
+    fig.suptitle("Digit Samples")
+
+    for i, ax in enumerate(axes.flat):
+        ax.imshow(images[i], cmap='gray', interpolation='nearest')  # Display each image
+        ax.axis('off')  # Turn off axis for cleaner visualization
+
+    plt.tight_layout()
+    plt.show()
+
+
+def load_dataset(batch_size):
+    import torch
+    from torch.utils.data import DataLoader, random_split, TensorDataset
+    from sklearn.datasets import load_digits
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import MinMaxScaler
+
+    # Load the dataset
+    digits = load_digits()
+    X, y = digits.data, digits.target
+
+    # Filter the data to include only the first three classes (0, 1, 2)
+    mask = np.isin(y, [0,1,2])
+    X = X[mask]
+    y = y[mask]
+
+    # Normalize the features
+    scaler = MinMaxScaler()
+    X = scaler.fit_transform(X)
+
+    # Convert data to PyTorch tensors
+    X_tensor = torch.tensor(X, dtype=torch.float32)
+    y_tensor = torch.tensor(y, dtype=torch.long)
+
+    #visualize_digits(X_tensor[:16])
+
+    # Create a TensorDataset
+    dataset = TensorDataset(X_tensor, y_tensor)
+
+    # Split data into train, validation, and test sets
+    train_size = int(0.7 * len(dataset))
+    val_size = int(0.15 * len(dataset))
+    test_size = len(dataset) - train_size - val_size
+
+    data_train, data_val, data_test = random_split(dataset, [train_size, val_size, test_size])
+
+    # Create DataLoaders
+    train_loader = DataLoader(data_train, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(data_val, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(data_test, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader, test_loader
