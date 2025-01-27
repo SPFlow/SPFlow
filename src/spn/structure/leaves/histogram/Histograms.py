@@ -80,9 +80,6 @@ def create_histogram_leaf(data, ds_context, scope, alpha=1.0, hist_source="numpy
         breaks = np.array([minx, maxx])
         densities = np.array([1 / (maxx - minx)])
         repr_points = np.array([minx + (maxx - minx) / 2])
-        if meta_type == MetaType.DISCRETE or meta_type == MetaType.BINARY:
-            repr_points = repr_points.astype(int)
-
     else:
         breaks, densities, repr_points = getHistogramVals(data, meta_type, domain, source=hist_source)
 
