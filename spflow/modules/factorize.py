@@ -52,7 +52,7 @@ class Factorize(BaseProduct):
 
         self.depth = depth
         self.num_repetitions = num_repetitions
-        self.indices = self._factorize(depth, num_repetitions) # shape: [num_features, num_groups, num_repetitions] other formulation: [num_features_in, num_features_out, num_repetitions]
+        self.indices = self._factorize(depth, num_repetitions)#.to(self.device) # shape: [num_features, num_groups, num_repetitions] other formulation: [num_features_in, num_features_out, num_repetitions]
 
     @property
     def out_channels(self) -> int:
@@ -117,7 +117,7 @@ def log_likelihood(
     #    check_support=check_support,
     #    dispatch_ctx=dispatch_ctx,
     #)
-    indices = module.indices # shape: [num_features, num_groups, num_repetitions] other formulation: [num_features_in, num_features_out, num_repetitions]
+    indices = module.indices.to(module.device) # shape: [num_features, num_groups, num_repetitions] other formulation: [num_features_in, num_features_out, num_repetitions]
 
 
     output = torch.einsum('fgr,bfcr->bgcr', indices.float(), lls[0]) # shape: [batch_size, num_groups, num_channel, num_repetitions]
@@ -138,15 +138,19 @@ def sample(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    rep_indices = sampling_ctx.repetition_idx.expand(-1, module.indices.shape[0], module.indices.shape[1], -1)
-    indices = module.indices.unsqueeze(0).expand(data.shape[0], -1, -1, -1)
+    rep_indices = sampling_ctx.repetition_idx.view(-1,1,1,1).expand(-1, module.indices.shape[0], module.indices.shape[1], -1)
+    indices = module.indices.unsqueeze(0).expand(data.shape[0], -1, -1, -1)#.to(module.device)
     indices = torch.gather(indices, dim=-1, index=rep_indices).squeeze(-1)
 
     #channel_index = torch.einsum('ij,kj->ikj',sampling_ctx.channel_index, module.indices[...,sampling_ctx.repetition_idx]).sum(dim=2)
-    channel_index = torch.einsum("bf,bif->bif", sampling_ctx.channel_index, indices).sum(dim=2)
+    #channel_index = torch.einsum("bf,bif->bif", sampling_ctx.channel_index, indices).sum(dim=2)
+    #channel_index = torch.einsum("bf,bfi->bfi", sampling_ctx.channel_index, indices).sum(dim=2)
+    channel_index = torch.sum(sampling_ctx.channel_index.unsqueeze(1) * indices, dim=-1)
 
     #mask = torch.einsum('ij,kj->ikj',sampling_ctx.mask, module.indices[...,sampling_ctx.repetition_idx]).sum(dim=2).bool()
-    mask = torch.einsum("bf,bif->bif", sampling_ctx.mask, indices).sum(dim=2).bool()
+    #mask = torch.einsum("bf,bif->bif", sampling_ctx.mask, indices).sum(dim=2).bool()
+    #mask = torch.einsum("bf,bfi->bfi", sampling_ctx.mask, indices).sum(dim=2).bool()
+    mask = torch.sum(sampling_ctx.mask.unsqueeze(1) * indices, dim=-1).bool()
 
     #mask = sampling_ctx.mask.expand(data.shape[0], module.inputs[0].out_features)
     #channel_index = sampling_ctx.channel_index.expand(data.shape[0], module.inputs[0].out_features)

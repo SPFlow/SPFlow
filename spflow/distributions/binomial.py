@@ -85,6 +85,10 @@ class Binomial(Distribution):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.Binomial(total_count=self.n, probs=self.p)
 
+    @property
+    def _supported_value(self):
+        return 0.0
+
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         """
         Maximum likelihood estimation for the Binomial distribution. bias_correction is ignored since p = x / n is unbiased.
@@ -103,7 +107,10 @@ class Binomial(Distribution):
         n_success = (weights * data).sum(0)
 
         # estimate (weighted) success probability
-        p_est = n_success.unsqueeze(1) / n_total
+        if self.num_repetitions is not None:
+            p_est = n_success.view(-1,1,1) / n_total
+        else:
+            p_est = n_success.unsqueeze(1) / n_total
 
         # edge case (if all values are the same, not enough samples or very close to each other)
         if torch.any(zero_mask := torch.isclose(p_est, torch.tensor(0.0))):
@@ -116,3 +123,43 @@ class Binomial(Distribution):
 
     def params(self) -> dict[str, Tensor]:
         return {"n": self.n, "p": self.p}
+
+
+    def check_support(self, data: Tensor) -> Tensor:
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of this distribution.
+
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+
+        Args:
+            data:
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
+
+        Returns:
+            Two dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
+        """
+
+        # nan entries (regarded as valid)
+        if data.ndim == 3 and self.num_repetitions is not None:
+            data = data.unsqueeze(-1)
+        elif data.ndim == 2 and self.num_repetitions is not None:
+            data = data.unsqueeze(-1).unsqueeze(-1)
+
+        nan_mask = torch.isnan(data)
+
+        valid = torch.ones_like(data, dtype=torch.bool)
+
+        # check only first entry of num_leaf node dim since all leaf node repetition have the same support
+        if self.num_repetitions is not None:
+            valid[~nan_mask] = self.distribution.support.check(data)[..., :1,:1][~nan_mask].squeeze(-1)
+        else:
+            valid[~nan_mask] = self.distribution.support.check(data)[..., [0]][~nan_mask]
+        #valid[~nan_mask] = self.distribution.support.check(data)[..., :1][~nan_mask]
+
+
+        # check for infinite values
+        valid[~nan_mask & valid] &= ~data[~nan_mask & valid].isinf()
+
+        return valid

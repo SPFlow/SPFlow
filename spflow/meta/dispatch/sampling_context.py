@@ -35,7 +35,7 @@ class SamplingContext:
         device: Optional[torch.device] = None,
         channel_index: Optional[Tensor] = None,
         mask: Optional[Tensor] = None,
-        repetition_idx: Optional[int] = None,
+        repetition_index: Optional[Tensor] = None,
     ) -> None:
         """Initializes 'SamplingContext' object.
 
@@ -87,7 +87,7 @@ class SamplingContext:
             self._channel_index = torch.zeros((num_samples, 1), dtype=torch.long, device=device)
             self.device = self.mask.device
 
-        self.repetition_idx = repetition_idx
+        self.repetition_idx = repetition_index
 
     def update(self, channel_index: Tensor, mask: Tensor):
         """Updates the sampling context with new channel index and mask.
@@ -137,7 +137,7 @@ class SamplingContext:
 
     def copy(self):
         """Returns a copy of the sampling context."""
-        return SamplingContext(channel_index=self.channel_index.clone(), mask=self.mask.clone())
+        return SamplingContext(channel_index=self.channel_index.clone(), mask=self.mask.clone(), repetition_index=self.repetition_idx.clone() if self.repetition_idx is not None else None)
 
     def __repr__(self) -> str:
         return f"SamplingContext(channel_index.shape={self.channel_index.shape}), mask.shape={self.mask.shape}), num_samples={self.channel_index.shape[0]})"

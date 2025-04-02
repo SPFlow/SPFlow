@@ -13,13 +13,15 @@ from spflow.modules.base_product import BaseProduct, _get_input_log_likelihoods
 from spflow.modules.module import Module
 from spflow.meta.data import Scope
 from spflow.modules.ops.split import Split
+from spflow.modules.ops.split_halves import SplitHalves
+from spflow.modules.ops.split_alternate import SplitAlternate
 
 
 class OuterProduct(BaseProduct):
     def __init__(
         self,
         inputs: list[Module],
-        num_splits: Optional[int] = None,
+        num_splits: Optional[int] = 2,
     ) -> None:
         r"""Initializes ``OuterProduct`` module.
 
@@ -46,17 +48,63 @@ class OuterProduct(BaseProduct):
         """
         super().__init__(inputs=inputs)
 
-        if len(inputs) == 1:
+        if len(self.inputs) == 1:
             assert num_splits is not None and num_splits > 1
 
         self.num_splits = num_splits
 
         # Store unraveled channel indices
-        unraveled_channel_indices = list(product(*[list(range(self._max_out_channels)) for _ in self.inputs]))
+        if self.input_is_split:
+            unraveled_channel_indices = list(product(*[list(range(self._max_out_channels)) for _ in range(self.num_splits)]))
+        else:
+            unraveled_channel_indices = list(product(*[list(range(self._max_out_channels)) for _ in self.inputs]))
         self.register_buffer(
             name="unraveled_channel_indices",
             tensor=torch.tensor(unraveled_channel_indices),
         )
+        self.check_shapes()
+
+    def check_shapes(self, inputs=None):
+        """
+        Checks if the list of two-dimensional shapes satisfies the given conditions.
+
+        :param shapes: List of tuples, where each tuple represents a shape (dim0, dim1).
+        :return: True if one of the conditions is satisfied, False otherwise.
+        """
+        if inputs is None:
+            inputs = self.inputs
+
+        if self.input_is_split:
+            assert self.num_splits == inputs[0].num_splits, "num_splits must be the same for all inputs"
+            shapes = inputs[0].get_out_shapes((self.out_features, self.out_channels))
+        else:
+            shapes = [(inp.out_features, inp.out_channels) for inp in inputs]
+
+        if not shapes:
+            return False  # No shapes to check
+
+        # Extract dimensions
+        dim0_values = [shape[0] for shape in shapes]
+        dim1_values = [shape[1] for shape in shapes]
+
+        # Check if all shapes have the same first dimension
+        if len(set(dim0_values)) == 1:
+            return True
+
+        # Check if all shapes have the same second dimension
+        if len(set(dim1_values)) == 1:
+            return True
+
+        # Check if all but one of the first dimensions are 1
+        if dim0_values.count(1) == len(dim0_values) - 1:
+            return True
+
+        # Check if all but one of the second dimensions are 1
+        if dim1_values.count(1) == len(dim1_values) - 1:
+            return True
+
+        # If none of the conditions are satisfied
+        raise ValueError(f"the shapes of the inputs { shapes } are not broadcastable")
 
     @property
     def out_channels(self) -> int:
@@ -72,7 +120,10 @@ class OuterProduct(BaseProduct):
     # ToDo: Is this the correct?
     @property
     def out_features(self) -> int:
-        return int(self.inputs[0].out_features // self.num_splits)
+        if self.input_is_split:
+            return int(self.inputs[0].out_features // self.num_splits)
+        else:
+            return self.inputs[0].out_features
 
     @property
     def feature_to_scope(self) -> list[Scope]:
@@ -89,10 +140,30 @@ class OuterProduct(BaseProduct):
         return feature_to_scope
 
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
-        return self.unraveled_channel_indices[output_ids]
+        if self.input_is_split:
+            if isinstance (self.inputs[0],SplitHalves):
+                return self.unraveled_channel_indices[output_ids].view(-1,self.inputs[0].out_features).unsqueeze(-1)
+            elif isinstance (self.inputs[0],SplitAlternate):
+                return self.unraveled_channel_indices[output_ids].permute(0,2,1).reshape(-1,self.inputs[0].out_features).unsqueeze(-1)
+            else:
+                raise NotImplementedError("Other Split types are not implemented yet.")
+
+            #return self.unraveled_channel_indices[output_ids].flatten(1,2).unsqueeze(-1)
+        else:
+            return self.unraveled_channel_indices[output_ids]
+
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
-        return mask.unsqueeze(-1).expand(-1, -1, len(self.inputs))
+
+        num_inputs = len(self.inputs) if not self.input_is_split else self.num_splits
+        #return mask.unsqueeze(-1).expand(-1, -1, num_inputs)
+        #return mask.unsqueeze(-1).repeat(1, 1, num_inputs).reshape(mask.shape[0],-1).unsqueeze(-1)
+        #return mask.unsqueeze(-1).repeat(1, 1, num_inputs).permute(0,2,1).reshape(mask.shape[0], -1).unsqueeze(-1)
+        if self.input_is_split:
+            #return mask.unsqueeze(-1).repeat(1, 1, num_inputs).view(-1,self.inputs[0].out_features).unsqueeze(-1)
+            return mask.unsqueeze(-1).repeat(1, 1, num_inputs).permute(0,2,1).reshape(-1,self.inputs[0].out_features).unsqueeze(-1)
+        else:
+            return mask.unsqueeze(-1).repeat(1, 1, num_inputs)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -113,7 +184,12 @@ def log_likelihood(
     for i in range(1, len(lls)):
         output = output + lls[i].unsqueeze(3)
         #output = output.view(output.size(0), output.size(1), 1, -1)
-        output = output.view(output.size(0), output.size(1), 1, -1, output.size(-1))
+        if output.ndim == 4:
+            output = output.view(output.size(0), output.size(1), 1, -1)
+        elif output.ndim == 5:
+            output = output.view(output.size(0), output.size(1), 1, -1, output.size(-1))
+        else:
+            raise ValueError("Invalid number of dimensions")
 
     # View as [b, n, m1 * m2]
     #output = output.view(output.size(0), module.out_features, module.out_channels)

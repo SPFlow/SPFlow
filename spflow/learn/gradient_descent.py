@@ -52,7 +52,7 @@ def train_gradient_descent(
     optimizer: Optional[torch.optim.Optimizer] = None,
     scheduler: Optional[torch.optim.lr_scheduler] = None,
     lr: float = 1e-3,
-    loss_fn: Callable[[Module, Tensor], Tensor] = negative_log_likelihood_loss,
+    loss_fn: Optional[Callable[[Module, Tensor], Tensor]] = None,
     validation_dataloader: torch.utils.data.DataLoader = None,
     callback_batch: Optional[Callable[[Tensor, int], None]] = None,
     callback_epoch: Optional[Callable[[list[Tensor], int], None]] = None,
@@ -77,9 +77,13 @@ def train_gradient_descent(
 
     if scheduler is None:
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[int(epochs * 0.5), int(epochs * 0.75)],
-                                                         gamma=0.1, verbose=True)
-    if is_classification:
-        loss_fn = nll_loss
+                                                      gamma=0.1, verbose=True)
+
+    if loss_fn is None:
+        if is_classification:
+            loss_fn = nll_loss
+        else:
+            loss_fn = negative_log_likelihood_loss
 
     steps = 0
     for epoch in range(epochs):
@@ -91,12 +95,13 @@ def train_gradient_descent(
 
         start_time = time.time()
         losses_epoch = []
-        for (data, y) in dataloader:
+        for batch in dataloader:
             # Reset gradients
             optimizer.zero_grad()
 
             # Compute negative log likelihood
             if is_classification:
+                data, y = batch
                 ll = log_likelihood(model, data)
                 loss = loss_fn(ll, y)
                 predicted = torch.argmax(ll, dim=-1).squeeze()
@@ -104,6 +109,17 @@ def train_gradient_descent(
                 total += y.size(0)
                 correct += (predicted == y).sum().item()
             else:
+                if isinstance(batch, tuple):
+                    if len(batch) == 1:
+                        data = batch[0]
+                    elif len(batch) == 2:
+                        data, _ = batch
+                    else:
+                        raise ValueError("Batch should be a tuple of length 1 or 2")
+
+                else:
+                    data = batch[0]
+
                 loss = loss_fn(model, data)
 
             # Collect loss
@@ -126,7 +142,7 @@ def train_gradient_descent(
         #print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()/dataloader.batch_size}")
         print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()}")
         if is_classification:
-            print(f"Accuracy: {100 * correct / total}")
+            print(f"Accuracy: {100 * correct / total}") # ToDo: logger.info
 
         # Call callback function after each epoch
         if callback_epoch is not None:
