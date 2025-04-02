@@ -46,6 +46,10 @@ class Exponential(Distribution):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.Exponential(self.rate)
 
+    @property
+    def _supported_value(self):
+        return 0.0
+
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         if weights is None:
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))  # (batch, 1, 1, ...) for broadcasting
@@ -70,6 +74,9 @@ class Exponential(Distribution):
         if len(self.event_shape) == 2:
             # Repeat rate
             rate_est = rate_est.unsqueeze(1).repeat(1, self.out_channels)
+        if len(self.event_shape) == 3:
+            # Repeat rate
+            rate_est = rate_est.unsqueeze(1).unsqueeze(1).repeat(1, self.out_channels, self.num_repetitions)
 
         # set parameters of leaf node
         self.rate = rate_est

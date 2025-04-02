@@ -15,6 +15,7 @@ from spflow.modules.module import Module
 
 
 class Cat(Module):
+
     def __init__(self, inputs: list[Module], dim: int = -1):
         """
         Concatenation of multiple modules along a given dimension.
@@ -65,6 +66,15 @@ class Cat(Module):
             return sum([module.out_channels for module in self.inputs])
         else:
             return self.inputs[0].out_channels
+
+    @property
+    def feature_to_scope(self) -> list[Scope]:
+        if self.dim == 1:
+            scope_list = []
+            return [scope_list + module.feature_to_scope for module in self.inputs]
+        else:
+            return self.inputs[0].feature_to_scope
+
 
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, dim={self.dim}"

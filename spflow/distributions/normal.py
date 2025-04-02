@@ -92,6 +92,10 @@ class Normal(Distribution):
             # Repeat mean and std
             mean_est = mean_est.unsqueeze(1).repeat(1, self.out_channels)
             std_est = std_est.unsqueeze(1).repeat(1, self.out_channels)
+        if len(self.event_shape) == 3:
+            # Repeat mean and std
+            mean_est = mean_est.unsqueeze(1).unsqueeze(1).repeat(1, self.out_channels, self.num_repetitions)
+            std_est = std_est.unsqueeze(1).unsqueeze(1).repeat(1, self.out_channels, self.num_repetitions)
 
         # set parameters of leaf node
         self.mean.data = mean_est

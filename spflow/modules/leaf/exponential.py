@@ -7,7 +7,7 @@ from spflow.utils.leaf import parse_leaf_args
 
 
 class Exponential(LeafModule):
-    def __init__(self, scope: Scope, out_channels: int = None, rate: Tensor = None):
+    def __init__(self, scope: Scope, out_channels: int = None, num_repetitions: int = None, rate: Tensor = None):
         """
         Initialize an Exponential distribution leaf module.
 
@@ -16,6 +16,6 @@ class Exponential(LeafModule):
             out_channels (int, optional): The number of output channels. If None, it is determined by the parameter tensor.
             rate (Tensor, optional): The rate parameter tensor.
         """
-        event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[rate])
+        event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[rate], num_repetitions=num_repetitions)
         super().__init__(scope, out_channels=event_shape[1])
         self.distribution = D.Exponential(rate, event_shape)

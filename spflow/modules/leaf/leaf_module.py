@@ -45,6 +45,10 @@ class LeafModule(Module, ABC):
         return len(self.scope.query)
 
     @property
+    def num_repetitions(self) -> int:
+        return self.distribution.num_repetitions
+
+    @property
     def out_channels(self) -> int:
         return self.distribution.out_channels
 
@@ -59,7 +63,7 @@ class LeafModule(Module, ABC):
 
     @property
     def feature_to_scope(self) -> list[Scope]:
-        return [Scope(i) for i in self.scope.query]
+        return [Scope([i]) for i in self.scope.query]
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -293,11 +297,18 @@ def sample(
 
     if is_mpe:
         # Get mode of distribution as MPE
-        samples = module.distribution.mode().unsqueeze(0).repeat(n_samples,1,1,1).detach()
-        if sampling_ctx.repetition_idx is not None:
-            #samples = samples[..., sampling_ctx.repetition_idx]
-            indices = sampling_ctx.repetition_idx.expand(-1, samples.shape[1], samples.shape[2], -1)
+        samples = module.distribution.mode().unsqueeze(0)
+        if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
+            samples = samples.repeat(n_samples, 1, 1, 1).detach()
+            # repetition_idx shape: (n_samples,)
+            repetition_idx = sampling_ctx.repetition_idx[instance_mask]
+            indices = repetition_idx.view(-1,1,1,1).expand(-1,samples.shape[1], samples.shape[2],-1)
             samples = torch.gather(samples, dim=-1, index=indices).squeeze(-1)
+        elif sampling_ctx.repetition_idx is not None and samples.ndim != 4 or sampling_ctx.repetition_idx is None and samples.ndim == 4:
+            raise ValueError("Either there is no repetition index or the samples are not 4-dimensional. This should not happen.")
+
+        else:
+            samples = samples.repeat(n_samples, 1, 1).detach()
 
         # Add batch dimension
         #samples = samples.unsqueeze(0).repeat(n_samples, *([1] * (samples.dim())))
@@ -305,10 +316,15 @@ def sample(
         # Sample from distribution
         samples = module.distribution.sample(n_samples=n_samples)
 
-        if sampling_ctx.repetition_idx is not None:
-            indices = sampling_ctx.repetition_idx.expand(-1,samples.shape[1], samples.shape[2],-1)
+        if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
+            # repetition_idx shape: (n_samples,)
+            repetition_idx = sampling_ctx.repetition_idx[instance_mask]
+            indices = repetition_idx.view(-1,1,1,1).expand(-1,samples.shape[1], samples.shape[2],-1)
+            #indices = sampling_ctx.repetition_idx.expand(-1,samples.shape[1], samples.shape[2],-1)
             samples = torch.gather(samples,dim=-1, index=indices).squeeze(-1)
             #samples = samples[..., sampling_ctx.repetition_idx]
+        elif sampling_ctx.repetition_idx is not None and samples.ndim != 4 or sampling_ctx.repetition_idx is None and samples.ndim == 4:
+            raise ValueError("Either there is no repetition index or the samples are not 4-dimensional. This should not happen.")
 
     assert samples.shape[0] == sampling_ctx.channel_index[instance_mask].shape[0]
 
@@ -317,9 +333,12 @@ def sample(
         # broadcasted to match the channel dimension of the other inputs
         sampling_ctx.channel_index.zero_()
 
+
+    index = sampling_ctx.channel_index[instance_mask].unsqueeze(-1)
+
     # Index the channel_index to get the correct samples for each scope
-    samples = samples.gather(dim=-1, index=sampling_ctx.channel_index[instance_mask].unsqueeze(-1)).squeeze(
-        -1
+    samples = samples.gather(dim=2, index=index).squeeze(
+        2
     )
 
     # Ensure, that no data is overwritten

@@ -85,6 +85,10 @@ class NegativeBinomial(Distribution):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.NegativeBinomial(total_count=self.n, probs=self.p)
 
+    @property
+    def _supported_value(self):
+        return 0
+
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         """
         Maximum likelihood estimation for the Negative Binomial distribution.
@@ -107,7 +111,10 @@ class NegativeBinomial(Distribution):
         n_success = (weights * data).sum(0)
 
         # estimate (weighted) success probability
-        p_est = 1 - n_total / (n_success.unsqueeze(1) + n_total)
+        if self.num_repetitions is not None:
+            p_est = 1 - n_total /(n_success.view(-1,1,1)+ n_total)
+        else:
+            p_est = 1 - n_total / (n_success.unsqueeze(1) + n_total)
 
         # edge case (if all values are the same, not enough samples or very close to each other)
         if torch.any(zero_mask := torch.isclose(p_est, torch.tensor(0.0))):

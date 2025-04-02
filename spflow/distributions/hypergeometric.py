@@ -74,6 +74,10 @@ class Hypergeometric(Distribution):
     def distribution(self):
         return _HypergeometricDistribution(self.K, self.N, self.n, self.event_shape)
 
+    @property
+    def _supported_value(self):
+        return self.n + self.K - self.N
+
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         """
         All parameters of the Uniform distribution are regarded as fixed and will not be estimated.
@@ -95,6 +99,9 @@ class Hypergeometric(Distribution):
     ) -> torch.Tensor:
         r"""Checks if specified data is in support of the represented distributions."""
 
+        if self.num_repetitions is not None:
+            data = data.unsqueeze(-1)
+
         valid = torch.ones(data.shape, dtype=torch.bool, device=data.device)
 
         # check for infinite values
@@ -111,23 +118,45 @@ class Hypergeometric(Distribution):
         n_nodes = self.n
 
         # check if values are in valid range
-        valid[~nan_mask & valid] &= (
-            (
-                data
-                >= torch.max(
-                    torch.vstack(
-                        [
-                            torch.zeros(self.event_shape, dtype=data.dtype, device=data.device),
-                            n_nodes + K_nodes - N_nodes,
-                        ]
-                    ),
-                    dim=0,
-                )[0].unsqueeze(0)
-            )
-            & (  # type: ignore
-                data <= torch.min(torch.vstack([n_nodes, K_nodes]), dim=0)[0].unsqueeze(0)  # type: ignore
-            )
-        )[..., :1][~nan_mask & valid]
+        if self.num_repetitions is not None:
+            valid[~nan_mask & valid] &= (
+                (
+                    data
+                    >= torch.max(
+                        torch.vstack(
+                            [
+                                torch.zeros(self.event_shape, dtype=data.dtype, device=data.device),
+                                n_nodes + K_nodes - N_nodes,
+                            ]
+                        ),
+                        dim=0,
+                    )[0].unsqueeze(0)
+                )
+                & (  # type: ignore
+                    data <= torch.min(torch.vstack([n_nodes, K_nodes]), dim=0)[0].unsqueeze(0)  # type: ignore
+                )
+            )[..., :1, :1][~nan_mask & valid]
+
+        else:
+            valid[~nan_mask & valid] &= (
+                    (
+                            data
+                            >= torch.max(
+                        torch.vstack(
+                            [
+                                torch.zeros(self.event_shape, dtype=data.dtype,
+                                            device=data.device),
+                                n_nodes + K_nodes - N_nodes,
+                            ]
+                        ),
+                        dim=0,
+                    )[0].unsqueeze(0)
+                    )
+                    & (  # type: ignore
+                            data <= torch.min(torch.vstack([n_nodes, K_nodes]), dim=0)[
+                        0].unsqueeze(0)  # type: ignore
+                    )
+            )[...,:1][~nan_mask & valid]
 
         return valid
 

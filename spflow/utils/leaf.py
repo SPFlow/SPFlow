@@ -84,10 +84,7 @@ def parse_leaf_args(scope, out_channels, num_repetitions, params) -> tuple[int, 
             raise InvalidParameterCombinationError(
                 "Either out_channels or distribution parameters must be given."
             )
-        if num_repetitions is None:
-            event_shape = (len(scope.query), out_channels)
-        else:
-            event_shape = (len(scope.query), out_channels, num_repetitions)
+        event_shape = (len(scope.query), out_channels)
     else:
         if out_channels is not None:
             raise InvalidParameterCombinationError(
@@ -100,4 +97,8 @@ def parse_leaf_args(scope, out_channels, num_repetitions, params) -> tuple[int, 
             )
 
         event_shape = params[0].shape
+
+    if num_repetitions is not None and len(event_shape) == 2:
+        event_shape = torch.Size(list(event_shape) + [num_repetitions])
+
     return event_shape

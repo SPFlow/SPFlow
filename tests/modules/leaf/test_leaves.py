@@ -17,6 +17,7 @@ from tests.utils.leaves import make_leaf, make_data
 
 out_channels_values = [1, 3]
 out_features_values = [1, 4]
+num_repetitions = [None, 5]
 cls_values = [
     leaf.Bernoulli,
     leaf.Binomial,
@@ -31,35 +32,42 @@ cls_values = [
     leaf.Poisson,
     leaf.Uniform,
 ]
-params = list(product(cls_values, out_features_values, out_channels_values))
+params = list(product(cls_values, out_features_values, out_channels_values, num_repetitions))
 
-
-@pytest.mark.parametrize("cls, out_features, out_channels", params)
-def test_log_likelihood(cls, out_features: int, out_channels: int):
+@pytest.mark.parametrize("cls, out_features, out_channels, num_reps", params)
+def test_log_likelihood(cls, out_features: int, out_channels: int, num_reps):
     """Test the log likelihood of a normal distribution."""
-    module = make_leaf(cls=cls, out_channels=out_channels, out_features=out_features)
+    #out_features = 4
+    #out_channels = 3
+    #num_reps = 5
+    #cls = leaf.Uniform
+    module = make_leaf(cls=cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
     data = make_data(cls=cls, out_features=out_features, n_samples=5)
     evaluate_log_likelihood(module, data)
 
 
 @pytest.mark.parametrize(
-    "cls, out_features, out_channels, is_mpe",
-    list(product(cls_values, out_features_values, out_channels_values, [True, False])),
+    "cls, out_features, out_channels, num_reps, is_mpe",
+    list(product(cls_values, out_features_values, out_channels_values, num_repetitions, [True, False])),
 )
-def test_sample(cls, out_features: int, out_channels: int, is_mpe: bool):
-    module = make_leaf(cls, out_channels=out_channels, out_features=out_features)
+def test_sample(cls, out_features: int, out_channels: int, num_reps, is_mpe: bool):
+    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
 
     # Setup sampling context
     n_samples = 10
     data = torch.full((n_samples, out_features), torch.nan)
     channel_index = torch.randint(low=0, high=out_channels, size=(n_samples, out_features))
     mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
+    if num_reps is not None:
+        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+    else:
+        repetition_index = None
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
 
     # Sample
     samples = sample(module, data, is_mpe=is_mpe, check_support=True, sampling_ctx=sampling_ctx)
 
-    # Check shape
+
     assert samples.shape == (n_samples, out_features)
 
     # Check finite
@@ -67,12 +75,16 @@ def test_sample(cls, out_features: int, out_channels: int, is_mpe: bool):
 
 
 @pytest.mark.parametrize(
-    "cls, out_features, out_channels, bias_correction",
-    list(product(cls_values, out_features_values, out_channels_values, [True, False])),
+    "cls, out_features, out_channels, bias_correction, num_reps",
+    list(product(cls_values, out_features_values, out_channels_values, [True, False], num_repetitions)),
 )
-def test_maximum_likelihood_estimation(cls, out_features: int, out_channels: int, bias_correction: bool):
+def test_maximum_likelihood_estimation(cls, out_features: int, out_channels: int, bias_correction: bool, num_reps):
     # Construct leaf module
-    module = make_leaf(cls, out_channels=out_channels, out_features=out_features)
+    #cls = leaf.Categorical
+    #out_features = 4
+    #out_channels = 3
+    #num_reps = 5
+    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
 
     # Construct sampler
     scope = Scope(list(range(0, out_features)))
@@ -84,29 +96,38 @@ def test_maximum_likelihood_estimation(cls, out_features: int, out_channels: int
     # Check that module and sampler params are equal
     for param_name, param_module in module.distribution.named_parameters():
         param_sampler = getattr(sampler.distribution, param_name)
-        assert torch.allclose(param_module, param_sampler, atol=1e-1)
+        if num_reps:
+            assert torch.allclose(param_module, param_sampler.unsqueeze(2), atol=1e-1)
+        else:
+            assert torch.allclose(param_module, param_sampler, atol=1e-1)
 
 
-@pytest.mark.parametrize("cls, out_features, out_channels", params)
-def test_requires_grad(cls, out_features: int, out_channels: int):
+@pytest.mark.parametrize("cls, out_features, out_channels, num_reps", params)
+def test_requires_grad(cls, out_features: int, out_channels: int, num_reps):
     """Test whether the mean and std of a normal distribution require gradients."""
-    module = make_leaf(cls, out_channels=out_channels, out_features=out_features)
+    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
 
     for param in module.distribution.parameters():
         assert param.requires_grad
 
 
-@pytest.mark.parametrize("cls,out_features,out_channels", params)
+@pytest.mark.parametrize("cls,out_features,out_channels, num_reps", params)
 def test_gradient_descent_optimization(
     cls,
     out_features: int,
     out_channels: int,
+    num_reps,
 ):
     # Skip leaves without parameters
     if cls in [leaf.Hypergeometric, leaf.Uniform]:
         return
 
-    module = make_leaf(cls, out_channels=out_channels, out_features=out_features)
+    #cls = leaf.Binomial
+    #num_reps = None
+    #out_features = 1
+    #out_channels = 1
+
+    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
     data = make_data(cls=cls, out_features=out_features, n_samples=20)
     dataset = torch.utils.data.TensorDataset(data)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
@@ -123,20 +144,21 @@ def test_gradient_descent_optimization(
 
 
 @pytest.mark.parametrize(
-    "cls, out_channels, prune, marg_rvs",
+    "cls, out_channels, prune, marg_rvs, num_reps",
     list(
         product(
             cls_values,
             out_channels_values,
             [True, False],
             [[0], [1], [2], [0, 1], [1, 2], [0, 2], [0, 1, 2]],
+            num_repetitions,
         )
     ),
 )
-def test_marginalize(cls, out_channels: int, prune: bool, marg_rvs):
+def test_marginalize(cls, out_channels: int, prune: bool, marg_rvs, num_reps):
     """Test marginalization of a normal distribution."""
     out_features = 3
-    module = make_leaf(cls, out_channels=out_channels, out_features=out_features)
+    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
     marginalizeed_module = marginalize(module, marg_rvs)
 
     # If the number of marginalized rvs is equal to the number of out_features, the module should be None
@@ -154,13 +176,13 @@ def test_marginalize(cls, out_channels: int, prune: bool, marg_rvs):
 
 
 @pytest.mark.parametrize(
-    "cls,out_features,out_channels", product(cls_values, out_features_values, out_channels_values)
+    "cls,out_features,out_channels, num_reps", product(cls_values, out_features_values, out_channels_values, num_repetitions)
 )
-def test_constructor_valid_params(cls, out_features: int, out_channels: int):
+def test_constructor_valid_params(cls, out_features: int, out_channels: int, num_reps):
     """Test the constructor of the distribution with valid parameters."""
 
     # Construct module A
-    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features)
+    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
 
     # Get parameters of module A
     module_a_param_dict = module_a.distribution.params()
@@ -175,12 +197,12 @@ def test_constructor_valid_params(cls, out_features: int, out_channels: int):
 
 
 @pytest.mark.parametrize(
-    "cls,out_features,out_channels", product(cls_values, out_features_values, out_channels_values)
+    "cls,out_features,out_channels, num_reps", product(cls_values, out_features_values, out_channels_values, num_repetitions)
 )
-def test_constructor_nan_param(cls, out_features: int, out_channels: int):
+def test_constructor_nan_param(cls, out_features: int, out_channels: int, num_reps):
     """Test the constructor of a Normal distribution with NaN mean."""
     # Construct module A
-    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features)
+    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
 
     # Get parameters of module A
     nan_params = module_a.distribution.params()
@@ -193,12 +215,12 @@ def test_constructor_nan_param(cls, out_features: int, out_channels: int):
 
 
 @pytest.mark.parametrize(
-    "cls,out_features,out_channels", product(cls_values, out_features_values, out_channels_values)
+    "cls,out_features,out_channels, num_reps", product(cls_values, out_features_values, out_channels_values, num_repetitions)
 )
-def test_constructor_inf_param(cls, out_features: int, out_channels: int):
+def test_constructor_inf_param(cls, out_features: int, out_channels: int, num_reps):
     """Test the constructor of a Normal distribution with NaN mean."""
     # Construct module A
-    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features)
+    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
 
     # Get parameters of module A
     nan_params = module_a.distribution.params()
@@ -211,12 +233,12 @@ def test_constructor_inf_param(cls, out_features: int, out_channels: int):
 
 
 @pytest.mark.parametrize(
-    "cls,out_features,out_channels", product(cls_values, out_features_values, out_channels_values)
+    "cls,out_features,out_channels, num_reps", product(cls_values, out_features_values, out_channels_values, num_repetitions)
 )
-def test_constructor_neginf_param(cls, out_features: int, out_channels: int):
+def test_constructor_neginf_param(cls, out_features: int, out_channels: int, num_reps):
     """Test the constructor of a Normal distribution with NaN mean."""
     # Construct module A
-    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features)
+    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
 
     # Get parameters of module A
     nan_params = module_a.distribution.params()
@@ -229,12 +251,12 @@ def test_constructor_neginf_param(cls, out_features: int, out_channels: int):
 
 
 @pytest.mark.parametrize(
-    "cls,out_features,out_channels", product(cls_values, out_features_values, out_channels_values)
+    "cls,out_features,out_channels, num_reps", product(cls_values, out_features_values, out_channels_values, num_repetitions)
 )
-def test_constructor_missing_param_and_out_channels(cls, out_features: int, out_channels: int):
+def test_constructor_missing_param_and_out_channels(cls, out_features: int, out_channels: int, num_reps):
     """Test the constructor of a Normal distribution with NaN mean."""
     # Construct module A
-    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features)
+    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
 
     # Get parameters of module A
     none_params = module_a.distribution.params()
