@@ -50,6 +50,10 @@ class Categorical(Distribution):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.Categorical(self.p)
 
+    @property
+    def _supported_value(self):
+        return 1
+
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         if weights is None:
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))  # (batch, 1, 1, ...) for broadcasting
@@ -83,6 +87,9 @@ class Categorical(Distribution):
         if len(self.event_shape) == 2:
             # Repeat mean and std
             p_est = p_est.unsqueeze(1).repeat(1, self.out_channels, 1)
+
+        if len(self.event_shape) == 3:
+            p_est = p_est.unsqueeze(1).unsqueeze(2).repeat(1, self.out_channels,self.num_repetitions, 1)
 
         # set parameters of leaf node and make sure they add up to 1
         self.p = p_est

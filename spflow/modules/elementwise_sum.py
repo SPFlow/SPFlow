@@ -86,10 +86,10 @@ class ElementwiseSum(Module):
         # Multiple inputs, stack and sum over stacked dimension
         self.inputs = nn.ModuleList(inputs)
         self._out_features = self.inputs[0].out_features
-        if num_repetitions is not None:
-            self._num_inputs = num_repetitions
-        else:
-            self._num_inputs = len(inputs)
+        #if num_repetitions is not None:
+        #    self._num_inputs = num_repetitions
+        #else:
+        self._num_inputs = len(inputs)
 
         # out_channels will be flattened and thus multiplied by the number of inputs
         self._in_channels_per_input = max([module.out_channels for module in self.inputs])
@@ -356,10 +356,10 @@ def log_likelihood(
         lls.append(ll)
 
     # Stack input log-likelihoods
-    if module.num_repetitions is not None:
-        ll = torch.tensor(lls[0])
-    else:
-        ll = torch.stack(lls, dim=module.sum_dim)
+    #if module.num_repetitions is not None:
+    #    ll = torch.tensor(lls[0])
+    #else:
+    ll = torch.stack(lls, dim=module.sum_dim)
 
     ll = ll.unsqueeze(3)  # shape: (B, F, IC, 1)
 
@@ -369,7 +369,8 @@ def log_likelihood(
     weighted_lls = ll + log_weights  # shape: (B, F, IC, OC)
 
     # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
-    output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1).squeeze(-1)  # shape: (B, F, OC)
+    #output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1).squeeze(-1)  # shape: (B, F, OC)
+    output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1)  # shape: (B, F, OC)
 
     output = output.view(data.shape[0], module.out_features, module.out_channels)
 

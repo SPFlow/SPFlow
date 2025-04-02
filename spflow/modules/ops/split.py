@@ -29,6 +29,7 @@ class Split(Module):
 
         self.dim = dim
         self.num_splits = num_splits
+        self.num_repetitions = self.inputs[0].num_repetitions
 
     @property
     def out_features(self) -> int:
@@ -43,6 +44,24 @@ class Split(Module):
         #    return self.inputs[0].out_channels // self.num_splits
         # else:
         return self.inputs[0].out_channels
+
+    def get_out_shapes(self, event_shape):
+        split_size = event_shape[self.dim]
+        quotient = split_size // self.num_splits
+        remainder = split_size % self.num_splits
+        if self.dim == 0:
+            if remainder == 0:
+                return [(quotient, event_shape[1])] * self.num_splits
+            else:
+                return [(quotient, event_shape[1])] * (self.num_splits-1) + [(remainder, event_shape[1])]
+
+        else:
+            if remainder == 0:
+                return [(event_shape[0], quotient)] * self.num_splits
+            else:
+                return [(event_shape[0], quotient)] * (self.num_splits - 1) + [(event_shape[1], remainder)]
+
+
 
     @property
     @abstractmethod

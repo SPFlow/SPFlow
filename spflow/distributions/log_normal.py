@@ -52,6 +52,10 @@ class LogNormal(Distribution):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.LogNormal(self.mean, self.std)
 
+    @property
+    def _supported_value(self):
+        return 1.0
+
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         if weights is None:
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))  # (batch, 1, 1, ...) for broadcasting
@@ -79,6 +83,11 @@ class LogNormal(Distribution):
             # Repeat mean and std
             mean_est = mean_est.unsqueeze(1).repeat(1, self.out_channels)
             std_est = std_est.unsqueeze(1).repeat(1, self.out_channels)
+
+        if len(self.event_shape) == 3:
+            # Repeat mean and std
+            mean_est = mean_est.unsqueeze(1).unsqueeze(1).repeat(1, self.out_channels, self.num_repetitions)
+            std_est = std_est.unsqueeze(1).unsqueeze(1).repeat(1, self.out_channels, self.num_repetitions)
 
         # set parameters of leaf node
         self.mean.data = mean_est

@@ -52,6 +52,13 @@ class Distribution(nn.Module, ABC):
         else:
             return self.event_shape[1]
 
+    @property
+    def num_repetitions(self):
+        if len(self.event_shape) == 3:
+            return self.event_shape[2]
+        else:
+            return None
+
     @abstractmethod
     def params(self):
         """Returns the parameters of the distribution."""
@@ -91,7 +98,12 @@ class Distribution(nn.Module, ABC):
         valid = torch.ones_like(data, dtype=torch.bool)
 
         # check only first entry of num_leaf node dim since all leaf node repetition have the same support
+        #if self.num_repetitions is not None:
+        #    valid[~nan_mask] = self.distribution.support.check(data.unsqueeze(-1))[..., :1,:1][~nan_mask].squeeze(-1)
+        #else:
         valid[~nan_mask] = self.distribution.support.check(data)[..., [0]][~nan_mask]
+        #valid[~nan_mask] = self.distribution.support.check(data)[..., :1][~nan_mask]
+
 
         # check for infinite values
         valid[~nan_mask & valid] &= ~data[~nan_mask & valid].isinf()

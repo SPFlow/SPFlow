@@ -34,6 +34,8 @@ from spflow.meta.dispatch import (
     dispatch,
     init_default_dispatch_context,
 )
+from spflow.modules.ops.split_halves import SplitHalves
+from spflow.modules.ops.split_alternate import SplitAlternate
 
 
 from sklearn.datasets import make_moons, make_blobs
@@ -42,6 +44,7 @@ import matplotlib
 import numpy as np
 matplotlib.use('TkAgg')
 
+"""
 def test_rat_spn():
     out_channels = 2
     random_variables = list(range(7))
@@ -58,8 +61,8 @@ def test_rat_spn():
     data = make_normal_data(out_features=7, num_samples=1)
     ll = log_likelihood(rat_spn, data)
     test = 5
-
-    """
+"""
+"""
     fac = Factorize(inputs=[normal_layer])
     out_p = OuterProduct(inputs=[fac], num_splits=2)
     sum_layer = Sum(inputs=out_p, out_channels=4, num_repetitions=3)
@@ -78,7 +81,7 @@ def test_rat_spn():
     rat_list = rat_spn.factorize(2)
 
     test = 5
-    """
+"""
 
 def make_dataset(num_features_continuous, num_features_discrete, num_clusters, num_samples):
     # Collect data and data domains
@@ -135,21 +138,25 @@ def visualize(data, spn, samples):
         # data
 
         #width = (data[:, :, i].max() - data[:, :, i].min()) / bins
+
         width = (data[:, i].max() - data[:, i].min()) / bins
+
         #hist = torch.histogram(data[:, :, i], bins=bins, density=True, range=rng)
+
         hist = torch.histogram(data[:, i], bins=bins, density=True, range=rng)
         bin_edges = hist.bin_edges
         density = hist.hist
-        
+
 
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
         ax.bar(bin_centers, density, width=width * 0.8, alpha=0.5, label="Data")
 
 
-        dummy = torch.full((bin_centers.shape[0], data.shape[1]), np.nan)
+        dummy = torch.full((bin_centers.shape[0], data.shape[1]), np.nan)#, device=spn.device)
         dummy[:, i] = bin_centers
         with torch.no_grad():
             log_probs = spn(dummy)
+            #log_probs = log_probs.cpu().detach()
         probs = log_probs[:,:,0].exp().squeeze(-1).numpy() # choose a channel and repetition
         ax.plot(bin_centers, probs, linewidth=2, label="Likelihood")
 
@@ -174,9 +181,10 @@ def test_rat_spn_hist():
     num_repetitions = 10
     n_samples = 10000
 
-    data = make_dataset(num_features, 0, 3, n_samples).squeeze(-1)
 
 
+    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    data = make_dataset(num_features, 0, 3, n_samples).squeeze(-1)#.to(device)
     dataset = torch.utils.data.TensorDataset(data)
     dataloader = DataLoader(dataset, batch_size=200, shuffle=True)
 
@@ -197,11 +205,13 @@ def test_rat_spn_hist():
     rat_spn = RatSPN(
         leaf_modules=[normal_layer],
         n_root_nodes=1,
-        n_region_nodes=10, #30
-        num_repetitions=num_repetitions,#1,
+        n_region_nodes=10,
+        num_repetitions=num_repetitions,
         depth=2,
         outer_product=False,
     )
+
+    #rat_spn.to(device)
 
     print("Time to build SPN: ", time.time() - start_time)
 
@@ -210,47 +220,25 @@ def test_rat_spn_hist():
     for name, ch in rat_spn.root_node.named_children():
         print("Number of parameters:", name, sum(p.numel() for p in ch.parameters() if p.requires_grad))
 
-    train_gradient_descent(rat_spn, dataloader, lr=0.5, epochs=5, verbose=True)
+    num_params= sum(p.numel() for p in rat_spn.parameters() if p.requires_grad)
+
+    train_gradient_descent(rat_spn, dataloader, lr=0.5, epochs=5, verbose=True) #5
 
     rat_spn.eval()
-    dispatch_ctx = init_default_dispatch_context()
-    #ll = log_likelihood(rat_spn, data, dispatch_ctx=dispatch_ctx)
+    #dispatch_ctx = init_default_dispatch_context()
+    #ll = log_likelihood(rat_spn, data, dispatch_ctx=dispatch_ctx) # ToDo: Check if this is the problem -> logits become 0 in rat sampling
 
     n_samples = data.shape[0]
-    for i in range(10):
-        sample_data = torch.full((n_samples, num_features), torch.nan)
-        channel_index = torch.full((n_samples, rat_spn.root_node.out_features), fill_value=0)
-        mask = torch.full((n_samples, rat_spn.root_node.out_features), True, dtype=torch.bool)
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_idx=i)
-        samples = sample(rat_spn, sample_data, is_mpe=False, sampling_ctx=sampling_ctx, dispatch_ctx=dispatch_ctx)
 
-        visualize(data, rat_spn, samples)
+    sample_data = torch.full((n_samples, num_features), torch.nan)#, device=device)
+    channel_index = torch.full((n_samples, rat_spn.root_node.out_features), fill_value=0)#, device=device)
+    mask = torch.full((n_samples, rat_spn.root_node.out_features), True, dtype=torch.bool)#, device=device)
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=None)
+    samples = sample(rat_spn, sample_data, is_mpe=False, sampling_ctx=sampling_ctx)#, dispatch_ctx=dispatch_ctx)
 
-def test_sample():
-    num_features = 4
-    out_channels = 2
-    num_repetitions = 3
-    n_samples = 10
-    random_variables = list(range(num_features))
-    scope = Scope(random_variables)
-    normal_layer = Normal(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
+    visualize(data, rat_spn, samples)
 
-    fac = Factorize(inputs=[normal_layer], depth=2, num_repetitions=3)
-    data = make_dataset(num_features, 0, 3, 10000).squeeze(-1)
-
-    visualize(data, fac)
-
-    for i in range(fac.out_channels):
-        data = torch.full((n_samples, num_features), torch.nan)
-        channel_index = torch.full((n_samples, num_features), fill_value=i)
-        mask = torch.full((n_samples, num_features), True, dtype=torch.bool)
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_idx=0)
-        samples = sample(fac, data, sampling_ctx=sampling_ctx)
-        assert samples.shape == data.shape
-        samples_query = samples[:, fac.scope.query]
-        assert torch.isfinite(samples_query).all()
-
-def test_digits_sampling():
+def digits_sampling():
 
     # Parameters
 
@@ -276,8 +264,12 @@ def test_digits_sampling():
         n_region_nodes=n_region_nodes,  # 30
         num_repetitions=num_repetitions,  # 1,
         depth=depth,
-        outer_product=False,
+        outer_product=True,
     )
+
+    num_params = sum(p.numel() for p in rat_spn.parameters())
+
+    print(f"Total number of parameters: {num_params}")
 
     train_dataloader, val_dataloader, test_dataloader = load_dataset(batch_size)
     #test_digits = next(iter(train_dataloader))[0][:n_samples]
@@ -291,10 +283,11 @@ def test_digits_sampling():
     sample_data = torch.full((n_samples, num_features), torch.nan)
     channel_index = torch.full((n_samples, rat_spn.root_node.out_features), fill_value=0)
     mask = torch.full((n_samples, rat_spn.root_node.out_features), True, dtype=torch.bool)
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_idx=0)
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=None)
     samples = sample(rat_spn, sample_data, is_mpe=False, sampling_ctx=sampling_ctx)
     visualize_digits(torch.clip(samples, min=0))
 
+"""
 def test_digits_classification():
     epochs = 20
     lr = 0.1
@@ -329,6 +322,7 @@ def test_digits_classification():
 
     test_accuracy = get_test_accuracy(rat_spn, test_dataloader)
     print(f"Test accuracy: {test_accuracy}")
+"""
 
 def get_test_accuracy(model, dataloader):
     all_X = []
@@ -403,3 +397,32 @@ def load_dataset(batch_size):
     test_loader = DataLoader(data_test, batch_size=batch_size, shuffle=False)
 
     return train_loader, val_loader, test_loader
+
+def outer_product_test():
+    torch.manual_seed(0)
+    num_features = 4
+    in_channels = 3
+    num_repetitions = 5
+    out_channels = 3
+    n_samples = 4
+    normal_layer = Normal(scope=Scope([0, 1, 2, 3]), out_channels=out_channels, num_repetitions=num_repetitions)
+    data = torch.tensor([[1,2,3,4]])
+    normal_layer.distribution.std = torch.sqrt(torch.sigmoid(torch.ones((4,3,5))))
+    product_layer = OuterProduct(inputs=SplitAlternate(inputs=normal_layer, num_splits=2, dim=1))
+    ll = log_likelihood(product_layer, data)
+    data = torch.full((n_samples, num_features), torch.nan)
+    mask = torch.full((n_samples, product_layer.out_features), True, dtype=torch.bool)
+    channel_index = torch.tensor([[5,2],[0,6],[4,8],[6,7]])#torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features)):
+    repetition_index = torch.zeros((n_samples,), dtype=torch.long)
+
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    samples = sample(product_layer, data, sampling_ctx=sampling_ctx, is_mpe=False)
+    print(samples)
+    #samples = sample(normal_layer, data, is_mpe=False)
+
+
+
+if __name__ == "__main__":
+    #digits_sampling()
+    outer_product_test()
+

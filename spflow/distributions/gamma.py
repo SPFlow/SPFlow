@@ -70,6 +70,10 @@ class Gamma(Distribution):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.Gamma(self.alpha, self.beta)
 
+    @property
+    def _supported_value(self):
+        return 1.0
+
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         if weights is None:
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))  # (batch, 1, 1, ...) for broadcasting
@@ -99,6 +103,11 @@ class Gamma(Distribution):
             # Repeat alpha and beta
             alpha_est = alpha_est.unsqueeze(1).repeat(1, self.out_channels)
             beta_est = beta_est.unsqueeze(1).repeat(1, self.out_channels)
+
+        if len(self.event_shape) == 3:
+            # Repeat alpha and beta
+            alpha_est = alpha_est.unsqueeze(1).unsqueeze(1).repeat(1, self.out_channels, self.num_repetitions)
+            beta_est = beta_est.unsqueeze(1).unsqueeze(1).repeat(1, self.out_channels, self.num_repetitions)
 
         if bias_correction:
             alpha_est = alpha_est - 1 / n_total * (

@@ -8,7 +8,7 @@ from spflow.utils.leaf import parse_leaf_args
 
 class Hypergeometric(LeafModule):
     def __init__(
-        self, scope: Scope, out_channels: int = None, K: Tensor = None, N: Tensor = None, n: Tensor = None
+        self, scope: Scope, out_channels: int = None, num_repetitions: int = None, K: Tensor = None, N: Tensor = None, n: Tensor = None
     ):
         """
         Initialize a Hypergeometric distribution leaf module.
@@ -20,7 +20,7 @@ class Hypergeometric(LeafModule):
             N (Tensor, optional): The population size.
             n (Tensor, optional): The number of draws.
         """
-        event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[K, N, n])
+        event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[K, N, n], num_repetitions=num_repetitions)
         super().__init__(scope, out_channels=event_shape[1])
         self.distribution = D.Hypergeometric(K, N, n, event_shape=event_shape)
 
