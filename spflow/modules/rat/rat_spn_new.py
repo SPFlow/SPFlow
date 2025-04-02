@@ -34,9 +34,10 @@ from spflow.meta.data.feature_context import FeatureContext
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.ops.split_halves import SplitHalves
-
+from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.leaf.leaf_module import LeafModule
 from spflow.modules.factorize import Factorize
+from spflow.modules.rat_mixing_layer import MixingLayer
 
 
 class RatSPN(Module):
@@ -121,23 +122,25 @@ class RatSPN(Module):
         fac_layer = Factorize(inputs=self.leaf_modules, depth=self.depth, num_repetitions=self.num_repetitions)
         depth = self.depth
         root = None
+        Split = SplitAlternate
 
         for i in range(depth):
             if i == 0 and depth > 1:
-                out_prod = product_layer(inputs=SplitHalves(inputs=fac_layer, dim=1, num_splits=self.num_splits))
+                out_prod = product_layer(inputs=Split(inputs=fac_layer, dim=1, num_splits=self.num_splits))
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
             elif i == depth - 1:
-                out_prod = product_layer(SplitHalves(inputs=root, dim=1, num_splits=self.num_splits))
+                out_prod = product_layer(Split(inputs=root, dim=1, num_splits=self.num_splits))
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
             else:
-                out_prod = product_layer(SplitHalves(inputs=root, dim=1, num_splits=self.num_splits))
+                out_prod = product_layer(Split(inputs=root, dim=1, num_splits=self.num_splits))
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
 
         # MixtureLayer:
-        root = Sum(inputs=root, out_channels=1, num_repetitions=self.num_repetitions, sum_dim=3)
+        #root = Sum(inputs=root, out_channels=1, num_repetitions=self.num_repetitions, sum_dim=3)
+        root = MixingLayer(inputs=root, out_channels=1, num_repetitions=self.num_repetitions)
 
         return root
 
@@ -225,23 +228,22 @@ def sample(
      sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # call samples on specific repetition
-    # ToDo: Maybe choice of repetition here
 
-     mixture_layer = rat_spn.root_node
+     mixing_layer = rat_spn.root_node
 
-     logits = mixture_layer.logits.unsqueeze(0).expand(
+     logits = mixing_layer.logits.unsqueeze(0).expand(
             sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
 
      if (
              "log_likelihood" in dispatch_ctx.cache
-             and dispatch_ctx.cache["log_likelihood"][mixture_layer.inputs] is not None
+             and dispatch_ctx.cache["log_likelihood"][mixing_layer.inputs] is not None
      ):
-         input_lls = dispatch_ctx.cache["log_likelihood"][mixture_layer.inputs]
+         input_lls = dispatch_ctx.cache["log_likelihood"][mixing_layer.inputs]
 
          # Compute log posterior by reweighing logits with input lls
          log_prior = logits
          log_posterior = log_prior + input_lls.unsqueeze(3)
-         log_posterior = log_posterior.log_softmax(dim=4)
+         log_posterior = log_posterior.log_softmax(dim=2)
          logits = log_posterior
 
      if is_mpe:
@@ -249,7 +251,8 @@ def sample(
          sampling_ctx.repetition_idx = torch.argmax(logits, dim=-1)
      else:
          # Sample from categorical distribution defined by weights to obtain indices into input channels
-         sampling_ctx.repetition_idx = torch.distributions.Categorical(logits=logits).sample()
+         #sampling_ctx.repetition_idx = torch.distributions.Categorical(logits=logits.squeeze(-1)).sample().unsqueeze(-1)
+         sampling_ctx.repetition_idx = torch.distributions.Categorical(logits=logits).sample().squeeze()
 
      return sample(
          rat_spn.root_node.inputs,

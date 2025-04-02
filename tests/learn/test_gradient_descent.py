@@ -7,10 +7,16 @@ import logging
 from spflow.modules.module import Module
 from spflow.learn.gradient_descent import negative_log_likelihood_loss, train_gradient_descent
 from spflow.meta.dispatch import dispatch
+from spflow.meta.data import Scope
 
 
 # Define a DummyModel class for testing
 class DummyModel(Module):
+
+    @property
+    def feature_to_scope(self) -> list[Scope]:
+        return [Scope([0])]
+
     @property
     def out_channels(self) -> int:
         return 1

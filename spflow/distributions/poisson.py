@@ -46,6 +46,10 @@ class Poisson(Distribution):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.Poisson(self.rate)
 
+    @property
+    def _supported_value(self):
+        return 0
+
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         if weights is None:
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))  # (batch, 1, 1, ...) for broadcasting

@@ -68,15 +68,17 @@ class Sum(Module):
 
         self._in_channels_total = self.inputs.out_channels
         self._out_channels_total = out_channels
-        self.num_repetitions = num_repetitions
-        # ToDo: not optional / generalization: additional dimension as tuple
         if num_repetitions is not None:
+            self.num_repetitions = num_repetitions
+        else:
+            self.num_repetitions = self.inputs.num_repetitions
+        # ToDo: not optional / generalization: additional dimension as tuple
+        if self.num_repetitions is not None:
             self.weights_shape = (self._out_features, self._in_channels_total, self._out_channels_total, self.num_repetitions)
         else:
             self.weights_shape = (self._out_features, self._in_channels_total, self._out_channels_total)
 
         self.scope = self.inputs.scope
-        self.num_repetitions = num_repetitions
 
         # If weights are not provided, initialize them randomly
         if weights is None:
@@ -193,11 +195,12 @@ def marginalize(
             # remove mutual_rvs from feature_to_scope list
             for rv in mutual_rvs:
                 for idx, scope in enumerate(feature_to_scope):
-                    if rv in scope:
-                        feature_to_scope[idx] = scope.remove_from_query(rv)
+                    if scope is not None:
+                        if rv in scope.query:
+                            feature_to_scope[idx] = scope.remove_from_query(rv)
 
             # construct mask with empty scopes
-            mask = [scope.isempty() for scope in feature_to_scope]
+            mask = [scope is not None for scope in feature_to_scope]
 
             module_weights = module_weights[mask]
 
@@ -253,7 +256,7 @@ def sample(
         # Use gather to select the correct repetition
         # Repeat indices to match the target dimension for gathering
         in_channels_total = logits.shape[2]
-        indices = indices.unsqueeze(-1).expand(-1,logits.shape[1],in_channels_total, logits.shape[3],-1)  # Shape (30000, 1, 10, 1)
+        indices = indices.view(-1,1,1,1,1).expand(-1,logits.shape[1],in_channels_total, logits.shape[3],-1)  # Shape (30000, 1, 10, 1)
         logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
         #########################
 
@@ -272,7 +275,7 @@ def sample(
         input_lls = dispatch_ctx.cache["log_likelihood"][module.inputs]
 
         if sampling_ctx.repetition_idx is not None:
-            indices = sampling_ctx.repetition_idx.expand(-1, input_lls.shape[1], input_lls.shape[2],-1)
+            indices = sampling_ctx.repetition_idx.view(-1,1,1,1).expand(-1, input_lls.shape[1], input_lls.shape[2],-1)
             input_lls = torch.gather(input_lls, dim=-1, index=indices).squeeze(-1)
             log_prior = logits
             log_posterior = log_prior + input_lls#[..., sampling_ctx.repetition_idx]
@@ -341,7 +344,11 @@ def log_likelihood(
     # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
     output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1).squeeze(-1)  # shape: (B, F, OC)
 
-    return output
+    if module.num_repetitions is None:
+        return output.view(-1,module.out_features,module.out_channels)
+    else:
+        return output.view(-1,module.out_features,module.out_channels, module.num_repetitions)
+
 
 
 @dispatch(memoize=True)  # type: ignore

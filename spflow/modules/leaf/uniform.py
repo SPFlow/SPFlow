@@ -11,6 +11,7 @@ class Uniform(LeafModule):
         self,
         scope: Scope,
         out_channels: int = None,
+        num_repetitions: int = None,
         start: Tensor = None,
         end: Tensor = None,
         support_outside: bool = True,
@@ -25,7 +26,7 @@ class Uniform(LeafModule):
             end (Tensor, optional): The end of the interval.
             support_outside (bool, optional): Whether to support values outside the interval. Default is True.
         """
-        event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[start, end])
+        event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[start, end], num_repetitions=num_repetitions)
         super().__init__(scope, out_channels=event_shape[1])
         self.distribution = D.Uniform(start, end, support_outside, event_shape=event_shape)
 

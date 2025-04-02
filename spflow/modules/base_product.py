@@ -56,11 +56,14 @@ class BaseProduct(Module, ABC):
 
         # Check if all inputs have equal number of features
 
+        # ToDo: Check if this is correct e.g. for broadcasting
+        """
         if not all(inp.out_features == self.inputs[0].out_features for inp in self.inputs):
             raise ValueError(
                 f"Inputs must have equal number of features, but were "
                 f"{[inp.out_features for inp in self.inputs]}."
             )
+        """
 
 
         # Check that scopes are disjoint
@@ -78,6 +81,8 @@ class BaseProduct(Module, ABC):
             scope = scope.join(inp.scope)
 
         self.scope = scope
+
+        self.num_repetitions = self.inputs[0].num_repetitions
 
     @abstractmethod
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
@@ -111,7 +116,7 @@ class BaseProduct(Module, ABC):
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}"
 
-
+"""
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
     module: BaseProduct,
@@ -128,7 +133,59 @@ def marginalize(
     # can contain multiple scopes) - if the input are two modules, we need to ensure, that both inputs have the same
     # number of features after marginalization
 
+
+
     raise NotImplementedError("Not implemented yet.")
+"""
+@dispatch(memoize=True)  # type: ignore
+def marginalize(
+    layer: BaseProduct,
+    marg_rvs: list[int],
+    prune: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Union[BaseProduct, Module, None]:
+    # initialize dispatch context
+    raise NotImplementedError("Not implemented yet.")
+    """
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+
+    # compute layer scope (same for all outputs)
+    layer_scope = layer.scope
+    marg_child = None
+    mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
+
+    # layer scope is being fully marginalized over
+    if len(mutual_rvs) == len(layer_scope.query):
+        # passing this loop means marginalizing over the whole scope of this branch
+        pass
+    # node scope is being partially marginalized
+    elif mutual_rvs:
+        # marginalize child modules
+        for inp in layer.inputs:
+            marg_inp = marginalize(inp, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+
+            if marg_inp:
+                if marg_child is None:
+                    marg_child = [marg_inp]
+                else:
+                    marg_child.append(marg_inp)
+
+    else:
+        marg_child = layer.inputs
+
+    if marg_child is None:
+        return None
+
+    # ToDo: check if this is correct / prune if only one scope is left?
+    elif prune and marg_child.out_features == 1:
+        return marg_child
+    else:
+        try:
+            layer.check_shapes(marg_child)
+        except ValueError:
+            raise ValueError(f"Structural marginalization of {marg_rvs} is not possible as the resulting hapes of inputs {marg_child} are not broadcastable")
+        return layer.__class__(inputs=marg_child)
+    """
 
 
 @dispatch  # type: ignore
@@ -158,6 +215,10 @@ def sample(
 
     # Iterate over inputs, their channel indices and masks
     for inp, cid, mask in zip(inputs, cid_per_module, mask_per_module):
+        if cid.ndim == 1:
+            cid = cid.unsqueeze(1)
+        if mask.ndim == 1:
+            mask = mask.unsqueeze(1)
         sampling_ctx.update(channel_index=cid, mask=mask)
         sample(
             inp,

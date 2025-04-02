@@ -57,6 +57,10 @@ class Uniform(Distribution):
     def mode(self):
         return (self.start + self.end) / 2
 
+    @property
+    def _supported_value(self):
+        return self.start
+
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):
         """
         All parameters of the Uniform distribution are regarded as fixed and will not be estimated.
@@ -78,11 +82,18 @@ class Uniform(Distribution):
         # torch distribution support is an interval, despite representing a distribution over a half-open interval
         # end is adjusted to the next largest number to make sure that desired end is part of the distribution interval
         # may cause issues with the support check; easier to do a manual check instead
+
+        if self.num_repetitions is not None and data.dim() < 4:
+            data = data.unsqueeze(-1)
+
         valid = torch.ones(data.shape, dtype=torch.bool)
 
         # check if values are within valid range
         # check only first entry of num_leaf node dim since all leaf node repetition have the same support
-        valid &= ((data >= self.start) & (data < self.end))[..., [0]]
+        if self.num_repetitions is not None:
+            valid &= ((data >= self.start) & (data < self.end))[..., [0], :1]
+        else:
+            valid &= ((data >= self.start) & (data < self.end))[..., [0]]
         valid |= self.support_outside
 
         # nan entries (regarded as valid)

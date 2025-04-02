@@ -70,7 +70,7 @@ class Module(nn.Module, ABC):
 
 
     def extra_repr(self) -> str:
-        return f"D={self.out_features}, C={self.out_channels}"
+        return f"D={self.out_features}, C={self.out_channels}, R={self.num_repetitions}"
 
 
 @dispatch(memoize=True)  # type: ignore

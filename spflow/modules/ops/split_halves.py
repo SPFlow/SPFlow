@@ -33,7 +33,6 @@ class SplitHalves(Split): # ToDo: make abstract and implement concrete classes
 
 
 
-
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, dim={self.dim}"
 
