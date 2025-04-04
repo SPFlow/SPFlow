@@ -14,6 +14,6 @@ PyQt5==5.15.0
 arff==0.9
 pytest==7.4.4
 dataclasses==0.6
-tensorflow==1.15.5
+tensorflow==2.12.1
 torch==1.13.1
 Protobuf==3.20.3
