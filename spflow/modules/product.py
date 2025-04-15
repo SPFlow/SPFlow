@@ -22,6 +22,7 @@ class Product(Module):
 
         # Scope of this product module is equal to the scope of its only input
         self.scope = inputs.scope
+        self.num_repetitions = inputs.num_repetitions
 
     @property
     def out_channels(self) -> int:

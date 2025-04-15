@@ -139,7 +139,7 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     rep_indices = sampling_ctx.repetition_idx.view(-1,1,1,1).expand(-1, module.indices.shape[0], module.indices.shape[1], -1)
-    indices = module.indices.unsqueeze(0).expand(data.shape[0], -1, -1, -1)#.to(module.device)
+    indices = module.indices.unsqueeze(0).expand(data.shape[0], -1, -1, -1).to(module.device)
     indices = torch.gather(indices, dim=-1, index=rep_indices).squeeze(-1)
 
     #channel_index = torch.einsum('ij,kj->ikj',sampling_ctx.channel_index, module.indices[...,sampling_ctx.repetition_idx]).sum(dim=2)
@@ -189,14 +189,14 @@ def marginalize(
     # node scope is being partially marginalized
     elif mutual_rvs:
         # marginalize child modules
-        marg_child_layer = marginalize(layer.inputs, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+        marg_child_layer = marginalize(layer.inputs[0], marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
         # if marginalized child is not None
         if marg_child_layer:
             marg_child = marg_child_layer
 
     else:
-        marg_child = layer.inputs
+        marg_child = layer.inputs[0]
 
     if marg_child is None:
         return None
@@ -205,7 +205,7 @@ def marginalize(
     elif prune and marg_child.out_features == 1:
         return marg_child
     else:
-        return Factorize(inputs=marg_child, depth=layer.depth, num_repetitions=layer.num_repetitions)
+        return Factorize(inputs=[marg_child], depth=layer.depth, num_repetitions=layer.num_repetitions)
 
 
 

@@ -55,7 +55,6 @@ def test_sample(in_channels: int, out_features: int, num_reps, depth):
 
 
 def test_factorization():
-    auto_set_test_seed()
     data = make_normal_data(out_features=4)
     factorization = make_product(in_channels=3, out_features=4, num_repetitions=5)
     factorization = expectation_maximization(factorization, data, max_steps=10)
@@ -72,7 +71,7 @@ def test_factorization():
     ),
 )
 def test_marginalize(prune, in_channels: int, marg_rvs: list[int], num_reps):
-    out_features = 3
+    out_features = 6
     module = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
 
     # Marginalize scope

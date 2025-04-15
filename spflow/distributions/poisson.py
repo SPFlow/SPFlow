@@ -70,6 +70,9 @@ class Poisson(Distribution):
         if len(self.event_shape) == 2:
             # Repeat rate
             rate_est = rate_est.unsqueeze(1).repeat(1, self.out_channels)
+        if len(self.event_shape) == 3:
+            # Repeat mean and std
+            rate_est = rate_est.unsqueeze(1).unsqueeze(1).repeat(1, self.out_channels, self.num_repetitions)
 
         # set parameters of leaf node
         self.rate = rate_est
