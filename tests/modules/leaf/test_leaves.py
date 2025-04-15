@@ -14,6 +14,7 @@ from spflow import maximum_likelihood_estimation, sample, marginalize
 from spflow.meta.data import Scope
 from spflow.modules import leaf
 from tests.utils.leaves import make_leaf, make_data
+from spflow.learn.expectation_maximization import expectation_maximization
 
 out_channels_values = [1, 3]
 out_features_values = [1, 4]
@@ -80,10 +81,6 @@ def test_sample(cls, out_features: int, out_channels: int, num_reps, is_mpe: boo
 )
 def test_maximum_likelihood_estimation(cls, out_features: int, out_channels: int, bias_correction: bool, num_reps):
     # Construct leaf module
-    #cls = leaf.Categorical
-    #out_features = 4
-    #out_channels = 3
-    #num_reps = 5
     module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
 
     # Construct sampler
@@ -122,10 +119,35 @@ def test_gradient_descent_optimization(
     if cls in [leaf.Hypergeometric, leaf.Uniform]:
         return
 
-    #cls = leaf.Binomial
-    #num_reps = None
-    #out_features = 1
-    #out_channels = 1
+    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
+    data = make_data(cls=cls, out_features=out_features, n_samples=20)
+    dataset = torch.utils.data.TensorDataset(data)
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
+
+    # Clone module parameters before training
+    params_before = {k: v.clone() for (k, v) in module.distribution.params().items()}
+
+    train_gradient_descent(module, data_loader, epochs=2)
+
+    # Check that the parameters have changed
+    for param_name, param in module.distribution.params().items():
+        if param.requires_grad:
+            assert not torch.allclose(param, params_before[param_name])
+
+@pytest.mark.parametrize("cls,out_features,out_channels, num_reps", params)
+def test_expectation_maximization(
+    cls,
+    out_features: int,
+    out_channels: int,
+    num_reps,
+):
+    #cls = leaf.Poisson
+    #out_features = 3
+    #out_channels = 2
+    #num_reps = 5
+    # Skip leaves without parameters
+    if cls in [leaf.Hypergeometric, leaf.Uniform]:
+        return
 
     module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
     data = make_data(cls=cls, out_features=out_features, n_samples=20)
@@ -135,7 +157,7 @@ def test_gradient_descent_optimization(
     # Clone module parameters before training
     params_before = {k: v.clone() for (k, v) in module.distribution.params().items()}
 
-    train_gradient_descent(module, data_loader, epochs=1)
+    expectation_maximization(module, data, max_steps=1)
 
     # Check that the parameters have changed
     for param_name, param in module.distribution.params().items():

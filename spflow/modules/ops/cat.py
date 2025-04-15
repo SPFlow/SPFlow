@@ -27,6 +27,7 @@ class Cat(Module):
         super().__init__()
         self.inputs = nn.ModuleList(inputs)
         self.dim = dim
+        self.num_repetitions = self.inputs[0].num_repetitions
 
         if self.dim == 1:
             # Check if all inputs have the same number of channels

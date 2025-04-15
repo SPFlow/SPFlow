@@ -86,23 +86,35 @@ class ElementwiseSum(Module):
         # Multiple inputs, stack and sum over stacked dimension
         self.inputs = nn.ModuleList(inputs)
         self._out_features = self.inputs[0].out_features
-        #if num_repetitions is not None:
-        #    self._num_inputs = num_repetitions
-        #else:
+
+        if num_repetitions is None:
+            self.num_repetitions = self.inputs[0].num_repetitions
+        else:
+            self.num_repetitions = num_repetitions
+
         self._num_inputs = len(inputs)
 
         # out_channels will be flattened and thus multiplied by the number of inputs
         self._in_channels_per_input = max([module.out_channels for module in self.inputs])
         self._out_channels_total = self._num_sums * self._in_channels_per_input
 
-        self.weights_shape = (
-            self._out_features,
-            self._in_channels_per_input,
-            self._num_sums,
-            self._num_inputs,
-        )
+        if self.num_repetitions is not None:
+            self.weights_shape = (
+                self._out_features,
+                self._in_channels_per_input,
+                self._num_sums,
+                self._num_inputs,
+                self.num_repetitions
+            )
+        else:
+            self.weights_shape = (
+                self._out_features,
+                self._in_channels_per_input,
+                self._num_sums,
+                self._num_inputs
+            )
 
-        self.num_repetitions = num_repetitions
+
 
         # Store unraveled in- and out-channel indices
         # E.g. for 2 inputs with 3 in_channels_per_input, the mapping should be:
@@ -261,7 +273,20 @@ def sample(
 
     # Index into the correct weight channels given by parent module
     # (stay in logits space since Categorical distribution accepts logits directly)
-    logits = module.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
+    if sampling_ctx.repetition_idx is not None:
+        logits = module.logits.unsqueeze(0).expand(
+            sampling_ctx.channel_index.shape[0], -1, -1, -1, -1, -1)
+
+        indices = sampling_ctx.repetition_idx  # Shape (30000, 1, 1)
+
+        # Use gather to select the correct repetition
+        # Repeat indices to match the target dimension for gathering
+        in_channels_total = logits.shape[2]
+        indices = indices.view(-1, 1, 1, 1, 1, 1).expand(-1, logits.shape[1], logits.shape[2], logits.shape[3], logits.shape[4],
+                                                      -1)
+        logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
+    else:
+        logits = module.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
     cids_mapped = module.unraveled_channel_indices[sampling_ctx.channel_index]
 
     # Take the first element of the tuple (input_channel_idx, output_channel_idx)
@@ -284,7 +309,10 @@ def sample(
         dispatch_ctx.cache["log_likelihood"][inp] is not None for inp in module.inputs
     ):
         input_lls = [dispatch_ctx.cache["log_likelihood"][inp] for inp in module.inputs]
-        input_lls = torch.stack(input_lls, dim=-1)
+        input_lls = torch.stack(input_lls, dim=module.sum_dim)#torch.stack(input_lls, dim=-1)
+        if sampling_ctx.repetition_idx is not None:
+            indices = sampling_ctx.repetition_idx.view(-1,1,1,1,1).expand(-1, input_lls.shape[1], input_lls.shape[2],input_lls.shape[3],-1)
+            input_lls = torch.gather(input_lls, dim=-1, index=indices).squeeze(-1)
         is_conditional = True
     else:
         is_conditional = False
@@ -371,8 +399,10 @@ def log_likelihood(
     # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
     #output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1).squeeze(-1)  # shape: (B, F, OC)
     output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1)  # shape: (B, F, OC)
-
-    output = output.view(data.shape[0], module.out_features, module.out_channels)
+    if module.num_repetitions is not None:
+        output = output.view(data.shape[0], module.out_features, module.out_channels, module.num_repetitions)
+    else:
+        output = output.view(data.shape[0], module.out_features, module.out_channels)
 
     return output
 
@@ -399,7 +429,7 @@ def em(
 
         log_weights = module.log_weights.unsqueeze(0)
         input_lls = input_lls.unsqueeze(3)
-
+        # Get input channel indices
         s = (
             module_lls.shape[0],
             module.out_features,
@@ -407,6 +437,8 @@ def em(
             module._num_sums,
             1,
         )
+        if module.num_repetitions is not None:
+            s = s + (module.num_repetitions,)
         log_grads = torch.log(module_lls.grad).view(s)
         module_lls = module_lls.view(s)
 
