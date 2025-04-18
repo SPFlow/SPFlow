@@ -24,9 +24,9 @@ def make_product(in_channels=None, out_features=None, inputs=None, num_repetitio
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps", params)
-def test_log_likelihood(in_channels: int, out_features: int, num_reps):
-    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
-    data = make_normal_data(out_features=out_features)
+def test_log_likelihood(in_channels: int, out_features: int, num_reps, device):
+    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps).to(device)
+    data = make_normal_data(out_features=out_features).to(device)
     lls = log_likelihood(product_layer, data)
     if num_reps is None:
         assert lls.shape == (data.shape[0], 1, product_layer.out_channels)
@@ -37,15 +37,15 @@ def test_log_likelihood(in_channels: int, out_features: int, num_reps):
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps", params)
-def test_sample(in_channels: int, out_features: int, num_reps):
+def test_sample(in_channels: int, out_features: int, num_reps, device):
     n_samples = 10
-    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
+    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps).to(device)
     for i in range(product_layer.out_channels):
-        data = torch.full((n_samples, out_features), torch.nan)
-        channel_index = torch.full((n_samples, out_features), fill_value=i)
-        mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
+        data = torch.full((n_samples, out_features), torch.nan).to(device)
+        channel_index = torch.full((n_samples, out_features), fill_value=i).to(device)
+        mask = torch.full((n_samples, out_features), True, dtype=torch.bool).to(device)
         if num_reps is not None:
-            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
         else:
             repetition_index = None
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
@@ -56,9 +56,9 @@ def test_sample(in_channels: int, out_features: int, num_reps):
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps", params)
-def test_expectation_maximization(in_channels: int, out_features: int, num_reps):
-    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
-    data = make_normal_data(out_features=out_features)
+def test_expectation_maximization(in_channels: int, out_features: int, num_reps, device):
+    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps).to(device)
+    data = make_normal_data(out_features=out_features).to(device)
     with torch.autograd.set_detect_anomaly(True):
         expectation_maximization(product_layer, data, max_steps=10)
 
@@ -76,9 +76,9 @@ def test_constructor():
         num_repetitions,
     ),
 )
-def test_marginalize(prune, in_channels: int, marg_rvs: list[int], num_reps):
+def test_marginalize(prune, in_channels: int, marg_rvs: list[int], num_reps, device):
     out_features = 3
-    module = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
+    module = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps).to(device)
 
     # Marginalize scope
     marginalized_module = marginalize(module, marg_rvs, prune=prune)

@@ -40,18 +40,18 @@ def log_likelihood(model: DummyModel, data: torch.Tensor):
 
 
 @pytest.fixture
-def model():
-    return DummyModel()
+def model(device):
+    return DummyModel().to(device)
 
 
 @pytest.fixture
-def dataloader():
-    data = torch.randn(100, 1)
+def dataloader(device):
+    data = torch.randn(100, 1).to(device)
     dataset = TensorDataset(data)
     return DataLoader(dataset, batch_size=10)
 
 
-def test_negative_log_likelihood_loss(model, dataloader):
+def test_negative_log_likelihood_loss(model, dataloader, device):
     data = next(iter(dataloader))[0]
     loss = negative_log_likelihood_loss(model, data)
     assert isinstance(loss, torch.Tensor)
