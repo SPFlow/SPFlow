@@ -11,7 +11,7 @@ out_channels_values = [1, 5]
 out_features_values = [1, 6]
 
 
-def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, torch.Tensor]:
+def make_params(out_features: int, out_channels: int, device) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Create parameters for a normal distribution.
 
@@ -23,7 +23,7 @@ def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, tor
         mean: Mean of the normal distribution.
         std: Standard deviation of the normal distribution.
     """
-    return torch.randn(out_features, out_channels), torch.rand(out_features, out_channels)
+    return torch.randn(out_features, out_channels, device=device), torch.rand(out_features, out_channels, device=device)
 
 
 def make_leaf(mean, std) -> LogNormal:
@@ -38,59 +38,59 @@ def make_leaf(mean, std) -> LogNormal:
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_valid_params(out_features: int, out_channels: int):
+def test_constructor_valid_params(out_features: int, out_channels: int, device):
     """Test the constructor of a LogNormal distribution with valid parameters."""
-    mean, std = make_params(out_features, out_channels)
-    leaf = make_leaf(mean=mean, std=std)
+    mean, std = make_params(out_features, out_channels, device)
+    leaf = make_leaf(mean=mean, std=std).to(device)
     assert torch.isclose(leaf.distribution.mean, mean).all()
     assert torch.isclose(leaf.distribution.std, std).all()
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_negative_std(out_features: int, out_channels: int):
+def test_constructor_negative_std(out_features: int, out_channels: int, device):
     """Test the constructor of a LogNormal distribution with negative std."""
-    mean, std = make_params(out_features, out_channels)
+    mean, std = make_params(out_features, out_channels, device)
     with pytest.raises(ValueError):
-        make_leaf(mean=mean, std=-1.0 * std)
+        make_leaf(mean=mean, std=-1.0 * std).to(device)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_zero_std(out_features: int, out_channels: int):
+def test_constructor_zero_std(out_features: int, out_channels: int, device):
     """Test the constructor of a LogNormal distribution with zero std."""
-    mean, std = make_params(out_features, out_channels)
+    mean, std = make_params(out_features, out_channels, device)
     with pytest.raises(ValueError):
-        make_leaf(mean=mean, std=0.0 * std)
+        make_leaf(mean=mean, std=0.0 * std).to(device)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_nan_mean(out_features: int, out_channels: int):
+def test_constructor_nan_mean(out_features: int, out_channels: int, device):
     """Test the constructor of a LogNormal distribution with NaN mean."""
-    mean, std = make_params(out_features, out_channels)
+    mean, std = make_params(out_features, out_channels, device)
     with pytest.raises(ValueError):
-        make_leaf(mean=mean * torch.nan, std=std)
+        make_leaf(mean=mean * torch.nan, std=std).to(device)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_nan_std(out_features: int, out_channels: int):
+def test_constructor_nan_std(out_features: int, out_channels: int, device):
     """Test the constructor of a LogNormal distribution with NaN std."""
-    mean, std = make_params(out_features, out_channels)
+    mean, std = make_params(out_features, out_channels, device)
     with pytest.raises(ValueError):
-        make_leaf(mean=mean, std=std * torch.nan)
+        make_leaf(mean=mean, std=std * torch.nan).to(device)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_missing_mean(out_features: int, out_channels: int):
+def test_constructor_missing_mean(out_features: int, out_channels: int, device):
     """Test the constructor of a LogNormal distribution with missing mean."""
-    mean, std = make_params(out_features, out_channels)
+    mean, std = make_params(out_features, out_channels, device)
     with pytest.raises(InvalidParameterCombinationError):
         scope = Scope(list(range(out_features)))
-        LogNormal(scope=scope, mean=None, std=std)
+        LogNormal(scope=scope, mean=None, std=std).to(device)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_missing_std(out_features: int, out_channels: int):
+def test_constructor_missing_std(out_features: int, out_channels: int, device):
     """Test the constructor of a LogNormal distribution with missing std."""
-    mean, std = make_params(out_features, out_channels)
+    mean, std = make_params(out_features, out_channels, device)
     with pytest.raises(InvalidParameterCombinationError):
         scope = Scope(list(range(out_features)))
-        LogNormal(scope=scope, mean=mean, std=None)
+        LogNormal(scope=scope, mean=mean, std=None).to(device)

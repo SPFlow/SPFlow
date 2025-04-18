@@ -92,7 +92,7 @@ class Categorical(Distribution):
             p_est = p_est.unsqueeze(1).unsqueeze(2).repeat(1, self.out_channels,self.num_repetitions, 1)
 
         # set parameters of leaf node and make sure they add up to 1
-        self.p = p_est
+        self.p = p_est.to(data.device)
 
     def params(self) -> dict[str, Tensor]:
         return {"p": self.p}
