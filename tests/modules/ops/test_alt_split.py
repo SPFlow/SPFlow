@@ -21,7 +21,7 @@ num_splits = [2,3]
 split_type = [SplitHalves,SplitAlternate]
 params = list(product(out_channels_values, features_values_multiplier, num_splits, split_type))
 
-def test_split_result():
+def test_split_result(device):
     out_channels = 10
     num_features = 6
     scope = Scope(list(range(0, num_features)))
@@ -38,11 +38,11 @@ def test_split_result():
     leaf_half_1 = make_normal_leaf(scope=scope_1, mean=mean_1, std=std_1)
     leaf_half_2 = make_normal_leaf(scope=scope_2, mean=mean_2, std=std_2)
     split = SplitAlternate(inputs=leaf, num_splits=2, dim=1)
-    spn1 = ElementwiseProduct(inputs=split)
-    spn2 = ElementwiseProduct(inputs=[leaf_half_1, leaf_half_2])
+    spn1 = ElementwiseProduct(inputs=split).to(device)
+    spn2 = ElementwiseProduct(inputs=[leaf_half_1, leaf_half_2]).to(device)
     assert spn1.out_channels == spn2.out_channels
     assert spn1.out_features == spn2.out_features
-    data = make_normal_data(out_features=num_features)
+    data = make_normal_data(out_features=num_features).to(device)
     ll_1 = log_likelihood(spn1, data)
     ll_2 = log_likelihood(spn2, data)
     assert torch.allclose(ll_1, ll_2)

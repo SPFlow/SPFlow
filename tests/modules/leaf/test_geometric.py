@@ -30,16 +30,16 @@ def make_module(p) -> Geometric:
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_p_greater_than_one(out_features: int, out_channels: int):
+def test_constructor_p_greater_than_one(out_features: int, out_channels: int, device):
     """Test the constructor of a Bernoulli distribution with p greater than 1.0."""
-    p = torch.rand(out_features, out_channels)
+    p = torch.rand(out_features, out_channels).to(device)
     with pytest.raises(ValueError):
-        make_module(p=1.5 + p)
+        make_module(p=1.5 + p).to(device)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_p_smaller_than_zero(out_features: int, out_channels: int):
+def test_constructor_p_smaller_than_zero(out_features: int, out_channels: int, device):
     """Test the constructor of a Bernoulli distribution with p smaller than 1.0."""
-    p = torch.rand(out_features, out_channels)
+    p = torch.rand(out_features, out_channels).to(device)
     with pytest.raises(ValueError):
-        make_module(p=p - 1.5)
+        make_module(p=p - 1.5).to(device)

@@ -11,7 +11,7 @@ out_channels_values = [1, 5]
 out_features_values = [1, 6]
 
 
-def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, torch.Tensor]:
+def make_params(out_features: int, out_channels: int, device) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Create parameters for a binomial distribution.
 
@@ -24,7 +24,7 @@ def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, tor
         p: Probability of success in each trial.
 
     """
-    return torch.randint(1, 10, (out_features, out_channels)), torch.rand(out_features, out_channels)
+    return torch.randint(1, 10, (out_features, out_channels), device=device), torch.rand(out_features, out_channels, device=device)
 
 
 def make_module(n, p) -> NegativeBinomial:
@@ -39,24 +39,24 @@ def make_module(n, p) -> NegativeBinomial:
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_p_greater_than_one(out_features: int, out_channels: int):
+def test_constructor_p_greater_than_one(out_features: int, out_channels: int, device):
     """Test the constructor of a Bernoulli distribution with p greater than 1.0."""
-    n, p = make_params(out_features, out_channels)
+    n, p = make_params(out_features, out_channels, device)
     with pytest.raises(ValueError):
-        make_module(n=n, p=1.5 + p)
+        make_module(n=n, p=1.5 + p).to(device)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_p_smaller_than_zero(out_features: int, out_channels: int):
+def test_constructor_p_smaller_than_zero(out_features: int, out_channels: int, device):
     """Test the constructor of a Bernoulli distribution with p smaller than 1.0."""
-    n, p = make_params(out_features, out_channels)
+    n, p = make_params(out_features, out_channels, device)
     with pytest.raises(ValueError):
-        make_module(n=n, p=p - 1.5)
+        make_module(n=n, p=p - 1.5).to(device)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_n_negative(out_features: int, out_channels: int):
+def test_constructor_n_negative(out_features: int, out_channels: int, device):
     """Test the constructor of a Bernoulli distribution with p smaller than 1.0."""
-    n, p = make_params(out_features, out_channels)
+    n, p = make_params(out_features, out_channels, device)
     with pytest.raises(ValueError):
-        make_module(n=torch.full_like(n, -10.0), p=p)
+        make_module(n=torch.full_like(n, -10.0), p=p).to(device)
