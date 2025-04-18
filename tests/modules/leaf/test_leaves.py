@@ -36,14 +36,10 @@ cls_values = [
 params = list(product(cls_values, out_features_values, out_channels_values, num_repetitions))
 
 @pytest.mark.parametrize("cls, out_features, out_channels, num_reps", params)
-def test_log_likelihood(cls, out_features: int, out_channels: int, num_reps):
+def test_log_likelihood(cls, out_features: int, out_channels: int, num_reps, device):
     """Test the log likelihood of a normal distribution."""
-    #out_features = 4
-    #out_channels = 3
-    #num_reps = 5
-    #cls = leaf.Uniform
-    module = make_leaf(cls=cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
-    data = make_data(cls=cls, out_features=out_features, n_samples=5)
+    module = make_leaf(cls=cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps).to(device)
+    data = make_data(cls=cls, out_features=out_features, n_samples=5).to(device)
     evaluate_log_likelihood(module, data)
 
 
@@ -51,16 +47,16 @@ def test_log_likelihood(cls, out_features: int, out_channels: int, num_reps):
     "cls, out_features, out_channels, num_reps, is_mpe",
     list(product(cls_values, out_features_values, out_channels_values, num_repetitions, [True, False])),
 )
-def test_sample(cls, out_features: int, out_channels: int, num_reps, is_mpe: bool):
-    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
+def test_sample(cls, out_features: int, out_channels: int, num_reps, is_mpe: bool, device):
+    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps).to(device)
 
     # Setup sampling context
     n_samples = 10
-    data = torch.full((n_samples, out_features), torch.nan)
-    channel_index = torch.randint(low=0, high=out_channels, size=(n_samples, out_features))
-    mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
+    data = torch.full((n_samples, out_features), torch.nan).to(device)
+    channel_index = torch.randint(low=0, high=out_channels, size=(n_samples, out_features)).to(device)
+    mask = torch.full((n_samples, out_features), True, dtype=torch.bool).to(device)
     if num_reps is not None:
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
     else:
         repetition_index = None
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
@@ -79,14 +75,14 @@ def test_sample(cls, out_features: int, out_channels: int, num_reps, is_mpe: boo
     "cls, out_features, out_channels, bias_correction, num_reps",
     list(product(cls_values, out_features_values, out_channels_values, [True, False], num_repetitions)),
 )
-def test_maximum_likelihood_estimation(cls, out_features: int, out_channels: int, bias_correction: bool, num_reps):
+def test_maximum_likelihood_estimation(cls, out_features: int, out_channels: int, bias_correction: bool, num_reps, device):
     # Construct leaf module
-    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
+    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps).to(device)
 
     # Construct sampler
     scope = Scope(list(range(0, out_features)))
-    sampler = make_leaf(cls=cls, scope=scope, out_channels=1)
-    data = sampler.distribution.distribution.sample((100000,)).squeeze(-1)
+    sampler = make_leaf(cls=cls, scope=scope, out_channels=1).to(device)
+    data = sampler.distribution.distribution.sample((100000,)).squeeze(-1).to(device)
 
     maximum_likelihood_estimation(module, data, bias_correction=bias_correction)
 
@@ -100,9 +96,9 @@ def test_maximum_likelihood_estimation(cls, out_features: int, out_channels: int
 
 
 @pytest.mark.parametrize("cls, out_features, out_channels, num_reps", params)
-def test_requires_grad(cls, out_features: int, out_channels: int, num_reps):
+def test_requires_grad(cls, out_features: int, out_channels: int, num_reps, device):
     """Test whether the mean and std of a normal distribution require gradients."""
-    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
+    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps).to(device)
 
     for param in module.distribution.parameters():
         assert param.requires_grad
@@ -114,13 +110,14 @@ def test_gradient_descent_optimization(
     out_features: int,
     out_channels: int,
     num_reps,
+    device
 ):
     # Skip leaves without parameters
     if cls in [leaf.Hypergeometric, leaf.Uniform]:
         return
 
-    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
-    data = make_data(cls=cls, out_features=out_features, n_samples=20)
+    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps).to(device)
+    data = make_data(cls=cls, out_features=out_features, n_samples=20).to(device)
     dataset = torch.utils.data.TensorDataset(data)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
 
@@ -140,19 +137,15 @@ def test_expectation_maximization(
     out_features: int,
     out_channels: int,
     num_reps,
+    device
 ):
-    #cls = leaf.Poisson
-    #out_features = 3
-    #out_channels = 2
-    #num_reps = 5
+
     # Skip leaves without parameters
     if cls in [leaf.Hypergeometric, leaf.Uniform]:
         return
 
-    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
-    data = make_data(cls=cls, out_features=out_features, n_samples=20)
-    dataset = torch.utils.data.TensorDataset(data)
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
+    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps).to(device)
+    data = make_data(cls=cls, out_features=out_features, n_samples=20).to(device)
 
     # Clone module parameters before training
     params_before = {k: v.clone() for (k, v) in module.distribution.params().items()}
@@ -177,10 +170,10 @@ def test_expectation_maximization(
         )
     ),
 )
-def test_marginalize(cls, out_channels: int, prune: bool, marg_rvs, num_reps):
+def test_marginalize(cls, out_channels: int, prune: bool, marg_rvs, num_reps, device):
     """Test marginalization of a normal distribution."""
     out_features = 3
-    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
+    module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps).to(device)
     marginalizeed_module = marginalize(module, marg_rvs)
 
     # If the number of marginalized rvs is equal to the number of out_features, the module should be None
@@ -200,17 +193,17 @@ def test_marginalize(cls, out_channels: int, prune: bool, marg_rvs, num_reps):
 @pytest.mark.parametrize(
     "cls,out_features,out_channels, num_reps", product(cls_values, out_features_values, out_channels_values, num_repetitions)
 )
-def test_constructor_valid_params(cls, out_features: int, out_channels: int, num_reps):
+def test_constructor_valid_params(cls, out_features: int, out_channels: int, num_reps, device):
     """Test the constructor of the distribution with valid parameters."""
 
     # Construct module A
-    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
+    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps).to(device)
 
     # Get parameters of module A
     module_a_param_dict = module_a.distribution.params()
 
     # Construct module B with parameters of module A is initialization
-    module_b = cls(scope=module_a.scope, **module_a_param_dict)
+    module_b = cls(scope=module_a.scope, **module_a_param_dict).to(device)
 
     # Check that the parameters are the same
     for name, param in module_b.distribution.params().items():
@@ -221,10 +214,10 @@ def test_constructor_valid_params(cls, out_features: int, out_channels: int, num
 @pytest.mark.parametrize(
     "cls,out_features,out_channels, num_reps", product(cls_values, out_features_values, out_channels_values, num_repetitions)
 )
-def test_constructor_nan_param(cls, out_features: int, out_channels: int, num_reps):
+def test_constructor_nan_param(cls, out_features: int, out_channels: int, num_reps, device):
     """Test the constructor of a Normal distribution with NaN mean."""
     # Construct module A
-    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
+    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps).to(device)
 
     # Get parameters of module A
     nan_params = module_a.distribution.params()
@@ -239,10 +232,10 @@ def test_constructor_nan_param(cls, out_features: int, out_channels: int, num_re
 @pytest.mark.parametrize(
     "cls,out_features,out_channels, num_reps", product(cls_values, out_features_values, out_channels_values, num_repetitions)
 )
-def test_constructor_inf_param(cls, out_features: int, out_channels: int, num_reps):
+def test_constructor_inf_param(cls, out_features: int, out_channels: int, num_reps, device):
     """Test the constructor of a Normal distribution with NaN mean."""
     # Construct module A
-    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
+    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps).to(device)
 
     # Get parameters of module A
     nan_params = module_a.distribution.params()
@@ -251,16 +244,16 @@ def test_constructor_inf_param(cls, out_features: int, out_channels: int, num_re
 
     # Construct module B with parameters of module A is initialization
     with pytest.raises(ValueError):
-        module_b = cls(scope=module_a.scope, **nan_params)
+        module_b = cls(scope=module_a.scope, **nan_params).to(device)
 
 
 @pytest.mark.parametrize(
     "cls,out_features,out_channels, num_reps", product(cls_values, out_features_values, out_channels_values, num_repetitions)
 )
-def test_constructor_neginf_param(cls, out_features: int, out_channels: int, num_reps):
+def test_constructor_neginf_param(cls, out_features: int, out_channels: int, num_reps, device):
     """Test the constructor of a Normal distribution with NaN mean."""
     # Construct module A
-    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
+    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps).to(device)
 
     # Get parameters of module A
     nan_params = module_a.distribution.params()
@@ -269,16 +262,16 @@ def test_constructor_neginf_param(cls, out_features: int, out_channels: int, num
 
     # Construct module B with parameters of module A is initialization
     with pytest.raises(ValueError):
-        module_b = cls(scope=module_a.scope, **nan_params)
+        module_b = cls(scope=module_a.scope, **nan_params).to(device)
 
 
 @pytest.mark.parametrize(
     "cls,out_features,out_channels, num_reps", product(cls_values, out_features_values, out_channels_values, num_repetitions)
 )
-def test_constructor_missing_param_and_out_channels(cls, out_features: int, out_channels: int, num_reps):
+def test_constructor_missing_param_and_out_channels(cls, out_features: int, out_channels: int, num_reps, device):
     """Test the constructor of a Normal distribution with NaN mean."""
     # Construct module A
-    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
+    module_a = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps).to(device)
 
     # Get parameters of module A
     none_params = module_a.distribution.params()
@@ -287,4 +280,4 @@ def test_constructor_missing_param_and_out_channels(cls, out_features: int, out_
 
     # Construct module B with parameters of module A is initialization
     with pytest.raises(InvalidParameterCombinationError):
-        module_b = cls(scope=module_a.scope, **none_params)
+        module_b = cls(scope=module_a.scope, **none_params).to(device)

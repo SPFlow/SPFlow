@@ -39,7 +39,7 @@ class Uniform(Distribution):
 
         self.start = start
         self.end = end
-        self.end_next = torch.nextafter(end, torch.tensor(float("inf")))
+        self.end_next = torch.nextafter(end, torch.tensor(float("inf"), device=end.device))
         self.support_outside = torch.tensor(support_outside)
 
     def check_inputs(self, start: Tensor, end: Tensor, support_outside: torch.Tensor):
@@ -86,7 +86,7 @@ class Uniform(Distribution):
         if self.num_repetitions is not None and data.dim() < 4:
             data = data.unsqueeze(-1)
 
-        valid = torch.ones(data.shape, dtype=torch.bool)
+        valid = torch.ones_like(data, dtype=torch.bool)
 
         # check if values are within valid range
         # check only first entry of num_leaf node dim since all leaf node repetition have the same support

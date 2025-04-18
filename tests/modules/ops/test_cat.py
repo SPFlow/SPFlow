@@ -39,15 +39,15 @@ def make_cat(out_channels=3, out_features=3, num_repetitions=None ,dim=1):
 
 
 @pytest.mark.parametrize("out_channels,out_features,num_reps, dim", params)
-def test_log_likelihood(out_channels: int, out_features: int, num_reps, dim: int):
+def test_log_likelihood(out_channels: int, out_features: int, num_reps, dim: int, device):
     out_channels = 3
     module = make_cat(
         out_channels=out_channels,
         out_features=out_features,
         num_repetitions=num_reps,
         dim=dim,
-    )
-    data = make_normal_data(out_features=module.out_features)
+    ).to(device)
+    data = make_normal_data(out_features=module.out_features).to(device)
     lls = log_likelihood(module, data)
     if num_reps == None:
         assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
@@ -57,20 +57,20 @@ def test_log_likelihood(out_channels: int, out_features: int, num_reps, dim: int
 
 
 @pytest.mark.parametrize("out_channels,out_features, num_reps, dim", params)
-def test_sample(out_channels: int, out_features: int, num_reps, dim: int):
+def test_sample(out_channels: int, out_features: int, num_reps, dim: int, device):
     n_samples = 10
     module = make_cat(
         out_channels=out_channels,
         out_features=out_features,
         num_repetitions=num_reps,
         dim=dim,
-    )
+    ).to(device)
     for i in range(module.out_channels):
-        data = torch.full((n_samples, module.out_features), torch.nan)
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
-        mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool)
+        data = torch.full((n_samples, module.out_features), torch.nan).to(device)
+        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features)).to(device)
+        mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool).to(device)
         if num_reps is not None:
-            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
         else:
             repetition_index = None
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
@@ -81,84 +81,84 @@ def test_sample(out_channels: int, out_features: int, num_reps, dim: int):
 
 
 @pytest.mark.parametrize("out_channels,out_features, num_reps, dim", params)
-def test_expectation_maximization(out_channels: int, out_features: int, num_reps, dim: int):
+def test_expectation_maximization(out_channels: int, out_features: int, num_reps, dim: int, device):
     module = make_cat(
         out_channels=out_channels,
         out_features=out_features,
         num_repetitions=num_reps,
         dim=dim,
-    )
-    data = make_normal_data(out_features=module.out_features)
+    ).to(device)
+    data = make_normal_data(out_features=module.out_features).to(device)
     expectation_maximization(module, data, max_steps=10)
 
 
 @pytest.mark.parametrize("out_channels,out_features, num_reps, dim", params)
-def test_gradient_descent_optimization(out_channels: int, out_features: int, num_reps, dim: int):
+def test_gradient_descent_optimization(out_channels: int, out_features: int, num_reps, dim: int, device):
     module = make_cat(
         out_channels=out_channels,
         out_features=out_features,
         num_repetitions=num_reps,
         dim=dim,
-    )
-    data = make_normal_data(out_features=module.out_features)
+    ).to(device)
+    data = make_normal_data(out_features=module.out_features).to(device)
 
     dataset = torch.utils.data.TensorDataset(data)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
     train_gradient_descent(module, data_loader, epochs=10)
 
 
-def test_invalid_constructor_same_scope_dim1():
+def test_invalid_constructor_same_scope_dim1(device):
     out_features = 3
     out_channels = 3
     num_repetitions = 3
     scope_a = Scope(list(range(0, out_features)))
     scope_b = Scope(list(range(0, out_features)))
 
-    inputs_a = make_normal_leaf(scope_a, out_channels=out_channels, num_repetitions=num_repetitions)
-    inputs_b = make_normal_leaf(scope_b, out_channels=out_channels, num_repetitions=num_repetitions)
+    inputs_a = make_normal_leaf(scope_a, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
+    inputs_b = make_normal_leaf(scope_b, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
 
     with pytest.raises(ValueError):
-        Cat(inputs=[inputs_a, inputs_b], dim=1)
+        Cat(inputs=[inputs_a, inputs_b], dim=1).to(device)
 
 
-def test_invalid_constructor_different_scope_dim2():
+def test_invalid_constructor_different_scope_dim2(device):
     out_features = 3
     out_channels = 3
     num_repetitions = 3
     scope_a = Scope(list(range(0, out_features)))
     scope_b = Scope(list(range(out_features, 2 * out_features)))
 
-    inputs_a = make_normal_leaf(scope_a, out_channels=out_channels, num_repetitions=num_repetitions)
-    inputs_b = make_normal_leaf(scope_b, out_channels=out_channels, num_repetitions=num_repetitions)
+    inputs_a = make_normal_leaf(scope_a, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
+    inputs_b = make_normal_leaf(scope_b, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
 
     with pytest.raises(ValueError):
-        Cat(inputs=[inputs_a, inputs_b], dim=2)
+        Cat(inputs=[inputs_a, inputs_b], dim=2).to(device)
 
 
-def test_invalid_constructor_different_channels_dim1():
+def test_invalid_constructor_different_channels_dim1(device):
     out_features = 3
     out_channels = 3
     num_repetitions = 3
     scope_a = Scope(list(range(0, out_features)))
     scope_b = Scope(list(range(out_features, 2 * out_features)))
 
-    inputs_a = make_normal_leaf(scope_a, out_channels=out_channels, num_repetitions=num_repetitions)
-    inputs_b = make_normal_leaf(scope_b, out_channels=out_channels + 1, num_repetitions=num_repetitions)
+    inputs_a = make_normal_leaf(scope_a, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
+    inputs_b = make_normal_leaf(scope_b, out_channels=out_channels + 1, num_repetitions=num_repetitions).to(device)
 
     with pytest.raises(ValueError):
-        Cat(inputs=[inputs_a, inputs_b], dim=1)
+        Cat(inputs=[inputs_a, inputs_b], dim=1).to(device)
 
 
-def test_invalid_constructor_different_features_dim2():
+def test_invalid_constructor_different_features_dim2(device):
     out_features = 3
     out_channels = 3
     num_repetitions = 3
 
-    inputs_a = make_normal_leaf(out_features=out_features, out_channels=out_channels, num_repetitions=num_repetitions)
-    inputs_b = make_normal_leaf(out_features=out_features + 1, out_channels=out_channels, num_repetitions=num_repetitions)
+    inputs_a = make_normal_leaf(out_features=out_features, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
+    inputs_b = make_normal_leaf(out_features=out_features + 1, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
 
     with pytest.raises(ValueError):
-        Cat(inputs=[inputs_a, inputs_b], dim=2)
+        Cat(inputs=[inputs_a, inputs_b], dim=2).to(device)
 
 
 @pytest.mark.parametrize(
@@ -188,14 +188,14 @@ def test_invalid_constructor_different_features_dim2():
         num_repetitions,
     ),
 )
-def test_marginalize(prune, out_channels: int, dim: int, marg_rvs: list[int], num_reps):
+def test_marginalize(prune, out_channels: int, dim: int, marg_rvs: list[int], num_reps, device):
     out_features = 4
     module = make_cat(
         out_channels=out_channels,
         out_features=out_features,
         dim=dim,
         num_repetitions=num_reps,
-    )
+    ).to(device)
 
     # Marginalize scope
     marginalized_module = marginalize(module, marg_rvs, prune=prune)
@@ -210,18 +210,18 @@ def test_marginalize(prune, out_channels: int, dim: int, marg_rvs: list[int], nu
     assert len(set(marginalized_module.scope.query).intersection(marg_rvs)) == 0
 
 
-def test_marginalize_one_of_two_inputs():
+def test_marginalize_one_of_two_inputs(device):
     out_channels = 3
     num_repetitions = 3
-    inputs_cat = Categorical(scope=Scope([0, 1]), p=torch.rand(2, out_channels, num_repetitions))
+    inputs_cat = Categorical(scope=Scope([0, 1]), p=torch.rand(2, out_channels, num_repetitions)).to(device)
     inputs_bin = Binomial(
         scope=Scope([2, 3, 4]),
         n=torch.ones((3, out_channels, num_repetitions)) * 3,
         p=torch.rand(3, out_channels, num_repetitions),
         num_repetitions=num_repetitions,
-    )
+    ).to(device)
 
-    module = Cat(inputs=[inputs_cat, inputs_bin], dim=1)
+    module = Cat(inputs=[inputs_cat, inputs_bin], dim=1).to(device)
 
     # Marginalize categorical scope, expect binomial to be returned
     marg_rvs_cat = inputs_cat.scope.query

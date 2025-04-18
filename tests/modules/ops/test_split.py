@@ -32,7 +32,7 @@ def make_split(out_channels=3, out_features=3, num_splits=2, split_type=SplitHal
     return split_type(inputs=inputs_a, num_splits=num_splits, dim=1)
 
 @pytest.mark.parametrize("out_channels,features_values_multiplier,num_splits,split_type,num_reps", params)
-def test_log_likelihood(out_channels: int, features_values_multiplier: int, num_splits: int, split_type, num_reps):
+def test_log_likelihood(out_channels: int, features_values_multiplier: int, num_splits: int, split_type, num_reps, device):
     out_channels = 3
     module = make_split(
         out_channels=out_channels,
@@ -40,8 +40,8 @@ def test_log_likelihood(out_channels: int, features_values_multiplier: int, num_
         num_splits=num_splits,
         split_type=split_type,
         num_reps=num_reps
-    )
-    data = make_normal_data(out_features=module.out_features)
+    ).to(device)
+    data = make_normal_data(out_features=module.out_features).to(device)
     lls = log_likelihood(module, data)
     assert len(lls) == num_splits
     for ll in lls:
@@ -52,7 +52,7 @@ def test_log_likelihood(out_channels: int, features_values_multiplier: int, num_
 
 
 @pytest.mark.parametrize("out_channels,features_values_multiplier,num_splits,split_type,num_reps", params)
-def test_sample(out_channels: int, features_values_multiplier: int, num_splits: int, split_type, num_reps):
+def test_sample(out_channels: int, features_values_multiplier: int, num_splits: int, split_type, num_reps, device):
     n_samples = 10
     out_channels = 3
     module = make_split(
@@ -61,13 +61,13 @@ def test_sample(out_channels: int, features_values_multiplier: int, num_splits: 
         num_splits=num_splits,
         split_type=split_type,
         num_reps=num_reps
-    )
+    ).to(device)
     for i in range(module.out_channels):
-        data = torch.full((n_samples, module.out_features), torch.nan)
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
-        mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool)
+        data = torch.full((n_samples, module.out_features), torch.nan).to(device)
+        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features)).to(device)
+        mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool).to(device)
         if num_reps is not None:
-            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
         else:
             repetition_index = None
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)

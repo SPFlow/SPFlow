@@ -17,8 +17,8 @@ out_channels_values = [1, 5]
 out_features_values = [1, 6]
 
 
-def make_params(out_features: int, out_channels: int) -> torch.Tensor:
-    return torch.rand(out_features, out_channels)
+def make_params(out_features: int, out_channels: int, device) -> torch.Tensor:
+    return torch.rand(out_features, out_channels, device=device)
 
 
 def make_module(rate) -> Poisson:
@@ -27,14 +27,14 @@ def make_module(rate) -> Poisson:
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_negative_rate(out_features: int, out_channels: int):
-    rate = make_params(out_features, out_channels)
+def test_constructor_negative_rate(out_features: int, out_channels: int, device):
+    rate = make_params(out_features, out_channels, device)
     with pytest.raises(ValueError):
-        make_module(rate=torch.full_like(rate, -1.0))
+        make_module(rate=torch.full_like(rate, -1.0)).to(device)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_zero_rate(out_features: int, out_channels: int):
-    rate = make_params(out_features, out_channels)
+def test_constructor_zero_rate(out_features: int, out_channels: int, device):
+    rate = make_params(out_features, out_channels, device)
     with pytest.raises(ValueError):
-        make_module(rate=torch.full_like(rate, 0.0))
+        make_module(rate=torch.full_like(rate, 0.0)).to(device)
