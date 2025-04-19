@@ -93,3 +93,51 @@ def test_marginalize(prune, in_channels: int, marg_rvs: list[int], num_reps, dev
 
     # Scope query should not contain marginalized rv
     assert len(set(marginalized_module.scope.query).intersection(marg_rvs)) == 0
+
+
+def test_multiple_inputs(device):
+    in_channels = 2
+    out_channels = 2
+    out_features = 4
+    num_reps = 5
+
+    mean = torch.rand((out_features, out_channels, num_reps))
+    std = torch.rand((out_features, out_channels, num_reps))
+
+    normal_layer_a = make_normal_leaf(scope=[0,1,2,3], out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions, mean=mean, std=std)
+    normal_layer_b1 = make_normal_leaf(scope=[0,1], out_features=out_features/2, out_channels=in_channels, num_repetitions=num_repetitions, mean=mean[0:2,:,:], std=std[0:2,:,:])
+    normal_layer_b2 = make_normal_leaf(scope=[2,3], out_features=out_features/2, out_channels=in_channels, num_repetitions=num_repetitions, mean=mean[2:4,:,:], std=std[2:4,:,:])
+
+    module_a = Product(inputs=normal_layer_a).to(device)
+
+    module_b = Product(inputs=[normal_layer_b1, normal_layer_b2]).to(device)
+
+    # test log likelihood
+
+    data = make_normal_data(out_features=out_features).to(device)
+
+    ll_a = log_likelihood(module_a, data)
+    ll_b = log_likelihood(module_b, data)
+
+    assert torch.allclose(ll_a, ll_b)
+
+    # test sampling
+
+    n_samples = 10
+
+    data_a = torch.full((n_samples, out_features), torch.nan, device=device)
+    channel_index = torch.randint(low=0, high=out_channels, size=(n_samples, out_features), device=device)
+    mask = torch.full((n_samples, out_features), True, device=device)
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,), device=device)
+    sampling_ctx_a = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+
+    data_b = torch.full((n_samples, out_features), torch.nan, device=device)
+
+    sampling_ctx_b = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+
+    samples_a = sample(module_a, data_a, is_mpe=True, sampling_ctx=sampling_ctx_a)
+    samples_b = sample(module_b, data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
+
+
+    assert torch.allclose(samples_a, samples_b)
+

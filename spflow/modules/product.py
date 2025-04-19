@@ -11,18 +11,26 @@ from spflow.meta.dispatch.dispatch_context import (
     init_default_dispatch_context,
 )
 from spflow.modules.module import Module
+from spflow.modules.ops.cat import Cat
 
 
 class Product(Module):
 
 
-    def __init__(self, inputs: Module) -> None:
+    def __init__(self, inputs: Union[Module, list[Module]]) -> None:
         super().__init__()
-        self.inputs = inputs
+
+        if isinstance(inputs, list):
+            if len(inputs) == 1:
+                self.inputs = inputs[0]
+            else:
+                self.inputs = Cat(inputs=inputs, dim=1)
+        else:
+            self.inputs = inputs
 
         # Scope of this product module is equal to the scope of its only input
-        self.scope = inputs.scope
-        self.num_repetitions = inputs.num_repetitions
+        self.scope = self.inputs.scope
+        self.num_repetitions = self.inputs.num_repetitions
 
     @property
     def out_channels(self) -> int:
