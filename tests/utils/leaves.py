@@ -37,8 +37,7 @@ def make_normal_leaf(scope=None, out_features=None, out_channels=None, num_repet
     if mean is not None:
         out_features = mean.shape[0]
     #assert (scope is None) ^ (out_features is None), "Either scope or out_features must be given"
-    if out_features and scope:
-        assert len(scope.query) == out_features, "scope and out_features must have the same length"
+
 
     if scope is None:
         scope = Scope(list(range(0, out_features)))
@@ -50,6 +49,9 @@ def make_normal_leaf(scope=None, out_features=None, out_channels=None, num_repet
         pass
     else:
         out_features = len(scope.query)
+
+    if out_features and scope:
+        assert len(scope.query) == out_features, "scope and out_features must have the same length"
 
     if num_repetitions is not None:
         mean = mean if mean is not None else torch.randn(len(scope.query), out_channels, num_repetitions)
