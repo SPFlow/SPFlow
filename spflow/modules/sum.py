@@ -15,6 +15,7 @@ from spflow.modules.module import Module
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
+from spflow.modules.ops.cat import Cat
 
 
 class Sum(Module):
@@ -28,7 +29,7 @@ class Sum(Module):
 
     def __init__(
         self,
-        inputs: Module,
+        inputs: Union[Module, list[Module]],
         out_channels: Optional[int] = None,
         num_repetitions: Optional[int] = None,
         weights: Optional[Tensor] = None,
@@ -60,8 +61,16 @@ class Sum(Module):
                 f"Number of nodes for 'Sum' must be greater of equal to 1 but was {out_channels}."
             )
 
+        if isinstance(inputs, list):
+            if len(inputs) == 1:
+                self.inputs = inputs[0]
+            else:
+                self.inputs = Cat(inputs=inputs, dim=2)
+        else:
+            self.inputs = inputs
+
+
         # Single input, sum over in_channel dimension
-        self.inputs = inputs
         self.sum_dim = sum_dim
         self._out_features = self.inputs.out_features
 
