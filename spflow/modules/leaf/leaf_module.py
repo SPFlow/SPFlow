@@ -281,6 +281,9 @@ def sample(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
+    #ToDo: remove (only for test purpose)
+    #is_mpe = True
+
 
     out_of_scope = list(filter(lambda x: x not in module.scope.query, range(data.shape[1])))
     marg_mask = torch.isnan(data)
@@ -299,19 +302,21 @@ def sample(
         # Get mode of distribution as MPE
         samples = module.distribution.mode().unsqueeze(0)
         if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
+
             samples = samples.repeat(n_samples, 1, 1, 1).detach()
             # repetition_idx shape: (n_samples,)
             repetition_idx = sampling_ctx.repetition_idx[instance_mask]
+
             indices = repetition_idx.view(-1,1,1,1).expand(-1,samples.shape[1], samples.shape[2],-1)
+
             samples = torch.gather(samples, dim=-1, index=indices).squeeze(-1)
+
         elif sampling_ctx.repetition_idx is not None and samples.ndim != 4 or sampling_ctx.repetition_idx is None and samples.ndim == 4:
             raise ValueError("Either there is no repetition index or the samples are not 4-dimensional. This should not happen.")
 
         else:
             samples = samples.repeat(n_samples, 1, 1).detach()
 
-        # Add batch dimension
-        #samples = samples.unsqueeze(0).repeat(n_samples, *([1] * (samples.dim())))
     else:
         # Sample from distribution
         samples = module.distribution.sample(n_samples=n_samples)
@@ -319,10 +324,11 @@ def sample(
         if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
             # repetition_idx shape: (n_samples,)
             repetition_idx = sampling_ctx.repetition_idx[instance_mask]
+
             indices = repetition_idx.view(-1,1,1,1).expand(-1,samples.shape[1], samples.shape[2],-1)
-            #indices = sampling_ctx.repetition_idx.expand(-1,samples.shape[1], samples.shape[2],-1)
+
             samples = torch.gather(samples,dim=-1, index=indices).squeeze(-1)
-            #samples = samples[..., sampling_ctx.repetition_idx]
+
         elif sampling_ctx.repetition_idx is not None and samples.ndim != 4 or sampling_ctx.repetition_idx is None and samples.ndim == 4:
             raise ValueError("Either there is no repetition index or the samples are not 4-dimensional. This should not happen.")
 

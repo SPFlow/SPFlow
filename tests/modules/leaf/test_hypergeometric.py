@@ -1,4 +1,4 @@
-from tests.fixtures import auto_set_test_seed
+from tests.fixtures import auto_set_test_seed, auto_set_test_device
 import unittest
 from itertools import product
 
@@ -17,7 +17,7 @@ from spflow.modules.leaf import Hypergeometric
 import unittest
 from itertools import product
 from spflow.exceptions import InvalidParameterCombinationError
-from tests.fixtures import auto_set_test_seed
+from tests.fixtures import auto_set_test_seed, auto_set_test_device
 import pytest
 import torch
 from spflow.meta.data import Scope
@@ -27,7 +27,7 @@ out_channels_values = [1, 5]
 out_features_values = [1, 6]
 
 
-def make_params(out_features: int, out_channels: int, device) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Create parameters for a hypergeometric distribution.
 
@@ -40,9 +40,9 @@ def make_params(out_features: int, out_channels: int, device) -> tuple[torch.Ten
         N: Population size.
         n: Number of draws.
     """
-    N = torch.randint(10, 100, (out_features, out_channels), device=device)
-    K = torch.randint(1, N.max().item(), (out_features, out_channels), device=device).clamp(max=N - 1)
-    n = torch.randint(1, N.max().item(), (out_features, out_channels), device=device).clamp(max=N - 1)
+    N = torch.randint(10, 100, (out_features, out_channels))
+    K = torch.randint(1, N.max().item(), (out_features, out_channels)).clamp(max=N - 1)
+    n = torch.randint(1, N.max().item(), (out_features, out_channels)).clamp(max=N - 1)
     return K, N, n
 
 
@@ -59,40 +59,40 @@ def make_leaf(K, N, n) -> Hypergeometric:
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_negative_N(out_features: int, out_channels: int, device):
+def test_constructor_negative_N(out_features: int, out_channels: int):
     """Test the constructor of a Hypergeometric distribution with negative N."""
-    K, N, n = make_params(out_features, out_channels, device)
+    K, N, n = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(K=K, N=-1.0 * N, n=n).to(device)
+        make_leaf(K=K, N=-1.0 * N, n=n)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_negative_n(out_features: int, out_channels: int, device):
+def test_constructor_negative_n(out_features: int, out_channels: int):
     """Test the constructor of a Hypergeometric distribution with negative n."""
-    K, N, n = make_params(out_features, out_channels, device)
+    K, N, n = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(K=K, N=N, n=-1.0 * n).to(device)
+        make_leaf(K=K, N=N, n=-1.0 * n)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_negative_K(out_features: int, out_channels: int, device):
+def test_constructor_negative_K(out_features: int, out_channels: int):
     """Test the constructor of a Hypergeometric distribution with negative K."""
-    K, N, n = make_params(out_features, out_channels, device)
+    K, N, n = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(K=-1.0 * K, N=N, n=n).to(device)
+        make_leaf(K=-1.0 * K, N=N, n=n)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_n_greater_than_N(out_features: int, out_channels: int, device):
+def test_constructor_n_greater_than_N(out_features: int, out_channels: int):
     """Test the constructor of a Hypergeometric distribution with n > N."""
-    K, N, n = make_params(out_features, out_channels, device)
+    K, N, n = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(K=K, N=N, n=N + 1).to(device)
+        make_leaf(K=K, N=N, n=N + 1)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_K_greater_than_N(out_features: int, out_channels: int, device):
+def test_constructor_K_greater_than_N(out_features: int, out_channels: int):
     """Test the constructor of a Hypergeometric distribution with K > N."""
-    K, N, n = make_params(out_features, out_channels, device)
+    K, N, n = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(K=N + 1, N=N, n=n).to(device)
+        make_leaf(K=N + 1, N=N, n=n)

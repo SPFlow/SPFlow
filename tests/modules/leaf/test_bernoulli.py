@@ -2,7 +2,7 @@ import unittest
 from itertools import product
 
 from spflow.exceptions import InvalidParameterCombinationError
-from tests.fixtures import auto_set_test_seed
+from tests.fixtures import auto_set_test_seed, auto_set_test_device
 
 import pytest
 import torch
@@ -27,8 +27,8 @@ def make_module(p) -> Bernoulli:
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_p_greater_than_one(out_features: int, out_channels: int, device):
+def test_constructor_p_greater_than_one(out_features: int, out_channels: int):
     """Test the constructor of a Bernoulli distribution with p greater than 1.0."""
-    p = torch.rand(out_features, out_channels).to(device)
+    p = torch.rand(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_module(p=1.0 + p).to(device)
+        make_module(p=1.0 + p)

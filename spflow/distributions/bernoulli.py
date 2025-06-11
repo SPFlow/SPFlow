@@ -28,7 +28,7 @@ class Bernoulli(Distribution):
     @property
     def p(self) -> Tensor:
         """Returns the p parameters."""
-        return torch.exp(self.log_p)
+        return torch.exp(self.log_p)#torch.sigmoid(torch.exp(self.log_p))
 
     @p.setter
     def p(self, p):
@@ -37,10 +37,10 @@ class Bernoulli(Distribution):
         if not torch.isfinite(p).all():
             raise ValueError(f"Values for 'p' must be finite, but was: {p}")
 
-        if torch.all(p < 0.0):
+        if torch.any(p < 0.0): #all
             raise ValueError(f"Value for 'p' must not be smaller than 0.0, but was: {p}")
 
-        if torch.all(p > 1.0):
+        if torch.any(p > 1.0):
             raise ValueError(f"Value for 'p' must not be smaller than 1.0, but was: {p}")
 
         self.log_p.data = p.log()

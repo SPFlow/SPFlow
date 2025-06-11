@@ -1,5 +1,5 @@
 from spflow.modules.leaf import Normal
-from tests.fixtures import auto_set_test_seed
+from tests.fixtures import auto_set_test_seed, auto_set_test_device, auto_set_test_device
 import unittest
 
 from itertools import product
@@ -39,14 +39,14 @@ def make_sum(in_channels=None, out_channels=None, out_features=None, weights=Non
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
-def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, num_reps, device):
+def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, num_reps):
     module = make_sum(
         in_channels=in_channels,
         out_channels=out_channels,
         out_features=out_features,
         num_repetitions=num_reps,
-    ).to(device)
-    data = make_normal_data(out_features=out_features).to(device)
+    )
+    data = make_normal_data(out_features=out_features)
     ctx = init_default_dispatch_context()
     lls = log_likelihood(module, data, dispatch_ctx=ctx)
     if num_reps is not None:
@@ -58,7 +58,7 @@ def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, 
 @pytest.mark.parametrize(
     "in_channels,out_channels,out_features,num_reps", product(in_channels_values, out_channels_values, [2, 4], num_repetitions)
 )
-def test_log_likelihood_product_inputs(in_channels: int, out_channels: int, out_features: int, num_reps, device):
+def test_log_likelihood_product_inputs(in_channels: int, out_channels: int, out_features: int, num_reps):
     inputs_a = make_leaf(cls=Normal, out_channels=in_channels, scope=Scope(range(0, out_features // 2)), num_repetitions=num_reps)
     inputs_b = make_leaf(
         cls=Normal, out_channels=in_channels, scope=Scope(range(out_features // 2, out_features)), num_repetitions=num_reps
@@ -66,9 +66,9 @@ def test_log_likelihood_product_inputs(in_channels: int, out_channels: int, out_
     inputs = [inputs_a, inputs_b]
     prod = ElementwiseProduct(inputs=inputs)
 
-    module = Sum(out_channels=out_channels, inputs=prod, num_repetitions=num_reps).to(device)
+    module = Sum(out_channels=out_channels, inputs=prod, num_repetitions=num_reps)
 
-    data = make_normal_data(out_features=out_features).to(device)
+    data = make_normal_data(out_features=out_features)
     ctx = init_default_dispatch_context()
     lls = log_likelihood(module, data, dispatch_ctx=ctx)
     if num_reps is not None:
@@ -78,20 +78,20 @@ def test_log_likelihood_product_inputs(in_channels: int, out_channels: int, out_
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
-def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps, device):
+def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps):
     n_samples = 100
     module = make_sum(
         in_channels=in_channels,
         out_channels=out_channels,
         out_features=out_features,
         num_repetitions=num_reps,
-    ).to(device)
+    )
     for i in range(module.out_channels):
-        data = torch.full((n_samples, module.out_features), torch.nan, device=device)
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features), device=device)
-        mask = torch.full((n_samples, module.out_features), True, device=device)
+        data = torch.full((n_samples, module.out_features), torch.nan)
+        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+        mask = torch.full((n_samples, module.out_features), True)
         if num_reps is not None:
-            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,), device=device)
+            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         else:
             repetition_index = None
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
@@ -104,7 +104,7 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps
 @pytest.mark.parametrize(
     "in_channels,out_channels,out_features, num_reps", product(in_channels_values, out_channels_values, [2, 8], num_repetitions)
 )
-def test_sample_product_inputs(in_channels: int, out_channels: int, out_features: int, num_reps, device):
+def test_sample_product_inputs(in_channels: int, out_channels: int, out_features: int, num_reps):
     n_samples = 100
     inputs_a = make_leaf(cls=Normal, out_channels=in_channels, scope=Scope(range(0, out_features // 2)), num_repetitions=num_reps)
     inputs_b = make_leaf(
@@ -113,14 +113,14 @@ def test_sample_product_inputs(in_channels: int, out_channels: int, out_features
     inputs = [inputs_a, inputs_b]
     prod = ElementwiseProduct(inputs=inputs)
 
-    module = Sum(out_channels=out_channels, inputs=prod, num_repetitions=num_reps).to(device)
+    module = Sum(out_channels=out_channels, inputs=prod, num_repetitions=num_reps)
 
     for i in range(module.out_channels):
-        data = torch.full((n_samples, out_features), torch.nan, device=device)
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features), device=device)
-        mask = torch.full((n_samples, module.out_features), True, device=device)
+        data = torch.full((n_samples, out_features), torch.nan)
+        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+        mask = torch.full((n_samples, module.out_features), True)
         if num_reps is not None:
-            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,), device=device)
+            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         else:
             repetition_index = None
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
@@ -134,7 +134,7 @@ def test_sample_product_inputs(in_channels: int, out_channels: int, out_features
     "in_channels,out_channels, num_reps",
     list(product(in_channels_values, out_channels_values, num_repetitions)),
 )
-def test_conditional_sample(in_channels: int, out_channels: int, num_reps, device):
+def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
     out_features = 6
     n_samples = 100
     module = make_sum(
@@ -142,11 +142,11 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps, devic
         out_channels=out_channels,
         out_features=out_features,
         num_repetitions=num_reps,
-    ).to(device)
+    )
 
     for i in range(module.out_channels):
         # Create some data
-        data = torch.randn(n_samples, module.out_features).to(device)
+        data = torch.randn(n_samples, module.out_features)
 
         # Set first three scopes to nan
         data[:, [0, 1, 2]] = torch.nan
@@ -156,10 +156,10 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps, devic
         # Perform log-likelihood computation
         dispatch_ctx = init_default_dispatch_context()
 
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features)).to(device)
-        mask = torch.full(channel_index.shape, True).to(device)
+        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+        mask = torch.full(channel_index.shape, True)
         if num_reps is not None:
-            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
+            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         else:
             repetition_index = None
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
@@ -188,27 +188,27 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps, devic
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
-def test_expectation_maximization(in_channels: int, out_channels: int, out_features: int, num_reps, device):
+def test_expectation_maximization(in_channels: int, out_channels: int, out_features: int, num_reps):
     out_channels = 6
     module = make_sum(
         in_channels=in_channels,
         out_channels=out_channels,
         out_features=out_features,
         num_repetitions=num_reps,
-    ).to(device)
-    data = make_normal_data(out_features=out_features).to(device)
+    )
+    data = make_normal_data(out_features=out_features)
     expectation_maximization(module, data, max_steps=10)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
-def test_gradient_descent_optimization(in_channels: int, out_channels: int, out_features: int, num_reps, device):
+def test_gradient_descent_optimization(in_channels: int, out_channels: int, out_features: int, num_reps):
     module = make_sum(
         in_channels=in_channels,
         out_channels=out_channels,
         out_features=out_features,
         num_repetitions=num_reps,
-    ).to(device)
-    data = make_normal_data(out_features=out_features, num_samples=20).to(device)
+    )
+    data = make_normal_data(out_features=out_features, num_samples=20)
     dataset = torch.utils.data.TensorDataset(data)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
 
@@ -224,7 +224,7 @@ def test_gradient_descent_optimization(in_channels: int, out_channels: int, out_
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
-def test_weights(in_channels: int, out_channels: int, out_features: int, num_reps, device):
+def test_weights(in_channels: int, out_channels: int, out_features: int, num_reps):
     if num_reps is not None:
         weights = torch.ones((out_features, in_channels, out_channels, num_reps))
     else:
@@ -236,34 +236,34 @@ def test_weights(in_channels: int, out_channels: int, out_features: int, num_rep
         in_channels=in_channels,
         num_repetitions=num_reps,
 
-    ).to(device)
+    )
     assert torch.allclose(module.weights.sum(dim=module.sum_dim), torch.tensor(1.0))
     assert torch.allclose(module.log_weights, module.weights.log())
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
-def test_invalid_weights_normalized(in_channels: int, out_channels: int, out_features: int, num_reps, device):
+def test_invalid_weights_normalized(in_channels: int, out_channels: int, out_features: int, num_reps):
     if num_reps is not None:
         weights = torch.rand((out_features, in_channels, out_channels, num_reps))
     else:
         weights = torch.rand((out_features, in_channels, out_channels))
     with pytest.raises(ValueError):
-        make_sum(weights=weights, in_channels=in_channels, num_repetitions=num_reps).to(device)
+        make_sum(weights=weights, in_channels=in_channels, num_repetitions=num_reps)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
-def test_invalid_weights_negative(in_channels: int, out_channels: int, out_features: int, num_reps, device):
+def test_invalid_weights_negative(in_channels: int, out_channels: int, out_features: int, num_reps):
     if num_reps is not None:
         weights = torch.rand((out_features, in_channels, out_channels, num_reps)) - 1.0
     else:
         weights = torch.rand((out_features, in_channels, out_channels)) - 1.0
     with pytest.raises(ValueError):
-        make_sum(weights=weights, in_channels=in_channels, num_repetitions=num_reps).to(device)
+        make_sum(weights=weights, in_channels=in_channels, num_repetitions=num_reps)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
 def test_invalid_specification_of_out_channels_and_weights(
-    in_channels: int, out_channels: int, out_features: int, num_reps, device
+    in_channels: int, out_channels: int, out_features: int, num_reps
 ):
     with pytest.raises(ValueError):
         if num_reps is not None:
@@ -271,17 +271,17 @@ def test_invalid_specification_of_out_channels_and_weights(
         else:
             weights = torch.rand((out_features, in_channels, out_channels))
         weights = weights / weights.sum(dim=2, keepdim=True)
-        Sum(weights=weights, inputs=make_normal_leaf(out_features=out_features, out_channels=3, num_repetitions=num_reps), num_repetitions=num_reps).to(device)
+        Sum(weights=weights, inputs=make_normal_leaf(out_features=out_features, out_channels=3, num_repetitions=num_reps), num_repetitions=num_reps)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
-def test_invalid_parameter_combination(in_channels: int, out_channels: int, out_features: int, num_reps, device):
+def test_invalid_parameter_combination(in_channels: int, out_channels: int, out_features: int, num_reps):
     if num_reps is not None:
         weights = torch.rand((out_features, in_channels, out_channels, num_reps)) + 1.0
     else:
         weights = torch.rand((out_features, in_channels, out_channels)) + 1.0
     with pytest.raises(InvalidParameterCombinationError):
-        make_sum(weights=weights, out_channels=out_channels, in_channels=in_channels, num_repetitions=num_reps).to(device)
+        make_sum(weights=weights, out_channels=out_channels, in_channels=in_channels, num_repetitions=num_reps)
 
 
 @pytest.mark.parametrize(
@@ -294,14 +294,14 @@ def test_invalid_parameter_combination(in_channels: int, out_channels: int, out_
         num_repetitions
     ),
 )
-def test_marginalize(prune, in_channels: int, out_channels: int, marg_rvs: list[int], num_reps, device):
+def test_marginalize(prune, in_channels: int, out_channels: int, marg_rvs: list[int], num_reps):
     out_features = 3
     module = make_sum(
         in_channels=in_channels,
         out_channels=out_channels,
         out_features=out_features,
         num_repetitions=num_reps,
-    ).to(device)
+    )
     weights_shape = module.weights.shape
 
     # Marginalize scope
@@ -321,7 +321,7 @@ def test_marginalize(prune, in_channels: int, out_channels: int, marg_rvs: list[
     for d in range(1, len(weights_shape)):
         assert marginalized_module.weights.shape[d] == weights_shape[d]
 
-def test_multiple_inputs(device):
+def test_multiple_input():
     in_channels = 2
     out_channels = 2
     out_features = 4
@@ -335,13 +335,13 @@ def test_multiple_inputs(device):
     normal_layer_b1 = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_repetitions, mean=mean[:,0:1,:], std=std[:,0:1,:])
     normal_layer_b2 = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_repetitions, mean=mean[:,1:2,:], std=std[:,1:2,:])
 
-    module_a = Sum(inputs=normal_layer_a, out_channels=sum_out_channels, num_repetitions=num_reps).to(device)
+    module_a = Sum(inputs=normal_layer_a, out_channels=sum_out_channels, num_repetitions=num_reps)
 
-    module_b = Sum(inputs=[normal_layer_b1,normal_layer_b2], weights=module_a.weights, num_repetitions=num_reps).to(device)
+    module_b = Sum(inputs=[normal_layer_b1,normal_layer_b2], weights=module_a.weights, num_repetitions=num_reps)
 
     # test log likelihood
 
-    data = make_normal_data(out_features=out_features).to(device)
+    data = make_normal_data(out_features=out_features)
 
     ll_a = log_likelihood(module_a, data)
     ll_b = log_likelihood(module_b, data)
@@ -352,13 +352,13 @@ def test_multiple_inputs(device):
 
     n_samples = 10
 
-    data_a = torch.full((n_samples, out_features), torch.nan, device=device)
-    channel_index = torch.randint(low=0, high=sum_out_channels, size=(n_samples, out_features), device=device)
-    mask = torch.full((n_samples, out_features), True, device=device)
-    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,), device=device)
+    data_a = torch.full((n_samples, out_features), torch.nan)
+    channel_index = torch.randint(low=0, high=sum_out_channels, size=(n_samples, out_features))
+    mask = torch.full((n_samples, out_features), True)
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx_a = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
 
-    data_b = torch.full((n_samples, out_features), torch.nan, device=device)
+    data_b = torch.full((n_samples, out_features), torch.nan)
 
     sampling_ctx_b = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
 

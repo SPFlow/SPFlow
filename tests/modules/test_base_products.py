@@ -1,5 +1,5 @@
 from spflow.modules import ElementwiseProduct
-from tests.fixtures import auto_set_test_seed
+from tests.fixtures import auto_set_test_seed, auto_set_test_device
 from itertools import product
 
 from spflow.exceptions import InvalidParameterCombinationError, ScopeError
@@ -45,10 +45,10 @@ def make_module(cls, out_features: int, in_channels: int, scopes=None, num_repet
     "cls,in_channels,out_features, num_reps",
     product(cls_values, in_channels_values, [1, 6], num_repetitions),
 )
-def test_log_likelihood(cls, in_channels: int, out_features: int, num_reps, device):
+def test_log_likelihood(cls, in_channels: int, out_features: int, num_reps):
 
-    module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps).to(device)
-    data = make_data(cls=Normal, out_features=out_features * len(module.inputs)).to(device)
+    module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps)
+    data = make_data(cls=Normal, out_features=out_features * len(module.inputs))
     lls = log_likelihood(module, data)
     if num_reps is not None:
         assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
@@ -57,7 +57,7 @@ def test_log_likelihood(cls, in_channels: int, out_features: int, num_reps, devi
 
 
 @pytest.mark.parametrize("cls,out_features,num_reps", product(cls_values, out_features_values, num_repetitions))
-def test_log_likelihood_broadcasting_channels(cls, out_features: int, num_reps, device):
+def test_log_likelihood_broadcasting_channels(cls, out_features: int, num_reps):
     # Define the scopes
     in_channels_a = 1
     in_channels_b = 3
@@ -73,10 +73,10 @@ def test_log_likelihood_broadcasting_channels(cls, out_features: int, num_reps, 
     inputs = [inputs_a, inputs_b, inputs_c]
 
     # Create the module
-    module = cls(inputs=inputs).to(device)
+    module = cls(inputs=inputs)
 
     # Create the data
-    data = make_data(cls=Normal, out_features=out_features * len(module.inputs)).to(device)
+    data = make_data(cls=Normal, out_features=out_features * len(module.inputs))
 
     # Compute the log-likelihood
     lls = log_likelihood(module, data)
@@ -90,15 +90,15 @@ def test_log_likelihood_broadcasting_channels(cls, out_features: int, num_reps, 
     "cls,in_channels,out_features, num_reps",
     product(cls_values, in_channels_values, [1, 6], num_repetitions),
 )
-def test_sample(cls, in_channels: int, out_features: int, num_reps, device):
+def test_sample(cls, in_channels: int, out_features: int, num_reps):
     n_samples = 10000
-    module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps).to(device)
+    module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps)
 
-    data = torch.full((n_samples, out_features * len(module.inputs)), torch.nan).to(device)
-    mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool).to(device)
-    channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features)).to(device)
+    data = torch.full((n_samples, out_features * len(module.inputs)), torch.nan)
+    mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool)
+    channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
     if num_reps is not None:
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
+        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     else:
         repetition_index = None
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
@@ -110,7 +110,7 @@ def test_sample(cls, in_channels: int, out_features: int, num_reps, device):
 
 
 @pytest.mark.parametrize("cls,out_features,num_reps", product(cls_values, out_features_values, num_repetitions))
-def test_sample_two_inputs_broadcasting_channels(cls, out_features: int, num_reps, device):
+def test_sample_two_inputs_broadcasting_channels(cls, out_features: int, num_reps):
     # Define the scopes
     in_channels_a = 1
     in_channels_b = 3
@@ -126,14 +126,14 @@ def test_sample_two_inputs_broadcasting_channels(cls, out_features: int, num_rep
     inputs = [inputs_a, inputs_b, inputs_c]
 
     # Create the module
-    module = cls(inputs=inputs).to(device)
+    module = cls(inputs=inputs)
 
     n_samples = 5
-    data = torch.full((n_samples, out_features * len(module.inputs)), torch.nan).to(device)
-    channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features)).to(device)
-    mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool).to(device)
+    data = torch.full((n_samples, out_features * len(module.inputs)), torch.nan)
+    channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+    mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool)
     if num_reps is not None:
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
+        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     else:
         repetition_index = None
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
@@ -147,8 +147,8 @@ def test_sample_two_inputs_broadcasting_channels(cls, out_features: int, num_rep
 @pytest.mark.parametrize(
     "cls,in_channels,out_features,num_reps", product(cls_values, in_channels_values, out_features_values, num_repetitions)
 )
-def test_scopes(cls, in_channels: int, out_features: int, num_reps, device):
-    module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps).to(device)
+def test_scopes(cls, in_channels: int, out_features: int, num_reps):
+    module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps)
     assert module.scope.query == list(range(out_features * len(module.inputs)))
 
 
@@ -161,9 +161,9 @@ def test_scopes(cls, in_channels: int, out_features: int, num_reps, device):
         num_repetitions
     ),
 )
-def test_expectation_maximization(cls, in_channels: int, out_features: int, num_reps, device):
-    module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps).to(device)
-    data = make_data(cls=Normal, out_features=out_features * len(module.inputs)).to(device)
+def test_expectation_maximization(cls, in_channels: int, out_features: int, num_reps):
+    module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps)
+    data = make_data(cls=Normal, out_features=out_features * len(module.inputs))
     expectation_maximization(module, data, max_steps=2)
 
 
@@ -171,7 +171,7 @@ def test_expectation_maximization(cls, in_channels: int, out_features: int, num_
     "cls,in_channels,out_features,num_reps",
     product(cls_values, in_channels_values, out_features_values, num_repetitions),
 )
-def test_invalid_non_disjoint_scopes(cls, in_channels: int, out_features: int, num_reps, device):
+def test_invalid_non_disjoint_scopes(cls, in_channels: int, out_features: int, num_reps):
     with pytest.raises(ScopeError):
         make_module(
             cls=cls,
@@ -179,7 +179,7 @@ def test_invalid_non_disjoint_scopes(cls, in_channels: int, out_features: int, n
             in_channels=in_channels,
             scopes=(Scope(range(out_features)), Scope(range(out_features)), Scope(range(out_features))),
             num_repetitions=num_reps,
-        ).to(device)
+        )
 
 
 # @pytest.mark.parametrize("cls", cls_values)
@@ -205,7 +205,7 @@ test_cases = [
     ([(3, 4), (4, 3)], False, OuterProduct),
 ]
 @pytest.mark.parametrize("shape, label, product", test_cases)
-def test_broadcast(shape, label, product, device):
+def test_broadcast(shape, label, product):
     leaf_layer = []
     current_num_features = 0
     for s in shape:
@@ -216,9 +216,9 @@ def test_broadcast(shape, label, product, device):
 
     if not label:
         with pytest.raises(ValueError):
-            product(inputs=leaf_layer).to(device)
+            product(inputs=leaf_layer)
     else:
-        prod = product(inputs=leaf_layer).to(device)
+        prod = product(inputs=leaf_layer)
         assert prod is not None
 
 
