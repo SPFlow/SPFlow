@@ -95,7 +95,7 @@ class Gamma(Distribution):
 
         # edge case (if all values are the same, not enough samples or very close to each other)
         if torch.any(zero_mask := torch.isclose(beta_est, torch.tensor(0.0))):
-            beta_est[zero_mask] = torch.tensor(1e-8)
+            beta_est[zero_mask] = torch.tensor(1e-8, device=data.device)
         if torch.any(nan_mask := torch.isnan(beta_est)):
             beta_est[nan_mask] = torch.tensor(1e-8)
 

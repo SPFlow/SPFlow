@@ -1,4 +1,4 @@
-from tests.fixtures import auto_set_test_seed
+from tests.fixtures import auto_set_test_seed, auto_set_test_device
 import unittest
 
 from pytest import fixture

@@ -5,7 +5,7 @@
 # from spflow.meta.data import Scope
 # from spflow.modules.rat.region_graph import random_region_graph
 # from spflow.modules.leaf import Normal
-# from spflow.modules.rat.rat_spn_new import RatSPN
+# from spflow.modules.rat.rat_spn import RatSPN
 # from spflow.modules.factorize import Factorize
 # from collections import deque
 # from spflow.meta.data import Scope
@@ -85,6 +85,9 @@
 #
 # def make_dataset(num_features_continuous, num_features_discrete, num_clusters, num_samples):
 #     # Collect data and data domains
+#     torch.manual_seed(0)
+#     torch.backends.cudnn.deterministic = True
+#     torch.backends.cudnn.benchmark = False
 #     BINS = 100
 #     data = []
 #     domains = []
@@ -174,11 +177,15 @@
 #
 #     # Scheinbar funktioniert es soweit nur mit einer repitition / Problem liegt bei repetition
 #     # Mögliches Problem: Weights sind nicht richtig für repitition -> nicht richtig normalisiert
-#
-#     torch.manual_seed(0)
+#     seed = 0
+#     torch.manual_seed(seed)
+#     torch.cuda.manual_seed(seed)  # If you use GPU
+#     torch.cuda.manual_seed_all(seed)  # If multiple GPUs
+#     torch.backends.cudnn.deterministic = True
+#     torch.backends.cudnn.benchmark = False
 #     num_features = 4
-#     out_channels = 10#10
-#     num_repetitions = 10
+#     out_channels = 10#10#10
+#     num_repetitions = 10#10
 #     n_samples = 10000
 #
 #
@@ -205,7 +212,7 @@
 #     rat_spn = RatSPN(
 #         leaf_modules=[normal_layer],
 #         n_root_nodes=1,
-#         n_region_nodes=10,
+#         n_region_nodes=10,#10,
 #         num_repetitions=num_repetitions,
 #         depth=2,
 #         outer_product=True,
@@ -216,13 +223,13 @@
 #
 #     print("Time to build SPN: ", time.time() - start_time)
 #
-#     print("Number of parameters:", sum(p.numel() for p in normal_layer.parameters() if p.requires_grad))
+#     #print("Number of parameters:", sum(p.numel() for p in normal_layer.parameters() if p.requires_grad))
 #
-#     for name, ch in rat_spn.root_node.named_children():
-#         print("Number of parameters:", name, sum(p.numel() for p in ch.parameters() if p.requires_grad))
+#     #for name, ch in rat_spn.root_node.named_children():
+#     #    print("Number of parameters:", name, sum(p.numel() for p in ch.parameters() if p.requires_grad))
 #
 #     num_params= sum(p.numel() for p in rat_spn.parameters() if p.requires_grad)
-#
+#     print("Number of parameters:", num_params)
 #     train_gradient_descent(rat_spn, dataloader, lr=0.5, epochs=5, verbose=True) #5
 #
 #     rat_spn.eval()
@@ -428,9 +435,33 @@
 #     print(sampling_ctx.channel_index)
 #     #samples = sample(normal_layer, data, is_mpe=False)
 #
+# def op_test():
+#     torch.manual_seed(0)
+#     num_features = 8
+#     in_channels = 5
+#     num_repetitions = 3
+#     out_channels = 5
+#     n_samples = 1
+#     normal_layer = Normal(scope=Scope([0, 1, 2, 3, 4, 5, 6, 7]), out_channels=out_channels,
+#                           num_repetitions=num_repetitions)
+#     data = torch.tensor([[1, 2, 3, 4, 5, 6, 7, 8]])
+#     #normal_layer.distribution.std = torch.sqrt(torch.sigmoid(torch.ones((8, 3, 5))))
+#     product_layer = OuterProduct(inputs=SplitAlternate(inputs=normal_layer, num_splits=2, dim=1))
+#     print(product_layer.unraveled_channel_indices)
+#     print(product_layer)
+#     #ll = log_likelihood(product_layer, data)
+#     data = torch.full((n_samples, num_features), torch.nan)
+#     mask = torch.full((n_samples, product_layer.out_features), True, dtype=torch.bool)
+#     channel_index = torch.tensor([[2,21,8,19]])
+#     repetition_index = torch.zeros((n_samples,), dtype=torch.long)
 #
+#     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+#     print(sampling_ctx.channel_index)
+#     ctx = sample(product_layer, data, sampling_ctx=sampling_ctx, is_mpe=False)
+#     print(ctx.channel_index)
+#     # samples = sample(normal_layer, data, is_mpe=False)
 #
 # if __name__ == "__main__":
 #     #digits_sampling()
-#     outer_product_test()
+#     op_test()
 #

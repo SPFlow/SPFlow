@@ -144,7 +144,7 @@ class SamplingContext:
 
 
 def init_default_sampling_context(
-    sampling_ctx: Optional[SamplingContext], num_samples: Optional[int] = None
+    sampling_ctx: Optional[SamplingContext], num_samples: Optional[int] = None, device: Optional[torch.device] = None
 ) -> SamplingContext:
     """Initializes sampling context, if it is not already initialized.
 
@@ -162,4 +162,4 @@ def init_default_sampling_context(
     if sampling_ctx is not None:
         return sampling_ctx
     else:
-        return SamplingContext(num_samples=num_samples)
+        return SamplingContext(num_samples=num_samples, device=device)
