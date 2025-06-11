@@ -36,6 +36,7 @@ class Normal(Distribution):
     def std(self) -> Tensor:
         """Returns the standard deviation."""
         return self.log_std.exp()
+        #return self.log_std.clamp(min=-20.0, max=2.0).exp()
 
     @std.setter
     def std(self, std):
@@ -48,6 +49,7 @@ class Normal(Distribution):
             raise ValueError(f"Value for 'std' must be greater than 0.0, but was: {std}")
 
         self.log_std.data = std.log()
+        #self.log_std.data = (std + 1e-6).log()
 
     def mode(self) -> Tensor:
         return self.mean
@@ -58,6 +60,21 @@ class Normal(Distribution):
 
     @property
     def distribution(self) -> torch.distributions.Distribution:
+        if torch.isnan(self.mean).any():
+            print("Mean is NaN")
+            print(self.mean[torch.isnan(self.mean)])
+        if torch.isnan(self.std).any():
+            print("Std is NaN")
+            print(self.std[torch.isnan(self.std)])
+        if torch.isinf(self.mean).any():
+            print("Mean is Inf")
+            print(self.mean[torch.isinf(self.mean)])
+        if torch.isinf(self.std).any():
+            print("Std is Inf")
+            print(self.std[torch.isinf(self.std)])
+        if torch.any(self.std <= 0.0):
+            print("Std is <= 0.0")
+            print(self.std[self.std <= 0.0])
         return torch.distributions.Normal(self.mean, self.std)
 
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):

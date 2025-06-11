@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-USE_GPU = False
+USE_GPU = True
 
 @pytest.fixture(scope="session")
 def device():
