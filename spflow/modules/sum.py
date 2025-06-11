@@ -77,10 +77,13 @@ class Sum(Module):
 
         self._in_channels_total = self.inputs.out_channels
         self._out_channels_total = out_channels
-        if num_repetitions is not None:
-            self.num_repetitions = num_repetitions
-        else:
-            self.num_repetitions = self.inputs.num_repetitions
+
+        self.num_repetitions = num_repetitions
+        if num_repetitions is None:
+            if weights is not None:
+                if weights.ndim == 4:
+                    self.num_repetitions = weights.shape[3]
+
         # ToDo: not optional / generalization: additional dimension as tuple
         if self.num_repetitions is not None:
             self.weights_shape = (self._out_features, self._in_channels_total, self._out_channels_total, self.num_repetitions)
@@ -240,40 +243,23 @@ def sample(
     # (stay in logits space since Categorical distribution accepts logits directly)
 
     if sampling_ctx.repetition_idx is not None:
-        """
-        if module.sum_dim != 1:
-            dims = list(range(module.logits.ndimension()))  # [0, 1, 2, 3]
-            dims[1], dims[module.sum_dim] = dims[module.sum_dim], dims[1]  # Swap dim 1 and sum_dim
-
-            # Apply the permutation
-            logits = module.logits.permute(*dims)
-            # drop repetition dimension as it became the in_channel dimension (e.g. case of MixtureLayer)
-            logits = logits.unsqueeze(0)[...,0].expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
-        else:
-            logits = module.logits.unsqueeze(0)[...,sampling_ctx.repetition_idx].expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
-        """
-        #logits = module.logits.unsqueeze(0)[..., sampling_ctx.repetition_idx].expand(
-        #    sampling_ctx.channel_index.shape[0], -1, -1, -1)
-
-        ##########################################
 
         logits = module.logits.unsqueeze(0).expand(
-            sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
+            sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)  # shape [b , n_features , in_c, out_c, r]
 
-        indices = sampling_ctx.repetition_idx  # Shape (30000, 1, 1)
+        indices = sampling_ctx.repetition_idx  # Shape (30000, 1)
 
         # Use gather to select the correct repetition
         # Repeat indices to match the target dimension for gathering
         in_channels_total = logits.shape[2]
         indices = indices.view(-1,1,1,1,1).expand(-1,logits.shape[1],in_channels_total, logits.shape[3],-1)  # Shape (30000, 1, 10, 1)
         logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
-        #########################
 
     else:
         logits = module.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
+
     idxs = sampling_ctx.channel_index[..., None, None]
     in_channels_total = logits.shape[2]
-    #idxs = idxs.expand(-1, -1, module._in_channels_total, -1)
     idxs = idxs.expand(-1, -1, in_channels_total, -1)
     logits = logits.gather(dim=3, index=idxs).squeeze(3)
 
@@ -334,14 +320,6 @@ def log_likelihood(
         check_support=check_support,
         dispatch_ctx=dispatch_ctx,
     )
-
-    if module.sum_dim == 3:
-        log_weights = module.log_weights.squeeze(2).unsqueeze(0) # shape: (1, F, IC, R)
-        weighted_lls = ll + log_weights # shape: (B, F, input_OC, R) + (1, F, IC, R) = (B, F, OC, R)
-        output = torch.logsumexp(weighted_lls, dim=-1) # shape: (B, F, OC)
-        return output
-
-
 
     ll = ll.unsqueeze(3)  # shape: (B, F, input_OC, 1)
 

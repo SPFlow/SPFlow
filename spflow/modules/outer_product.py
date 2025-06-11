@@ -117,7 +117,6 @@ class OuterProduct(BaseProduct):
             ocs = ocs ** self.num_splits
         return ocs
 
-    # ToDo: Is this the correct?
     @property
     def out_features(self) -> int:
         if self.input_is_split:
@@ -141,27 +140,26 @@ class OuterProduct(BaseProduct):
 
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         if self.input_is_split:
-            if isinstance (self.inputs[0],SplitHalves):
-                return self.unraveled_channel_indices[output_ids].view(-1,self.inputs[0].out_features).unsqueeze(-1)
-            elif isinstance (self.inputs[0],SplitAlternate):
-                return self.unraveled_channel_indices[output_ids].permute(0,2,1).reshape(-1,self.inputs[0].out_features).unsqueeze(-1)
+            if isinstance(self.inputs[0], SplitHalves):
+                return self.unraveled_channel_indices[output_ids].permute(0,2,1).flatten(1,2).unsqueeze(-1)
+            elif isinstance(self.inputs[0], SplitAlternate):
+                return self.unraveled_channel_indices[output_ids].view(-1, self.inputs[0].out_features).unsqueeze(-1)
             else:
                 raise NotImplementedError("Other Split types are not implemented yet.")
-
-            #return self.unraveled_channel_indices[output_ids].flatten(1,2).unsqueeze(-1)
         else:
             return self.unraveled_channel_indices[output_ids]
 
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
-
+        # ToDo: update mask
         num_inputs = len(self.inputs) if not self.input_is_split else self.num_splits
-        #return mask.unsqueeze(-1).expand(-1, -1, num_inputs)
-        #return mask.unsqueeze(-1).repeat(1, 1, num_inputs).reshape(mask.shape[0],-1).unsqueeze(-1)
-        #return mask.unsqueeze(-1).repeat(1, 1, num_inputs).permute(0,2,1).reshape(mask.shape[0], -1).unsqueeze(-1)
         if self.input_is_split:
-            #return mask.unsqueeze(-1).repeat(1, 1, num_inputs).view(-1,self.inputs[0].out_features).unsqueeze(-1)
-            return mask.unsqueeze(-1).repeat(1, 1, num_inputs).permute(0,2,1).reshape(-1,self.inputs[0].out_features).unsqueeze(-1)
+            if isinstance(self.inputs[0], SplitHalves):
+                return mask.unsqueeze(-1).repeat(1, 1, num_inputs).permute(0,2,1).flatten(1,2).unsqueeze(-1)
+            elif isinstance(self.inputs[0], SplitAlternate):
+                return mask.unsqueeze(-1).repeat(1, 1, num_inputs).view(-1, self.inputs[0].out_features).unsqueeze(-1)
+            else:
+                raise NotImplementedError("Other Split types are not implemented yet.")
         else:
             return mask.unsqueeze(-1).repeat(1, 1, num_inputs)
 
@@ -180,18 +178,20 @@ def log_likelihood(
 
     # Compute the outer sum of pairwise log-likelihoods
     # [b, n, m1] + [b, n, m2] -> [b, n, m1, 1] + [b, n, 1, m2]  -> [b, n, m1, m2] -> [b, n, 1, m1*m2] ...
-    output = lls[0].unsqueeze(2)
+
+    output = lls[0]
     for i in range(1, len(lls)):
-        output = output + lls[i].unsqueeze(3)
-        #output = output.view(output.size(0), output.size(1), 1, -1)
+        output = output.unsqueeze(3) + lls[i].unsqueeze(2)
         if output.ndim == 4:
-            output = output.view(output.size(0), output.size(1), 1, -1)
+            output = output.view(output.size(0), module.out_features, -1)
         elif output.ndim == 5:
-            output = output.view(output.size(0), output.size(1), 1, -1, output.size(-1))
+            output = output.view(output.size(0), module.out_features, -1, module.num_repetitions)
         else:
             raise ValueError("Invalid number of dimensions")
 
     # View as [b, n, m1 * m2]
-    #output = output.view(output.size(0), module.out_features, module.out_channels)
-    output = output.flatten(2,3) # [b, n, m1 * m2, r]
+    if module.num_repetitions is None:
+        output = output.view(output.size(0), module.out_features, module.out_channels)
+    else:
+        output = output.view(output.size(0), module.out_features, module.out_channels, module.num_repetitions)
     return output

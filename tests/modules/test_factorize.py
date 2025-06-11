@@ -1,4 +1,4 @@
-from tests.fixtures import auto_set_test_seed
+from tests.fixtures import auto_set_test_seed, auto_set_test_device
 import unittest
 from itertools import product
 
@@ -25,9 +25,9 @@ def make_product(in_channels=None, out_features=None, inputs=None, num_repetitio
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps,depth", params)
-def test_log_likelihood(in_channels: int, out_features: int, num_reps,depth, device):
-    factorization_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps, depth=depth).to(device)
-    data = make_normal_data(out_features=out_features).to(device)
+def test_log_likelihood(in_channels: int, out_features: int, num_reps,depth):
+    factorization_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps, depth=depth)
+    data = make_normal_data(out_features=out_features)
     lls = log_likelihood(factorization_layer, data)
     if num_reps is None:
         assert lls.shape == (data.shape[0], factorization_layer.out_features, factorization_layer.out_channels)
@@ -36,15 +36,15 @@ def test_log_likelihood(in_channels: int, out_features: int, num_reps,depth, dev
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps, depth", params)
-def test_sample(in_channels: int, out_features: int, num_reps, depth, device):
+def test_sample(in_channels: int, out_features: int, num_reps, depth):
     n_samples = 10
-    factorization_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps, depth=depth).to(device)
+    factorization_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps, depth=depth)
 
-    data = torch.full((n_samples, out_features), torch.nan).to(device)
-    channel_index = torch.randint(low=0, high=factorization_layer.out_channels, size=(n_samples, factorization_layer.out_features)).to(device)
-    mask = torch.full((n_samples, factorization_layer.out_features), True, dtype=torch.bool).to(device)
+    data = torch.full((n_samples, out_features), torch.nan)
+    channel_index = torch.randint(low=0, high=factorization_layer.out_channels, size=(n_samples, factorization_layer.out_features))
+    mask = torch.full((n_samples, factorization_layer.out_features), True, dtype=torch.bool)
     if num_reps is not None:
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
+        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     else:
         repetition_index = None
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
@@ -54,9 +54,9 @@ def test_sample(in_channels: int, out_features: int, num_reps, depth, device):
     assert torch.isfinite(samples_query).all()
 
 
-def test_factorization(device):
-    data = make_normal_data(out_features=4).to(device)
-    factorization = make_product(in_channels=3, out_features=4, num_repetitions=5).to(device)
+def test_factorization():
+    data = make_normal_data(out_features=4)
+    factorization = make_product(in_channels=3, out_features=4, num_repetitions=5)
     factorization = expectation_maximization(factorization, data, max_steps=10)
     assert factorization is not None
 
@@ -70,9 +70,9 @@ def test_factorization(device):
         num_repetitions,
     ),
 )
-def test_marginalize(prune, in_channels: int, marg_rvs: list[int], num_reps, device):
+def test_marginalize(prune, in_channels: int, marg_rvs: list[int], num_reps):
     out_features = 6
-    module = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps).to(device)
+    module = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
 
     # Marginalize scope
     marginalized_module = marginalize(module, marg_rvs, prune=prune)

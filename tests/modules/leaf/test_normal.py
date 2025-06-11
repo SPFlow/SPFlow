@@ -1,7 +1,7 @@
 import unittest
 from itertools import product
 from spflow.exceptions import InvalidParameterCombinationError
-from tests.fixtures import auto_set_test_seed
+from tests.fixtures import auto_set_test_seed, auto_set_test_device
 import pytest
 import torch
 from spflow.meta.data import Scope
@@ -11,7 +11,7 @@ out_channels_values = [1, 5]
 out_features_values = [1, 6]
 
 
-def make_params(out_features: int, out_channels: int, device) -> tuple[torch.Tensor, torch.Tensor]:
+def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Create parameters for a normal distribution.
 
@@ -23,7 +23,7 @@ def make_params(out_features: int, out_channels: int, device) -> tuple[torch.Ten
         mean: Mean of the normal distribution.
         std: Standard deviation of the normal distribution.
     """
-    return torch.randn(out_features, out_channels, device=device), torch.rand(out_features, out_channels, device=device)
+    return torch.randn(out_features, out_channels), torch.rand(out_features, out_channels)
 
 
 def make_leaf(mean, std) -> Normal:
@@ -38,34 +38,34 @@ def make_leaf(mean, std) -> Normal:
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_negative_std(out_features: int, out_channels: int, device):
+def test_constructor_negative_std(out_features: int, out_channels: int):
     """Test the constructor of a Normal distribution with negative std."""
-    mean, std = make_params(out_features, out_channels, device)
+    mean, std = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(mean=mean, std=-1.0 * std).to(device)
+        make_leaf(mean=mean, std=-1.0 * std)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_zero_std(out_features: int, out_channels: int, device):
+def test_constructor_zero_std(out_features: int, out_channels: int):
     """Test the constructor of a Normal distribution with zero std."""
-    mean, std = make_params(out_features, out_channels, device)
+    mean, std = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(mean=mean, std=0.0 * std).to(device)
+        make_leaf(mean=mean, std=0.0 * std)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_missing_mean(out_features: int, out_channels: int, device):
+def test_constructor_missing_mean(out_features: int, out_channels: int):
     """Test the constructor of a Normal distribution with missing mean."""
-    mean, std = make_params(out_features, out_channels, device)
+    mean, std = make_params(out_features, out_channels)
     with pytest.raises(InvalidParameterCombinationError):
         scope = Scope(list(range(out_features)))
-        Normal(scope=scope, mean=None, std=std).to(device)
+        Normal(scope=scope, mean=None, std=std)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_missing_std(out_features: int, out_channels: int, device):
+def test_constructor_missing_std(out_features: int, out_channels: int):
     """Test the constructor of a Normal distribution with missing std."""
-    mean, std = make_params(out_features, out_channels, device)
+    mean, std = make_params(out_features, out_channels)
     with pytest.raises(InvalidParameterCombinationError):
         scope = Scope(list(range(out_features)))
-        Normal(scope=scope, mean=mean, std=None).to(device)
+        Normal(scope=scope, mean=mean, std=None)

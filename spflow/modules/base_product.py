@@ -23,7 +23,7 @@ class BaseProduct(Module, ABC):
 
     def __init__(
         self,
-        inputs: list[Module],
+        inputs: Union[list[Module], Module],
     ) -> None:
         r"""Initializes ``BaseProduct`` object.
 
@@ -41,8 +41,6 @@ class BaseProduct(Module, ABC):
             self.input_is_split = True
             self.num_splits = inputs[0].num_splits
         else:
-            # ToDo: Find a solution for Factorize module
-            #assert len(inputs) > 1, "ElementwiseProduct requires at least two inputs"
             self.input_is_split = False
             if inputs[0].out_features==1:
                 self.num_splits = 1
@@ -53,17 +51,6 @@ class BaseProduct(Module, ABC):
             raise ValueError(f"'{self.__class__.__name__}' requires at least one input to be specified.")
 
         self.inputs = nn.ModuleList(inputs)
-
-        # Check if all inputs have equal number of features
-
-        # ToDo: Check if this is correct e.g. for broadcasting
-        """
-        if not all(inp.out_features == self.inputs[0].out_features for inp in self.inputs):
-            raise ValueError(
-                f"Inputs must have equal number of features, but were "
-                f"{[inp.out_features for inp in self.inputs]}."
-            )
-        """
 
 
         # Check that scopes are disjoint
