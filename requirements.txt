@@ -16,4 +16,4 @@ pytest==7.4.4
 dataclasses==0.6
 tensorflow==1.15.5
 torch==1.13.1
-Protobuf==3.20.3
+Protobuf==4.25.8
