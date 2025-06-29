@@ -22,6 +22,7 @@ class Uniform(LeafModule):
         Args:
             scope (Scope): The scope of the distribution.
             out_channels (int, optional): The number of output channels. If None, it is determined by the parameter tensors.
+            num_repetitions (int, optional): The number of repetitions for the leaf module.
             start (Tensor, optional): The start of the interval.
             end (Tensor, optional): The end of the interval.
             support_outside (bool, optional): Whether to support values outside the interval. Default is True.

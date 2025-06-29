@@ -18,11 +18,12 @@ class Split(Module):
 
     def __init__(self, inputs: Module, dim: int = 1, num_splits: Optional[int] = 2):
         """
-        Split a single module along a given dimension.
+        Base Split module to split a single module along a given dimension.
 
         Args:
             inputs:
-            dim: Concatenation dimension. Note: dim=0: batch, dim=1: feature, dim=2: channel.
+            dim: Split dimension. Note: dim=0: batch, dim=1: feature, dim=2: channel.
+            num_splits: Number of splits along the given dimension.
         """
         super().__init__()
         self.inputs = nn.ModuleList([inputs])
@@ -33,19 +34,16 @@ class Split(Module):
 
     @property
     def out_features(self) -> int:
-        # if self.dim == 1:
-        #    return self.inputs[0].out_features // self.num_splits
-        # else:
         return self.inputs[0].out_features
 
     @property
     def out_channels(self) -> int:
-        # if self.dim == 2:
-        #    return self.inputs[0].out_channels // self.num_splits
-        # else:
         return self.inputs[0].out_channels
 
     def get_out_shapes(self, event_shape):
+        """
+        Get the output shapes of the split operation based on the input event shape.
+        """
         split_size = event_shape[self.dim]
         quotient = split_size // self.num_splits
         remainder = split_size % self.num_splits

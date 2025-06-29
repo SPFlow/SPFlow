@@ -15,11 +15,18 @@ from spflow.modules.ops.cat import Cat
 
 
 class Product(Module):
-
+    """
+    A product module that calculates the product over the feature dimension of its input modules.
+    """
 
     def __init__(self, inputs: Union[Module, list[Module]]) -> None:
+        """
+        Args:
+            inputs: Single input module or list of modules. The product is over the feature dimension of the input.
+        """
         super().__init__()
 
+        # If inputs is a list, ensure concatenation along the feature dimension
         if isinstance(inputs, list):
             if len(inputs) == 1:
                 self.inputs = inputs[0]
@@ -79,7 +86,6 @@ def marginalize(
     if marg_child is None:
         return None
 
-    # ToDo: check if this is correct / prune if only one scope is left?
     elif prune and marg_child.out_features == 1:
         return marg_child
     else:
@@ -131,7 +137,7 @@ def log_likelihood(
         data,
         check_support=check_support,
         dispatch_ctx=dispatch_ctx,
-    )  # shape: (batch_size, inputs.num_scopes, inputs.num_outputs)
+    )
 
     # multiply childen (sum in log-space)
-    return torch.sum(ll, dim=1, keepdim=True)  # shape: (batch_size, product_layer.num_outputs)
+    return torch.sum(ll, dim=1, keepdim=True)

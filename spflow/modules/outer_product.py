@@ -15,7 +15,7 @@ from spflow.meta.data import Scope
 from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.ops.split_alternate import SplitAlternate
-
+import time
 
 class OuterProduct(BaseProduct):
     def __init__(
@@ -67,9 +67,6 @@ class OuterProduct(BaseProduct):
     def check_shapes(self, inputs=None):
         """
         Checks if the list of two-dimensional shapes satisfies the given conditions.
-
-        :param shapes: List of tuples, where each tuple represents a shape (dim0, dim1).
-        :return: True if one of the conditions is satisfied, False otherwise.
         """
         if inputs is None:
             inputs = self.inputs
@@ -108,11 +105,9 @@ class OuterProduct(BaseProduct):
 
     @property
     def out_channels(self) -> int:
-        """Returns the number of output nodes for this module."""
         ocs = 1
         for inp in self.inputs:
             ocs *= inp.out_channels
-        # ToDo: Is this the correct?
         if len(self.inputs) == 1:
             ocs = ocs ** self.num_splits
         return ocs
@@ -151,7 +146,6 @@ class OuterProduct(BaseProduct):
 
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
-        # ToDo: update mask
         num_inputs = len(self.inputs) if not self.input_is_split else self.num_splits
         if self.input_is_split:
             if isinstance(self.inputs[0], SplitHalves):
@@ -189,7 +183,8 @@ def log_likelihood(
         else:
             raise ValueError("Invalid number of dimensions")
 
-    # View as [b, n, m1 * m2]
+
+    # View as [b, n, m1 * m2, r]
     if module.num_repetitions is None:
         output = output.view(output.size(0), module.out_features, module.out_channels)
     else:

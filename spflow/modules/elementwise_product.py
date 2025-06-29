@@ -16,8 +16,6 @@ from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.ops.split_alternate import SplitAlternate
 
 class ElementwiseProduct(BaseProduct):
-
-
     def __init__(
         self,
         inputs: Union[Module, tuple[Module, Module], list[Module]],
@@ -68,8 +66,6 @@ class ElementwiseProduct(BaseProduct):
         """
         Checks if the list of two-dimensional shapes satisfies the given conditions.
 
-        :param shapes: List of tuples, where each tuple represents a shape (dim0, dim1).
-        :return: True if one of the conditions is satisfied, False otherwise.
         """
         if inputs is None:
             inputs = self.inputs
@@ -111,13 +107,11 @@ class ElementwiseProduct(BaseProduct):
 
     @property
     def out_channels(self) -> int:
-        """Returns the number of output nodes for this module."""
         # Max since one of the inputs can also only have a single output channel which is then broadcasted
         return self._max_out_channels
 
     @property
     def out_features(self) -> int:
-
         if self.inputs[0].out_features == 1:
             return 1
         if self.input_is_split:
@@ -141,8 +135,6 @@ class ElementwiseProduct(BaseProduct):
 
 
     def map_out_channels_to_in_channels(self, index: Tensor) -> Tensor:
-
-        # Case Elementwise product with split : [0,1,2,3,4,5] -> [0,1,2] and [3,4,5]
         if self.input_is_split:
             num_splits = self.num_splits
             if isinstance(self.inputs[0], SplitHalves):

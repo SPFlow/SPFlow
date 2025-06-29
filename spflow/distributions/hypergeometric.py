@@ -6,14 +6,13 @@ from spflow.distributions.distribution import Distribution
 
 class Hypergeometric(Distribution):
     def __init__(self, K: Tensor, N: Tensor, n: Tensor, event_shape: tuple[int, ...] = None):
-        r"""Initializes ``Hypergeometric`` leaf node.
+        r"""
 
         Args:
-            scope: Scope object specifying the scope of the distribution.
             K: PyTorch tensor specifying the total numbers of entities (in the populations), greater or equal to 0.
             N: PyTorch tensor specifying the numbers of entities with property of interest (in the populations), greater or equal to zero and less than or equal to N.
             n: PyTorch tensor specifying the numbers of draws, greater of equal to zero and less than or equal to N.
-            n_out: Number of nodes per scope. Only relevant if mean and std is None.
+            event_shape: The shape of the event. If None, it is inferred from the shape of the parameter tensor.
         """
         if event_shape is None:
             event_shape = K.shape

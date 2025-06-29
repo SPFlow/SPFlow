@@ -9,12 +9,12 @@ from spflow.utils.leaf import init_parameter
 
 class Exponential(Distribution):
     def __init__(self, rate: Tensor = None, event_shape: tuple[int, ...] = None):
-        r"""Initializes ``Exponential`` leaf node.
+        r"""
 
         Args:
             scope: Scope object specifying the scope of the distribution.
             rate: PyTorch tensor representing the rate parameters (:math:`\lambda`) of the Exponential distributions
-            n_out: Number of nodes per scope. Only relevant if mean and std is None.
+            event_shape: The shape of the event. If None, it is inferred from the shape of the parameter tensor.
         """
         if event_shape is None:
             event_shape = rate.shape

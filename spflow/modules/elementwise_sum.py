@@ -19,7 +19,7 @@ from spflow.utils.projections import (
 
 class ElementwiseSum(Module):
     """
-    A sum module that represents the sum operation over inputs.
+    A sum module that the elementwise sum over inputs.
 
     The sum module can be used to sum over the channel dimension of a single input or over the stacked inputs.
     """
@@ -36,11 +36,11 @@ class ElementwiseSum(Module):
         Create a Sum module.
 
         Args:
-            inputs: Can be a single input or a list of inputs.
-                - If a single input is provided, the sum module will sum over the channel dimension of the input.
-                - If a list of inputs is provided, the sum will be performed over the stacked inputs.
+            inputs: Single input module or list of modules. The sum is over the sum dimension of the input.
             out_channels: Optional number of output nodes for each sum, if weights are not given.
+            num_repetitions: Optional number of repetitions for the sum module. If not provided, it will be inferred from the weights.
             weights: Optional weights for the sum module. If not provided, weights will be initialized randomly.
+            sum_dim: The dimension over which to sum the inputs. Default is 1 (channel dimension).
         """
         super().__init__()
 
@@ -156,17 +156,15 @@ class ElementwiseSum(Module):
 
     @property
     def feature_to_scope(self) -> list[Scope]:
-        pass
+        return self.inputs.feature_to_scope
 
     @property
     def log_weights(self) -> Tensor:
-        """Returns the weights of all nodes as a two-dimensional PyTorch tensor."""
         # project auxiliary weights onto weights that sum up to one
         return torch.nn.functional.log_softmax(self.logits, dim=self.sum_dim)
 
     @property
     def weights(self) -> Tensor:
-        """Returns the weights of all nodes as a two-dimensional PyTorch tensor."""
         # project auxiliary weights onto weights that sum up to one
         return torch.nn.functional.softmax(self.logits, dim=self.sum_dim)
 
@@ -179,7 +177,7 @@ class ElementwiseSum(Module):
         Set weights of all nodes.
 
         Args:
-            values: Three-dimensional PyTorch tensor containing weights for each input and node.
+            values: PyTorch tensor containing weights for each input and node.
         """
         if values.shape != self.weights_shape:
             raise ValueError(f"Invalid shape for weights: {values.shape}.")
@@ -281,7 +279,7 @@ def sample(
 
         # Use gather to select the correct repetition
         # Repeat indices to match the target dimension for gathering
-        in_channels_total = logits.shape[2]
+
         indices = indices.view(-1, 1, 1, 1, 1, 1).expand(-1, logits.shape[1], logits.shape[2], logits.shape[3], logits.shape[4],
                                                       -1)
         logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
@@ -384,9 +382,6 @@ def log_likelihood(
         lls.append(ll)
 
     # Stack input log-likelihoods
-    #if module.num_repetitions is not None:
-    #    ll = torch.tensor(lls[0])
-    #else:
     ll = torch.stack(lls, dim=module.sum_dim)
 
     ll = ll.unsqueeze(3)  # shape: (B, F, IC, 1)
@@ -397,8 +392,7 @@ def log_likelihood(
     weighted_lls = ll + log_weights  # shape: (B, F, IC, OC)
 
     # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
-    #output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1).squeeze(-1)  # shape: (B, F, OC)
-    output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1)  # shape: (B, F, OC)
+    output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1)
     if module.num_repetitions is not None:
         output = output.view(data.shape[0], module.out_features, module.out_channels, module.num_repetitions)
     else:

@@ -9,12 +9,12 @@ from spflow.utils.leaf import init_parameter
 
 class Gamma(Distribution):
     def __init__(self, alpha: Tensor = None, beta: Tensor = None, event_shape: tuple[int, ...] = None):
-        r"""Initializes ``Gamma`` leaf node.
+        r"""
 
         Args:
             alpha: Tensor representing the shape parameters (:math:`\alpha`) of the Gamma distributions, greater than 0.
             beta: Tensor representing the rate parameters (:math:`\beta`) of the Gamma distributions, greater than 0.
-            event_shape: Shape of the event space.
+            The shape of the event. If None, it is inferred from the shape of the parameter tensor.
         """
         if event_shape is None:
             event_shape = alpha.shape
