@@ -15,7 +15,6 @@ class Uniform(Distribution):
         r"""Initializes ``Uniform`` leaf node.
 
         Args:
-            scope: Scope object specifying the scope of the distribution.
             start: PyTorch tensor containing the start of the intervals (including).
             end: PyTorch tensor containing the end of the intervals (including). Must be larger than 'start'.
             end_next:
@@ -23,7 +22,7 @@ class Uniform(Distribution):
                 Used for the PyTorch distributions which do not include the specified ends of the intervals.
             support_outside:
                 PyTorch tensor containing booleans indicating whether or not values outside of the intervals are part of the support.
-            n_out: Number of nodes per scope. Only relevant if mean and std is None.
+            event_shape: The shape of the event. If None, it is inferred from the shape of the parameter tensor.
         """
         if event_shape is None:
             event_shape = start.shape

@@ -16,6 +16,7 @@ class Hypergeometric(LeafModule):
         Args:
             scope (Scope): The scope of the distribution.
             out_channels (int, optional): The number of output channels. If None, it is determined by the parameter tensors.
+            num_repetitions (int, optional): The number of repetitions for the leaf module.
             K (Tensor, optional): The number of successes in the population.
             N (Tensor, optional): The population size.
             n (Tensor, optional): The number of draws.

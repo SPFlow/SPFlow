@@ -13,23 +13,39 @@ from spflow.meta.dispatch import (
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
+import time
 
 
-class SplitAlternate(Split): # ToDo: make abstract and implement concrete classes
+class SplitAlternate(Split):
 
     def __init__(self, inputs: Module, dim: int = 1, num_splits: Optional[int] = 2):
         """
-        Split a single module along a given dimension.
+        Split a single module along a given dimension. This implementation splits the features in an alternating manner.
+        Example:
+            If num_splits=2, the features are split as follows:
+            - Input features: [0, 1, 2, 3, 4, 5, ...]
+            - Split 0: features 0, 2, 4, ...
+            - Split 1: features 1, 3, 5, ...
+
+            If num_splits=3, the features are split as follows:
+            - Input features: [0, 1, 2, 3, 4, 5, ...]
+            - Split 0: features 0, 3, 6, ...
+            - Split 1: features 1, 4, 7, ...
+            - Split 2: features 2, 5, 8, ...
+
 
         Args:
             inputs:
             dim: Concatenation dimension. Note: dim=0: batch, dim=1: feature, dim=2: channel.
+            num_splits: Number of splits along the given dimension.
         """
         super().__init__(inputs=inputs, dim=dim, num_splits=num_splits)
-        #self.inputs = nn.ModuleList([inputs])
 
-        #self.dim = dim
-        #self.num_splits = num_splits
+        num_f = inputs.out_features
+        indices = torch.arange(num_f, device=inputs.device) % num_splits
+
+        # Create masks for each split
+        self.split_masks = [indices == i for i in range(num_splits)]
 
 
     def extra_repr(self) -> str:
@@ -44,6 +60,12 @@ class SplitAlternate(Split): # ToDo: make abstract and implement concrete classe
              feature_to_scope.append(sub_scopes)
         return feature_to_scope
 
+    def _apply(self, fn):
+        # Apply the function to the module and its split masks
+        super()._apply(fn)
+        self.split_masks = [fn(mask) for mask in self.split_masks]
+        return self
+
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
@@ -57,20 +79,18 @@ def log_likelihood(
 
     # get log likelihoods for all inputs
     lls = log_likelihood(module.inputs[0], data, check_support, dispatch_ctx)
-    # Split the tensor along the specified dimension
-    # Get the size of the specified dimension
-    size = lls.size(module.dim)
 
-    # Create indices for the split
-    indices = torch.arange(size, device=lls.device) % module.num_splits
+    # For computational speed up hard code the loglikelihoods for most common cases: Num splits = 2 and 3
+    # For general cases, we use the split masks to get the log likelihoods for each split
+    if module.num_splits == 1:
+        return [lls]
+    elif module.num_splits == 2:
+        return [lls[:,0::2,...],lls[:,1::2,...]]
+    elif module.num_splits == 3:
+        return [lls[:,0::3,...], lls[:,1::3,...], lls[:,2::3,...]]
+    else:
+        return [lls[:, mask, ...] for mask in module.split_masks]
 
-    # Create masks for each split
-    masks = [indices == i for i in range(module.num_splits)]
-
-    # Use advanced indexing to extract slices
-    split_lls = [lls.index_select(module.dim, torch.nonzero(mask, as_tuple=True)[0]) for mask in masks]
-
-    return split_lls
 
 
 @dispatch(memoize=True)  # type: ignore

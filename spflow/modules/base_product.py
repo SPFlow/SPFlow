@@ -18,7 +18,7 @@ from spflow.modules.module import Module
 
 class BaseProduct(Module, ABC):
     r"""
-    TODO
+    Base class for the modules OuterProduct and ElementwiseProduct.
     """
 
     def __init__(
@@ -29,13 +29,14 @@ class BaseProduct(Module, ABC):
 
         Args:
             inputs:
-                List of Modules. The scopes for all child modules need to be pair-wise disjoint.
+                Single input module or list of modules.
 
         Raises:
             ValueError: Invalid arguments.
         """
         super().__init__()
 
+        # Obtain number of splits and check input type
         if isinstance(inputs, Split):
             inputs = [inputs]
             self.input_is_split = True

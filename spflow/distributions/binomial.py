@@ -8,12 +8,13 @@ from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 class Binomial(Distribution):
     def __init__(self, n: Tensor, p: Tensor = None, event_shape: tuple[int, ...] = None):
-        r"""Initializes ``Binomial`` leaf node.
+        r"""
 
         Args:
             scope: Scope object specifying the scope of the distribution.
             n: Tensor containing the number (:math:`n`) of total trials.
             p: Tensor containing the success probability (:math:`p`) of each trial in :math:`[0,1]`.
+            event_shape: The shape of the event. If None, it is inferred from the shape of the parameter tensor.
 
         """
         if event_shape is None:

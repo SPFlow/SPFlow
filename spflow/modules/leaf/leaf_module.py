@@ -17,7 +17,7 @@ from spflow.utils.leaf import apply_nan_strategy
 class LeafModule(Module, ABC):
 
     def __init__(self, scope: Union[Scope, list[int]], out_channels: int = None):
-        r"""Initializes ``Normal`` leaf node.
+        r""" Base class for leaf modules in the SPFlow framework.
 
         Args:
             scope: Scope object or list of ints specifying the scope of the distribution.
@@ -52,6 +52,7 @@ class LeafModule(Module, ABC):
     def out_channels(self) -> int:
         return self.distribution.out_channels
 
+    # ToDo: Remove?
     def get_partial_module(self, indices: list[int]) -> Module:
         r"""Returns a partial module with the specified indices."""
 
@@ -63,6 +64,7 @@ class LeafModule(Module, ABC):
 
     @property
     def feature_to_scope(self) -> list[Scope]:
+        """Returns a list of scopes corresponding to the features in the leaf module."""
         return [Scope([i]) for i in self.scope.query]
 
 
@@ -131,7 +133,7 @@ def log_likelihood(
     Missing values (i.e., NaN) are marginalized over.
 
     Args:
-        node:
+        leaf:
             Leaf to perform inference for.
         data:
             Two-dimensional PyTorch tensor containing the input data.
@@ -160,7 +162,7 @@ def log_likelihood(
     # If there are any marg_ids, set them to 0.0 to ensure that distribution.log_prob call is succesfull and doesn't throw errors
     # due to NaNs
     if marg_mask.any():
-        data[marg_mask] = leaf.distribution._supported_value  # ToDo in-support value / support value in distribution
+        data[marg_mask] = leaf.distribution._supported_value
 
     # ----- log probabilities -----
 
@@ -235,7 +237,9 @@ def maximum_likelihood_estimation(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # select relevant data for scope
+    # todo: Uncommnet:
     scope_data = data[:, leaf.scope.query]
+    #scope_data = data
 
     # apply NaN strategy
     scope_data, weights = apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support)
@@ -281,10 +285,6 @@ def sample(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    #ToDo: remove (only for test purpose)
-    #is_mpe = True
-
-
     out_of_scope = list(filter(lambda x: x not in module.scope.query, range(data.shape[1])))
     marg_mask = torch.isnan(data)
     marg_mask[:, out_of_scope] = False
@@ -309,6 +309,7 @@ def sample(
 
             indices = repetition_idx.view(-1,1,1,1).expand(-1,samples.shape[1], samples.shape[2],-1)
 
+            # Gather samples according to repetition index
             samples = torch.gather(samples, dim=-1, index=indices).squeeze(-1)
 
         elif sampling_ctx.repetition_idx is not None and samples.ndim != 4 or sampling_ctx.repetition_idx is None and samples.ndim == 4:
@@ -327,6 +328,7 @@ def sample(
 
             indices = repetition_idx.view(-1,1,1,1).expand(-1,samples.shape[1], samples.shape[2],-1)
 
+            # Gather samples according to repetition index
             samples = torch.gather(samples,dim=-1, index=indices).squeeze(-1)
 
         elif sampling_ctx.repetition_idx is not None and samples.ndim != 4 or sampling_ctx.repetition_idx is None and samples.ndim == 4:

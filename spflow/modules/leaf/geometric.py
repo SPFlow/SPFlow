@@ -14,6 +14,7 @@ class Geometric(LeafModule):
         Args:
             scope (Scope): The scope of the distribution.
             out_channels (int, optional): The number of output channels. If None, it is determined by the parameter tensor.
+            num_repetitions (int, optional): The number of repetitions for the leaf module.
             p (Tensor, optional): The probability tensor.
         """
         event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[p], num_repetitions=num_repetitions)

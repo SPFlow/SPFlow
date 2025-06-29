@@ -31,11 +31,13 @@ class Module(nn.Module, ABC):
     @property
     @abstractmethod
     def out_features(self) -> int:
+        """Returns the number of output features of the module."""
         pass
 
     @property
     @abstractmethod
     def out_channels(self) -> int:
+        """Returns the number of output channels of the module."""
         pass
 
     @property
@@ -51,6 +53,7 @@ class Module(nn.Module, ABC):
     @property
     @abstractmethod
     def feature_to_scope(self) -> list[Scope]:
+        """ Returns the mapping from features to scopes."""
         pass
 
     @property
@@ -70,7 +73,7 @@ class Module(nn.Module, ABC):
 
 
     def extra_repr(self) -> str:
-        return f"D={self.out_features}, C={self.out_channels}, R={self.num_repetitions}"
+         return f"D={self.out_features}, C={self.out_channels}, R={self.num_repetitions}"
 
 
 @dispatch(memoize=True)  # type: ignore

@@ -9,7 +9,7 @@ from spflow.utils.leaf import init_parameter
 
 class Categorical(Distribution):
     def __init__(self, p: Tensor, K: int = None, event_shape: tuple[int, ...] = None):
-        r"""Initializes ``Categorical`` leaf node.
+        r"""
 
         Args:
             p: Tensor containing the event probabilities of the distribution. Has shape (event_shape, k) where k is the number of categories.
