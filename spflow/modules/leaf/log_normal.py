@@ -14,6 +14,7 @@ class LogNormal(LeafModule):
         Args:
             scope (Scope): The scope of the distribution.
             out_channels (int, optional): The number of output channels. If None, it is determined by the parameter tensors.
+            num_repetitions (int, optional): The number of repetitions for the leaf module.
             mean (Tensor, optional): The mean parameter tensor.
             std (Tensor, optional): The standard deviation parameter tensor.
         """

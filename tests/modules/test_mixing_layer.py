@@ -1,19 +1,10 @@
-from spflow.modules.leaf import Normal
-from tests.fixtures import auto_set_test_seed, auto_set_test_device, auto_set_test_device
-import unittest
-
 from itertools import product
 
-from spflow.exceptions import InvalidParameterCombinationError, ScopeError
-from spflow.meta.data import Scope
 import pytest
-from spflow.meta.dispatch import init_default_sampling_context, init_default_dispatch_context, SamplingContext
-from spflow import log_likelihood, sample, marginalize, sample_with_evidence
-from spflow.learn import expectation_maximization
-from spflow.learn import train_gradient_descent
-from spflow.modules import Sum, ElementwiseProduct
-from spflow.modules.rat_mixing_layer import MixingLayer
-from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf
+from spflow.meta.dispatch import init_default_dispatch_context, SamplingContext
+from spflow import log_likelihood, sample
+from spflow.modules.rat.rat_mixing_layer import MixingLayer
+from tests.utils.leaves import make_normal_leaf, make_normal_data
 import torch
 
 out_channels_values = [1, 5]

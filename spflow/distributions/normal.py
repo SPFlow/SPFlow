@@ -12,12 +12,12 @@ class Normal(Distribution):
 
 
     def __init__(self, mean: Tensor = None, std: Tensor = None, event_shape: tuple[int, ...] = None):
-        r"""Initializes ``Normal`` leaf node.
+        r"""
 
         Args:
             mean: Tensor containing the mean (:math:`\mu`) of the distribution.
             std: Tensor containing the standard deviation (:math:`\sigma`) of the distribution.
-            event_shape: Shape of the event space.
+            event_shape: The shape of the event. If None, it is inferred from the shape of the parameter tensor.
         """
         if event_shape is None:
             event_shape = mean.shape
@@ -60,21 +60,6 @@ class Normal(Distribution):
 
     @property
     def distribution(self) -> torch.distributions.Distribution:
-        if torch.isnan(self.mean).any():
-            print("Mean is NaN")
-            print(self.mean[torch.isnan(self.mean)])
-        if torch.isnan(self.std).any():
-            print("Std is NaN")
-            print(self.std[torch.isnan(self.std)])
-        if torch.isinf(self.mean).any():
-            print("Mean is Inf")
-            print(self.mean[torch.isinf(self.mean)])
-        if torch.isinf(self.std).any():
-            print("Std is Inf")
-            print(self.std[torch.isinf(self.std)])
-        if torch.any(self.std <= 0.0):
-            print("Std is <= 0.0")
-            print(self.std[self.std <= 0.0])
         return torch.distributions.Normal(self.mean, self.std)
 
     def maximum_likelihood_estimation(self, data: Tensor, weights: Tensor = None, bias_correction=True):

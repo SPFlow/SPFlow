@@ -14,6 +14,7 @@ class NegativeBinomial(LeafModule):
         Args:
             scope (Scope): The scope of the distribution.
             out_channels (int, optional): The number of output channels. If None, it is determined by the parameter tensors.
+            num_repetitions (int, optional): The number of repetitions for the leaf module.
             n (Tensor, optional): The number of trials.
             p (Tensor, optional): The probability of success.
         """
