@@ -16,7 +16,7 @@ from spflow.utils.projections import (
     proj_convex_to_real,
 )
 from spflow.modules.ops.cat import Cat
-
+import time
 
 class Sum(Module):
     """
@@ -24,8 +24,6 @@ class Sum(Module):
 
     The sum module can be used to sum over the channel dimension of a single input or over the stacked inputs.
     """
-
-
 
     def __init__(
         self,
@@ -39,9 +37,11 @@ class Sum(Module):
         Create a Sum module.
 
         Args:
-            inputs: Single input module. The sum is over the channel dimension of the input.
+            inputs: Single input module or list of modules. The sum is over the sum dimension of the input.
             out_channels: Optional number of output nodes for each sum, if weights are not given.
+            num_repetitions: Optional number of repetitions for the sum module. If not provided, it will be inferred from the weights.
             weights: Optional weights for the sum module. If not provided, weights will be initialized randomly.
+            sum_dim: The dimension over which to sum the inputs. Default is 1 (channel dimension).
         """
         super().__init__()
 
@@ -61,6 +61,7 @@ class Sum(Module):
                 f"Number of nodes for 'Sum' must be greater of equal to 1 but was {out_channels}."
             )
 
+        # if a list of input modules is provided, concatenate them to single module
         if isinstance(inputs, list):
             if len(inputs) == 1:
                 self.inputs = inputs[0]
@@ -70,7 +71,6 @@ class Sum(Module):
             self.inputs = inputs
 
 
-        # Single input, sum over in_channel dimension
         self.sum_dim = sum_dim
         self._out_features = self.inputs.out_features
 
@@ -79,12 +79,13 @@ class Sum(Module):
         self._out_channels_total = out_channels
 
         self.num_repetitions = num_repetitions
+
+        # If num_repetitions is not provided, infer it from the weights
         if num_repetitions is None:
             if weights is not None:
                 if weights.ndim == 4:
                     self.num_repetitions = weights.shape[3]
 
-        # ToDo: not optional / generalization: additional dimension as tuple
         if self.num_repetitions is not None:
             self.weights_shape = (self._out_features, self._in_channels_total, self._out_channels_total, self.num_repetitions)
         else:
@@ -142,7 +143,7 @@ class Sum(Module):
         Set weights of all nodes.
 
         Args:
-            values: Three-dimensional PyTorch tensor containing weights for each input and node.
+            values: PyTorch tensor containing weights for each input and node.
         """
         if values.shape != self.weights_shape:
             raise ValueError(f"Invalid shape for weights: {values.shape}.")
@@ -161,7 +162,7 @@ class Sum(Module):
         Set weights of all nodes.
 
         Args:
-            values: Three-dimensional PyTorch tensor containing weights for each input and node.
+            values: PyTorch tensor containing weights for each input and node.
         """
         if values.shape != self.log_weights.shape:
             raise ValueError(f"Invalid shape for weights: {values.shape}.")
@@ -178,6 +179,7 @@ def marginalize(
     prune: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> Union[None, Sum]:
+
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -235,6 +237,7 @@ def sample(
     dispatch_ctx: Optional[DispatchContext] = None,
     sampling_ctx: Optional[SamplingContext] = None,
 ) -> Tensor:
+
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
@@ -252,7 +255,8 @@ def sample(
         # Use gather to select the correct repetition
         # Repeat indices to match the target dimension for gathering
         in_channels_total = logits.shape[2]
-        indices = indices.view(-1,1,1,1,1).expand(-1,logits.shape[1],in_channels_total, logits.shape[3],-1)  # Shape (30000, 1, 10, 1)
+        indices = indices.view(-1,1,1,1,1).expand(-1,logits.shape[1],in_channels_total, logits.shape[3],-1)
+        # Gather the logits based on the repetition indices
         logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
 
     else:
@@ -261,19 +265,25 @@ def sample(
     idxs = sampling_ctx.channel_index[..., None, None]
     in_channels_total = logits.shape[2]
     idxs = idxs.expand(-1, -1, in_channels_total, -1)
+    # Gather the logits based on the channel indices
     logits = logits.gather(dim=3, index=idxs).squeeze(3)
 
+    # check if evidence is given
     if (
         "log_likelihood" in dispatch_ctx.cache
         and dispatch_ctx.cache["log_likelihood"][module.inputs] is not None
     ):
+        # get the log likelihoods from the cache
         input_lls = dispatch_ctx.cache["log_likelihood"][module.inputs]
 
         if sampling_ctx.repetition_idx is not None:
             indices = sampling_ctx.repetition_idx.view(-1,1,1,1).expand(-1, input_lls.shape[1], input_lls.shape[2],-1)
+
+            # Use gather to select the correct repetition
             input_lls = torch.gather(input_lls, dim=-1, index=indices).squeeze(-1)
+
             log_prior = logits
-            log_posterior = log_prior + input_lls#[..., sampling_ctx.repetition_idx]
+            log_posterior = log_prior + input_lls
             log_posterior = log_posterior.log_softmax(dim=2)
             logits = log_posterior
         else:
@@ -320,6 +330,7 @@ def log_likelihood(
         check_support=check_support,
         dispatch_ctx=dispatch_ctx,
     )
+    start_time = time.time()
 
     ll = ll.unsqueeze(3)  # shape: (B, F, input_OC, 1)
 
@@ -330,6 +341,9 @@ def log_likelihood(
 
     # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
     output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1).squeeze(-1)  # shape: (B, F, OC)
+
+    end_time = time.time() - start_time
+    #print(f"Log likelihood computation sum_layer took {end_time:.4f} seconds.")
 
     if module.num_repetitions is None:
         return output.view(-1,module.out_features,module.out_channels)

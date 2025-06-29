@@ -14,6 +14,7 @@ class Gamma(LeafModule):
         Args:
             scope (Scope): The scope of the distribution.
             out_channels (int, optional): The number of output channels. If None, it is determined by the parameter tensors.
+            num_repetitions (int, optional): The number of repetitions for the leaf module.
             alpha (Tensor, optional): The alpha parameter tensor.
             beta (Tensor, optional): The beta parameter tensor.
         """

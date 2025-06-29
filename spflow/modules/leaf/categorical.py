@@ -14,6 +14,7 @@ class Categorical(LeafModule):
         Args:
             scope (Scope): The scope of the distribution.
             out_channels (int, optional): The number of output channels. If None, it is determined by the parameter tensor.
+            num_repetitions (int, optional): The number of repetitions for the leaf module.
             K (int, optional): The number of categories.
             p (Tensor, optional): The probability tensor.
         """

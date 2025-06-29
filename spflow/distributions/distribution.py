@@ -6,6 +6,11 @@ from torch import Tensor, nn
 
 class Distribution(nn.Module, ABC):
     def __init__(self, event_shape: tuple[int, ...] = None):
+        """
+        Base class for all distributions.
+        Args:
+            event_shape: The shape of the event. If None, it is inferred from the shape of the parameter tensor.
+        """
         super().__init__()
 
         # Check if event_shape is a tuple of positive integers
@@ -39,14 +44,17 @@ class Distribution(nn.Module, ABC):
         return self.distribution.mode
 
     def log_prob(self, x):
+        """ Computes the log probability of the given samples."""
         return self.distribution.log_prob(x)
 
     @property
     def out_features(self):
+        """Returns the number of output features of the distribution."""
         return self.event_shape[0]
 
     @property
     def out_channels(self):
+        """Returns the number of output channels of the distribution."""
         if len(self.event_shape) == 1:
             return 1
         else:
@@ -54,6 +62,7 @@ class Distribution(nn.Module, ABC):
 
     @property
     def num_repetitions(self):
+        """Returns the number of repetitions of the distribution."""
         if len(self.event_shape) == 3:
             return self.event_shape[2]
         else:
@@ -98,11 +107,8 @@ class Distribution(nn.Module, ABC):
         valid = torch.ones_like(data, dtype=torch.bool)
 
         # check only first entry of num_leaf node dim since all leaf node repetition have the same support
-        #if self.num_repetitions is not None:
-        #    valid[~nan_mask] = self.distribution.support.check(data.unsqueeze(-1))[..., :1,:1][~nan_mask].squeeze(-1)
-        #else:
+
         valid[~nan_mask] = self.distribution.support.check(data)[..., [0]][~nan_mask]
-        #valid[~nan_mask] = self.distribution.support.check(data)[..., :1][~nan_mask]
 
 
         # check for infinite values

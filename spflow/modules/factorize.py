@@ -18,6 +18,11 @@ import numpy as np
 
 
 class Factorize(BaseProduct):
+    r"""
+    Factorize module that applies a factorization to the input features. This module is used to create a factorized
+    representation of the input features by splitting them into multiple parts based on the specified depth and
+    number of repetitions.
+    """
 
     def __init__(
         self,
@@ -25,28 +30,12 @@ class Factorize(BaseProduct):
         depth: int,
         num_repetitions: int,
     ) -> None:
-        r"""Initializes ``OuterProduct`` module.
-
+        r"""Initializes ``Factorize`` module.
         Args:
-            inputs:
-                Can be either a Module or a list of Modules.
-                The scopes for all child modules need to be pair-wise disjoint.
+            inputs: List of Leaf modules.
+            depth: The depth of the graph. Necessary to determine the number of features in the output.
+            num_repetitions: The number of repetitions.
 
-                (1) If `inputs` is a list of Modules, they have to be of disjoint scopes and have equal number of features or a single feature wich will the be broadcast.
-
-                Example shapes:
-                    inputs = ((3, 4), (3, 5))
-                    output = (3, 4 * 5)
-
-                    inputs = ((3, 4), (3, 1))
-                    output = (3, 4 * 1)  # broadcasted
-
-                    inputs = ((3, 4), (1, 5))
-                    output = (3, 4 * 5)  # broadcasted
-
-
-        Raises:
-            ValueError: Invalid arguments.
         """
         super().__init__(inputs=inputs)
 
@@ -56,7 +45,6 @@ class Factorize(BaseProduct):
 
     @property
     def out_channels(self) -> int:
-        """Returns the number of output nodes for this module."""
         return self.inputs[0].out_channels
 
     @property
@@ -74,6 +62,16 @@ class Factorize(BaseProduct):
         return mask.unsqueeze(-1).expand(-1, -1, len(self.inputs))
 
     def _factorize(self, depth, num_repetitions):
+        r"""
+        Generates a factorization of the input features based on the specified depth and number of repetitions.
+        The input features are split into groups, and the groups are shuffled to create a randomized factorization.
+        Example:
+            input features: [1, 2, 3, 4, 5, 6, 7]
+            depth: 2
+            num_repetitions: 2
+            output features: [{1, 3}, {4, 7}, {2}, {5, 6}], [ {3, 5}, {7}, {1, 6}, {2, 4} ]
+
+        """
         scope = self.inputs[0].scope
         num_features = len(scope.query)
         num_features_out = 2 ** depth
@@ -137,8 +135,8 @@ def sample(
     indices = module.indices.unsqueeze(0).expand(data.shape[0], -1, -1, -1).to(module.device)
     indices = torch.gather(indices, dim=-1, index=rep_indices).squeeze(-1)
 
+    # gather channel indices and mask
     channel_index = torch.sum(sampling_ctx.channel_index.unsqueeze(1) * indices, dim=-1)
-
     mask = torch.sum(sampling_ctx.mask.unsqueeze(1) * indices, dim=-1).bool()
 
     sampling_ctx.update(channel_index=channel_index, mask=mask)

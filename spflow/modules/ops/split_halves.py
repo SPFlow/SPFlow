@@ -19,18 +19,25 @@ class SplitHalves(Split): # ToDo: make abstract and implement concrete classes
 
     def __init__(self, inputs: Module, dim: int = 1, num_splits: Optional[int] = 2, split_func: Optional[Callable[[torch.Tensor], list[torch.Tensor]]] = None):
         """
-        Split a single module along a given dimension.
+        Split a single module along a given dimension. This implementation splits the features consecutively.
+        Example:
+            If num_splits=2, the features are split as follows:
+            - Input features: [0, 1, 2, 3, 4, 5]
+            - Split 0: features [0, 1, 2]
+            - Split 1: features [3, 4, 5]
+            If num_splits=3, the features are split as follows:
+            - Input features: [0, 1, 2, 3, 4, 5]
+            - Split 0: features [0, 1]
+            - Split 1: features [2, 3]
+            - Split 2: features [4, 5]
+
 
         Args:
             inputs:
             dim: Concatenation dimension. Note: dim=0: batch, dim=1: feature, dim=2: channel.
+            num_splits: Number of splits along the given dimension.
         """
         super().__init__(inputs=inputs, dim=dim, num_splits=num_splits)
-        # self.inputs = nn.ModuleList([inputs])
-
-        # self.dim = dim
-        # self.num_splits = num_splits
-
 
 
     def extra_repr(self) -> str:
@@ -61,9 +68,7 @@ def log_likelihood(
 
     # get log likelihoods for all inputs
     lls = log_likelihood(module.inputs[0], data, check_support, dispatch_ctx)
-    #if module.split_func is not None:
-    #    lls_split = module.split_func(lls)
-    #else:
+
     lls_split = lls.split(module.inputs[0].out_features // module.num_splits, dim=module.dim)
 
     return lls_split

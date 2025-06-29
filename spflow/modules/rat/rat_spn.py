@@ -1,24 +1,16 @@
 """Contains the SPFlow architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the ``base`` backend.
 """
 
-from typing import List, Optional, Union
-from collections.abc import Iterable
+from typing import List, Union
 
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 
-from spflow.modules.module import Module
-
-from spflow.modules.rat.region_graph import Partition, Region, RegionGraph
-from spflow.meta.data.feature_context import FeatureContext
-from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from functools import partial
-from typing import Any, Optional, Union
-from collections.abc import Callable
+from typing import Optional
 
 import torch
 from spflow import maximum_likelihood_estimation
@@ -32,26 +24,14 @@ from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.leaf.leaf_module import LeafModule
 from spflow.modules.factorize import Factorize
-from spflow.modules.rat_mixing_layer import MixingLayer
+from spflow.modules.rat.rat_mixing_layer import MixingLayer
 
 
 class RatSPN(Module):
-    r"""Module architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the ``base`` backend.
+    r"""Module architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs).
 
-    Constructs a RAT-SPN from a specified ``RegionGraph`` instance.
     For details see (Peharz et al., 2020): "Random Sum-Product Networks: A Simple and Effective Approach to Probabilistic Deep Learning".
 
-    Attributes:
-        n_root_nodes:
-            Integer specifying the number of sum nodes in the root region (C in the original paper).
-        n_region_nodes:
-            Integer specifying the number of sum nodes in each (non-root) region (S in the original paper).
-        n_leaf_ndoes:
-            Integer specifying the number of leaf nodes in each leaf region (I in the original paper).
-        root_node:
-            SPN-like sum node that represents the root of the model.
-        root_region:
-            SPN-like sum layer that represents the root region of the model.
     """
 
     def __init__(
@@ -68,17 +48,13 @@ class RatSPN(Module):
         r"""Initializer for ``RatSPN`` object.
 
         Args:
-            region_graph:
-                ``RegionGraph`` instance to create RAT-SPN architecture from.
-            feature_ctx:
-                ``FeatureContext`` instance specifying the domains of the scopes.
-                Scope must match the region graphs scope.
-            n_root_nodes:
-                Integer specifying the number of sum nodes in the root region (C in the original paper).
-            n_region_nodes:
-                Integer specifying the number of sum nodes in each (non-root) region (S in the original paper).
-            n_leaf_ndoes:
-                Integer specifying the number of leaf nodes in each leaf region (I in the original paper).
+            leaf_modules: List of leaf modules to be used in the RAT-SPN.
+            n_root_nodes: Number of root nodes.
+            n_region_nodes: Number of region nodes / sum nodes.
+            num_repetitions: Number of repetitions.
+            depth: Depth of the RAT-SPN.
+            outer_product: If True use the outer product Module as Product layer. If False use the elementwise product Module.
+            split_halves: If True use the SplitHalves module for splitting the input of the Product layer, otherwise use the SplitAlternate module.
 
         Raises:
             ValueError: Invalid arguments.
@@ -110,11 +86,17 @@ class RatSPN(Module):
 
 
     def create_spn(self):
+        r"""
+        Creates the RAT-SPN architecture based on the provided parameters
+        The architecture is build from bottom to top.
+
+        ."""
 
         if self.outer_product:
             product_layer = OuterProduct
         else:
             product_layer = ElementwiseProduct
+        # Factorize the leaf modules
         fac_layer = Factorize(inputs=self.leaf_modules, depth=self.depth, num_repetitions=self.num_repetitions)
         depth = self.depth
         root = None
@@ -124,14 +106,19 @@ class RatSPN(Module):
             Split = SplitAlternate
 
         for i in range(depth):
+            # Create the lowest layer with the factorized leaf modules as input
             if i == 0 and depth > 1:
                 out_prod = product_layer(inputs=Split(inputs=fac_layer, dim=1, num_splits=self.num_splits))
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
+
+            # Special case for the last intermediate layer: sum layer has to have the same number of output channels
+            # as the root node
             elif i == depth - 1:
                 out_prod = product_layer(Split(inputs=root, dim=1, num_splits=self.num_splits))
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
+            # Create the intermediate layers
             else:
                 out_prod = product_layer(Split(inputs=root, dim=1, num_splits=self.num_splits))
                 sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
@@ -139,6 +126,7 @@ class RatSPN(Module):
 
         # MixingLayer: Sums over repetitions
         root = MixingLayer(inputs=root, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions)
+
         # root node: Sum over all out_channels
         if self.n_root_nodes > 1:
             self.root_node = Sum(inputs=root, out_channels=1, num_repetitions=None)
@@ -150,17 +138,14 @@ class RatSPN(Module):
 
     @property
     def n_out(self) -> int:
-        """Returns the number of outputs for this module. Returns one since RAT-SPNs always have a single output."""
         return 1
 
     @property
     def feature_to_scope(self) -> list[Scope]:
-        """Returns the mapping from features to scopes."""
         return self.root_node.feature_to_scope
 
     @property
     def scopes_out(self) -> list[Scope]:
-        """Returns the output scopes of the RAT-SPN."""
         return self.root_node.scopes_out
 
     def to_dtype(self, dtype):
@@ -183,24 +168,7 @@ def log_likelihood(
         check_support: bool = True,
         dispatch_ctx: Optional[DispatchContext] = None,
 ) -> torch.Tensor:
-    """Computes log-likelihoods for RAT-SPNs nodes in the ``base`` backend given input data.
 
-     Args:
-         sum_node:
-             Sum node to perform inference for.
-         data:
-             Two-dimensional NumPy array containing the input data.
-             Each row corresponds to a sample.
-         check_support:
-             Boolean value indicating whether or not if the data is in the support of the leaf distributions.
-             Defaults to True.
-         dispatch_ctx:
-             Optional dispatch context.
-
-     Returns:
-         Two-dimensional NumPy array containing the log-likelihoods of the input data for the sum node.
-         Each row corresponds to an input sample.
-     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     ll = log_likelihood(
         rat_spn.root_node,
@@ -254,9 +222,10 @@ def sample(
     sampling_ctx: Optional[SamplingContext] = None,
 ) -> torch.Tensor:
 
-
+    # if no sampling context is provided, initialize a context by sampling from the root node
     if sampling_ctx is None and rat_spn.n_root_nodes > 1:
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+
         sampling_ctx.device = data.device
         logits = rat_spn.root_node.logits
         assert logits.shape == (1, rat_spn.n_root_nodes, 1)
@@ -274,14 +243,14 @@ def sample(
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    # call samples on specific repetition
+    # if the model only has one root node, we can directly sample from the mixing layer
     if rat_spn.n_root_nodes > 1:
-        mixing_layer = rat_spn.root_node.inputs
+        sample_root = rat_spn.root_node.inputs
     else:
-        mixing_layer = rat_spn.root_node
+        sample_root = rat_spn.root_node
 
     return sample(
-         mixing_layer,
+         sample_root,
          data,
          is_mpe=is_mpe,
          check_support=check_support,

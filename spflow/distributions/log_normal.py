@@ -9,13 +9,12 @@ from spflow.utils.leaf import init_parameter
 
 class LogNormal(Distribution):
     def __init__(self, mean: Tensor = None, std: Tensor = None, event_shape: tuple[int, ...] = None):
-        r"""Initializes ``LogNormal`` leaf node.
+        r"""
 
         Args:
-            scope: Scope object specifying the scope of the distribution.
             mean: Tensor containing the mean (:math:`\mu`) of the distribution.
             std: Tensor containing the standard deviation (:math:`\sigma`) of the distribution.
-            n_out: Number of nodes per scope. Only relevant if mean and std is None.
+            event_shape: The shape of the event. If None, it is inferred from the shape of the parameter tensor.
         """
         if event_shape is None:
             event_shape = mean.shape

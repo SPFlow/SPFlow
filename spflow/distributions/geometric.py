@@ -9,12 +9,11 @@ from spflow.utils.leaf import init_parameter
 
 class Geometric(Distribution):
     def __init__(self, p: Tensor = None, event_shape: tuple[int, ...] = None):
-        r"""Initializes ``Geometric`` leaf node.
+        r"""
 
         Args:
-            scope: Scope object specifying the scope of the distribution.
             p: PyTorch tensor representing the success probabilities in the range :math:`(0,1]`
-            n_out: Number of nodes per scope. Only relevant if mean and std is None.
+            event_shape: The shape of the event. If None, it is inferred from the shape of the parameter tensor.
         """
         if event_shape is None:
             event_shape = p.shape
