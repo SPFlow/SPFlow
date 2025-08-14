@@ -6,10 +6,10 @@ Typical usage example:
 """
 
 from scipy.stats import rankdata
+import numpy as np
 import torch
 
-
-def empirical_cdf(data: torch.Tensor) -> torch.Tensor:
+def empirical_cdf(data):
     """Computes the empirical cummulative distribution function (CDF) for specified input data.
 
     Returns the values of all input data according to the empirical cummulative distribution function (CDF) computed from said data.
@@ -29,13 +29,13 @@ def empirical_cdf(data: torch.Tensor) -> torch.Tensor:
     nan_mask = torch.isnan(data)
 
     # rank data values from min to max
-    ecd = torch.tensor(rankdata(data, axis=0, method="max"), dtype=torch.float)
+    ecd = torch.argsort(torch.argsort(data, dim=0), dim=0).float() + 1
 
     # set nan values to 0
     ecd[nan_mask] = 0
 
     # normalize rank values (not counting nan entries) to get ecd values
-    n_entries = torch.sum(~nan_mask, axis=0, keepdims=True)
+    n_entries = torch.sum(~nan_mask, dim=0, keepdim=True)
     n_entries[n_entries == 0] = 1
 
     # normalize rank values (not counting nan entries) to get ecd values

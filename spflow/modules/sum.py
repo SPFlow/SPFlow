@@ -321,6 +321,9 @@ def log_likelihood(
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> Tensor:
+
+    #start_time = time.time()
+
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -330,7 +333,6 @@ def log_likelihood(
         check_support=check_support,
         dispatch_ctx=dispatch_ctx,
     )
-    start_time = time.time()
 
     ll = ll.unsqueeze(3)  # shape: (B, F, input_OC, 1)
 
@@ -342,15 +344,51 @@ def log_likelihood(
     # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
     output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1).squeeze(-1)  # shape: (B, F, OC)
 
-    end_time = time.time() - start_time
-    #print(f"Log likelihood computation sum_layer took {end_time:.4f} seconds.")
+    #print(f"Sum_layer took {time.time() - start_time:.4f} seconds.")
 
     if module.num_repetitions is None:
         return output.view(-1,module.out_features,module.out_channels)
     else:
         return output.view(-1,module.out_features,module.out_channels, module.num_repetitions)
 
+"""
+@dispatch(memoize=True)  # type: ignore
+def log_likelihood(
+    module: Sum,
+    data: Tensor,
+    check_support: bool = True,
+    dispatch_ctx: Optional[DispatchContext] = None,
+) -> Tensor:
+    # initialize dispatch context
+    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
+    start_time = time.time()
+
+    ll = log_likelihood(
+        module.inputs,
+        data,
+        check_support=check_support,
+        dispatch_ctx=dispatch_ctx,
+    )
+
+    ll = ll.unsqueeze(3)  # shape: (B, F, input_OC, 1)
+
+    log_weights = module.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC)
+
+    # Weighted log-likelihoods
+    #weighted_lls = ll + log_weights  # shape: (B, F, IC, OC)
+
+    # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
+    output = torch.logsumexp((ll + log_weights), dim=module.sum_dim + 1).squeeze(-1)  # shape: (B, F, OC)
+    print(f"Log likelihood computation sum_layer took {time.time()-start_time:.4f} seconds.")
+    return output
+    #
+
+    # if module.num_repetitions is None:
+    #     return output.view(-1,module.out_features,module.out_channels)
+    # else:
+    #     return output.view(-1,module.out_features,module.out_channels, module.num_repetitions)
+"""
 
 @dispatch(memoize=True)  # type: ignore
 def em(

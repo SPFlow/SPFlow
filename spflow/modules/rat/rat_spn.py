@@ -238,7 +238,7 @@ def sample(
             sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
 
     else:
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
 
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
