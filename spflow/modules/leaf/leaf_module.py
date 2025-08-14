@@ -12,7 +12,7 @@ from spflow.meta.dispatch.dispatch import dispatch
 from spflow.meta.dispatch.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.modules.module import Module
 from spflow.utils.leaf import apply_nan_strategy
-
+import time
 
 class LeafModule(Module, ABC):
 
@@ -151,6 +151,9 @@ def log_likelihood(
     Raises:
         ValueError: Data outside of support.
     """
+
+    #start_time = time.time()
+
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # get information relevant for the scope
@@ -188,6 +191,8 @@ def log_likelihood(
     # Set marginalized scope data back to NaNs
     if marg_mask.any():
         data[marg_mask] = torch.nan
+
+    #print(f"Leaf took {time.time() - start_time:.4f} seconds.")
 
     return log_prob
 
@@ -237,12 +242,10 @@ def maximum_likelihood_estimation(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # select relevant data for scope
-    # todo: Uncommnet:
-    scope_data = data[:, leaf.scope.query]
-    #scope_data = data
+    data = data[:, leaf.scope.query]
 
     # apply NaN strategy
-    scope_data, weights = apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support)
+    scope_data, weights = apply_nan_strategy(nan_strategy, data, leaf, weights, check_support)
 
     # Forward to the actual distribution
     leaf.distribution.maximum_likelihood_estimation(scope_data, weights, bias_correction)
