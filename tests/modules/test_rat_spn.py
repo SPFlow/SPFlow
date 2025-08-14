@@ -16,10 +16,10 @@ from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf
 import torch
 
 depth = [2,5]
-n_region_nodes = [1,5]#10#10
-num_leaves = [1,6]#10
-num_repetitions = [1,7]#2#5
-n_root_nodes = [1,4]#10
+n_region_nodes = [1,5]
+num_leaves = [1,6]
+num_repetitions = [1,7]
+n_root_nodes = [1,4]
 params = list(product(depth, n_region_nodes, num_leaves, num_repetitions, n_root_nodes))
 
 
@@ -41,8 +41,8 @@ def make_rat_spn(depth, n_region_nodes, num_leaves, num_repetitions, n_root_node
     model = RatSPN(
         leaf_modules=[normal_layer],
         n_root_nodes=n_root_nodes,
-        n_region_nodes=n_region_nodes,  # 30
-        num_repetitions=num_repetitions,  # 1,
+        n_region_nodes=n_region_nodes,
+        num_repetitions=num_repetitions,
         depth=depth,
         outer_product=True,
         split_halves=False,

@@ -1,5 +1,5 @@
 # from spflow.modules.leaf import Normal, Bernoulli, Poisson
-# from tests.fixtures import auto_set_test_seed
+# from tests.fixtures import auto_set_test_seed, auto_set_test_device
 # import unittest
 #
 # from itertools import product
@@ -12,7 +12,7 @@
 # from spflow.modules.ops.cat import Cat
 # from tests.utils.leaves import make_normal_data
 # from spflow.learn.learn_spn import learn_spn
-# from spflow.learn.learn_spn import cluster_by_kmeans, partition_by_rdc
+# from spflow.learn.learn_spn import cluster_by_kmeans, partition_by_rdc, prune_sums
 # from scipy.stats import multivariate_normal
 # import torch
 # from collections import deque
@@ -20,6 +20,10 @@
 # import matplotlib.pyplot as plt
 # import matplotlib
 # import numpy as np
+#
+# from spflow.utils.rdc import rdc
+# from networkx import connected_components as ccnp, from_numpy_array
+# from itertools import combinations
 # matplotlib.use('TkAgg')
 #
 # out_features = 5
@@ -116,141 +120,70 @@
 #
 #     """
 #
-# def test_rdc_partitioning():
-#     # set seed
-#     torch.manual_seed(0)
 #
-#     # simulate partition data
-#     data_partition_1 = torch.distributions.multivariate_normal.MultivariateNormal(torch.zeros(2), torch.tensor([[1, 0.5], [0.5, 1]])).sample((100,))
-#     data_partition_2 = torch.randn((100, 1)) + 10.0
+# def make_rdc_data(n_samples=1000):
+#     feature1 = torch.normal(0, 1, size=(n_samples,))  # Normal distribution
+#     feature2 = torch.rand(n_samples) * 4 - 2  # Uniform distribution [-2, 2]
+#     feature3 = torch.distributions.Exponential(1.0).sample((n_samples,))  # Exponential distribution
+#     feature4 = torch.distributions.Binomial(10, 0.5).sample((n_samples,))  # Binomial distribution
 #
-#     # compute clusters using k-means
-#     partition_mask = partition_by_rdc(
-#         torch.hstack([data_partition_1, data_partition_2]),
-#         threshold=0.5,
-#     )
+#     data = torch.stack((feature1, feature2, feature3, feature4), dim=1)
+#     return data
 #
-#     # should be two partitions
-#     assert(len(torch.unique(partition_mask)) == 2)
-#
-#     # check if partitions are correct (order is irrelevant)
-#     partition_1 = torch.where(partition_mask == 0)[0]
-#     assert(torch.all(partition_1 == torch.tensor([0, 1])) or torch.all(partition_1 == torch.tensor([2])))
-#
-# def test_learn_1():
-#
-#     X, y = make_blobs(n_samples=100,  n_features=out_features, random_state=0)
-#     data = torch.tensor(X, dtype=torch.float32)
-#     scope = Scope(list(range(out_features)))
+# def test_rdc():
 #
 #
-#     normal_layer = Normal(scope= scope, out_channels=out_channels)
+#     # Generate synthetic data
+#     data = make_rdc_data()
+#     threshold = 0.3
 #
-#     # ----- min_features_slice > scope size (no splitting or clustering) -----
+#     # Compute RDC
+#     rdcs = torch.eye(data.shape[1], device=data.device)
+#     for i, j in combinations(range(data.shape[1]), 2):
+#         r = rdc(data[:, i], data[:, j])
+#         rdcs[j][i] = rdcs[i][j] = r
 #
-#     #partitioning_fn.alternate = True
-#     #partitioning_fn.partition = True
 #
-#     spn = learn_spn(
-#         data,
-#         leaf_modules=normal_layer,
-#         fit_params=False,
-#         min_features_slice=2,
-#     )
+#     rdcs[rdcs < threshold] = 0.0
+#     adj_mat = rdcs
 #
-# def test_learn_spn_2():
-#     # set seed
-#     torch.manual_seed(0)
-#     #np.random.seed(0)
-#     #random.seed(0)
+#     partition_ids = torch.zeros(data.shape[1], dtype=torch.int)
 #
-#     data = make_normal_data(num_samples=100, out_features=3)
-#     scope = Scope(list(range(3)))
-#     normal_layer = Normal(scope=scope, out_channels=out_channels)
+#     for i, c in enumerate((ccnp(from_numpy_array(np.array(adj_mat.cpu()))))):
+#         partition_ids[list(c)] = i + 1
 #
-#     partitioning_fn.alternate = True
-#     partitioning_fn.partition = True
+#     partition_ids.to(data.device)
 #
-#     spn = learn_spn(
-#         data,
-#         leaf_modules=normal_layer,
-#         partitioning_method=partitioning_fn,
-#         clustering_method=clustering_fn,
-#         fit_params=False,
-#         min_instances_slice=51,
-#     )
+#     partitions = []
 #
-# def test_learn_spn_3():
-#     # set seed
-#     torch.manual_seed(0)
-#     # np.random.seed(0)
-#     # random.seed(0)
+#     for partition_id in torch.sort(torch.unique(partition_ids), axis=-1)[0]:  # uc
+#         partitions.append(torch.where(partition_ids == partition_id))  # uc
 #
-#     data = make_normal_data(num_samples=100, out_features=9)
-#     scope = Scope(list(range(3)))
-#     normal_layer = Normal(scope=scope, out_channels=out_channels)
-#     scope_ber = Scope(list(range(3,6)))
-#     bernoulli_layer = Bernoulli(scope=scope_ber, out_channels=out_channels)
-#     scope_p = Scope(list(range(6,9)))
-#     poisson_layer = Poisson(scope=scope_p, out_channels=out_channels)
-#     layers = [normal_layer, bernoulli_layer, poisson_layer]
-#
-#     partitioning_fn.alternate = True
-#     partitioning_fn.partition = True
-#
-#     spn = learn_spn(
-#         data,
-#         leaf_modules=layers,
-#         partitioning_method=partitioning_fn,
-#         clustering_method=clustering_fn,
-#         fit_params=False,
-#         min_instances_slice=51,
-#     )
-#
-#     normal_samples = torch.randn(100, 3)
-#
-#     bernoulli_samples = torch.bernoulli(torch.full((100, 3), 0.5))
-#
-#     poisson_samples = torch.poisson(torch.full((100, 3), 2.0))
-#
-#     data = torch.cat([normal_samples, bernoulli_samples, poisson_samples], dim=1)
-#     lls = log_likelihood(spn, data)
+#     assert len(partitions) == 4
 #
 # def test_make_moons():
-#     torch.manual_seed(3)
-#     X, y = make_moons(n_samples=1000, noise=0.1, random_state=42) #, random_state=42
-#
-#     """
-#     # Plot the data
-#     plt.figure(figsize=(8, 6))
-#     plt.scatter(X[y == 0][:, 0], X[y == 0][:, 1], color='red', label='Class 0')
-#     plt.scatter(X[y == 1][:, 0], X[y == 1][:, 1], color='blue', label='Class 1')
-#     plt.title("make_moons dataset")
-#     plt.xlabel("Feature 1")
-#     plt.ylabel("Feature 2")
-#     plt.legend()
-#     plt.show()
-#     """
+#     visualize = False
+#     torch.manual_seed(0)
+#     X, y = make_moons(n_samples=1000, noise=0.1, random_state=42)
 #
 #     scope = Scope(list(range(2)))
 #     normal_layer = Normal(scope=scope, out_channels=4)
 #
-#     #partitioning_fn.alternate = True
-#     #partitioning_fn.partition = True
 #     spn = learn_spn(
 #         torch.tensor(X, dtype=torch.float32),
 #         leaf_modules=normal_layer,
-#         out_channels=3,
-#         #partitioning_method=partitioning_fn,
-#         #clustering_method=clustering_fn,
-#         min_instances_slice=70, #51
+#         out_channels=1,
+#         min_instances_slice=70,
 #     )
-#     spn_list = list_modules_by_depth(spn)
-#     #analyze_spn(spn)
-#     heatmap(spn, X, y)
-#     means = [child.distribution.mean.detach().numpy()[:,0] for child in analyze_spn(spn)]
-#     stds = [child.distribution.std.detach().numpy()[:,0] for child in analyze_spn(spn)]
-#     test = 5
+#     num_params = sum(p.numel() for p in spn.parameters() if p.requires_grad)
+#     prune_sums(spn)
+#     num_params_after_pruning = sum(p.numel() for p in spn.parameters() if p.requires_grad)
+#     assert num_params_after_pruning < num_params
+#
+#     if visualize:
+#         # Visualize the contours of the learned SPN
+#         heatmap(spn, X, y)
+#
 #
 # def plot_contours(mean, std):
 #     x, y = np.mgrid[-10:10:.05, -10:10:.05]
@@ -259,7 +192,10 @@
 #     plt.contour(x, y, rv.pdf(pos), levels=5, colors='black')
 #
 # def heatmap(spn, X, y):
-#
+#     torch.cuda.empty_cache()
+#     torch.set_default_device("cpu")
+#     device = torch.device("cpu")
+#     spn.to(device)
 #     # Create a meshgrid of points over the feature space
 #     x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
 #     y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
@@ -269,17 +205,6 @@
 #     # Flatten the grid so that you can pass it through the SPN
 #     grid = np.c_[xx.ravel(), yy.ravel()]
 #
-#     #X, y = make_moons(n_samples=1000, noise=0.1, random_state=42) #, random_state=42
-#
-#     #X_tensor = torch.tensor(X, dtype=torch.float32)
-#     #y_tensor = torch.tensor(y, dtype=torch.long)
-#     #moon_dataset = TensorDataset(X_tensor)
-#
-#     #expectation_maximization(spn, torch.tensor(X, dtype=torch.float32), verbose=True)
-#
-#     #dataloader = DataLoader(moon_dataset, batch_size=128, shuffle=True)
-#
-#     #train_gradient_descent(spn, dataloader, lr=0.01, epochs=50, verbose=True)
 #     # Assuming you have a trained SPN called `spn`
 #     # Calculate the likelihoods (probabilities) for each point in the grid
 #     probs = log_likelihood(spn, torch.tensor(grid, dtype=torch.float32))
@@ -289,8 +214,7 @@
 #
 #     # Plotting the heatmap
 #     plt.figure(figsize=(10, 8))
-#     #plt.contourf(xx, yy, probs, levels=100, cmap="hot", alpha=0.8)
-#     #plt.colorbar(label="Probability")
+#
 #     plt.contour(xx, yy, np.exp(probs), levels=10, cmap="viridis")
 #
 #     # Optionally, overlay the original data points
@@ -300,24 +224,6 @@
 #     plt.xlabel("Feature 1")
 #     plt.ylabel("Feature 2")
 #     plt.show()
-#     """
-#     n_samples = 100
-#     out_features = 2
-#
-#     data = torch.full((n_samples, out_features), torch.nan)
-#     channel_index = torch.full((n_samples, out_features), fill_value=0)
-#     mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
-#     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
-#     samples = sample(spn, data, sampling_ctx=sampling_ctx)
-#
-#     plt.figure(figsize=(8, 6))
-#     plt.scatter(samples[:, 0], samples[:, 1], color='red', label='Samples')
-#     plt.title("Samples from the SPN")
-#     plt.xlabel("Feature 1")
-#     plt.ylabel("Feature 2")
-#     plt.legend()
-#     plt.show()
-#     """
 #
 #
 # def analyze_spn(spn):
