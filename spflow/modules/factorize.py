@@ -15,7 +15,7 @@ from spflow.modules.base_product import BaseProduct, _get_input_log_likelihoods
 from spflow.modules.module import Module
 from spflow.modules import Product
 import numpy as np
-
+import time
 
 class Factorize(BaseProduct):
     r"""
@@ -41,7 +41,10 @@ class Factorize(BaseProduct):
 
         self.depth = depth
         self.num_repetitions = num_repetitions
-        self.indices = self._factorize(depth, num_repetitions)# shape: [num_features_in, num_features_out, num_repetitions]
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        device = torch.device(device)
+        indices = self._factorize(depth, num_repetitions) # shape: [num_features_in, num_features_out, num_repetitions]
+        self.register_buffer("indices", indices)
 
     @property
     def out_channels(self) -> int:
@@ -95,7 +98,7 @@ class Factorize(BaseProduct):
                     high = num_features
                 scopes[idxs[low:high], o, r] = 1
 
-        return scopes.to(torch.int32)
+        return scopes#.to(torch.int32)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -106,14 +109,13 @@ def log_likelihood(
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> Tensor:
     # initialize dispatch context
+
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx) # lls[0] shape: [batch_size, num_features, num_channel]
 
-    indices = module.indices.to(module.device) # shape: [n_in_f, n_out_f, num_repetitions]
+    output = torch.einsum('bicr, ior->bocr', lls[0], module.indices)
 
-    # sum over input feature dimension
-    output = torch.sum(lls[0].unsqueeze(2) * indices.unsqueeze(0).unsqueeze(3), dim=1)
 
     return output
 
@@ -132,7 +134,7 @@ def sample(
 
     # gather indices for specific repetitions
     rep_indices = sampling_ctx.repetition_idx.view(-1,1,1,1).expand(-1, module.indices.shape[0], module.indices.shape[1], -1)
-    indices = module.indices.unsqueeze(0).expand(data.shape[0], -1, -1, -1).to(module.device)
+    indices = module.indices.unsqueeze(0).expand(data.shape[0], -1, -1, -1).to(dtype=torch.long, device=module.device)
     indices = torch.gather(indices, dim=-1, index=rep_indices).squeeze(-1)
 
     # gather channel indices and mask
