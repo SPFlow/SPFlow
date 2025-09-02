@@ -183,7 +183,8 @@ def log_likelihood(
             raise ValueError(f"Encountered data instances that are not in the support of the distribution.")
 
     # compute probabilities for values inside distribution support
-    log_prob = leaf.distribution.log_prob(data.float())
+    #log_prob = leaf.distribution.log_prob(data.float())
+    log_prob = leaf.distribution.log_prob(data.to(torch.get_default_dtype()))
 
     # Marginalize entries
     log_prob[marg_mask] = 0.0
@@ -206,6 +207,7 @@ def maximum_likelihood_estimation(
     nan_strategy: Optional[Union[str, Callable]] = None,
     check_support: bool = True,
     dispatch_ctx: Optional[DispatchContext] = None,
+    preprocess_data: bool = True,
 ) -> None:
     r"""Maximum (weighted) likelihood estimation (MLE) of a leaf module.
 
@@ -242,7 +244,8 @@ def maximum_likelihood_estimation(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     # select relevant data for scope
-    data = data[:, leaf.scope.query]
+    if preprocess_data:
+        data = data[:, leaf.scope.query]
 
     # apply NaN strategy
     scope_data, weights = apply_nan_strategy(nan_strategy, data, leaf, weights, check_support)

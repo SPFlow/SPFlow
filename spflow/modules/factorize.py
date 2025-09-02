@@ -26,7 +26,7 @@ class Factorize(BaseProduct):
 
     def __init__(
         self,
-        inputs: list[Module],
+        inputs: Union[list[Module], Module],
         depth: int,
         num_repetitions: int,
     ) -> None:
@@ -41,10 +41,8 @@ class Factorize(BaseProduct):
 
         self.depth = depth
         self.num_repetitions = num_repetitions
-        device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        device = torch.device(device)
         indices = self._factorize(depth, num_repetitions) # shape: [num_features_in, num_features_out, num_repetitions]
-        self.register_buffer("indices", indices)
+        self.register_buffer("indices", indices.to(torch.get_default_dtype()))
 
     @property
     def out_channels(self) -> int:
@@ -63,6 +61,16 @@ class Factorize(BaseProduct):
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
         return mask.unsqueeze(-1).expand(-1, -1, len(self.inputs))
+
+    @property
+    def device(self):
+        """
+        Get the device of the module. Necessary hack since this module has no parameters.
+
+        Returns:
+            torch.device: The device on which the module's buffers are located.
+        """
+        return next(iter(self.buffers())).device
 
     def _factorize(self, depth, num_repetitions):
         r"""
@@ -192,6 +200,5 @@ def marginalize(
         return marg_child
     else:
         return Factorize(inputs=[marg_child], depth=layer.depth, num_repetitions=layer.num_repetitions)
-
 
 

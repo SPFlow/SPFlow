@@ -25,6 +25,7 @@ from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.leaf.leaf_module import LeafModule
 from spflow.modules.factorize import Factorize
 from spflow.modules.rat.rat_mixing_layer import MixingLayer
+from spflow.modules.ops.cat import Cat
 
 
 class RatSPN(Module):
@@ -69,6 +70,7 @@ class RatSPN(Module):
         self.outer_product = outer_product
         self.num_splits = num_splits
         self.split_halves = split_halves
+        self.scope = Scope.join_all([leaf.scope for leaf in leaf_modules])
 
         if n_root_nodes < 1:
             raise ValueError(f"Specified value of 'n_root_nodes' must be at least 1, but is {n_root_nodes}.")
@@ -91,7 +93,6 @@ class RatSPN(Module):
         The architecture is build from bottom to top.
 
         ."""
-
         if self.outer_product:
             product_layer = OuterProduct
         else:
@@ -107,9 +108,14 @@ class RatSPN(Module):
 
         for i in range(depth):
             # Create the lowest layer with the factorized leaf modules as input
-            if i == 0 and depth > 1:
+            #if i == 0 and depth > 1:
+            if i == 0:
                 out_prod = product_layer(inputs=Split(inputs=fac_layer, dim=1, num_splits=self.num_splits))
-                sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
+                if depth == 1:
+                    sum_layer = Sum(inputs=out_prod, out_channels=self.n_root_nodes,
+                                    num_repetitions=self.num_repetitions)
+                else:
+                    sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
                 root = sum_layer
 
             # Special case for the last intermediate layer: sum layer has to have the same number of output channels
