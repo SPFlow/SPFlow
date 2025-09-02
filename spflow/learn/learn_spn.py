@@ -170,6 +170,7 @@ def learn_spn(
         clustering_args: Optional[dict[str, Any]] = None,
         partitioning_args: Optional[dict[str, Any]] = None,
         check_support: bool = True,
+        full_data: torch.tensor = None,
 ) -> Module:
     """LearnSPN structure and parameter learner for the ``base`` backend.
 
@@ -213,7 +214,6 @@ def learn_spn(
     Raises:
         ValueError: Invalid arguments.
     """
-
     if scope is None:
         if isinstance(leaf_modules, list):
             if len(leaf_modules) > 1:
@@ -262,7 +262,7 @@ def learn_spn(
             f"Value for 'min_features_slice' must be an integer greater than 1, but was: {min_features_slice}."
         )
 
-    def create_partitioned_mv_leaf(scope: Scope, data: torch.Tensor):
+    def create_partitioned_mv_leaf(scope: Scope,data: torch.Tensor):
         # create leaf layer from given scope and data
         leaves = []
         s = set(scope.query)
@@ -273,7 +273,7 @@ def learn_spn(
                 leaf_layer = leaf_module.__class__(scope=Scope(sorted(scope_inter)),
                                                    out_channels=leaf_module.out_channels)
                 # estimate leaf node parameters from data
-                maximum_likelihood_estimation(leaf_layer, data, check_support=check_support)
+                maximum_likelihood_estimation(leaf_layer, data, check_support=check_support, preprocess_data=False)
 
                 leaves.append(leaf_layer)
 
