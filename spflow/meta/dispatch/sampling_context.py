@@ -51,7 +51,8 @@ class SamplingContext:
                 If None, all samples are considered.
         """
         if device is None:
-            device = torch.device("cpu" if not torch.cuda.is_available() else "cuda:0")
+            #device = torch.device("cpu" if not torch.cuda.is_available() else "cuda:0")
+            device = torch.get_default_device()
 
         if channel_index is not None and mask is not None:
             if not channel_index.shape == mask.shape:

@@ -1,12 +1,15 @@
+import spflow.meta.data
 from tests.fixtures import auto_set_test_seed, auto_set_test_device
 import unittest
 from itertools import product
 
 from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
 from spflow import log_likelihood, sample, marginalize
-from tests.utils.leaves import make_normal_leaf, make_normal_data
+from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, make_data
+from spflow.modules.leaf import Normal, Bernoulli
 from spflow.learn import expectation_maximization
 from spflow.modules.factorize import Factorize
+from spflow.meta.data.scope import Scope
 import pytest
 import torch
 
@@ -87,3 +90,36 @@ def test_marginalize(prune, in_channels: int, marg_rvs: list[int], num_reps):
 
     # Scope query should not contain marginalized rv
     assert len(set(marginalized_module.scope.query).intersection(marg_rvs)) == 0
+
+def test_multidistribution_input():
+
+    out_channels = 3
+    num_reps = 5
+    out_features_1 = 8
+    out_features_2 = 10
+
+    scope_1 = Scope(list(range(0, out_features_1)))
+    scope_2 = Scope(list(range(out_features_1, out_features_1 + out_features_2)))
+
+    cls_1 = Normal
+    cls_2 = Bernoulli
+
+    module_1 = make_leaf(cls=cls_1, out_channels=out_channels, scope=scope_1, num_repetitions=num_reps)
+    data_1 = make_data(cls=cls_1, out_features=out_features_1, n_samples=5)
+
+    module_2 = make_leaf(cls=cls_2, out_channels=out_channels, scope=scope_2, num_repetitions=num_reps)
+    data_2 = make_data(cls=cls_2, out_features=out_features_2, n_samples=5)
+
+    module = Factorize(inputs=[module_1, module_2], depth=2, num_repetitions=num_reps)
+
+    data = torch.cat((data_1, data_2), dim=1)
+    lls = log_likelihood(module, data)
+
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
+
+    repetition_idx = torch.zeros((1,), dtype=torch.long)
+    sampling_ctx = init_default_sampling_context(sampling_ctx=None, num_samples=1)
+    sampling_ctx.repetition_idx = repetition_idx
+    samples = sample(module, sampling_ctx=sampling_ctx)
+
+    assert samples.shape == (1, out_features_1 + out_features_2)
