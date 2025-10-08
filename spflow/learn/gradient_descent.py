@@ -50,7 +50,7 @@ def train_gradient_descent(
     verbose: bool = False,
     is_classification: bool = False,
     optimizer: Optional[torch.optim.Optimizer] = None,
-    scheduler: Optional[torch.optim.lr_scheduler] = None,
+    scheduler: Optional[torch.optim.lr_scheduler.LRScheduler] = None,
     lr: float = 1e-3,
     loss_fn: Optional[Callable[[Module, Tensor], Tensor]] = None,
     validation_dataloader: torch.utils.data.DataLoader = None,
