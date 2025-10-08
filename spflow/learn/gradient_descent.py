@@ -77,7 +77,7 @@ def train_gradient_descent(
 
     if scheduler is None:
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[int(epochs * 0.5), int(epochs * 0.75)],
-                                                      gamma=0.1, verbose=True)
+                                                      gamma=0.1)
 
     if loss_fn is None:
         if is_classification:
