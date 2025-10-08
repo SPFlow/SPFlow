@@ -36,7 +36,8 @@ dependencies = [
     "scipy>=1.5.0",
     "scikit-learn>=1.0",
     "torch>=2.0.1",
-    "fast_pytorch_kmeans>=0.2.2"
+    "fast_pytorch_kmeans>=0.2.2",
+    "psutil"
 ]
 dynamic = ["version"]
 
