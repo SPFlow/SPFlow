@@ -55,6 +55,8 @@ dev = [
   "pytest",
   "pytest-cov",
   "pre-commit",
+  "imageio~=2.37.0",
+    "scikit-image~=0.24.0",
 ]
 
 
