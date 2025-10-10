@@ -42,7 +42,7 @@ from sklearn.datasets import make_moons, make_blobs
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
-matplotlib.use('TkAgg')
+matplotlib.use('Agg')
 
 import os
 import random

@@ -24,7 +24,7 @@ import numpy as np
 from spflow.utils.rdc import rdc
 from networkx import connected_components as ccnp, from_numpy_array
 from itertools import combinations
-matplotlib.use('TkAgg')
+matplotlib.use('Agg')
 
 out_features = 5
 out_channels = 2
