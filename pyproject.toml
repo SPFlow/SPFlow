@@ -39,6 +39,7 @@ dependencies = [
     "fast_pytorch_kmeans>=0.2.2",
     "psutil",
     "matplotlib>=3.9.2",
+    "torchvision>=0.21.0+cu118"
 ]
 dynamic = ["version"]
 
