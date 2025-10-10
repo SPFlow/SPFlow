@@ -54,7 +54,10 @@ class SamplingContext:
         """
         if device is None:
             #device = torch.device("cpu" if not torch.cuda.is_available() else "cuda:0")
-            device = torch.get_default_device()
+            if hasattr(torch, "get_default_device"):
+                device = torch.get_default_device()
+            else:
+                device = torch.device("cpu")
 
         if channel_index is not None and mask is not None:
             if not channel_index.shape == mask.shape:
