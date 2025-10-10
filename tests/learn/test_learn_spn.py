@@ -76,7 +76,7 @@ def test_rdc():
 
     partition_ids = torch.zeros(data.shape[1], dtype=torch.int)
 
-    for i, c in enumerate((ccnp(from_numpy_array(np.array(adj_mat.cpu()))))):
+    for i, c in enumerate((ccnp(from_numpy_array(adj_mat.cpu().numpy())))):
         partition_ids[list(c)] = i + 1
 
     partition_ids.to(data.device)
