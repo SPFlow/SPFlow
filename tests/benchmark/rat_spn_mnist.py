@@ -1,60 +1,22 @@
-import time
-
 from torch.utils.data import DataLoader
 
-from spflow.meta.data import Scope
 from spflow.modules.leaf import Normal, Binomial, Bernoulli
 from spflow.modules.rat.rat_spn import RatSPN
-from spflow.modules.rat.rat_spn import posterior
-from spflow.modules.factorize import Factorize
-from collections import deque
-from spflow.meta.data import Scope
-import pytest
-from spflow import log_likelihood, sample
-from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
-from spflow.learn import train_gradient_descent
-from spflow.modules import Sum, Product
-from spflow.modules.base_product import BaseProduct
-from spflow.modules.ops.cat import Cat
-from tests.utils.leaves import make_normal_data
-from spflow.learn.learn_spn import learn_spn
-from spflow.learn.learn_spn import cluster_by_kmeans, partition_by_rdc
-from scipy.stats import multivariate_normal
-from spflow.learn.expectation_maximization import expectation_maximization
-import torch
-import random
-from spflow.modules import Sum
-from spflow.modules import OuterProduct
-from spflow.modules import ElementwiseProduct
-from spflow.modules.factorize import Factorize
-from tests.utils.leaves import make_normal_leaf, make_normal_data
-from spflow.learn import train_gradient_descent
-from spflow.meta.dispatch import (
-    SamplingContext,
-    dispatch,
-    init_default_dispatch_context,
-)
-from spflow.modules.ops.split_halves import SplitHalves
-from spflow.modules.ops.split_alternate import SplitAlternate
 
-from spflow.learn.learn_spn import learn_spn
-from sklearn.datasets import make_moons, make_blobs
+from spflow.meta.data import Scope
+
+from spflow import log_likelihood, sample
+
 import matplotlib.pyplot as plt
 import matplotlib
-import numpy as np
 matplotlib.use('Agg')
 
 import os
 import random
-import sys
 import time
 
-import imageio
 import numpy as np
-import skimage
 import torch
-import torchvision
-from torch import nn
 from torchvision import datasets, transforms
 
 
