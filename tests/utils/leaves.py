@@ -6,6 +6,7 @@ from spflow.modules import leaf
 from spflow.modules.leaf import Normal
 
 from spflow.modules.leaf.leaf_module import LeafModule
+from typing import Dict
 
 
 def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):
@@ -120,6 +121,42 @@ def make_leaf(cls, out_channels: int = None, out_features: int = None, scope: Sc
     else:
         # Default case: just call the class
         return cls(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
+
+def make_leaf_args(cls, out_channels: int = None, scope: Scope = None, num_repetitions = None) -> Dict:
+
+    # Check special cases
+    if cls == leaf.Binomial or cls == leaf.NegativeBinomial:
+        return {"n": torch.ones(1) * 3}
+    elif cls == leaf.Categorical:
+        return {"K": 3}
+    elif cls == leaf.Hypergeometric:
+        if num_repetitions is None:
+            return {
+                "n":torch.ones((len(scope.query), out_channels)) * 3,
+                "N":torch.ones((len(scope.query), out_channels)) * 10,
+                "K":torch.ones((len(scope.query), out_channels)) * 5,
+            }
+        else:
+            return {
+                "n":torch.ones((len(scope.query), out_channels, num_repetitions)) * 3,
+                "N":torch.ones((len(scope.query), out_channels, num_repetitions)) * 10,
+                "K":torch.ones((len(scope.query), out_channels, num_repetitions)) * 5,
+
+            }
+    elif cls == leaf.Uniform:
+        if num_repetitions is None:
+            return {
+                "start":torch.zeros((len(scope.query), out_channels)),
+                "end":torch.ones((len(scope.query), out_channels)),
+
+            }
+        else:
+            return {
+                "start":torch.zeros((len(scope.query), out_channels, num_repetitions)),
+                "end":torch.ones((len(scope.query), out_channels, num_repetitions)),
+            }
+    else:
+        return {}
 
 def make_cond_leaf(cls, out_channels: int = None, out_features: int = None, scope: Scope = None) -> LeafModule:
     assert (out_features is None) ^ (scope is None), "Either out_features or scope must be provided"

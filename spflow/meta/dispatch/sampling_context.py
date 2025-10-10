@@ -49,6 +49,8 @@ class SamplingContext:
             mask:
                 Tensor containing the mask to apply to the samples.
                 If None, all samples are considered.
+            repetition_index:
+                Tensor containing the repetition indices to sample from.
         """
         if device is None:
             #device = torch.device("cpu" if not torch.cuda.is_available() else "cuda:0")

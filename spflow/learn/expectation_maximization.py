@@ -10,7 +10,6 @@ from spflow import em, log_likelihood
 from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.modules.module import Module
 
-# from spflow.torch.learning.general.node.leaf.bernoulli import em  # TODO
 
 logger = logging.getLogger(__name__)
 
