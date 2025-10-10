@@ -31,11 +31,13 @@ classifiers = [
 ]
 urls = { Homepage = "https://github.com/SPFlow/SPFlow" }
 dependencies = [
-    "plum-dispatch>=1.7.4",
+    "plum-dispatch>=2.5.8",
     "numpy>=1.17.4",
     "scipy>=1.5.0",
     "scikit-learn>=1.0",
     "torch>=2.0.1",
+    "fast_pytorch_kmeans>=0.2.2",
+    "psutil"
 ]
 dynamic = ["version"]
 
@@ -53,6 +55,8 @@ dev = [
   "pytest",
   "pytest-cov",
   "pre-commit",
+  "imageio~=2.37.0",
+    "scikit-image~=0.24.0",
 ]
 
 
