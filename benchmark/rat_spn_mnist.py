@@ -119,11 +119,11 @@ def get_mnist_loaders(use_cuda, batch_size):
 
 
     # Load and filter training data
-    train_dataset = datasets.MNIST("../data", train=True, download=True, transform=transformer)
+    train_dataset = datasets.MNIST("../tests/data", train=True, download=True, transform=transformer)
     train_dataset = filter_classes(train_dataset, selected_classes)
 
     # Load and filter test data
-    test_dataset = datasets.MNIST("../data", train=False, transform=transformer)
+    test_dataset = datasets.MNIST("../tests/data", train=False, transform=transformer)
     test_dataset = filter_classes(test_dataset, selected_classes)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,**kwargs)
