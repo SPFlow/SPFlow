@@ -77,7 +77,7 @@ def test_sample(cls, out_features: int, out_channels: int, num_reps, is_mpe: boo
 )
 def test_maximum_likelihood_estimation(cls, out_features: int, out_channels: int, bias_correction: bool, num_reps):
     # Construct leaf module
-    cls = leaf.Bernoulli
+
     module = make_leaf(cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps)
 
     # Construct sampler
