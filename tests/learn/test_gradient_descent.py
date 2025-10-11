@@ -60,7 +60,7 @@ def test_negative_log_likelihood_loss(model, dataloader, device):
 
 def test_train_gradient_descent_basic(model, dataloader):
     initial_params = [p.clone() for p in model.parameters()]
-    train_gradient_descent(model, dataloader, epochs=1)
+    train_gradient_descent(model, dataloader, lr=0.01, epochs=1)
     for p, initial_p in zip(model.parameters(), initial_params):
         assert not torch.allclose(p, initial_p)  # parameters should have changed
 
