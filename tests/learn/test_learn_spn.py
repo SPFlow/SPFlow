@@ -92,6 +92,7 @@ def test_rdc():
     assert len(partitions) == 4
 
 def test_make_moons():
+    array = np.array([5])
     visualize = False
     torch.manual_seed(0)
     X, y = make_moons(n_samples=1000, noise=0.1, random_state=42)
