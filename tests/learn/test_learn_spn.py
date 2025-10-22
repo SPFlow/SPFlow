@@ -76,7 +76,7 @@ def test_rdc():
 
     partition_ids = torch.zeros(data.shape[1], dtype=torch.int)
 
-    np_matrix = np.array(adj_mat.cpu())
+    np_matrix = np.array(adj_mat.cpu().tolist())
     fna_matrix = from_numpy_array(np_matrix)
 
     for i, c in enumerate(ccnp(fna_matrix)):
