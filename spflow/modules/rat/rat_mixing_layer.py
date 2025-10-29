@@ -143,7 +143,7 @@ def sample(
 
     if is_mpe:
         # Take the argmax of the logits to obtain the most probable index
-        repetition_idx = torch.argmax(logits.sum(-1), dim=-1).squeeze(-1).squeeze(-1)
+        repetition_idx = torch.argmax(logits.sum(-1), dim=-1).squeeze(-1)
     else:
         # Sample from categorical distribution defined by weights to obtain indices for repetitions
         # sum up the input channel for distribution
