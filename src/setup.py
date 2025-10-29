@@ -15,18 +15,18 @@ with open("../requirements.txt", "r") as fh:
 
 # Get __version__ from _meta.py. This is a trick to avoid importing the package
 #   from ``setup.py``, which can have unintended side-effects.
-with open(path.join("spn", "_meta.py")) as f:
-    exec(f.read())
+# with open(path.join("spn", "_meta.py")) as f:
+#     exec(f.read())
 
 setuptools.setup(
     name="spflow",
-    version=__version__,
+    version="0.0.42",
     author="Alejandro Molina et al.",
     author_email="molina@cs.tu-darmstadt.de",
     description="Sum Product Flow: An Easy and Extensible Library for Sum-Product Networks",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/alejandromolinaml/SPFlow",
+    url="https://github.com/SPFlow/SPFlow",
     packages=setuptools.find_packages(),
     package_data={"spn.algorithms.splitting": ["*.R"]},
     classifiers=[
