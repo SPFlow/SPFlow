@@ -310,8 +310,12 @@ def sample(
         if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
 
             samples = samples.repeat(n_samples, 1, 1, 1).detach()
+            print("Repetition idx:", sampling_ctx.repetition_idx.shape)
+            print("Samples shape before gather:", samples.shape)
             # repetition_idx shape: (n_samples,)
             repetition_idx = sampling_ctx.repetition_idx[instance_mask]
+
+
 
             indices = repetition_idx.view(-1,1,1,1).expand(-1,samples.shape[1], samples.shape[2],-1)
 
@@ -330,6 +334,8 @@ def sample(
 
         if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
             # repetition_idx shape: (n_samples,)
+            print("Repetition idx:", sampling_ctx.repetition_idx.shape)
+            print("Samples shape before gather:", samples.shape)
             repetition_idx = sampling_ctx.repetition_idx[instance_mask]
 
             indices = repetition_idx.view(-1,1,1,1).expand(-1,samples.shape[1], samples.shape[2],-1)
