@@ -121,7 +121,6 @@ def log_likelihood(
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx) # lls[0] shape: [batch_size, num_features, num_channel]
-
     output = torch.einsum('bicr, ior->bocr', lls[0], module.indices)
 
 
