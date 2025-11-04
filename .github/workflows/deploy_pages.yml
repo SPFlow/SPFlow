@@ -8,22 +8,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Setup Python 🐍
-        uses: actions/setup-python@v2
+      - name: Install uv and set up Python 🐍
+        uses: astral-sh/setup-uv@v6
         with:
-          python-version: 3.6
+          version: "0.9.6"
+          enable-cache: true
+          python-version: '3.11'
 
       - name: Install and Build 🔧
         run: |
           sudo apt-get install -y graphviz
-          pip install -r requirements.txt
+          uv sync --locked
           cd docs/
-          pip install -r requirements.txt
-          make html
+          uv pip install -r requirements.txt
+          uv run make html
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@releases/v3
