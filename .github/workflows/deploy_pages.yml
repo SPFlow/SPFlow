@@ -1,36 +1,36 @@
-name: Build Deploy Documentation
-on:
-  push:
-    branches:
-      - master
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout 🛎️
-        uses: actions/checkout@v5
-        with:
-          persist-credentials: false
+# name: Build Deploy Documentation
+# on:
+#   push:
+#     branches:
+#       - master
+# jobs:
+#   build-and-deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout 🛎️
+#         uses: actions/checkout@v5
+#         with:
+#           persist-credentials: false
 
-      - name: Install uv and set up Python 🐍
-        uses: astral-sh/setup-uv@v6
-        with:
-          version: "0.9.6"
-          enable-cache: true
-          python-version: '3.11'
+#       - name: Install uv and set up Python 🐍
+#         uses: astral-sh/setup-uv@v6
+#         with:
+#           version: "0.9.6"
+#           enable-cache: true
+#           python-version: '3.11'
 
-      - name: Install and Build 🔧
-        run: |
-          sudo apt-get install -y graphviz
-          uv venv --python 3.11
-          cd docs/
-          uv pip install -r requirements.txt
-          uv run make html
+#       - name: Install and Build 🔧
+#         run: |
+#           sudo apt-get install -y graphviz
+#           uv venv --python 3.11
+#           cd docs/
+#           uv pip install -r requirements.txt
+#           uv run make html
 
-      - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@releases/v3
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: gh-pages
-          FOLDER: docs/build/html/
-          SINGLE_COMMIT: true
+#       - name: Deploy 🚀
+#         uses: JamesIves/github-pages-deploy-action@releases/v3
+#         with:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#           BRANCH: gh-pages
+#           FOLDER: docs/build/html/
+#           SINGLE_COMMIT: true
