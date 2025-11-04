@@ -75,7 +75,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version-python: ['3.11']
+        version-python: ['3.12']
         os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
     steps:
       - uses: actions/checkout@v4
@@ -83,7 +83,7 @@ jobs:
         with:
           version-python: ${{ matrix.version-python }}
 
-  "Test_Torch":
+  "Test_Python":
     name: "Test: Python ${{ matrix.version-python }}"
     runs-on: ubuntu-latest
     strategy:
