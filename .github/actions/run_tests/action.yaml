@@ -7,18 +7,19 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Set up Python ${{ matrix.version-python }}
-      uses: actions/setup-python@v4
+    - name: Install uv and set up Python
+      uses: astral-sh/setup-uv@v6
       with:
-        python-version: ${{ matrix.version-python }}
-        cache: 'pip' # caching pip dependencies
-    - name: Install library and dependencies
+        version: "0.9.6"
+        enable-cache: true
+        python-version: ${{ inputs.version-python }}
+
+    - name: Install project dependencies
       shell: bash
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        uv sync --locked
 
     - name: Test with pytest
       shell: bash
       run: |
-        pytest src/spn/tests
+        uv run pytest src/spn/tests
