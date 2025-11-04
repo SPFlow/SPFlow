@@ -1,3 +1,3 @@
-from spn._meta import __version__
+__version__ = "0.0.44"
 
 name = "SPFlow"
