@@ -22,7 +22,7 @@ jobs:
       - name: Install and Build 🔧
         run: |
           sudo apt-get install -y graphviz
-          uv sync --locked
+          uv venv --python 3.11
           cd docs/
           uv pip install -r requirements.txt
           uv run make html

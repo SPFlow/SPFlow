@@ -8,24 +8,6 @@ on:
 
 jobs:
 
-  "Check_Format":
-    name: "Check Format"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Install uv and set up Python
-        uses: astral-sh/setup-uv@v6
-        with:
-          version: "0.9.6"
-          enable-cache: true
-          python-version: '3.11'
-      - name: Install project dependencies
-        run: |
-          uv venv --python ${{ inputs.version-python }} && uv pip install -r requirements.txt
-      # - name: Checking formatting with black
-      #   run: uv run black --check --diff spflow tests
-      #   continue-on-error: true
-
   # We do not want to waste too many resources on testing all combinations. Thus we test:
   # - on the oldest and the two most recent version of Python that we support (see README.md)
   # - with the oldest version of the backend we support plus the two most recent major ones
@@ -35,7 +17,7 @@ jobs:
   # - We test even fewer combinations for TensorFlow and Jax to save resources
 
   "Test_OS":
-    name: "Test: Py ${{ matrix.version-python }} @ OS ${{ matrix.os }}"
+    name: "Test: Python ${{ matrix.version-python }} @ OS ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
