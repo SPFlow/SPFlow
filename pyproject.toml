@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spflow"
-version = "0.0.45"
+version = "0.0.46"
 description = "Sum Product Flow: An Easy and Extensible Library for Sum-Product Networks"
 readme = "README.md"
 license = {text = "Apache-2.0"}
