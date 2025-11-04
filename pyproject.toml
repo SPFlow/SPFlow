@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spflow"
-version = "0.0.44"
+version = "0.0.45"
 description = "Sum Product Flow: An Easy and Extensible Library for Sum-Product Networks"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -12,7 +12,7 @@ authors = [
     {name = "Alejandro Molina et al.", email = "molina@cs.tu-darmstadt.de"},
     {name = "Steven Braun", email = "steven.braun@cs.tu-darmstadt.de"}
 ]
-requires-python = ">=3.10,<=3.12"
+requires-python = ">=3.10,<3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
