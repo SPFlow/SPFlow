@@ -1,2 +1,61 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spflow"
+version = "0.0.44"
+description = "Sum Product Flow: An Easy and Extensible Library for Sum-Product Networks"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Alejandro Molina et al.", email = "molina@cs.tu-darmstadt.de"},
+    {name = "Steven Braun", email = "steven.braun@cs.tu-darmstadt.de"}
+]
+requires-python = ">=3.10,<=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy>=1.22.4,<2.3.0",
+    "scikit-learn>=1.7.0",
+    "statsmodels==0.14.2",
+    "scipy==1.13.0",
+    "networkx>=3.3",
+    "joblib==1.5.2",
+    "matplotlib==3.10.7",
+    "pydot==4.0.1",
+    "lark-parser==0.12.0",
+    "tqdm==4.67.1",
+    "ete3==3.1.3",
+    "sympy==1.14.0",
+    "PyQt5==5.15.11",
+    "arff==0.9",
+    "tensorflow==2.20.0",
+    "tensorflow-probability[tf]==0.24.0",
+    "torch==2.9.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest==8.4.2"]
+
+[project.urls]
+Homepage = "https://github.com/SPFlow/SPFlow"
+Repository = "https://github.com/SPFlow/SPFlow.git"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"spn.algorithms.splitting" = ["*.R"]
+
 [tool.black]
 line-length = 120
