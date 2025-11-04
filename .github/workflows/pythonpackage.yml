@@ -56,7 +56,7 @@ jobs:
           python-version: '3.11'
       - name: Install project dependencies
         run: |
-          uv sync --locked
+          uv pip install -r requirements.txt
       # - name: Checking formatting with black
       #   run: uv run black --check --diff spflow tests
       #   continue-on-error: true
