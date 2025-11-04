@@ -98,7 +98,7 @@ class Sum(AbstractLayer):
         # Apply dropout: Set random sum node children to 0 (-inf in log domain)
         if self.dropout > 0.0 and self.training:
             dropout_indices = self._bernoulli_dist.sample(x.shape).bool()
-            x[dropout_indices] = np.NINF
+            x[dropout_indices] = -torch.inf
 
         # Dimensions
         n, d, ic, r = x.size()

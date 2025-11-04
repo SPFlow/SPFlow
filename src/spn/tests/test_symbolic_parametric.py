@@ -12,14 +12,14 @@ class TestParametricSymbolic(unittest.TestCase):
     def assert_correct(self, node, x, result):
         self.tested.add(type(node))
 
-        data = np.array([x], dtype=np.float).reshape(-1, 1)
+        data = np.array([x], dtype=float).reshape(-1, 1)
         node.scope = [0]
 
         sympyecc = spn_to_sympy(node)
 
         l = float(sympyecc.evalf(subs={"x0": x}))
         self.assertAlmostEqual(result, l, 5)
-        self.assertTrue(np.alltrue(np.isclose(np.log(l), log_likelihood(node, data))))
+        self.assertTrue(np.all(np.isclose(np.log(l), log_likelihood(node, data))))
 
         data = np.random.rand(10, 10)
         data[:, 5] = x
@@ -28,8 +28,8 @@ class TestParametricSymbolic(unittest.TestCase):
         self.assertEqual(l.shape[0], data.shape[0])
         self.assertEqual(l.shape[1], 1)
         self.assertTrue(np.isclose(np.var(l), 0))
-        self.assertTrue(np.alltrue(np.isclose(result, l[0, 0])))
-        self.assertTrue(np.alltrue(np.isclose(np.log(l), log_likelihood(node, data))))
+        self.assertTrue(np.all(np.isclose(result, l[0, 0])))
+        self.assertTrue(np.all(np.isclose(np.log(l), log_likelihood(node, data))))
 
     def test_Parametric_inference(self):
         # N[PDF[NormalDistribution[4, 1], 5], 6] = 0.241971

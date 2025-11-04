@@ -83,7 +83,7 @@ def run_experiment(exp, spn, test_data, test_type, exp_lambda):
     results["spn layers"] = get_depth(spn)
     results["time per task"] = test_time
     results["time per instance"] = test_time / test_n
-    results["avg ll"] = np.mean(ll, dtype=np.float128)
+    results["avg ll"] = np.mean(ll, dtype=np.longdouble)
 
     results_file_name = "results.csv"
 
@@ -198,7 +198,7 @@ if __name__ == "__main__":
             proc_output = subprocess.check_output(cmd, shell=True).decode("utf-8")
             print("done")
             lines = proc_output.split("\n")
-            cpp_ll = np.array(lines[0 : test_data.shape[0]], dtype=np.float128)
+            cpp_ll = np.array(lines[0 : test_data.shape[0]], dtype=np.longdouble)
             cpp_time = float(lines[-2].split(" ")[-2])
 
             return cpp_ll, cpp_time

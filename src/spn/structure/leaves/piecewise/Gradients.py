@@ -18,7 +18,7 @@ def piecewise_gradient(node, input_vals=None, dtype=np.float64):
     obs = data[:, node.scope[0]]
     gradient = np.full(input_vals.shape, np.nan)
 
-    x_range = expand(np.array(node.x_range), -np.infty, np.infty)
+    x_range = expand(np.array(node.x_range), -np.inf, np.inf)
     y_range = expand(np.array(node.y_range), 0, 0)
 
     loc = np.searchsorted(x_range, obs)

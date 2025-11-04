@@ -125,7 +125,8 @@ def create_piecewise_leaf(data, ds_context, scope, isotonic=False, prior_weight=
     if prior_weight is None:
         return node
 
-    uniform_data = np.zeros_like(data)
+    # Create uniform_data with float dtype to allow NaN assignment (NumPy 2.0 compatibility)
+    uniform_data = np.zeros_like(data, dtype=np.float64)
     uniform_data[:] = np.nan
     uniform_hist = create_histogram_leaf(uniform_data, ds_context, scope, alpha=False)
     return prior_weight * uniform_hist + (1 - prior_weight) * node

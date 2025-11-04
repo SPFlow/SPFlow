@@ -13,11 +13,11 @@ class TestParametric(unittest.TestCase):
     def assert_correct(self, node, x, result):
         self.tested.add(type(node))
 
-        data = np.array([x], dtype=np.float).reshape(1, -1)
+        data = np.array([x], dtype=float).reshape(1, -1)
         node.scope = list(range(data.shape[1]))
         l = likelihood(node, data)
         self.assertAlmostEqual(result, l[0, 0], 5)
-        self.assertTrue(np.alltrue(np.isclose(np.log(l), log_likelihood(node, data))))
+        self.assertTrue(np.all(np.isclose(np.log(l), log_likelihood(node, data))))
 
         new_scope = (np.array(node.scope) + 5).tolist()
         data = np.random.rand(10, max(new_scope) + 2)
@@ -27,8 +27,8 @@ class TestParametric(unittest.TestCase):
         self.assertEqual(l.shape[0], data.shape[0])
         self.assertEqual(l.shape[1], 1)
         self.assertTrue(np.isclose(np.var(l), 0))
-        self.assertTrue(np.alltrue(np.isclose(result, l[0, 0])))
-        self.assertTrue(np.alltrue(np.isclose(np.log(l), log_likelihood(node, data))))
+        self.assertTrue(np.all(np.isclose(result, l[0, 0])))
+        self.assertTrue(np.all(np.isclose(np.log(l), log_likelihood(node, data))))
 
     def test_Parametric_inference(self):
 

@@ -46,10 +46,10 @@ class TestSymbolic(unittest.TestCase):
         sym_l = float(sympyecc.evalf(subs={"x0": 0, "x1": 0}))
         sym_ll = float(logsympyecc.evalf(subs={"x0": 0, "x1": 0}))
 
-        data = np.array([0, 0], dtype=np.float).reshape(-1, 2)
+        data = np.array([0, 0], dtype=float).reshape(-1, 2)
 
-        self.assertTrue(np.alltrue(np.isclose(np.log(sym_l), log_likelihood(root, data))))
-        self.assertTrue(np.alltrue(np.isclose(sym_ll, log_likelihood(root, data))))
+        self.assertTrue(np.all(np.isclose(np.log(sym_l), log_likelihood(root, data))))
+        self.assertTrue(np.all(np.isclose(sym_ll, log_likelihood(root, data))))
 
 
 if __name__ == "__main__":

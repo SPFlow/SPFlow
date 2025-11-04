@@ -194,7 +194,7 @@ class Normal(Leaf):
         # Create gaussian means and stds
         self.means = nn.Parameter(torch.randn(1, in_features, out_channels, num_repetitions))
         self.stds = nn.Parameter(torch.rand(1, in_features, out_channels, num_repetitions))
-        self.gauss = dist.Normal(loc=self.means, scale=self.stds)
+        self.gauss = dist.Normal(loc=self.means, scale=self.stds, validate_args=False)
 
     def _get_base_distribution(self):
         return self.gauss
