@@ -89,7 +89,7 @@ jobs:
     strategy:
       fail-fast: false 
       matrix:
-        version-python: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        version-python: ['3.10', '3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
       - uses: "./.github/actions/run_tests"
