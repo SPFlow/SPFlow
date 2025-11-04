@@ -1,8 +1,5 @@
-env:
-  UV_SYSTEM_PYTHON: 1
-
 name: 'Setup Dependencies & Run Tests'
-description: 'Install the nessesary dependencies and run the tests in this repo'
+description: 'Install the dependencies and run tests'
 inputs:
   version-python:
     required: true
