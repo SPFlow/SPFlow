@@ -17,7 +17,7 @@ runs:
     - name: Install project dependencies
       shell: bash
       run: |
-        uv pip install -r requirements.txt
+        uv venv --python ${{ inputs.version-python }} && uv pip install -r requirements.txt
 
     - name: Test with pytest
       shell: bash
