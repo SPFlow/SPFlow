@@ -1,11 +1,13 @@
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import spn.structure.Base as base
 import spn.structure.leaves.parametric.Parametric as para
 
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import random_ops
-import tensorflow.contrib.distributions as dists
+import tensorflow_probability as tfp
+dists = tfp.distributions
 
 import time
 

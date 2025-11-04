@@ -67,7 +67,7 @@ class RatNormal(Leaf):
             mean_range = self.max_mean - self.min_mean
             means = torch.sigmoid(self.means) * mean_range + self.min_mean
 
-        gauss = dist.Normal(means, torch.sqrt(sigma))
+        gauss = dist.Normal(means, torch.sqrt(sigma), validate_args=False)
         return gauss
 
 

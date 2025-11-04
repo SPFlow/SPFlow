@@ -38,10 +38,10 @@ class TestInference(unittest.TestCase):
         l = likelihood(spn, data)
         self.assertEqual(l.shape[0], data.shape[0])
         self.assertEqual(l.shape[1], 1)
-        self.assertTrue(np.alltrue(np.isclose(result.reshape(-1, 1), l)))
-        self.assertTrue(np.alltrue(np.isclose(np.log(l), log_likelihood(spn, data))))
-        self.assertTrue(np.alltrue(np.isclose(np.log(l), log_likelihood(spn, data, debug=True))))
-        self.assertTrue(np.alltrue(np.isclose(l, likelihood(spn, data, debug=True))))
+        self.assertTrue(np.all(np.isclose(result.reshape(-1, 1), l)))
+        self.assertTrue(np.all(np.isclose(np.log(l), log_likelihood(spn, data))))
+        self.assertTrue(np.all(np.isclose(np.log(l), log_likelihood(spn, data, debug=True))))
+        self.assertTrue(np.all(np.isclose(l, likelihood(spn, data, debug=True))))
 
     def test_type(self):
         add_node_likelihood(Leaf, identity_ll)
@@ -52,8 +52,8 @@ class TestInference(unittest.TestCase):
         l = likelihood(spn, data, dtype=np.float32)
         self.assertEqual(l.dtype, np.float32)
 
-        l = likelihood(spn, data, dtype=np.float128)
-        self.assertEqual(l.dtype, np.float128)
+        l = likelihood(spn, data, dtype=np.longdouble)
+        self.assertEqual(l.dtype, np.longdouble)
 
     def test_sum_one_dimension(self):
         add_node_likelihood(Leaf, identity_ll)
@@ -247,21 +247,21 @@ class TestInference(unittest.TestCase):
         llls = np.zeros((data.shape[0], max_id + 1))
         log_likelihood(spn, data, lls_matrix=llls)
 
-        self.assertTrue(np.alltrue(np.isclose(lls, np.exp(llls))))
+        self.assertTrue(np.all(np.isclose(lls, np.exp(llls))))
 
-        self.assertTrue(np.alltrue(np.isclose(spn_r, lls[:, spn.id])))
-        self.assertTrue(np.alltrue(np.isclose(node_1_2_r, lls[:, node_1_2.id])))
-        self.assertTrue(np.alltrue(np.isclose(node_1_2_2_r, lls[:, node_1_2_2.id])))
-        self.assertTrue(np.alltrue(np.isclose(node_1_2_1_r, lls[:, node_1_2_1.id])))
-        self.assertTrue(np.alltrue(np.isclose(node_1_2_1_2_r, lls[:, node_1_2_1_2.id])))
-        self.assertTrue(np.alltrue(np.isclose(node_1_2_1_1_r, lls[:, node_1_2_1_1.id])))
-        self.assertTrue(np.alltrue(np.isclose(node_1_2_1_1_2_r, lls[:, node_1_2_1_1_2.id])))
-        self.assertTrue(np.alltrue(np.isclose(node_1_2_1_1_1_r, lls[:, node_1_2_1_1_1.id])))
-        self.assertTrue(np.alltrue(np.isclose(node_1_1_r, lls[:, node_1_1.id])))
-        self.assertTrue(np.alltrue(np.isclose(node_1_1_2_r, lls[:, node_1_1_2.id])))
-        self.assertTrue(np.alltrue(np.isclose(node_1_1_1_r, lls[:, node_1_1_1.id])))
-        self.assertTrue(np.alltrue(np.isclose(node_1_1_1_2_r, lls[:, node_1_1_1_2.id])))
-        self.assertTrue(np.alltrue(np.isclose(node_1_1_1_1_r, lls[:, node_1_1_1_1.id])))
+        self.assertTrue(np.all(np.isclose(spn_r, lls[:, spn.id])))
+        self.assertTrue(np.all(np.isclose(node_1_2_r, lls[:, node_1_2.id])))
+        self.assertTrue(np.all(np.isclose(node_1_2_2_r, lls[:, node_1_2_2.id])))
+        self.assertTrue(np.all(np.isclose(node_1_2_1_r, lls[:, node_1_2_1.id])))
+        self.assertTrue(np.all(np.isclose(node_1_2_1_2_r, lls[:, node_1_2_1_2.id])))
+        self.assertTrue(np.all(np.isclose(node_1_2_1_1_r, lls[:, node_1_2_1_1.id])))
+        self.assertTrue(np.all(np.isclose(node_1_2_1_1_2_r, lls[:, node_1_2_1_1_2.id])))
+        self.assertTrue(np.all(np.isclose(node_1_2_1_1_1_r, lls[:, node_1_2_1_1_1.id])))
+        self.assertTrue(np.all(np.isclose(node_1_1_r, lls[:, node_1_1.id])))
+        self.assertTrue(np.all(np.isclose(node_1_1_2_r, lls[:, node_1_1_2.id])))
+        self.assertTrue(np.all(np.isclose(node_1_1_1_r, lls[:, node_1_1_1.id])))
+        self.assertTrue(np.all(np.isclose(node_1_1_1_2_r, lls[:, node_1_1_1_2.id])))
+        self.assertTrue(np.all(np.isclose(node_1_1_1_1_r, lls[:, node_1_1_1_1.id])))
 
 
 def leaf(scope, multiplier):

@@ -1,13 +1,21 @@
 import unittest
 
 import numpy as np
+import pytest
 
 from spn.algorithms.Inference import log_likelihood
 from spn.io.CPP import get_cpp_function, setup_cpp_bridge
 from spn.structure.leaves.parametric.Inference import add_parametric_inference_support
 from spn.structure.leaves.parametric.Parametric import Gaussian
 
+try:
+    import cppyy
+    CPPYY_AVAILABLE = True
+except ImportError:
+    CPPYY_AVAILABLE = False
 
+
+@pytest.mark.skipif(not CPPYY_AVAILABLE, reason="cppyy not installed")
 class TestCPP(unittest.TestCase):
     def setUp(self):
         add_parametric_inference_support()

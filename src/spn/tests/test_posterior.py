@@ -62,7 +62,7 @@ class TestPosterior(unittest.TestCase):
             ll_node=Categorical(p=[0.4, 0.3, 0.3]),
             prior=PriorDirichlet(alphas_0=0.1),
         )
-        self.assertTrue(np.alltrue(np.isclose(generator.p, node.p, 0.01)))
+        self.assertTrue(np.all(np.isclose(generator.p, node.p, 0.01)))
 
 
 if __name__ == "__main__":

@@ -14,8 +14,9 @@ import statsmodels.formula.api as smf
 from networkx.algorithms.components.connected import connected_components
 from networkx.convert_matrix import from_numpy_array
 from pandas.core.frame import DataFrame
-from scipy import NINF
 from scipy.stats._continuous_distns import chi2
+
+NINF = -numpy.inf
 
 from spn.algorithms.splitting.Base import split_data_by_clusters
 from spn.structure.leaves.parametric.Parametric import Poisson
@@ -3117,7 +3118,7 @@ def computeEstabilityTest(df, yv):
     ttt = tt * (1.0 - tt)
 
     pvals = numpy.zeros((df.shape[1]))
-    pvals[yv] = numpy.NaN
+    pvals[yv] = numpy.nan
 
     if from_ >= to:
         return pvals

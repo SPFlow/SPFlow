@@ -1,6 +1,7 @@
 import unittest
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 from spn.algorithms.TransformStructure import Copy
 from spn.io.Text import spn_to_str_equation

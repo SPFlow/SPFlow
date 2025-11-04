@@ -27,7 +27,8 @@ def gaussian_to_sympy(node, input_vars=None, log=False):
 def gamma_to_sympy(node, input_vars=None, log=False):
     x = input_vars[node.scope[0]]
     scale = 1.0 / node.beta
-    result = st.density(st.Gamma("Node%s" % node.id, node.alpha, 1), node, input_vars)(x / scale) / scale
+    # Use st.density() correctly with the new sympy API
+    result = st.density(st.Gamma("Node%s" % node.id, node.alpha, 1))(x / scale) / scale
     if log:
         result = sp.log(result)
     return result

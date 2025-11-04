@@ -1,5 +1,6 @@
 import unittest
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import numpy as np
 import spn.experiments.RandomSPNs.RAT_SPN as RAT_SPN
 import spn.experiments.RandomSPNs.region_graph as region_graph
