@@ -1,0 +1,24 @@
+name: 'Setup Dependencies & Run Tests'
+description: 'Install the nessesary dependencies and run the tests in this repo'
+inputs:
+  version-python:
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python ${{ matrix.version-python }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.version-python }}
+        cache: 'pip' # caching pip dependencies
+    - name: Install library and dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install .[dev]
+
+    - name: Test with pytest
+      shell: bash
+      run: |
+        pytest src/spn/tests
