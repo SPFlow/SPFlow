@@ -1,8 +1,13 @@
+import sys
 import unittest
+
+import pytest
 
 from spn.structure.Base import Leaf, bfs
 
 from spn.io.plot.TreeVisualization import get_newick
+
+pytestmark = pytest.mark.skipif(sys.platform == 'win32', reason="PyQt5 not available on Windows")
 
 
 class TestBase(unittest.TestCase):
