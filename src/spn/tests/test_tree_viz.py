@@ -3,11 +3,13 @@ import unittest
 
 import pytest
 
+# Skip entire module on Windows due to missing PyQt5/ete3 dependencies
+if sys.platform == 'win32':
+    pytest.skip("PyQt5 and ete3 TreeStyle not available on Windows", allow_module_level=True)
+
 from spn.structure.Base import Leaf, bfs
 
 from spn.io.plot.TreeVisualization import get_newick
-
-pytestmark = pytest.mark.skipif(sys.platform == 'win32', reason="PyQt5 not available on Windows")
 
 
 class TestBase(unittest.TestCase):
