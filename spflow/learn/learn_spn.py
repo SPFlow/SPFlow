@@ -363,7 +363,7 @@ def learn_spn(
                             probs = torch.sum(labels == cluster_id) / data.shape[0]
                             w.append(probs)
 
-                        weights = torch.tensor(w).T.unsqueeze(0).unsqueeze(-1)  # shape(1, num_clusters, 1)
+                        weights = torch.tensor(w).unsqueeze(0).unsqueeze(-1)  # shape(1, num_clusters, 1)
                         if len(inputs_per_channel) == 1:
                             inputs = inputs_per_channel
                         else:
