@@ -117,7 +117,6 @@ class Scope:
         """
         self.query.remove(rv)
 
-
     def equal_query(self, other: "Scope") -> bool:
         """Checks if the query of the scope is identical to that of another.
 

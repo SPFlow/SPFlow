@@ -20,16 +20,16 @@ from spflow.modules import Sum
 
 class MixingLayer(Sum):
     """
-A mixing layer that sums over the input channels, which is used for the RAT model.
+    A mixing layer that sums over the input channels, which is used for the RAT model.
     """
 
     def __init__(
-            self,
-            inputs: Module,
-            out_channels: int | None = None,
-            num_repetitions: int | None = None,
-            weights: Tensor | None = None,
-            sum_dim: int | None = 1,
+        self,
+        inputs: Module,
+        out_channels: int | None = None,
+        num_repetitions: int | None = None,
+        weights: Tensor | None = None,
+        sum_dim: int | None = 1,
     ) -> None:
         """
         Args:
@@ -67,14 +67,14 @@ A mixing layer that sums over the input channels, which is used for the RAT mode
         if out_channels != inputs.out_channels:
             raise ValueError("out_channels must match the out_channels of the input module.")
         if self._out_features != 1:
-            raise ValueError("MixingLayer represents the first layer of the RatSPN, so it must have a single output feature.")
+            raise ValueError(
+                "MixingLayer represents the first layer of the RatSPN, so it must have a single output feature."
+            )
 
         if num_repetitions is not None:
             self.num_repetitions = num_repetitions
         else:
-            raise ValueError(
-                "num_repetitions must be specified for 'MixingLayer' module."
-            )
+            raise ValueError("num_repetitions must be specified for 'MixingLayer' module.")
 
         # sum up all repetitions
         self._in_channels = self.num_repetitions
@@ -122,18 +122,18 @@ def sample(
     dispatch_ctx: DispatchContext | None = None,
     sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
-
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     logits = module.logits
 
     logits = logits.unsqueeze(0).expand(
-        sampling_ctx.channel_index.shape[0], -1, -1, -1)  # shape [b , n_features , in_c, out_c]
+        sampling_ctx.channel_index.shape[0], -1, -1, -1
+    )  # shape [b , n_features , in_c, out_c]
 
     if (
-            "log_likelihood" in dispatch_ctx.cache
-            and dispatch_ctx.cache["log_likelihood"][module.inputs] is not None
+        "log_likelihood" in dispatch_ctx.cache
+        and dispatch_ctx.cache["log_likelihood"][module.inputs] is not None
     ):
         input_lls = dispatch_ctx.cache["log_likelihood"][module.inputs]
 
@@ -189,12 +189,11 @@ def log_likelihood(
     log_weights = module.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC)
 
     # Weighted log-likelihoods
-    weighted_lls = ll.permute(0,1,3,2) + log_weights  # shape: (B, F, R, OC) + (1, F, IC, OC) = (B, F, R = IC, OC)
+    weighted_lls = (
+        ll.permute(0, 1, 3, 2) + log_weights
+    )  # shape: (B, F, R, OC) + (1, F, IC, OC) = (B, F, R = IC, OC)
 
     # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
-    output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1) # shape: (B, F, OC, R)
+    output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1)  # shape: (B, F, OC, R)
 
     return output.view(-1, module.out_features, module.out_channels)
-
-
-

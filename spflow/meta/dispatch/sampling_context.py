@@ -51,7 +51,7 @@ class SamplingContext:
                 Tensor containing the repetition indices to sample from.
         """
         if device is None:
-            #device = torch.device("cpu" if not torch.cuda.is_available() else "cuda:0")
+            # device = torch.device("cpu" if not torch.cuda.is_available() else "cuda:0")
             if hasattr(torch, "get_default_device"):
                 device = torch.get_default_device()
             else:
@@ -143,7 +143,11 @@ class SamplingContext:
 
     def copy(self):
         """Returns a copy of the sampling context."""
-        return SamplingContext(channel_index=self.channel_index.clone(), mask=self.mask.clone(), repetition_index=self.repetition_idx.clone() if self.repetition_idx is not None else None)
+        return SamplingContext(
+            channel_index=self.channel_index.clone(),
+            mask=self.mask.clone(),
+            repetition_index=self.repetition_idx.clone() if self.repetition_idx is not None else None,
+        )
 
     def __repr__(self) -> str:
         return f"SamplingContext(channel_index.shape={self.channel_index.shape}), mask.shape={self.mask.shape}), num_samples={self.channel_index.shape[0]})"

@@ -34,15 +34,15 @@ class RatSPN(Module):
     """
 
     def __init__(
-            self,
-            leaf_modules: list[LeafModule],
-            n_root_nodes: int,
-            n_region_nodes: int,
-            num_repetitions: int,
-            depth: int,
-            outer_product: bool | None = False,
-            split_halves: bool | None = True,
-            num_splits: int | None = 2,
+        self,
+        leaf_modules: list[LeafModule],
+        n_root_nodes: int,
+        n_region_nodes: int,
+        num_repetitions: int,
+        depth: int,
+        outer_product: bool | None = False,
+        split_halves: bool | None = True,
+        num_splits: int | None = 2,
     ) -> None:
         r"""Initializer for ``RatSPN`` object.
 
@@ -77,13 +77,16 @@ class RatSPN(Module):
                 f"Specified value for 'n_region_nodes' must be at least 1, but is {n_region_nodes}."
             )
         if self.n_leaf_nodes < 1:
-            raise ValueError(f"Specified value for 'n_leaf_nodes' must be at least 1, but is {self.n_leaf_nodes}.")
+            raise ValueError(
+                f"Specified value for 'n_leaf_nodes' must be at least 1, but is {self.n_leaf_nodes}."
+            )
 
         if self.num_splits < 2:
-            raise ValueError(f"Specified value for 'num_splits' must be at least 2, but is {self.num_splits}.")
+            raise ValueError(
+                f"Specified value for 'num_splits' must be at least 2, but is {self.num_splits}."
+            )
 
         self.create_spn()
-
 
     def create_spn(self):
         r"""
@@ -96,7 +99,9 @@ class RatSPN(Module):
         else:
             product_layer = ElementwiseProduct
         # Factorize the leaf modules
-        fac_layer = Factorize(inputs=self.leaf_modules, depth=self.depth, num_repetitions=self.num_repetitions)
+        fac_layer = Factorize(
+            inputs=self.leaf_modules, depth=self.depth, num_repetitions=self.num_repetitions
+        )
         depth = self.depth
         root = None
         if self.split_halves:
@@ -106,26 +111,35 @@ class RatSPN(Module):
 
         for i in range(depth):
             # Create the lowest layer with the factorized leaf modules as input
-            #if i == 0 and depth > 1:
+            # if i == 0 and depth > 1:
             if i == 0:
                 out_prod = product_layer(inputs=Split(inputs=fac_layer, dim=1, num_splits=self.num_splits))
                 if depth == 1:
-                    sum_layer = Sum(inputs=out_prod, out_channels=self.n_root_nodes,
-                                    num_repetitions=self.num_repetitions)
+                    sum_layer = Sum(
+                        inputs=out_prod, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions
+                    )
                 else:
-                    sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
+                    sum_layer = Sum(
+                        inputs=out_prod,
+                        out_channels=self.n_region_nodes,
+                        num_repetitions=self.num_repetitions,
+                    )
                 root = sum_layer
 
             # Special case for the last intermediate layer: sum layer has to have the same number of output channels
             # as the root node
             elif i == depth - 1:
                 out_prod = product_layer(Split(inputs=root, dim=1, num_splits=self.num_splits))
-                sum_layer = Sum(inputs=out_prod, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions)
+                sum_layer = Sum(
+                    inputs=out_prod, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions
+                )
                 root = sum_layer
             # Create the intermediate layers
             else:
                 out_prod = product_layer(Split(inputs=root, dim=1, num_splits=self.num_splits))
-                sum_layer = Sum(inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions)
+                sum_layer = Sum(
+                    inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions
+                )
                 root = sum_layer
 
         # MixingLayer: Sums over repetitions
@@ -136,9 +150,6 @@ class RatSPN(Module):
             self.root_node = Sum(inputs=root, out_channels=1, num_repetitions=None)
         else:
             self.root_node = root
-
-
-
 
     @property
     def n_out(self) -> int:
@@ -167,12 +178,11 @@ class RatSPN(Module):
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
-        rat_spn: RatSPN,
-        data: torch.Tensor,
-        check_support: bool = True,
-        dispatch_ctx: DispatchContext | None = None,
+    rat_spn: RatSPN,
+    data: torch.Tensor,
+    check_support: bool = True,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> torch.Tensor:
-
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     ll = log_likelihood(
         rat_spn.root_node,
@@ -190,21 +200,20 @@ def posterior(
     check_support: bool = True,
     dispatch_ctx: DispatchContext | None = None,
 ) -> torch.Tensor:
-
     if rat_spn.n_root_nodes <= 1:
         raise ValueError("Posterior can only be computed for models with multiple classes.")
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    class_prob = rat_spn.root_node.weights # shape: (1, n_root_nodes, 1)
-    class_prob = class_prob.squeeze(-1) # shape: (1, n_root_nodes)
+    class_prob = rat_spn.root_node.weights  # shape: (1, n_root_nodes, 1)
+    class_prob = class_prob.squeeze(-1)  # shape: (1, n_root_nodes)
     ll = log_likelihood(
         rat_spn.root_node.inputs,
         data,
         check_support=check_support,
         dispatch_ctx=dispatch_ctx,
-    ) # shape: (batch_size,1 , n_root_nodes)
+    )  # shape: (batch_size,1 , n_root_nodes)
 
-    ll = ll.squeeze(1) # shape: (batch_size, n_root_nodes)
+    ll = ll.squeeze(1)  # shape: (batch_size, n_root_nodes)
 
     # logp(y | x) = logp(x, y) - logp(x)
     #             = logp(x | y) + logp(y) - logp(x)
@@ -226,7 +235,6 @@ def sample(
     dispatch_ctx: DispatchContext | None = None,
     sampling_ctx: SamplingContext | None = None,
 ) -> torch.Tensor:
-
     # if no sampling context is provided, initialize a context by sampling from the root node
     if sampling_ctx is None and rat_spn.n_root_nodes > 1:
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
@@ -236,7 +244,7 @@ def sample(
         if logits.shape != (1, rat_spn.n_root_nodes, 1):
             raise ValueError(f"Expected logits shape (1, {rat_spn.n_root_nodes}, 1), but got {logits.shape}")
         logits = logits.squeeze(-1)
-        logits = logits.unsqueeze(0).expand(data.shape[0],-1,-1) # shape [b ,1, n_root_nodes]
+        logits = logits.unsqueeze(0).expand(data.shape[0], -1, -1)  # shape [b ,1, n_root_nodes]
 
         if is_mpe:
             sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
@@ -245,7 +253,6 @@ def sample(
 
     else:
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
-
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -256,10 +263,10 @@ def sample(
         sample_root = rat_spn.root_node
 
     return sample(
-         sample_root,
-         data,
-         is_mpe=is_mpe,
-         check_support=check_support,
-         dispatch_ctx=dispatch_ctx,
-         sampling_ctx=sampling_ctx,
-     )
+        sample_root,
+        data,
+        is_mpe=is_mpe,
+        check_support=check_support,
+        dispatch_ctx=dispatch_ctx,
+        sampling_ctx=sampling_ctx,
+    )

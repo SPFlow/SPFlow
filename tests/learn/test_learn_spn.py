@@ -24,15 +24,17 @@ import numpy as np
 from spflow.utils.rdc import rdc
 from networkx import connected_components as ccnp, from_numpy_array
 from itertools import combinations
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 
 out_features = 5
 out_channels = 2
 
+
 def test_kmeans():
     torch.manual_seed(0)
     # simulate cluster data
-    #cluster = [torch.randn((100, 1))+ i*100.0 for i in range(num_cluster)]
+    # cluster = [torch.randn((100, 1))+ i*100.0 for i in range(num_cluster)]
 
     cluster_1 = torch.randn((100, 1)) - 20.0
     cluster_2 = torch.randn((100, 1)) - 10.0
@@ -57,9 +59,8 @@ def make_rdc_data(n_samples=1000):
     data = torch.stack((feature1, feature2, feature3, feature4), dim=1)
     return data
 
+
 def test_rdc():
-
-
     # Generate synthetic data
     data = make_rdc_data()
     threshold = 0.3
@@ -69,7 +70,6 @@ def test_rdc():
     for i, j in combinations(range(data.shape[1]), 2):
         r = rdc(data[:, i], data[:, j])
         rdcs[j][i] = rdcs[i][j] = r
-
 
     rdcs[rdcs < threshold] = 0.0
     adj_mat = rdcs
@@ -90,6 +90,7 @@ def test_rdc():
         partitions.append(torch.where(partition_ids == partition_id))  # uc
 
     assert len(partitions) == 4
+
 
 def test_make_moons():
     array = np.array([5])
@@ -117,10 +118,11 @@ def test_make_moons():
 
 
 def plot_contours(mean, std):
-    x, y = np.mgrid[-10:10:.05, -10:10:.05]
+    x, y = np.mgrid[-10:10:0.05, -10:10:0.05]
     pos = np.dstack((x, y))
-    rv = multivariate_normal(mean, np.diag(std ** 2))
-    plt.contour(x, y, rv.pdf(pos), levels=5, colors='black')
+    rv = multivariate_normal(mean, np.diag(std**2))
+    plt.contour(x, y, rv.pdf(pos), levels=5, colors="black")
+
 
 def heatmap(spn, X, y):
     torch.cuda.empty_cache()
@@ -130,8 +132,7 @@ def heatmap(spn, X, y):
     # Create a meshgrid of points over the feature space
     x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
     y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
-    xx, yy = np.meshgrid(np.linspace(x_min, x_max, 200),
-                         np.linspace(y_min, y_max, 200))
+    xx, yy = np.meshgrid(np.linspace(x_min, x_max, 200), np.linspace(y_min, y_max, 200))
 
     # Flatten the grid so that you can pass it through the SPN
     grid = np.c_[xx.ravel(), yy.ravel()]
@@ -141,7 +142,7 @@ def heatmap(spn, X, y):
     probs = log_likelihood(spn, torch.tensor(grid, dtype=torch.float32))
 
     # Reshape the probabilities back into a grid form
-    probs = probs[:,0,0].reshape(xx.shape).detach().numpy()
+    probs = probs[:, 0, 0].reshape(xx.shape).detach().numpy()
 
     # Plotting the heatmap
     plt.figure(figsize=(10, 8))
@@ -158,26 +159,29 @@ def heatmap(spn, X, y):
 
 
 def analyze_spn(spn):
-    counts = {'Sum': 0, 'Product': 0, 'Cat': 0, 'Leaf': 0}
+    counts = {"Sum": 0, "Product": 0, "Cat": 0, "Leaf": 0}
     leaves = []
+
     def iterate_spn(spn):
         if isinstance(spn, Sum):
-            counts['Sum'] += 1
+            counts["Sum"] += 1
             iterate_spn(spn.inputs)
         elif isinstance(spn, Product):
-            counts['Product'] += 1
+            counts["Product"] += 1
             iterate_spn(spn.inputs)
         elif isinstance(spn, Cat):
-            counts['Cat'] += 1
+            counts["Cat"] += 1
             for i in spn.inputs:
                 iterate_spn(i)
         else:
             leaves.append(spn)
-            counts['Leaf'] += 1
+            counts["Leaf"] += 1
             return
+
     iterate_spn(spn)
     print(counts)
     return leaves
+
 
 def list_modules_by_depth(root):
     if not root:
@@ -194,7 +198,10 @@ def list_modules_by_depth(root):
 
         for _ in range(level_size):
             current_module = queue.popleft()
-            if not(current_module.__class__.__name__ == "Cat" or current_module.__class__.__name__ == "ModuleList"):
+            if not (
+                current_module.__class__.__name__ == "Cat"
+                or current_module.__class__.__name__ == "ModuleList"
+            ):
                 level_modules.append(current_module.__class__.__name__)
 
             # Add children of the current module to the queue for the next level
@@ -206,11 +213,3 @@ def list_modules_by_depth(root):
             result.append(level_modules)
 
     return result
-
-
-
-
-
-
-
-

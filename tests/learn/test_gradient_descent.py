@@ -12,7 +12,6 @@ from spflow.meta.data import Scope
 
 # Define a DummyModel class for testing
 class DummyModel(Module):
-
     @property
     def feature_to_scope(self) -> list[Scope]:
         return [Scope([0])]
@@ -114,5 +113,3 @@ def test_train_gradient_descent_multiple_epochs(model, dataloader, epochs):
     train_gradient_descent(model, dataloader, epochs=epochs)
     final_loss = negative_log_likelihood_loss(model, next(iter(dataloader))[0])
     assert final_loss < initial_loss  # loss should decrease after training
-
-

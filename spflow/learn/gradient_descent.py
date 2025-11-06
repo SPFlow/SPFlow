@@ -26,7 +26,8 @@ def negative_log_likelihood_loss(model: Module, data: Tensor) -> torch.Tensor:
     """
     return -1 * log_likelihood(model, data).sum()
 
-def nll_loss(ll: Tensor, target:Tensor) -> torch.Tensor:
+
+def nll_loss(ll: Tensor, target: Tensor) -> torch.Tensor:
     """
     Compute the cross entropy loss of a model given the data.
 
@@ -73,8 +74,9 @@ def train_gradient_descent(
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     if scheduler is None:
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[int(epochs * 0.5), int(epochs * 0.75)],
-                                                      gamma=0.1)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            optimizer, milestones=[int(epochs * 0.5), int(epochs * 0.75)], gamma=0.1
+        )
 
     if loss_fn is None:
         if is_classification:
@@ -134,8 +136,8 @@ def train_gradient_descent(
             if callback_batch is not None:
                 callback_batch(loss, steps)
         scheduler.step()
-        #print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()/dataloader.batch_size}")
-        #print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()}")
+        # print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()/dataloader.batch_size}")
+        # print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()}")
         if is_classification:
             logger.debug(f"Accuracy: {100 * correct / total}")
 
@@ -151,7 +153,7 @@ def train_gradient_descent(
             total_val = 0
             correct_val = 0
             with torch.no_grad():
-                for (data, y) in validation_dataloader:
+                for data, y in validation_dataloader:
                     if is_classification:
                         ll = log_likelihood(model, data)
                         val_loss = loss_fn(ll, y)

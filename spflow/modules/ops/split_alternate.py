@@ -19,7 +19,6 @@ import time
 
 
 class SplitAlternate(Split):
-
     def __init__(self, inputs: Module, dim: int = 1, num_splits: int | None = 2):
         """
         Split a single module along a given dimension. This implementation splits the features in an alternating manner.
@@ -49,7 +48,6 @@ class SplitAlternate(Split):
         # Create masks for each split
         self.split_masks = [indices == i for i in range(num_splits)]
 
-
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, dim={self.dim}"
 
@@ -58,8 +56,8 @@ class SplitAlternate(Split):
         scopes = self.inputs[0].feature_to_scope
         feature_to_scope = []
         for i in range(self.num_splits):
-             sub_scopes = scopes[i::self.num_splits]
-             feature_to_scope.append(sub_scopes)
+            sub_scopes = scopes[i :: self.num_splits]
+            feature_to_scope.append(sub_scopes)
         return feature_to_scope
 
     def _apply(self, fn):
@@ -87,12 +85,11 @@ def log_likelihood(
     if module.num_splits == 1:
         return [lls]
     elif module.num_splits == 2:
-        return [lls[:,0::2,...],lls[:,1::2,...]]
+        return [lls[:, 0::2, ...], lls[:, 1::2, ...]]
     elif module.num_splits == 3:
-        return [lls[:,0::3,...], lls[:,1::3,...], lls[:,2::3,...]]
+        return [lls[:, 0::3, ...], lls[:, 1::3, ...], lls[:, 2::3, ...]]
     else:
         return [lls[:, mask, ...] for mask in module.split_masks]
-
 
 
 @dispatch(memoize=True)  # type: ignore

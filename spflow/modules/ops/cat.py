@@ -15,7 +15,6 @@ from spflow.modules.module import Module
 
 
 class Cat(Module):
-
     def __init__(self, inputs: list[Module], dim: int = -1):
         """
         Concatenation of multiple modules along a given dimension.
@@ -76,7 +75,6 @@ class Cat(Module):
         else:
             return self.inputs[0].feature_to_scope
 
-
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, dim={self.dim}"
 
@@ -114,9 +112,9 @@ def sample(
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     if module.dim == 1:
-        #split_size = module.out_features // len(module.inputs)
-        #channel_index_per_module = sampling_ctx.channel_index.split(split_size, dim=module.dim)
-        #mask_per_module = sampling_ctx.mask.split(split_size, dim=module.dim)
+        # split_size = module.out_features // len(module.inputs)
+        # channel_index_per_module = sampling_ctx.channel_index.split(split_size, dim=module.dim)
+        # mask_per_module = sampling_ctx.mask.split(split_size, dim=module.dim)
         channel_index_per_module = []
         mask_per_module = []
         for s in module.feature_to_scope:
@@ -139,7 +137,6 @@ def sample(
             channel_index_per_module.append(oids_mod)
             mask = split_assignment == i & sampling_ctx.mask
             mask_per_module.append(mask)
-
 
     else:
         raise ValueError("Invalid dimension for concatenation.")

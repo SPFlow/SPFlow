@@ -23,28 +23,45 @@ params = list(product(in_channels_values, out_features_values, num_repetitions, 
 
 def make_product(in_channels=None, out_features=None, inputs=None, num_repetitions=None, depth=1):
     if inputs is None:
-        inputs = make_normal_leaf(out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions)
+        inputs = make_normal_leaf(
+            out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions
+        )
     return Factorize(inputs=[inputs], depth=depth, num_repetitions=num_repetitions)
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps,depth", params)
-def test_log_likelihood(in_channels: int, out_features: int, num_reps,depth):
-    factorization_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps, depth=depth)
+def test_log_likelihood(in_channels: int, out_features: int, num_reps, depth):
+    factorization_layer = make_product(
+        in_channels=in_channels, out_features=out_features, num_repetitions=num_reps, depth=depth
+    )
     data = make_normal_data(out_features=out_features)
     lls = log_likelihood(factorization_layer, data)
     if num_reps is None:
-        assert lls.shape == (data.shape[0], factorization_layer.out_features, factorization_layer.out_channels)
+        assert lls.shape == (
+            data.shape[0],
+            factorization_layer.out_features,
+            factorization_layer.out_channels,
+        )
     else:
-        assert lls.shape == (data.shape[0], factorization_layer.out_features, factorization_layer.out_channels, num_reps)
+        assert lls.shape == (
+            data.shape[0],
+            factorization_layer.out_features,
+            factorization_layer.out_channels,
+            num_reps,
+        )
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps, depth", params)
 def test_sample(in_channels: int, out_features: int, num_reps, depth):
     n_samples = 10
-    factorization_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps, depth=depth)
+    factorization_layer = make_product(
+        in_channels=in_channels, out_features=out_features, num_repetitions=num_reps, depth=depth
+    )
 
     data = torch.full((n_samples, out_features), torch.nan)
-    channel_index = torch.randint(low=0, high=factorization_layer.out_channels, size=(n_samples, factorization_layer.out_features))
+    channel_index = torch.randint(
+        low=0, high=factorization_layer.out_channels, size=(n_samples, factorization_layer.out_features)
+    )
     mask = torch.full((n_samples, factorization_layer.out_features), True, dtype=torch.bool)
     if num_reps is not None:
         repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
@@ -91,8 +108,8 @@ def test_marginalize(prune, in_channels: int, marg_rvs: list[int], num_reps):
     # Scope query should not contain marginalized rv
     assert len(set(marginalized_module.scope.query).intersection(marg_rvs)) == 0
 
-def test_multidistribution_input():
 
+def test_multidistribution_input():
     out_channels = 3
     num_reps = 5
     out_features_1 = 8

@@ -22,7 +22,7 @@ cls_values = [ElementwiseProduct, OuterProduct]
 in_channels_values = [1, 4]
 out_channels_values = [1, 5]
 out_features_values = [1, 6]
-num_repetitions = [7,None]
+num_repetitions = [7, None]
 params = list(product(in_channels_values, out_channels_values, out_features_values, num_repetitions))
 
 
@@ -46,8 +46,9 @@ def make_module(cls, out_features: int, in_channels: int, scopes=None, num_repet
     product(cls_values, in_channels_values, [1, 6], num_repetitions),
 )
 def test_log_likelihood(cls, in_channels: int, out_features: int, num_reps):
-
-    module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps)
+    module = make_module(
+        cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps
+    )
     data = make_data(cls=Normal, out_features=out_features * len(module.inputs))
     lls = log_likelihood(module, data)
     if num_reps is not None:
@@ -56,7 +57,9 @@ def test_log_likelihood(cls, in_channels: int, out_features: int, num_reps):
         assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
 
 
-@pytest.mark.parametrize("cls,out_features,num_reps", product(cls_values, out_features_values, num_repetitions))
+@pytest.mark.parametrize(
+    "cls,out_features,num_reps", product(cls_values, out_features_values, num_repetitions)
+)
 def test_log_likelihood_broadcasting_channels(cls, out_features: int, num_reps):
     # Define the scopes
     in_channels_a = 1
@@ -92,7 +95,9 @@ def test_log_likelihood_broadcasting_channels(cls, out_features: int, num_reps):
 )
 def test_sample(cls, in_channels: int, out_features: int, num_reps):
     n_samples = 10000
-    module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps)
+    module = make_module(
+        cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps
+    )
 
     data = torch.full((n_samples, out_features * len(module.inputs)), torch.nan)
     mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool)
@@ -109,7 +114,9 @@ def test_sample(cls, in_channels: int, out_features: int, num_reps):
     assert torch.isfinite(samples_query).all()
 
 
-@pytest.mark.parametrize("cls,out_features,num_reps", product(cls_values, out_features_values, num_repetitions))
+@pytest.mark.parametrize(
+    "cls,out_features,num_reps", product(cls_values, out_features_values, num_repetitions)
+)
 def test_sample_two_inputs_broadcasting_channels(cls, out_features: int, num_reps):
     # Define the scopes
     in_channels_a = 1
@@ -145,24 +152,24 @@ def test_sample_two_inputs_broadcasting_channels(cls, out_features: int, num_rep
 
 
 @pytest.mark.parametrize(
-    "cls,in_channels,out_features,num_reps", product(cls_values, in_channels_values, out_features_values, num_repetitions)
+    "cls,in_channels,out_features,num_reps",
+    product(cls_values, in_channels_values, out_features_values, num_repetitions),
 )
 def test_scopes(cls, in_channels: int, out_features: int, num_reps):
-    module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps)
+    module = make_module(
+        cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps
+    )
     assert module.scope.query == list(range(out_features * len(module.inputs)))
 
 
 @pytest.mark.parametrize(
     "cls,in_channels,out_features,num_reps",
-    product(
-        cls_values,
-        in_channels_values,
-        [2, 6],
-        num_repetitions
-    ),
+    product(cls_values, in_channels_values, [2, 6], num_repetitions),
 )
 def test_expectation_maximization(cls, in_channels: int, out_features: int, num_reps):
-    module = make_module(cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps)
+    module = make_module(
+        cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps
+    )
     data = make_data(cls=Normal, out_features=out_features * len(module.inputs))
     expectation_maximization(module, data, max_steps=2)
 
@@ -204,13 +211,15 @@ test_cases = [
     ([(3, 4), (1, 5)], True, OuterProduct),
     ([(3, 4), (4, 3)], False, OuterProduct),
 ]
+
+
 @pytest.mark.parametrize("shape, label, product", test_cases)
 def test_broadcast(shape, label, product):
     leaf_layer = []
     current_num_features = 0
     for s in shape:
         out_features, out_channels = s
-        scope = Scope(list(range(current_num_features,out_features+current_num_features)))
+        scope = Scope(list(range(current_num_features, out_features + current_num_features)))
         leaf_layer.append(make_normal_leaf(scope=scope, out_features=out_features, out_channels=out_channels))
         current_num_features += out_features
 
@@ -229,6 +238,3 @@ def test_broadcast(shape, label, product):
 #     leaf_layer = make_normal_leaf(out_features=out_features, out_channels=out_channels)
 #     split = SplitHalves(inputs=leaf_layer)
 #     module = cls(inputs=[split])
-
-
-

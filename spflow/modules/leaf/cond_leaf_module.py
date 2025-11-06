@@ -17,8 +17,9 @@ from spflow.utils.leaf import parse_leaf_args
 
 
 class CondLeafModule(LeafModule):
-    def __init__(self, scope: Scope, out_channels: int = None,
-                 cond_f: Callable | list[Callable] | None = None):
+    def __init__(
+        self, scope: Scope, out_channels: int = None, cond_f: Callable | list[Callable] | None = None
+    ):
         """
         Initialize a Normal distribution leaf module.
 
@@ -29,15 +30,14 @@ class CondLeafModule(LeafModule):
             std (Tensor, optional): The standard deviation parameter tensor.
         """
 
-        #mean, std = self.retrieve_params(data=torch.tensor([]), dispatch_ctx=init_default_dispatch_context())
-        #event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[mean, std])
+        # mean, std = self.retrieve_params(data=torch.tensor([]), dispatch_ctx=init_default_dispatch_context())
+        # event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[mean, std])
         if out_channels is None:
             raise ValueError("out_channels must be provided")
         super().__init__(scope, out_channels=out_channels)
         self.set_cond_f(cond_f)
 
     def set_cond_f(self, cond_f: list[Callable] | Callable | None = None) -> None:
-
         if isinstance(cond_f, list) and len(cond_f) != self.out_channels:
             raise ValueError(
                 "'CondLeafModule' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
@@ -46,15 +46,12 @@ class CondLeafModule(LeafModule):
         self.cond_f = cond_f
 
     @abstractmethod
-    def retrieve_params(
-            self, data: torch.Tensor, dispatch_ctx: DispatchContext
-    ):
+    def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext):
         pass
 
     @abstractmethod
     def set_params(self, *params):
         pass
-
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -145,9 +142,8 @@ def log_likelihood(
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    *params, = leaf.retrieve_params(torch.tensor([]), dispatch_ctx)
+    (*params,) = leaf.retrieve_params(torch.tensor([]), dispatch_ctx)
     leaf.set_params(*params)
-
 
     # get information relevant for the scope
     data = data[:, leaf.scope.query]
@@ -228,7 +224,7 @@ def maximum_likelihood_estimation(
     """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    *params, = leaf.retrieve_params(torch.tensor([]), dispatch_ctx)
+    (*params,) = leaf.retrieve_params(torch.tensor([]), dispatch_ctx)
     leaf.set_params(*params)
 
     # select relevant data for scope
@@ -276,7 +272,7 @@ def sample(
         Each row corresponds to a sample.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    *params, = module.retrieve_params(torch.tensor([]), dispatch_ctx)
+    (*params,) = module.retrieve_params(torch.tensor([]), dispatch_ctx)
     module.set_params(*params)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
@@ -304,7 +300,9 @@ def sample(
         samples = module.distribution.sample(n_samples=n_samples)
 
     if samples.shape[0] != sampling_ctx.channel_index[instance_mask].shape[0]:
-        raise ValueError(f"Sample shape mismatch: got {samples.shape[0]}, expected {sampling_ctx.channel_index[instance_mask].shape[0]}")
+        raise ValueError(
+            f"Sample shape mismatch: got {samples.shape[0]}, expected {sampling_ctx.channel_index[instance_mask].shape[0]}"
+        )
 
     if module.out_channels == 1:
         # If the output of the input module has a single channel, set the output_ids to zero since this input was
@@ -356,7 +354,7 @@ def marginalize(
     """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    *params, = layer.retrieve_params(torch.tensor([]), dispatch_ctx)
+    (*params,) = layer.retrieve_params(torch.tensor([]), dispatch_ctx)
     layer.set_params(*params)
 
     # Marginalized scope
@@ -376,7 +374,4 @@ def marginalize(
     cond_f = lambda data: marg_params_dict
 
     # Construct new object of the same class as the layer
-    return layer.__class__(
-        scope=scope_marg,
-        cond_f=cond_f
-    )
+    return layer.__class__(scope=scope_marg, cond_f=cond_f)

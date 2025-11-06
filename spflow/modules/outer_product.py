@@ -18,6 +18,7 @@ from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.ops.split_alternate import SplitAlternate
 import time
 
+
 class OuterProduct(BaseProduct):
     def __init__(
         self,
@@ -57,9 +58,13 @@ class OuterProduct(BaseProduct):
 
         # Store unraveled channel indices
         if self.input_is_split:
-            unraveled_channel_indices = list(product(*[list(range(self._max_out_channels)) for _ in range(self.num_splits)]))
+            unraveled_channel_indices = list(
+                product(*[list(range(self._max_out_channels)) for _ in range(self.num_splits)])
+            )
         else:
-            unraveled_channel_indices = list(product(*[list(range(self._max_out_channels)) for _ in self.inputs]))
+            unraveled_channel_indices = list(
+                product(*[list(range(self._max_out_channels)) for _ in self.inputs])
+            )
         self.register_buffer(
             name="unraveled_channel_indices",
             tensor=torch.tensor(unraveled_channel_indices),
@@ -112,7 +117,7 @@ class OuterProduct(BaseProduct):
         for inp in self.inputs:
             ocs *= inp.out_channels
         if len(self.inputs) == 1:
-            ocs = ocs ** self.num_splits
+            ocs = ocs**self.num_splits
         return ocs
 
     @property
@@ -139,22 +144,32 @@ class OuterProduct(BaseProduct):
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         if self.input_is_split:
             if isinstance(self.inputs[0], SplitHalves):
-                return self.unraveled_channel_indices[output_ids].permute(0,2,1).flatten(1,2).unsqueeze(-1)
+                return self.unraveled_channel_indices[output_ids].permute(0, 2, 1).flatten(1, 2).unsqueeze(-1)
             elif isinstance(self.inputs[0], SplitAlternate):
-                return self.unraveled_channel_indices[output_ids].view(-1, self.inputs[0].out_features).unsqueeze(-1)
+                return (
+                    self.unraveled_channel_indices[output_ids]
+                    .view(-1, self.inputs[0].out_features)
+                    .unsqueeze(-1)
+                )
             else:
                 raise NotImplementedError("Other Split types are not implemented yet.")
         else:
             return self.unraveled_channel_indices[output_ids]
 
-
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
         num_inputs = len(self.inputs) if not self.input_is_split else self.num_splits
         if self.input_is_split:
             if isinstance(self.inputs[0], SplitHalves):
-                return mask.unsqueeze(-1).repeat(1, 1, num_inputs).permute(0,2,1).flatten(1,2).unsqueeze(-1)
+                return (
+                    mask.unsqueeze(-1).repeat(1, 1, num_inputs).permute(0, 2, 1).flatten(1, 2).unsqueeze(-1)
+                )
             elif isinstance(self.inputs[0], SplitAlternate):
-                return mask.unsqueeze(-1).repeat(1, 1, num_inputs).view(-1, self.inputs[0].out_features).unsqueeze(-1)
+                return (
+                    mask.unsqueeze(-1)
+                    .repeat(1, 1, num_inputs)
+                    .view(-1, self.inputs[0].out_features)
+                    .unsqueeze(-1)
+                )
             else:
                 raise NotImplementedError("Other Split types are not implemented yet.")
         else:
@@ -185,7 +200,6 @@ def log_likelihood(
             output = output.view(output.size(0), module.out_features, -1, module.num_repetitions)
         else:
             raise ValueError("Invalid number of dimensions")
-
 
     # View as [b, n, m1 * m2, r]
     if module.num_repetitions is None:

@@ -112,7 +112,7 @@ class NegativeBinomial(Distribution):
 
         # estimate (weighted) success probability
         if self.num_repetitions is not None:
-            p_est = 1 - n_total /(n_success.view(-1,1,1)+ n_total)
+            p_est = 1 - n_total / (n_success.view(-1, 1, 1) + n_total)
         else:
             p_est = 1 - n_total / (n_success.unsqueeze(1) + n_total)
 

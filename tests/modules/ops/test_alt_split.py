@@ -17,9 +17,10 @@ import torch
 
 out_channels_values = [1, 5]
 features_values_multiplier = [1, 6]
-num_splits = [2,3]
-split_type = [SplitHalves,SplitAlternate]
+num_splits = [2, 3]
+split_type = [SplitHalves, SplitAlternate]
 params = list(product(out_channels_values, features_values_multiplier, num_splits, split_type))
+
 
 def test_split_result(device):
     out_channels = 10

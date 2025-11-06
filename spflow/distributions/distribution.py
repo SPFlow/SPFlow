@@ -44,7 +44,7 @@ class Distribution(nn.Module, ABC):
         return self.distribution.mode
 
     def log_prob(self, x):
-        """ Computes the log probability of the given samples."""
+        """Computes the log probability of the given samples."""
         return self.distribution.log_prob(x)
 
     @property
@@ -109,7 +109,6 @@ class Distribution(nn.Module, ABC):
         # check only first entry of num_leaf node dim since all leaf node repetition have the same support
 
         valid[~nan_mask] = self.distribution.support.check(data)[..., [0]][~nan_mask]
-
 
         # check for infinite values
         valid[~nan_mask & valid] &= ~data[~nan_mask & valid].isinf()

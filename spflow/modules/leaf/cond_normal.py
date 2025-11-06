@@ -17,7 +17,9 @@ from spflow.meta.dispatch.dispatch import dispatch
 
 
 class CondNormal(CondLeafModule):
-    def __init__(self, scope: Scope, out_channels: int = None, cond_f: Callable | list[Callable] | None = None):
+    def __init__(
+        self, scope: Scope, out_channels: int = None, cond_f: Callable | list[Callable] | None = None
+    ):
         """
         Initialize a Normal distribution leaf module.
 
@@ -37,7 +39,6 @@ class CondNormal(CondLeafModule):
         self.distribution = D.Normal(mean=mean, std=std, event_shape=event_shape)
 
     def set_cond_f(self, cond_f: list[Callable] | Callable | None = None) -> None:
-
         if isinstance(cond_f, list) and len(cond_f) != self.out_channels:
             raise ValueError(
                 "'CondLeafModule' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
@@ -45,9 +46,8 @@ class CondNormal(CondLeafModule):
 
         self.cond_f = cond_f
 
-
     def retrieve_params(
-            self, data: torch.Tensor, dispatch_ctx: DispatchContext
+        self, data: torch.Tensor, dispatch_ctx: DispatchContext
     ) -> tuple[torch.Tensor, torch.Tensor]:
         r"""Retrieves the conditional parameters of the leaf layer.
 
@@ -156,10 +156,3 @@ class CondNormal(CondLeafModule):
                 self.distribution.std = param
             else:
                 raise ValueError(f"Too many parameters for {self.__class__.__name__}.")
-
-
-
-
-
-
-

@@ -17,7 +17,9 @@ from spflow.meta.dispatch.dispatch import dispatch
 
 
 class CondBernoulli(CondLeafModule):
-    def __init__(self, scope: Scope, out_channels: int = None, cond_f: Callable | list[Callable] | None = None):
+    def __init__(
+        self, scope: Scope, out_channels: int = None, cond_f: Callable | list[Callable] | None = None
+    ):
         r"""Initializes ``Bernoulli`` leaf node.
 
         Args:
@@ -34,14 +36,12 @@ class CondBernoulli(CondLeafModule):
         self.distribution = D.Bernoulli(p, event_shape=event_shape)
 
     def set_cond_f(self, cond_f: list[Callable] | Callable | None = None) -> None:
-
         if isinstance(cond_f, list) and len(cond_f) != self.out_channels:
             raise ValueError(
                 "'CondLeafModule' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
             )
 
         self.cond_f = cond_f
-
 
     def retrieve_params(self, data: Tensor, dispatch_ctx: DispatchContext) -> torch.Tensor:
         r"""Retrieves the conditional parameters of the leaf layer.
@@ -101,10 +101,3 @@ class CondBernoulli(CondLeafModule):
                 self.distribution.p = param
             else:
                 raise ValueError(f"Too many parameters for {self.__class__.__name__}.")
-
-
-
-
-
-
-

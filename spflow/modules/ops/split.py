@@ -16,9 +16,9 @@ from spflow.meta.dispatch import (
 from spflow.meta.dispatch.dispatch import dispatch
 from spflow.modules.module import Module
 
+
 # abstract split module
 class Split(Module):
-
     def __init__(self, inputs: Module, dim: int = 1, num_splits: int | None = 2):
         """
         Base Split module to split a single module along a given dimension.
@@ -54,7 +54,7 @@ class Split(Module):
             if remainder == 0:
                 return [(quotient, event_shape[1])] * self.num_splits
             else:
-                return [(quotient, event_shape[1])] * (self.num_splits-1) + [(remainder, event_shape[1])]
+                return [(quotient, event_shape[1])] * (self.num_splits - 1) + [(remainder, event_shape[1])]
 
         else:
             if remainder == 0:
@@ -62,12 +62,11 @@ class Split(Module):
             else:
                 return [(event_shape[0], quotient)] * (self.num_splits - 1) + [(event_shape[1], remainder)]
 
-
-
     @property
     @abstractmethod
     def feature_to_scope(self) -> list[Scope]:
         pass
+
 
 @dispatch  # type: ignore
 def sample(
@@ -97,6 +96,7 @@ def sample(
     )
     return data
 
+
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
     module: Split,
@@ -118,12 +118,14 @@ def marginalize(
 
         marg_child_module = marginalize(module.inputs[0], marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
-            # if marginalized child is not None
+        # if marginalized child is not None
         if marg_child_module:
             if prune and marg_child_module.out_features == 1:
                 return marg_child_module
             else:
-                return module.__class__(inputs=marg_child_module, dim=module.dim, num_splits=module.num_splits)
+                return module.__class__(
+                    inputs=marg_child_module, dim=module.dim, num_splits=module.num_splits
+                )
 
         # if all children were marginalized, return None
         else:
