@@ -4,14 +4,14 @@ import unittest
 
 from itertools import product
 
-from spflow.meta.data import Scope
+from spflow.meta import Scope
 import pytest
 from spflow import log_likelihood, marginalize
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum, Product
-from spflow.modules.ops.cat import Cat
+from spflow.modules.ops import Cat
 from tests.utils.leaves import make_normal_data
-from spflow.learn.learn_spn import learn_spn
+from spflow.learn import learn_spn
 from spflow.learn.learn_spn import cluster_by_kmeans, partition_by_rdc, prune_sums
 from scipy.stats import multivariate_normal
 import torch

@@ -2,15 +2,16 @@ from tests.fixtures import auto_set_test_seed, auto_set_test_device
 import unittest
 
 from itertools import product
-from spflow.meta.data import Scope
+from spflow.meta import Scope
 import pytest
-from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
+from spflow.meta import SamplingContext
+from spflow.meta.dispatch import init_default_sampling_context
 from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum
 from spflow.modules.leaf import Categorical, Binomial
-from spflow.modules.ops.cat import Cat
+from spflow.modules.ops import Cat
 from tests.utils.leaves import make_normal_leaf, make_normal_data, evaluate_log_likelihood
 import torch
 

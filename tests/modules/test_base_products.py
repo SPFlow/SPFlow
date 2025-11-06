@@ -2,16 +2,17 @@ from spflow.modules import ElementwiseProduct
 from tests.fixtures import auto_set_test_seed, auto_set_test_device
 from itertools import product
 
-from spflow.exceptions import InvalidParameterCombinationError, ScopeError
+from spflow import InvalidParameterCombinationError, ScopeError
 import unittest
 
 import pytest
-from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
-from spflow.meta.data import Scope
+from spflow.meta import SamplingContext
+from spflow.meta.dispatch import init_default_sampling_context
+from spflow.meta import Scope
 from spflow.modules.outer_product import OuterProduct
-from spflow.modules.ops.split_halves import SplitHalves
-from spflow.modules.ops.split_alternate import SplitAlternate
-from spflow.modules.factorize import Factorize
+from spflow.modules.ops import SplitHalves
+from spflow.modules.ops import SplitAlternate
+from spflow.modules import Factorize
 from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_data, make_leaf

@@ -3,11 +3,11 @@
 import pytest
 import torch
 
-from spflow.meta.data import Scope
+from spflow.meta import Scope
 from spflow.modules.leaf import Normal
 from spflow.modules.sum import Sum
 from spflow.modules.product import Product
-from spflow.utils.module_display import module_to_str
+from spflow.utils import module_to_str
 
 
 class TestModuleToStrBasics:

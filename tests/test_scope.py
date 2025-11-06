@@ -1,4 +1,4 @@
-from spflow.meta.data import Scope
+from spflow.meta import Scope
 import pytest
 
 

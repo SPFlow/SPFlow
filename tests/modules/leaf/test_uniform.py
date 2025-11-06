@@ -1,10 +1,10 @@
 import unittest
 from itertools import product
-from spflow.exceptions import InvalidParameterCombinationError
+from spflow import InvalidParameterCombinationError
 from tests.fixtures import auto_set_test_seed, auto_set_test_device
 import pytest
 import torch
-from spflow.meta.data import Scope
+from spflow.meta import Scope
 from spflow.modules.leaf import Uniform
 
 out_channels_values = [1, 5]

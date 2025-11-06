@@ -4,10 +4,10 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 from unittest.mock import MagicMock
 import logging
-from spflow.modules.module import Module
+from spflow.modules import Module
 from spflow.learn.gradient_descent import negative_log_likelihood_loss, train_gradient_descent
 from spflow.meta.dispatch import dispatch
-from spflow.meta.data import Scope
+from spflow.meta import Scope
 
 
 # Define a DummyModel class for testing

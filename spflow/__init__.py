@@ -1,6 +1,8 @@
 __version__ = "1.0.0"
 __author__ = "TODO"
 
+from .exceptions import InvalidParameterCombinationError, ScopeError
+
 
 # We now want to import all dispatched function from all modules defined in spflow.modules
 # This is done by recursively walking through all sub-packages and modules starting from spflow.modules

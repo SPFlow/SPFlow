@@ -5,19 +5,20 @@
 # from spflow.meta.data import Scope
 # from spflow.modules.rat.region_graph import random_region_graph
 # from spflow.modules.leaf import Normal
-# from spflow.modules.rat.rat_spn import RatSPN
-# from spflow.modules.factorize import Factorize
+# from spflow.modules.rat import RatSPN
+# from spflow.modules import Factorize
 # from collections import deque
 # from spflow.meta.data import Scope
 # import pytest
 # from spflow import log_likelihood, marginalize, sample
-# from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
+from spflow.meta import SamplingContext
+from spflow.meta.dispatch import init_default_sampling_context
 # from spflow.learn import train_gradient_descent
 # from spflow.modules import Sum, Product
 # from spflow.modules.base_product import BaseProduct
-# from spflow.modules.ops.cat import Cat
+# from spflow.modules.ops import Cat
 # from tests.utils.leaves import make_normal_data
-# from spflow.learn.learn_spn import learn_spn
+# from spflow.learn import learn_spn
 # from spflow.learn.learn_spn import cluster_by_kmeans, partition_by_rdc
 # from scipy.stats import multivariate_normal
 # from spflow.learn.expectation_maximization import expectation_maximization
@@ -26,7 +27,7 @@
 # from spflow.modules import Sum
 # from spflow.modules import OuterProduct
 # from spflow.modules import ElementwiseProduct
-# from spflow.modules.factorize import Factorize
+# from spflow.modules import Factorize
 # from tests.utils.leaves import make_normal_leaf, make_normal_data
 # from spflow.learn import train_gradient_descent
 # from spflow.meta.dispatch import (
@@ -34,8 +35,8 @@
 #     dispatch,
 #     init_default_dispatch_context,
 # )
-# from spflow.modules.ops.split_halves import SplitHalves
-# from spflow.modules.ops.split_alternate import SplitAlternate
+# from spflow.modules.ops import SplitHalves
+# from spflow.modules.ops import SplitAlternate
 #
 #
 # from sklearn.datasets import make_moons, make_blobs

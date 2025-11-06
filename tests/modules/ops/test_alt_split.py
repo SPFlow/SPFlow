@@ -1,17 +1,18 @@
-from spflow.modules.ops.split import Split
-from spflow.modules.ops.split_halves import SplitHalves
-from spflow.modules.ops.split_alternate import SplitAlternate
+from spflow.modules.ops import Split
+from spflow.modules.ops import SplitHalves
+from spflow.modules.ops import SplitAlternate
 from spflow.modules import ElementwiseProduct
 from itertools import product
-from spflow.meta.data import Scope
+from spflow.meta import Scope
 import pytest
-from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
+from spflow.meta import SamplingContext
+from spflow.meta.dispatch import init_default_sampling_context
 from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum
 from spflow.modules.leaf import Categorical, Binomial
-from spflow.modules.ops.cat import Cat
+from spflow.modules.ops import Cat
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 import torch
 
