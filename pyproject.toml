@@ -60,6 +60,9 @@ dev = [
   "scikit-image~=0.24.0",
   "pytest-xdist",
   "matplotlib>=3.9.2",
+  "build",
+  "twine"
+  "pip-audit"
 ]
 
 
