@@ -34,6 +34,7 @@ class Split(Module):
         self.dim = dim
         self.num_splits = num_splits
         self.num_repetitions = self.inputs[0].num_repetitions
+        self.scope = self.inputs[0].scope
 
     @property
     def out_features(self) -> int:

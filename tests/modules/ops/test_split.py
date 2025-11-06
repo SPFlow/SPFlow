@@ -91,3 +91,25 @@ def test_sample(
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]
         assert torch.isfinite(samples_query).all()
+
+
+def test_split_inherits_scope_from_input():
+    """Test that Split modules properly inherit scope from their input."""
+    # Test SplitHalves
+    scope = Scope(list(range(0, 6)))
+    input_leaf = make_normal_leaf(scope, out_channels=3)
+    split_halves = SplitHalves(inputs=input_leaf, num_splits=2, dim=1)
+
+    # Split should inherit the same scope as its input
+    assert split_halves.scope == input_leaf.scope
+    assert split_halves.scope.query == list(range(0, 6))
+    assert len(split_halves.scope.query) == 6
+
+    # Test SplitAlternate
+    split_alternate = SplitAlternate(inputs=input_leaf, num_splits=3, dim=1)
+    assert split_alternate.scope == input_leaf.scope
+    assert split_alternate.scope.query == list(range(0, 6))
+
+    # Verify scope is not empty (regression test for the bug)
+    assert not split_halves.scope.isempty()
+    assert not split_alternate.scope.isempty()
