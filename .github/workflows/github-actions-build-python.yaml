@@ -55,6 +55,20 @@ jobs:
   # - We only test on the most recent version of macOS and Windows to save resources
   # - We test even fewer combinations for TensorFlow and Jax to save resources
 
+  "test_python":
+    name: "Python ${{ matrix.version-python }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version-python: ['3.10', '3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: "./.github/actions/run_tests"
+        with:
+          version-python: ${{ matrix.version-python }}
+          codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
   "Test_OS":
     name: "Test: Py ${{ matrix.version-python }} @ OS ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
