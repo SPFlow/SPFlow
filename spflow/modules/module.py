@@ -74,6 +74,46 @@ class Module(nn.Module, ABC):
     def extra_repr(self) -> str:
         return f"D={self.out_features}, C={self.out_channels}, R={self.num_repetitions}"
 
+    def to_str(
+        self,
+        format: str = "tree",
+        max_depth: int | None = None,
+        show_params: bool = True,
+        show_scope: bool = True,
+    ) -> str:
+        """
+        Convert this module to a readable string representation.
+
+        This method provides visualization formats for understanding module structure.
+
+        Args:
+            format: Visualization format, one of:
+                - "tree": ASCII tree view (default, recommended)
+                - "pytorch": Default PyTorch format
+            max_depth: Maximum depth to display (None = unlimited). Only applies to tree format.
+            show_params: Whether to show parameter shapes (Sum weights, etc.). Only applies to tree format.
+            show_scope: Whether to show scope information. Only applies to tree format.
+
+        Returns:
+            String representation of the module.
+
+        Examples:
+            >>> leaf = Normal(scope=Scope([0, 1]), out_channels=2)
+            >>> model = Sum(inputs=leaf, out_channels=3)
+            >>> print(model.to_str())  # Tree view (default)
+            >>> print(model.to_str(format="pytorch"))  # PyTorch format
+            >>> print(model.to_str(max_depth=2))  # Limit depth
+        """
+        from spflow.utils.module_display import module_to_str
+
+        return module_to_str(
+            self,
+            format=format,
+            max_depth=max_depth,
+            show_params=show_params,
+            show_scope=show_scope,
+        )
+
 
 @dispatch(memoize=True)  # type: ignore
 def log_likelihood(
