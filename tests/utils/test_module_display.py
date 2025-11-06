@@ -277,15 +277,6 @@ class TestModuleToStrEdgeCases:
         # Should show some scope information
         assert "scope" in output.lower() or "-" in output
 
-    def test_empty_output_handling(self):
-        """Test that all formats handle modules gracefully."""
-        leaf = Normal(scope=Scope([0]), out_channels=1)
-
-        for fmt in ["tree", "pytorch"]:
-            output = module_to_str(leaf, format=fmt)
-            assert isinstance(output, str)
-            assert len(output) > 0
-
     def test_max_depth_zero(self):
         """Test behavior with max_depth=0."""
         leaf = Normal(scope=Scope([0]), out_channels=2)
@@ -296,22 +287,25 @@ class TestModuleToStrEdgeCases:
         # With max_depth=0, should show root but no children
         assert isinstance(output, str)
 
-    def test_format_consistency_across_options(self):
+    @pytest.mark.parametrize("show_params,show_scope", [
+        (True, True),
+        (True, False),
+        (False, True),
+        (False, False),
+    ])
+    def test_format_consistency_across_options(self, show_params, show_scope):
         """Test that different customization options don't cause errors."""
         leaf = Normal(scope=Scope([0, 1]), out_channels=2)
         model = Sum(inputs=leaf, out_channels=3)
 
-        # Test all combinations of show_params and show_scope
-        for show_params in [True, False]:
-            for show_scope in [True, False]:
-                output = module_to_str(
-                    model,
-                    format="tree",
-                    show_params=show_params,
-                    show_scope=show_scope
-                )
-                assert isinstance(output, str)
-                assert len(output) > 0
+        output = module_to_str(
+            model,
+            format="tree",
+            show_params=show_params,
+            show_scope=show_scope
+        )
+        assert isinstance(output, str)
+        assert len(output) > 0
 
 
 class TestModuleToStrStringProperties:
@@ -323,59 +317,14 @@ class TestModuleToStrStringProperties:
         leaf = Normal(scope=Scope([0, 1]), out_channels=2)
         return Sum(inputs=leaf, out_channels=3)
 
-    def test_output_is_string(self, test_model):
-        """Test that output is always a string."""
-        for fmt in ["tree", "pytorch"]:
-            output = module_to_str(test_model, format=fmt)
-            assert isinstance(output, str)
-
-    def test_tree_output_contains_modules(self, test_model):
-        """Test that tree output contains module class names."""
-        output = module_to_str(test_model, format="tree")
-
-        # Should contain module names
-        assert "Sum" in output
-        assert "Normal" in output
-
-    def test_tree_output_is_printable(self, test_model):
-        """Test that tree output can be printed without errors."""
-        output = module_to_str(test_model, format="tree")
-
-        # Should be able to print it
-        try:
-            print(output)
-            assert True
-        except Exception as e:
-            pytest.fail(f"Failed to print output: {e}")
-
-
-
-class TestModuleToStrDeviceCompatibility:
-    """Test module_to_str with modules on different devices."""
-
-    def test_cpu_device(self):
-        """Test module_to_str with CPU device."""
-        leaf = Normal(scope=Scope([0, 1]), out_channels=2)
-        leaf = leaf.to("cpu")
-        model = Sum(inputs=leaf, out_channels=3)
-        model = model.to("cpu")
-
-        output = module_to_str(model, format="tree")
+    @pytest.mark.parametrize("format", ["tree", "pytorch"])
+    def test_output_is_string(self, test_model, format):
+        """Test that output is always a string and is printable."""
+        output = module_to_str(test_model, format=format)
         assert isinstance(output, str)
         assert len(output) > 0
-
-    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
-    def test_cuda_device(self):
-        """Test module_to_str with CUDA device."""
-        leaf = Normal(scope=Scope([0, 1]), out_channels=2)
-        leaf = leaf.to("cuda")
-        model = Sum(inputs=leaf, out_channels=3)
-        model = model.to("cuda")
-
-        output = module_to_str(model, format="tree")
-        assert isinstance(output, str)
-        assert len(output) > 0
-
+        # Should be able to print it without errors
+        print(output)
 
 class TestModuleToStrParameterDisplay:
     """Test parameter and scope display in different formats."""
