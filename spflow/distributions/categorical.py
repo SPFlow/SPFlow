@@ -89,7 +89,7 @@ class Categorical(Distribution):
             p_est = p_est.unsqueeze(1).repeat(1, self.out_channels, 1)
 
         if len(self.event_shape) == 3:
-            p_est = p_est.unsqueeze(1).unsqueeze(2).repeat(1, self.out_channels,self.num_repetitions, 1)
+            p_est = p_est.unsqueeze(1).unsqueeze(2).repeat(1, self.out_channels, self.num_repetitions, 1)
 
         # set parameters of leaf node and make sure they add up to 1
         self.p = p_est.to(data.device)

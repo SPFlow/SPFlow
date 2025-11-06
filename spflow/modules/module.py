@@ -52,7 +52,7 @@ class Module(nn.Module, ABC):
     @property
     @abstractmethod
     def feature_to_scope(self) -> list[Scope]:
-        """ Returns the mapping from features to scopes."""
+        """Returns the mapping from features to scopes."""
         pass
 
     @property
@@ -67,15 +67,12 @@ class Module(nn.Module, ABC):
         except StopIteration:
             return torch.device("cpu")
 
-    def forward(
-        self, data: Tensor, check_support: bool = True, dispatch_ctx: DispatchContext | None = None
-    ):
+    def forward(self, data: Tensor, check_support: bool = True, dispatch_ctx: DispatchContext | None = None):
         """Forward pass is simply the log-likelihood function."""
         return log_likelihood(self, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
-
     def extra_repr(self) -> str:
-         return f"D={self.out_features}, C={self.out_channels}, R={self.num_repetitions}"
+        return f"D={self.out_features}, C={self.out_channels}, R={self.num_repetitions}"
 
 
 @dispatch(memoize=True)  # type: ignore

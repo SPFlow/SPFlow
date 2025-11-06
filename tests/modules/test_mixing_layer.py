@@ -12,6 +12,7 @@ out_features_values = [1]
 num_repetitions = [7]
 params = list(product(out_channels_values, out_features_values, num_repetitions))
 
+
 def make_sum(in_channels=None, out_channels=None, out_features=None, weights=None, num_repetitions=None):
     if isinstance(weights, list):
         weights = torch.tensor(weights)
@@ -23,9 +24,14 @@ def make_sum(in_channels=None, out_channels=None, out_features=None, weights=Non
     if weights is not None:
         out_features = weights.shape[0]
 
-    inputs = make_normal_leaf(out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions)
+    inputs = make_normal_leaf(
+        out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions
+    )
 
-    return MixingLayer(out_channels=out_channels, inputs=inputs, weights=weights, num_repetitions=num_repetitions)
+    return MixingLayer(
+        out_channels=out_channels, inputs=inputs, weights=weights, num_repetitions=num_repetitions
+    )
+
 
 @pytest.mark.parametrize("out_channels,out_features, num_reps", params)
 def test_log_likelihood(out_channels: int, out_features: int, num_reps):
@@ -42,7 +48,6 @@ def test_log_likelihood(out_channels: int, out_features: int, num_reps):
     assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
 
 
-
 @pytest.mark.parametrize("out_channels,out_features,num_reps", params)
 def test_sample(out_channels: int, out_features: int, num_reps):
     n_samples = 100
@@ -57,7 +62,9 @@ def test_sample(out_channels: int, out_features: int, num_reps):
         channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
         mask = torch.full((n_samples, module.out_features), True)
         repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+        sampling_ctx = SamplingContext(
+            channel_index=channel_index, mask=mask, repetition_index=repetition_index
+        )
         samples = sample(module, data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]

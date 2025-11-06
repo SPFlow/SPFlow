@@ -44,7 +44,7 @@ class BaseProduct(Module, ABC):
             self.num_splits = inputs[0].num_splits
         else:
             self.input_is_split = False
-            if inputs[0].out_features==1:
+            if inputs[0].out_features == 1:
                 self.num_splits = 1
             else:
                 self.num_splits = None
@@ -53,7 +53,6 @@ class BaseProduct(Module, ABC):
             raise ValueError(f"'{self.__class__.__name__}' requires at least one input to be specified.")
 
         self.inputs = nn.ModuleList(inputs)
-
 
         # Check that scopes are disjoint
         if not Scope.all_pairwise_disjoint([inp.scope for inp in self.inputs]):
@@ -105,6 +104,7 @@ class BaseProduct(Module, ABC):
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}"
 
+
 """
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
@@ -126,6 +126,8 @@ def marginalize(
 
     raise NotImplementedError("Not implemented yet.")
 """
+
+
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
     layer: BaseProduct,

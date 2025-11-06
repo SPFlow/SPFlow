@@ -31,7 +31,9 @@ class FeatureContext:
     def __init__(
         self,
         scope: Scope,
-        domains: dict[int, MetaType | FeatureType | type[FeatureType]] | list[MetaType | FeatureType | type[FeatureType]] | None = None,
+        domains: dict[int, MetaType | FeatureType | type[FeatureType]]
+        | list[MetaType | FeatureType | type[FeatureType]]
+        | None = None,
     ):
         """Initialize a FeatureContext with feature type specifications.
 
@@ -75,7 +77,8 @@ class FeatureContext:
 
     def set_domains(
         self,
-        domains: dict[int, MetaType | FeatureType | type[FeatureType]] | list[MetaType | FeatureType | type[FeatureType]],
+        domains: dict[int, MetaType | FeatureType | type[FeatureType]]
+        | list[MetaType | FeatureType | type[FeatureType]],
         overwrite: bool = False,
     ):
         """Set or update feature type specifications.

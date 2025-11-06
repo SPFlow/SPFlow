@@ -15,6 +15,7 @@ from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.ops.split_alternate import SplitAlternate
 
+
 class ElementwiseProduct(BaseProduct):
     def __init__(
         self,
@@ -134,7 +135,6 @@ class ElementwiseProduct(BaseProduct):
             feature_to_scope.append(Scope.join_all(scopes))
         return feature_to_scope
 
-
     def map_out_channels_to_in_channels(self, index: Tensor) -> Tensor:
         if self.input_is_split:
             num_splits = self.num_splits
@@ -146,9 +146,7 @@ class ElementwiseProduct(BaseProduct):
                 raise NotImplementedError("Other Split types are not implemented yet.")
         else:
             num_splits = len(self.inputs)
-            return index.unsqueeze(-1).repeat(1,1,num_splits)
-
-
+            return index.unsqueeze(-1).repeat(1, 1, num_splits)
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
         if self.input_is_split:
@@ -167,7 +165,7 @@ def log_likelihood(
     dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     # initialize dispatch context
-    #start_time = time.time()
+    # start_time = time.time()
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx)
@@ -189,7 +187,7 @@ def log_likelihood(
     else:
         output = output.view(output.size(0), module.out_features, module.out_channels)
 
-    #print(f"Elementwise Product took {time.time() - start_time:.4f} seconds")
+    # print(f"Elementwise Product took {time.time() - start_time:.4f} seconds")
 
     return output
 
@@ -228,4 +226,3 @@ def log_likelihood(
     #
     # return output
 """
-

@@ -17,6 +17,7 @@ from spflow.utils.projections import (
 )
 from spflow.modules.ops.cat import Cat
 
+
 class Sum(Module):
     """
     A sum module that represents the sum operation over inputs.
@@ -69,10 +70,8 @@ class Sum(Module):
         else:
             self.inputs = inputs
 
-
         self.sum_dim = sum_dim
         self._out_features = self.inputs.out_features
-
 
         self._in_channels_total = self.inputs.out_channels
         self._out_channels_total = out_channels
@@ -86,7 +85,12 @@ class Sum(Module):
                     self.num_repetitions = weights.shape[3]
 
         if self.num_repetitions is not None:
-            self.weights_shape = (self._out_features, self._in_channels_total, self._out_channels_total, self.num_repetitions)
+            self.weights_shape = (
+                self._out_features,
+                self._in_channels_total,
+                self._out_channels_total,
+                self.num_repetitions,
+            )
         else:
             self.weights_shape = (self._out_features, self._in_channels_total, self._out_channels_total)
 
@@ -178,7 +182,6 @@ def marginalize(
     prune: bool = True,
     dispatch_ctx: DispatchContext | None = None,
 ) -> None | Sum:
-
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -199,8 +202,6 @@ def marginalize(
     elif mutual_rvs:
         # marginalize input modules
         marg_input = marginalize(module.inputs, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
-
-
 
         # if marginalized input is not None
         if marg_input:
@@ -236,7 +237,6 @@ def sample(
     dispatch_ctx: DispatchContext | None = None,
     sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
-
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
@@ -245,16 +245,18 @@ def sample(
     # (stay in logits space since Categorical distribution accepts logits directly)
 
     if sampling_ctx.repetition_idx is not None:
-
         logits = module.logits.unsqueeze(0).expand(
-            sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)  # shape [b , n_features , in_c, out_c, r]
+            sampling_ctx.channel_index.shape[0], -1, -1, -1, -1
+        )  # shape [b , n_features , in_c, out_c, r]
 
         indices = sampling_ctx.repetition_idx  # Shape (30000, 1)
 
         # Use gather to select the correct repetition
         # Repeat indices to match the target dimension for gathering
         in_channels_total = logits.shape[2]
-        indices = indices.view(-1,1,1,1,1).expand(-1,logits.shape[1],in_channels_total, logits.shape[3],-1)
+        indices = indices.view(-1, 1, 1, 1, 1).expand(
+            -1, logits.shape[1], in_channels_total, logits.shape[3], -1
+        )
         # Gather the logits based on the repetition indices
         logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
 
@@ -276,7 +278,9 @@ def sample(
         input_lls = dispatch_ctx.cache["log_likelihood"][module.inputs]
 
         if sampling_ctx.repetition_idx is not None:
-            indices = sampling_ctx.repetition_idx.view(-1,1,1,1).expand(-1, input_lls.shape[1], input_lls.shape[2],-1)
+            indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1).expand(
+                -1, input_lls.shape[1], input_lls.shape[2], -1
+            )
 
             # Use gather to select the correct repetition
             input_lls = torch.gather(input_lls, dim=-1, index=indices).squeeze(-1)
@@ -290,7 +294,6 @@ def sample(
             log_posterior = log_prior + input_lls
             log_posterior = log_posterior.log_softmax(dim=2)
             logits = log_posterior
-
 
     # Sample from categorical distribution defined by weights to obtain indices into input channels
     if is_mpe:
@@ -320,8 +323,7 @@ def log_likelihood(
     check_support: bool = True,
     dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
-
-    #start_time = time.time()
+    # start_time = time.time()
 
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -343,12 +345,13 @@ def log_likelihood(
     # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
     output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1).squeeze(-1)  # shape: (B, F, OC)
 
-    #print(f"Sum_layer took {time.time() - start_time:.4f} seconds.")
+    # print(f"Sum_layer took {time.time() - start_time:.4f} seconds.")
 
     if module.num_repetitions is None:
-        return output.view(-1,module.out_features,module.out_channels)
+        return output.view(-1, module.out_features, module.out_channels)
     else:
-        return output.view(-1,module.out_features,module.out_channels, module.num_repetitions)
+        return output.view(-1, module.out_features, module.out_channels, module.num_repetitions)
+
 
 """
 @dispatch(memoize=True)  # type: ignore
@@ -385,6 +388,7 @@ def log_likelihood(
     # else:
     #     return output.view(-1,module.out_features,module.out_channels, module.num_repetitions)
 """
+
 
 @dispatch(memoize=True)  # type: ignore
 def em(

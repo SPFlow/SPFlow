@@ -45,7 +45,9 @@ def prune_sums(node):
             current_weights = node.weights
             updated_weights = []
             for i in range(len(new_weights)):
-                updated_weights.append(new_weights[i] * current_weights[:, i, :].unsqueeze(1), )
+                updated_weights.append(
+                    new_weights[i] * current_weights[:, i, :].unsqueeze(1),
+                )
             updated_weights = torch.concatenate(updated_weights, dim=1)
 
             all_cat = all(isinstance(c, Cat) for c in new_children)
@@ -76,9 +78,9 @@ def prune_sums(node):
 
 
 def partition_by_rdc(
-        data: torch.Tensor,
-        threshold: float = 0.3,
-        preprocessing: Callable | None = None,
+    data: torch.Tensor,
+    threshold: float = 0.3,
+    preprocessing: Callable | None = None,
 ) -> torch.Tensor:
     """Performs partitioning using randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the ``base`` backend.
 
@@ -125,9 +127,9 @@ def partition_by_rdc(
 
 
 def cluster_by_kmeans(
-        data: torch.Tensor,
-        n_clusters: int = 2,
-        preprocessing: Callable | None = None,
+    data: torch.Tensor,
+    n_clusters: int = 2,
+    preprocessing: Callable | None = None,
 ) -> torch.Tensor:
     """Performs clustering usig k-Means to be used with the LearnSPN algorithm in the ``base`` backend.
 
@@ -152,25 +154,25 @@ def cluster_by_kmeans(
     else:
         clustering_data = data
 
-    kmeans = KMeans(n_clusters=n_clusters, mode='euclidean', verbose=1)
+    kmeans = KMeans(n_clusters=n_clusters, mode="euclidean", verbose=1)
     data_labels = kmeans.fit_predict(clustering_data)
 
     return data_labels
 
 
 def learn_spn(
-        data: torch.Tensor,
-        leaf_modules: list[LeafModule] | LeafModule,
-        out_channels: int = 1,
-        min_features_slice: int = 2,
-        min_instances_slice: int = 100,
-        scope=None,
-        clustering_method: str | Callable = "kmeans",
-        partitioning_method: str | Callable = "rdc",
-        clustering_args: dict[str, Any] | None = None,
-        partitioning_args: dict[str, Any] | None = None,
-        check_support: bool = True,
-        full_data: torch.Tensor | None = None,
+    data: torch.Tensor,
+    leaf_modules: list[LeafModule] | LeafModule,
+    out_channels: int = 1,
+    min_features_slice: int = 2,
+    min_instances_slice: int = 100,
+    scope=None,
+    clustering_method: str | Callable = "kmeans",
+    partitioning_method: str | Callable = "rdc",
+    clustering_args: dict[str, Any] | None = None,
+    partitioning_args: dict[str, Any] | None = None,
+    check_support: bool = True,
+    full_data: torch.Tensor | None = None,
 ) -> Module:
     """LearnSPN structure and parameter learner for the ``base`` backend.
 
@@ -262,7 +264,7 @@ def learn_spn(
             f"Value for 'min_features_slice' must be an integer greater than 1, but was: {min_features_slice}."
         )
 
-    def create_partitioned_mv_leaf(scope: Scope,data: torch.Tensor):
+    def create_partitioned_mv_leaf(scope: Scope, data: torch.Tensor):
         # create leaf layer from given scope and data
         leaves = []
         s = set(scope.query)
@@ -270,10 +272,13 @@ def learn_spn(
             leaf_scope = set(leaf_module.scope.query)
             scope_inter = s.intersection(leaf_scope)
             if len(scope_inter) > 0:
-                leaf_layer = leaf_module.__class__(scope=Scope(sorted(scope_inter)),
-                                                   out_channels=leaf_module.out_channels)
+                leaf_layer = leaf_module.__class__(
+                    scope=Scope(sorted(scope_inter)), out_channels=leaf_module.out_channels
+                )
                 # estimate leaf node parameters from data
-                maximum_likelihood_estimation(leaf_layer, data, check_support=check_support, preprocess_data=False)
+                maximum_likelihood_estimation(
+                    leaf_layer, data, check_support=check_support, preprocess_data=False
+                )
 
                 leaves.append(leaf_layer)
 
@@ -290,7 +295,6 @@ def learn_spn(
         return create_partitioned_mv_leaf(scope, data)
 
     else:
-
         # select correct data
         if not data.shape[0] == 1:
             partition_ids = partitioning_method(data)  # uc
@@ -320,7 +324,6 @@ def learn_spn(
 
             return Product(inputs=Cat(product_inputs, dim=1))
 
-
         else:
             # if not enough instances to cluster, create leaf layer (can be set to prevent overfitting too much or to reduce network size)
             if data.shape[0] < min_instances_slice:
@@ -338,7 +341,6 @@ def learn_spn(
                     sum_vectors = []
                     # create sum node for each channel
                     for labels in labels_per_channel:
-
                         inputs_per_channel = []
 
                         # Recurse for each label
@@ -381,7 +383,6 @@ def learn_spn(
                         return sum_vectors[0]
                     else:
                         return Cat(sum_vectors, dim=2)
-
 
                 # conditional clusters
                 else:

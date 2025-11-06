@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class KMeans:
     def __init__(self, n_clusters, max_iter=300, tol=1e-4, random_state=None):
         self.n_clusters = n_clusters
@@ -16,7 +17,7 @@ class KMeans:
             torch.manual_seed(self.random_state)
 
         # Randomly initialize the centroids
-        random_indices = torch.randperm(X.size(0))[:self.n_clusters]
+        random_indices = torch.randperm(X.size(0))[: self.n_clusters]
         self.centroids = X[random_indices]
 
         for i in range(self.max_iter):
@@ -48,6 +49,7 @@ class KMeans:
         distances = torch.cdist(X, self.centroids, p=2)
         return torch.sum(distances[torch.arange(X.size(0)), labels])
 
+
 # Example usage:
 if __name__ == "__main__":
     from sklearn.datasets import make_blobs
@@ -60,4 +62,3 @@ if __name__ == "__main__":
     kmeans = KMeans(n_clusters=4, random_state=0)
     kmeans.fit(X)
     labels = kmeans.predict(X)
-

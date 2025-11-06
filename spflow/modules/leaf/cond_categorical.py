@@ -17,7 +17,13 @@ from spflow.meta.dispatch.dispatch import dispatch
 
 
 class CondCategorical(CondLeafModule):
-    def __init__(self, scope: Scope, out_channels: int = None, K: Tensor = None, cond_f: Callable | list[Callable] | None = None):
+    def __init__(
+        self,
+        scope: Scope,
+        out_channels: int = None,
+        K: Tensor = None,
+        cond_f: Callable | list[Callable] | None = None,
+    ):
         """
         Initialize a Normal distribution leaf module.
 
@@ -36,7 +42,6 @@ class CondCategorical(CondLeafModule):
         self.distribution = D.Categorical(p, K=K, event_shape=event_shape)
 
     def set_cond_f(self, cond_f: list[Callable] | Callable | None = None) -> None:
-
         if isinstance(cond_f, list) and len(cond_f) != self.out_channels:
             raise ValueError(
                 "'CondLeafModule' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
@@ -102,10 +107,3 @@ class CondCategorical(CondLeafModule):
                 self.distribution.p = param
             else:
                 raise ValueError(f"Too many parameters for {self.__class__.__name__}.")
-
-
-
-
-
-
-

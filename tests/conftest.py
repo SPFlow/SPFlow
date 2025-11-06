@@ -3,6 +3,7 @@ import torch
 
 USE_GPU = True
 
+
 @pytest.fixture(scope="session")
 def device():
     if USE_GPU and torch.cuda.is_available():

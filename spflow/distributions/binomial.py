@@ -109,7 +109,7 @@ class Binomial(Distribution):
 
         # estimate (weighted) success probability
         if self.num_repetitions is not None:
-            p_est = n_success.view(-1,1,1) / n_total
+            p_est = n_success.view(-1, 1, 1) / n_total
         else:
             p_est = n_success.unsqueeze(1) / n_total
 
@@ -124,7 +124,6 @@ class Binomial(Distribution):
 
     def params(self) -> dict[str, Tensor]:
         return {"n": self.n, "p": self.p}
-
 
     def check_support(self, data: Tensor) -> Tensor:
         r"""Checks if specified data is in support of the represented distribution.
@@ -154,11 +153,10 @@ class Binomial(Distribution):
 
         # check only first entry of num_leaf node dim since all leaf node repetition have the same support
         if self.num_repetitions is not None:
-            valid[~nan_mask] = self.distribution.support.check(data)[..., :1,:1][~nan_mask].squeeze(-1)
+            valid[~nan_mask] = self.distribution.support.check(data)[..., :1, :1][~nan_mask].squeeze(-1)
         else:
             valid[~nan_mask] = self.distribution.support.check(data)[..., [0]][~nan_mask]
-        #valid[~nan_mask] = self.distribution.support.check(data)[..., :1][~nan_mask]
-
+        # valid[~nan_mask] = self.distribution.support.check(data)[..., :1][~nan_mask]
 
         # check for infinite values
         valid[~nan_mask & valid] &= ~data[~nan_mask & valid].isinf()
