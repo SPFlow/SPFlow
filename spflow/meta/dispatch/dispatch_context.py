@@ -4,6 +4,7 @@ Typical usage example:
 
     dispatch_ctx = DispatchContext()
 """
+from collections import defaultdict
 from typing import Any, Union, Optional
 
 
@@ -27,7 +28,7 @@ class DispatchContext:
         """Initializes 'DispatchContext' object."""
         self.args = {}
         self.funcs = {}
-        self.cache = {}
+        self.cache = defaultdict(dict)
 
     def cache_value(self, f_name: str, key: "Module", value: Any, overwrite=True) -> None:
         """Caches an object for a given function name and key.
