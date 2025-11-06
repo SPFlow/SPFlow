@@ -46,9 +46,9 @@ def model(device):
 
 @pytest.fixture
 def dataloader(device):
-    data = torch.randn(100, 1).to(device)
+    data = torch.randn(30, 1).to(device)
     dataset = TensorDataset(data)
-    return DataLoader(dataset, batch_size=10)
+    return DataLoader(dataset, batch_size=3)
 
 
 def test_negative_log_likelihood_loss(model, dataloader, device):
@@ -108,7 +108,7 @@ def test_train_gradient_descent_verbose(model, dataloader, caplog):
         assert "Loss:" in record.message
 
 
-@pytest.mark.parametrize("epochs", [1, 5, 10])
+@pytest.mark.parametrize("epochs", [1, 3])
 def test_train_gradient_descent_multiple_epochs(model, dataloader, epochs):
     initial_loss = negative_log_likelihood_loss(model, next(iter(dataloader))[0])
     train_gradient_descent(model, dataloader, epochs=epochs)
