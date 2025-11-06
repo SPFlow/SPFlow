@@ -44,7 +44,7 @@ class ElementwiseSum(Module):
         """
         super().__init__()
 
-        if not input:
+        if not inputs:
             raise ValueError("'Sum' requires at least one input to be specified.")
 
         self.inputs = nn.ModuleList(inputs)

@@ -48,7 +48,7 @@ class BaseProduct(Module, ABC):
             else:
                 self.num_splits = None
 
-        if not input:
+        if not inputs:
             raise ValueError(f"'{self.__class__.__name__}' requires at least one input to be specified.")
 
         self.inputs = nn.ModuleList(inputs)

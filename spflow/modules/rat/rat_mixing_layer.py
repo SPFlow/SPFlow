@@ -41,7 +41,7 @@ A mixing layer that sums over the input channels, which is used for the RAT mode
         """
 
         super().__init__(inputs, out_channels, num_repetitions, weights, sum_dim)
-        if not input:
+        if not inputs:
             raise ValueError("'Sum' requires at least one input to be specified.")
 
         if weights is not None:
