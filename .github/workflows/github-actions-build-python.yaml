@@ -76,7 +76,7 @@ jobs:
     strategy:
       fail-fast: false 
       matrix:
-        version-python: ['3.9', '3.10', '3.11']  # 3.12 is not yet supported by torch
+        version-python: ['3.10', '3.11', '3.12']
         version-pytorch: ['2.1.1', '2.2.2', '2.3.1']
     steps:
       - uses: actions/checkout@v4
