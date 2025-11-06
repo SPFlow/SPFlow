@@ -1,6 +1,7 @@
 """Tests for the graph visualization utilities."""
 
 import os
+import shutil
 import tempfile
 
 import pytest
@@ -16,6 +17,18 @@ from spflow.utils.visualization import (
     _format_scope_string,
     _format_param_count,
     _count_parameters,
+)
+
+
+def has_graphviz_dot():
+    """Check if the graphviz 'dot' binary is available on the system."""
+    return shutil.which("dot") is not None
+
+
+# Skip all visualization tests that require graphviz if 'dot' binary is not available
+pytestmark_requires_graphviz = pytest.mark.skipif(
+    not has_graphviz_dot(),
+    reason="graphviz 'dot' binary not found. Install graphviz to run visualization tests.",
 )
 
 
@@ -121,6 +134,8 @@ class TestFormatParamCount:
 class TestVisualizationSkipModules:
     """Test that pass-through modules (Cat, Split, etc.) are skipped in visualization."""
 
+    pytestmark = pytestmark_requires_graphviz
+
     def test_product_with_multiple_inputs_skips_cat(self):
         """Test that Cat module is skipped when Product has multiple inputs.
 
@@ -186,6 +201,8 @@ class TestVisualizationSkipModules:
 class TestVisualizationBasics:
     """Test basic visualization functionality."""
 
+    pytestmark = pytestmark_requires_graphviz
+
     @pytest.fixture
     def simple_model(self):
         """Create a simple model: Sum -> Normal leaf."""
@@ -210,6 +227,8 @@ class TestVisualizationBasics:
 
 class TestVisualizationOptions:
     """Test visualization customization options."""
+
+    pytestmark = pytestmark_requires_graphviz
 
     @pytest.fixture
     def model_with_scope(self):
@@ -270,6 +289,8 @@ class TestVisualizationOptions:
 class TestVisualizationEngines:
     """Test different graphviz layout engines."""
 
+    pytestmark = pytestmark_requires_graphviz
+
     @pytest.fixture
     def nested_model(self):
         """Create a nested model for layout testing."""
@@ -291,6 +312,8 @@ class TestVisualizationEngines:
 class TestVisualizationRankdir:
     """Test different rankdir options."""
 
+    pytestmark = pytestmark_requires_graphviz
+
     @pytest.fixture
     def simple_chain(self):
         """Create a simple chain model."""
@@ -310,6 +333,8 @@ class TestVisualizationRankdir:
 
 class TestVisualizationComplexStructures:
     """Test visualization with complex module structures."""
+
+    pytestmark = pytestmark_requires_graphviz
 
     def test_product_of_sums(self):
         """Test visualizing Product of Sum nodes."""
@@ -343,6 +368,8 @@ class TestVisualizationComplexStructures:
 class TestVisualizationEdgeCases:
     """Test edge cases and special scenarios."""
 
+    pytestmark = pytestmark_requires_graphviz
+
     def test_single_leaf_module(self):
         """Test visualization with a single leaf module."""
         leaf = Normal(scope=Scope([0, 1, 2]), out_channels=3)
@@ -365,6 +392,8 @@ class TestVisualizationEdgeCases:
 
 class TestVisualizationIntegration:
     """Integration tests with realistic models."""
+
+    pytestmark = pytestmark_requires_graphviz
 
     def test_typical_spn_structure(self):
         """Test visualization with a typical SPN structure."""
