@@ -63,7 +63,10 @@ class Module(nn.Module, ABC):
         it returns the device of the first parameter. If the model has no parameters,
         it returns 'cpu' as the default device.
         """
-        return next(iter(self.parameters())).device
+        try:
+            return next(iter(self.parameters())).device
+        except StopIteration:
+            return torch.device("cpu")
 
     def forward(
         self, data: Tensor, check_support: bool = True, dispatch_ctx: Optional[DispatchContext] = None
