@@ -60,6 +60,9 @@ dev = [
   "scikit-image~=0.24.0",
   "pytest-xdist"
 ]
+vis = [
+  "pydot>=4.0.0"
+]
 
 
 [tool.pytest.ini_options]
