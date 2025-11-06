@@ -11,7 +11,7 @@ description = "Sum Product Flow: An Easy and Extensible Library for Sum-Product 
 readme = "README.md"
 license = { file = "LICENSE" }
 keywords = ["probabilistic circuits", "machine learning"]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
     # See https://pypi.org/classifiers/
     "Programming Language :: Python :: 3",
@@ -75,7 +75,6 @@ testpaths = [
 line-length = 110
 color = true
 target-version = [
-    "py39",
     "py310",
     "py311",
     "py312",
@@ -85,7 +84,7 @@ target-version = [
 # See https://docs.astral.sh/ruff/rules
 select = ["E", "F", "W", "I", "N", "D", "C90", "UP", "NPY"]
 line-length = 110  # Same as Black
-target-version = "py39"  # The lowest supported version
+target-version = "py310"  # The lowest supported version
 
 [tool.ruff.pydocstyle]
 convention = "google"
