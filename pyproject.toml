@@ -37,6 +37,7 @@ dependencies = [
     "scikit-learn>=1.0",
     "torch>=2.0.1",
     "fast_pytorch_kmeans>=0.2.2",
+    "psutil",  # Required by fast_pytorch_kmeans
     "pydot>=4.0.0",
 ]
 dynamic = ["version"]
