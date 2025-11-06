@@ -16,7 +16,6 @@ from spflow.utils.projections import (
     proj_convex_to_real,
 )
 from spflow.modules.ops.cat import Cat
-import time
 
 class Sum(Module):
     """
@@ -362,8 +361,6 @@ def log_likelihood(
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    start_time = time.time()
-
     ll = log_likelihood(
         module.inputs,
         data,
@@ -380,7 +377,6 @@ def log_likelihood(
 
     # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
     output = torch.logsumexp((ll + log_weights), dim=module.sum_dim + 1).squeeze(-1)  # shape: (B, F, OC)
-    print(f"Log likelihood computation sum_layer took {time.time()-start_time:.4f} seconds.")
     return output
     #
 
