@@ -11,9 +11,9 @@ jobs:
   "Lint":
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip' # caching pip dependencies
@@ -31,9 +31,9 @@ jobs:
     name: "Check Format"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip' # caching pip dependencies
@@ -63,7 +63,7 @@ jobs:
       matrix:
         version-python: ['3.10', '3.11', '3.12']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: "./.github/actions/run_tests"
         with:
           version-python: ${{ matrix.version-python }}
@@ -78,7 +78,7 @@ jobs:
         version-python: ['3.12']
         os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: "./.github/actions/run_tests"
         with:
           version-python: ${{ matrix.version-python }}
