@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from itertools import product
-from typing import Optional, Union
 
 import torch
 from torch import Tensor
@@ -21,7 +22,7 @@ class OuterProduct(BaseProduct):
     def __init__(
         self,
         inputs: list[Module],
-        num_splits: Optional[int] = 2,
+        num_splits: int | None = 2,
     ) -> None:
         r"""Initializes ``OuterProduct`` module.
 
@@ -165,7 +166,7 @@ def log_likelihood(
     module: OuterProduct,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)

@@ -5,7 +5,6 @@ All valid SPFlow modules in the ``base`` backend should inherit from this class 
 
 from abc import ABC, abstractmethod
 from functools import reduce
-from typing import Optional
 
 import torch
 from torch import Tensor, nn
@@ -69,7 +68,7 @@ class Module(nn.Module, ABC):
             return torch.device("cpu")
 
     def forward(
-        self, data: Tensor, check_support: bool = True, dispatch_ctx: Optional[DispatchContext] = None
+        self, data: Tensor, check_support: bool = True, dispatch_ctx: DispatchContext | None = None
     ):
         """Forward pass is simply the log-likelihood function."""
         return log_likelihood(self, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
@@ -84,7 +83,7 @@ def log_likelihood(
     module: Module,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     """Raises ``NotImplementedError`` for modules in the ``base`` backend that have not dispatched a log-likelihood inference routine.
 
@@ -115,7 +114,7 @@ def likelihood(
     module: Module,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     """Computes likelihoods for modules in the ``base`` backend given input data.
 
@@ -146,8 +145,8 @@ def sample(
     module: Module,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     r"""Samples from modules in the ``base`` backend without any evidence.
 
@@ -188,8 +187,8 @@ def sample_with_evidence(
     evidence: Tensor,
     is_mpe: bool = False,
     check_support: bool = False,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     r"""Samples from modules backend with evidence.
 
@@ -236,8 +235,8 @@ def sample(
     num_samples: int = 1,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     r"""Samples specified numbers of instances from modules in the ``base`` backend without any evidence.
 
@@ -283,7 +282,7 @@ def em(
     module: Module,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> None:
     """Performs a single expectation maximization (EM) step for this module.
 

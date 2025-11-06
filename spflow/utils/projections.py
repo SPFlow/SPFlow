@@ -2,7 +2,7 @@
 
 Used for internal projections of PyTorch parameters.
 """
-from typing import Optional, Union
+from typing import Optional
 
 import torch
 from torch import Tensor
@@ -67,8 +67,8 @@ def proj_real_to_convex(x: Tensor) -> Tensor:
 
 def proj_real_to_bounded(
     x: Tensor,
-    lb: Optional[Union[float, Tensor]] = None,
-    ub: Optional[Union[float, Tensor]] = None,
+    lb: float | Tensor | None = None,
+    ub: float | Tensor | None = None,
 ) -> Tensor:
     r"""Projects real numbers onto a bounded interval.
 
@@ -107,8 +107,8 @@ def proj_real_to_bounded(
 
 def proj_bounded_to_real(
     x: Tensor,
-    lb: Optional[Union[float, Tensor]] = None,
-    ub: Optional[Union[float, Tensor]] = None,
+    lb: float | Tensor | None = None,
+    ub: float | Tensor | None = None,
 ) -> Tensor:
     r"""Projects a bounded interval onto the real numbers.
 

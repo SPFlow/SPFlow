@@ -5,7 +5,7 @@ Typical usage example:
     dispatch_ctx = DispatchContext()
 """
 from collections import defaultdict
-from typing import Any, Union, Optional
+from typing import Any
 
 
 class DispatchContext:
@@ -66,7 +66,7 @@ class DispatchContext:
         """
         return f_name in self.cache and key in self.cache[f_name]
 
-    def get_cached_value(self, f_name: str, key: "Module") -> Union[Any, None]:
+    def get_cached_value(self, f_name: str, key: "Module") -> Any | None:
         """Tries to retrieve a cached object for a given function name and key.
 
         Args:
@@ -111,7 +111,7 @@ def default_dispatch_context() -> DispatchContext:
     return DispatchContext()
 
 
-def init_default_dispatch_context(dispatch_ctx: Optional[DispatchContext] = None) -> DispatchContext:
+def init_default_dispatch_context(dispatch_ctx: DispatchContext | None = None) -> DispatchContext:
     """Initializes dispatch context, if it is not already initialized.
 
     Args

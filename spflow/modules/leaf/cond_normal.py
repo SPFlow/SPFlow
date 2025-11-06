@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from torch import Tensor
 
 from spflow import distributions as D
@@ -5,7 +7,7 @@ from spflow.meta.data import Scope
 from spflow.modules.leaf.leaf_module import LeafModule, log_likelihood as parent_log_likelihood
 from spflow.modules.leaf.cond_leaf_module import CondLeafModule
 from spflow.utils.leaf import parse_leaf_args
-from typing import Callable, List, Optional, Tuple, Union
+from collections.abc import Callable
 import torch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -15,7 +17,7 @@ from spflow.meta.dispatch.dispatch import dispatch
 
 
 class CondNormal(CondLeafModule):
-    def __init__(self, scope: Scope, out_channels: int = None, cond_f: Optional[Union[Callable, list[Callable]]] = None):
+    def __init__(self, scope: Scope, out_channels: int = None, cond_f: Callable | list[Callable] | None = None):
         """
         Initialize a Normal distribution leaf module.
 
@@ -34,7 +36,7 @@ class CondNormal(CondLeafModule):
 
         self.distribution = D.Normal(mean=mean, std=std, event_shape=event_shape)
 
-    def set_cond_f(self, cond_f: Optional[Union[list[Callable], Callable]] = None) -> None:
+    def set_cond_f(self, cond_f: list[Callable] | Callable | None = None) -> None:
 
         if isinstance(cond_f, list) and len(cond_f) != self.out_channels:
             raise ValueError(

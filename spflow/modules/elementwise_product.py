@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from __future__ import annotations
 
 import torch
 from torch import Tensor
@@ -18,8 +18,8 @@ from spflow.modules.ops.split_alternate import SplitAlternate
 class ElementwiseProduct(BaseProduct):
     def __init__(
         self,
-        inputs: Union[Module, tuple[Module, Module], list[Module]],
-        num_splits: Optional[int] = 2,
+        inputs: Module | tuple[Module, Module] | list[Module],
+        num_splits: int | None = 2,
     ) -> None:
         r"""Initializes ``ElementwiseProduct`` object.
 
@@ -164,7 +164,7 @@ def log_likelihood(
     module: ElementwiseProduct,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     # initialize dispatch context
     #start_time = time.time()

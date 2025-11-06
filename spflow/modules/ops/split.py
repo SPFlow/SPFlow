@@ -1,5 +1,8 @@
-from typing import Optional, Union, Callable, Optional
+from __future__ import annotations
+
 from abc import abstractmethod
+from typing import Callable
+
 import torch
 from torch import Tensor, nn
 
@@ -16,7 +19,7 @@ from spflow.modules.module import Module
 # abstract split module
 class Split(Module):
 
-    def __init__(self, inputs: Module, dim: int = 1, num_splits: Optional[int] = 2):
+    def __init__(self, inputs: Module, dim: int = 1, num_splits: int | None = 2):
         """
         Base Split module to split a single module along a given dimension.
 
@@ -72,8 +75,8 @@ def sample(
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -99,8 +102,8 @@ def marginalize(
     module: Split,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[None, Module]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> None | Module:
     # Initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

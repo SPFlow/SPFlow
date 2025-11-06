@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from __future__ import annotations
 
 import torch
 from torch import Tensor, nn
@@ -27,9 +27,9 @@ class ElementwiseSum(Module):
     def __init__(
         self,
         inputs: list[Module],
-        out_channels: Optional[int] = None,
-        weights: Optional[Tensor] = None,
-        num_repetitions: Optional[int] = None,
+        out_channels: int | None = None,
+        weights: Tensor | None = None,
+        num_repetitions: int | None = None,
         sum_dim: int = 3,
     ) -> None:
         """
@@ -211,8 +211,8 @@ def marginalize(
     module: ElementwiseSum,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[None, ElementwiseSum]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> None | ElementwiseSum:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -262,8 +262,8 @@ def sample(
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -360,7 +360,7 @@ def log_likelihood(
     module: ElementwiseSum,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -406,7 +406,7 @@ def em(
     module: ElementwiseSum,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> None:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)

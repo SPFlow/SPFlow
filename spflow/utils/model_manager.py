@@ -1,6 +1,5 @@
 import os
 import pickle
-from typing import Union
 
 from spflow.modules.module import Module
 
@@ -10,7 +9,7 @@ except ImportError:
     TypeAlias = None
 
 
-PathLike: TypeAlias = Union[str, bytes, os.PathLike]
+PathLike: TypeAlias = str | bytes | os.PathLike
 
 
 def save_model(model: Module, path: PathLike) -> None:

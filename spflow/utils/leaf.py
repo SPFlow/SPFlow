@@ -51,7 +51,7 @@ def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support) -
     return scope_data, weights
 
 
-def init_parameter(param: Tensor, event_shape: Tuple[int, ...], init: Callable) -> Tensor:
+def init_parameter(param: Tensor, event_shape: tuple[int, ...], init: Callable) -> Tensor:
     """Initializes a parameter tensor of a leaf node."""
 
     if param is None:

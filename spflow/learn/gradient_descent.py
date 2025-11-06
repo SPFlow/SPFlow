@@ -1,5 +1,3 @@
-from typing import Optional
-
 import torch
 
 from collections.abc import Callable
@@ -48,13 +46,13 @@ def train_gradient_descent(
     epochs: int = -1,
     verbose: bool = False,
     is_classification: bool = False,
-    optimizer: Optional[torch.optim.Optimizer] = None,
-    scheduler: Optional[torch.optim.lr_scheduler.LRScheduler] = None,
+    optimizer: torch.optim.Optimizer | None = None,
+    scheduler: torch.optim.lr_scheduler.LRScheduler | None = None,
     lr: float = 1e-3,
-    loss_fn: Optional[Callable[[Module, Tensor], Tensor]] = None,
-    validation_dataloader: torch.utils.data.DataLoader = None,
-    callback_batch: Optional[Callable[[Tensor, int], None]] = None,
-    callback_epoch: Optional[Callable[[list[Tensor], int], None]] = None,
+    loss_fn: Callable[[Module, Tensor], Tensor] | None = None,
+    validation_dataloader: torch.utils.data.DataLoader | None = None,
+    callback_batch: Callable[[Tensor, int], None] | None = None,
+    callback_epoch: Callable[[list[Tensor], int], None] | None = None,
 ):
     """
     Train a model using gradient descent.

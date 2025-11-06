@@ -1,7 +1,7 @@
-from abc import ABC
-from typing import Optional, Union
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
 from collections.abc import Callable
-from abc import abstractmethod
 
 import torch
 from torch import Tensor
@@ -18,7 +18,7 @@ from spflow.utils.leaf import parse_leaf_args
 
 class CondLeafModule(LeafModule):
     def __init__(self, scope: Scope, out_channels: int = None,
-                 cond_f: Optional[Union[Callable, list[Callable]]] = None):
+                 cond_f: Callable | list[Callable] | None = None):
         """
         Initialize a Normal distribution leaf module.
 
@@ -36,7 +36,7 @@ class CondLeafModule(LeafModule):
         super().__init__(scope, out_channels=out_channels)
         self.set_cond_f(cond_f)
 
-    def set_cond_f(self, cond_f: Optional[Union[list[Callable], Callable]] = None) -> None:
+    def set_cond_f(self, cond_f: list[Callable] | Callable | None = None) -> None:
 
         if isinstance(cond_f, list) and len(cond_f) != self.out_channels:
             raise ValueError(
@@ -62,7 +62,7 @@ def em(
     leaf: LeafModule,
     data: torch.Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> None:
     """Performs a single expectation maximizaton (EM) step for the given leaf module.
 
@@ -118,7 +118,7 @@ def log_likelihood(
     leaf: CondLeafModule,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     r"""Computes log-likelihoods for the leaf module given the data.
 
@@ -189,11 +189,11 @@ def log_likelihood(
 def maximum_likelihood_estimation(
     leaf: CondLeafModule,
     data: Tensor,
-    weights: Optional[Tensor] = None,
+    weights: Tensor | None = None,
     bias_correction: bool = True,
-    nan_strategy: Optional[Union[str, Callable]] = None,
+    nan_strategy: str | Callable | None = None,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> None:
     r"""Maximum (weighted) likelihood estimation (MLE) of a leaf module.
 
@@ -247,8 +247,8 @@ def sample(
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     r"""Samples from the leaf nodes in the ``torch`` backend given potential evidence.
 
@@ -332,8 +332,8 @@ def marginalize(
     layer: CondLeafModule,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Optional[LeafModule]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> LeafModule | None:
     """Structural marginalization for ``NormallLayer`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
