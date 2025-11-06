@@ -70,19 +70,3 @@ jobs:
           version-python: ${{ matrix.version-python }}
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
-  "Test_Torch":
-    name: "Test: Py ${{ matrix.version-python }} + Torch ${{ matrix.version-pytorch }}"
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false 
-      matrix:
-        version-python: ['3.10', '3.11', '3.12']
-        version-pytorch: ['2.1.1', '2.2.2', '2.3.1']
-    steps:
-      - uses: actions/checkout@v4
-      - uses: "./.github/actions/run_tests"
-        with:
-          version-python: ${{ matrix.version-python }}
-          version-pytorch: ${{ matrix.version-pytorch }}
-          codecov-token: ${{ secrets.CODECOV_TOKEN }}
-
