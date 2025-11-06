@@ -42,6 +42,10 @@ To install other backends, SPFlow will detect that you installed the respective 
 - [TensorFlow](https://www.tensorflow.org/install)
 - [Jax](https://jax.readthedocs.io/en/latest/installation.html)
 
+## System Dependencies
+
+For visualization features (graph rendering), [Graphviz](https://graphviz.org/download/) must be installed on your system. If the `dot` binary is not found, pydot will raise an error during graph visualization.
+
 # User Guide
 ## Backends
 
