@@ -78,7 +78,10 @@ def em(
         dispatch_ctx:
             Optional dispatch context.
     """
-    # TODO: resolve this circular import somehow
+    # Import here to avoid circular imports.
+    # The em() dispatch function for CondLeafModule needs to call maximum_likelihood_estimation,
+    # but spflow.__init__ imports from leaf modules, creating a circular dependency.
+    # Late import breaks the cycle without performance impact.
     from spflow import maximum_likelihood_estimation
 
     # initialize dispatch context

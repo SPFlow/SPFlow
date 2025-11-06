@@ -1,4 +1,3 @@
-import time
 from typing import Optional
 
 import torch
@@ -93,7 +92,6 @@ def train_gradient_descent(
         correct = 0
         total = 0
 
-        start_time = time.time()
         losses_epoch = []
         for batch in dataloader:
             # Reset gradients
@@ -137,12 +135,11 @@ def train_gradient_descent(
             # Call callback function after each batch
             if callback_batch is not None:
                 callback_batch(loss, steps)
-        print("Time taken for epoch: ", time.time() - start_time)
         scheduler.step()
         #print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()/dataloader.batch_size}")
         #print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()}")
         if is_classification:
-            print(f"Accuracy: {100 * correct / total}") # ToDo: logger.info
+            logger.debug(f"Accuracy: {100 * correct / total}")
 
         # Call callback function after each epoch
         if callback_epoch is not None:
@@ -173,7 +170,7 @@ def train_gradient_descent(
                     # Call callback function after each batch
                     if callback_batch is not None:
                         callback_batch(val_loss, steps)
-            print(f"Validation Loss: {val_loss.item()}")
+            logger.debug(f"Validation Loss: {val_loss.item()}")
             if is_classification:
-                print(f"Validation Accuracy: {100 * correct_val / total_val}")
+                logger.debug(f"Validation Accuracy: {100 * correct_val / total_val}")
             model.train()

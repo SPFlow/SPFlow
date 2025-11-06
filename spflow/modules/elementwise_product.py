@@ -14,7 +14,6 @@ from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.ops.split_alternate import SplitAlternate
-import time
 
 class ElementwiseProduct(BaseProduct):
     def __init__(
@@ -204,8 +203,6 @@ def log_likelihood(
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> Tensor:
     # initialize dispatch context
-    start_time = time.time()
-    
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx)
@@ -220,7 +217,6 @@ def log_likelihood(
     
     # Compute the elementwise sum of left and right split
     output = torch.sum(torch.stack(lls, dim=-1), dim=-1)
-    print(f"Elementwise Product took {time.time() - start_time:.4f} seconds")
     return output
 
     # # View as [b, n, m, r]

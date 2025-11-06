@@ -26,7 +26,11 @@ def memoize(f) -> Callable:
         Wrapped function that automatically checks against a dispatch cache
     """
 
-    # import here to avoid circular imports, TODO: does this have performance implications?
+    # Import here to avoid circular imports.
+    # The dispatch system and module hierarchy have a circular dependency:
+    # - dispatch functions depend on Module base class
+    # - Module base class uses dispatch decorators
+    # Late import breaks the cycle without performance impact (Python caches imports).
     from spflow.modules.module import Module
 
     @wraps(f)

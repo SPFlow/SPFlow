@@ -61,7 +61,3 @@ if __name__ == "__main__":
     kmeans.fit(X)
     labels = kmeans.predict(X)
 
-    print("Cluster centroids:")
-    print(kmeans.centroids)
-    print("Predicted labels:")
-    print(labels)
