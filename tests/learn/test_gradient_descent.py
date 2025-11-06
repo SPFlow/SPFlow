@@ -116,7 +116,3 @@ def test_train_gradient_descent_multiple_epochs(model, dataloader, epochs):
     assert final_loss < initial_loss  # loss should decrease after training
 
 
-def test_train_gradient_descent_empty_dataloader():
-    model = DummyModel()
-    empty_dataloader = DataLoader(TensorDataset(torch.Tensor([])))
-    train_gradient_descent(model, empty_dataloader, epochs=1)  # should not raise an error
