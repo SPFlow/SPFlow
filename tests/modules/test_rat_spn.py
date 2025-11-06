@@ -1,13 +1,14 @@
 from spflow.modules.leaf import Normal, Bernoulli
 from tests.fixtures import auto_set_test_seed, auto_set_test_device, auto_set_test_device
 import unittest
-from spflow.modules.rat.rat_spn import RatSPN
+from spflow.modules.rat import RatSPN
 from itertools import product
 
-from spflow.exceptions import InvalidParameterCombinationError, ScopeError
-from spflow.meta.data import Scope
+from spflow import InvalidParameterCombinationError, ScopeError
+from spflow.meta import Scope
 import pytest
-from spflow.meta.dispatch import init_default_sampling_context, init_default_dispatch_context, SamplingContext
+from spflow.meta import SamplingContext
+from spflow.meta.dispatch import init_default_sampling_context, init_default_dispatch_context
 from spflow import log_likelihood, sample, marginalize, sample_with_evidence
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent

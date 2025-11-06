@@ -2,7 +2,8 @@ from tests.fixtures import auto_set_test_seed, auto_set_test_device
 import unittest
 from itertools import product
 
-from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
+from spflow.meta import SamplingContext
+from spflow.meta.dispatch import init_default_sampling_context
 from spflow import log_likelihood, sample, marginalize
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 from spflow.learn import expectation_maximization

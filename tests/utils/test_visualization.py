@@ -7,7 +7,7 @@ import tempfile
 import pytest
 import pydot
 
-from spflow.meta.data import Scope
+from spflow.meta import Scope
 from spflow.modules.leaf import Categorical, Normal
 from spflow.modules.product import Product
 from spflow.modules.sum import Sum

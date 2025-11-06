@@ -1,7 +1,7 @@
 import torch
 
 from spflow import log_likelihood, sample
-from spflow.meta.data import Scope
+from spflow.meta import Scope
 from spflow.modules import leaf
 from spflow.modules.leaf import Normal
 

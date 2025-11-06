@@ -1,9 +1,10 @@
 from itertools import product
 
 import pytest
-from spflow.meta.dispatch import init_default_dispatch_context, SamplingContext
+from spflow.meta import SamplingContext
+from spflow.meta.dispatch import init_default_dispatch_context
 from spflow import log_likelihood, sample
-from spflow.modules.rat.rat_mixing_layer import MixingLayer
+from spflow.modules.rat import MixingLayer
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 import torch
 
