@@ -25,7 +25,8 @@ class CondNormal(CondLeafModule):
             mean (Tensor, optional): The mean parameter tensor.
             std (Tensor, optional): The standard deviation parameter tensor.
         """
-        assert out_channels is not None or cond_f is not None, "out_channels or cond_f must be provided."
+        if out_channels is None and cond_f is None:
+            raise ValueError("out_channels or cond_f must be provided.")
         self.set_cond_f(cond_f)
         mean, std = self.retrieve_params(data=torch.tensor([]), dispatch_ctx=init_default_dispatch_context())
         event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[mean, std])

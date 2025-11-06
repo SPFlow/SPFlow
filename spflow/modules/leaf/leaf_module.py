@@ -346,7 +346,8 @@ def sample(
         elif sampling_ctx.repetition_idx is not None and samples.ndim != 4 or sampling_ctx.repetition_idx is None and samples.ndim == 4:
             raise ValueError("Either there is no repetition index or the samples are not 4-dimensional. This should not happen.")
 
-    assert samples.shape[0] == sampling_ctx.channel_index[instance_mask].shape[0]
+    if samples.shape[0] != sampling_ctx.channel_index[instance_mask].shape[0]:
+        raise ValueError(f"Sample shape mismatch: got {samples.shape[0]}, expected {sampling_ctx.channel_index[instance_mask].shape[0]}")
 
     if module.out_channels == 1:
         # If the output of the input module has a single channel, set the output_ids to zero since this input was

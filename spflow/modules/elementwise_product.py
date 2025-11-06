@@ -72,7 +72,8 @@ class ElementwiseProduct(BaseProduct):
             inputs = self.inputs
 
         if self.input_is_split:
-            assert self.num_splits == inputs[0].num_splits, "num_splits must be the same for all inputs"
+            if self.num_splits != inputs[0].num_splits:
+                raise ValueError("num_splits must be the same for all inputs")
             shapes = inputs[0].get_out_shapes((self.out_features, self.out_channels))
         else:
             shapes = [(inp.out_features, inp.out_channels) for inp in inputs]

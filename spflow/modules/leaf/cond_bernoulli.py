@@ -22,7 +22,8 @@ class CondBernoulli(CondLeafModule):
             scope: Scope object specifying the scope of the distribution.
             p: PyTorch tensor representing the success probabilities of the Bernoulli distributions
         """
-        assert out_channels is not None or cond_f is not None, "out_channels or cond_f must be provided."
+        if out_channels is None and cond_f is None:
+            raise ValueError("out_channels or cond_f must be provided.")
         self.set_cond_f(cond_f)
         p = self.retrieve_params(data=torch.tensor([]), dispatch_ctx=init_default_dispatch_context())
         event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[p])

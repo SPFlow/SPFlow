@@ -76,10 +76,10 @@ def prune_sums(node):
 
 
 def partition_by_rdc(
-        data: torch.torch.Tensor,
+        data: torch.Tensor,
         threshold: float = 0.3,
         preprocessing: Optional[Callable] = None,
-) -> torch.torch.Tensor:
+) -> torch.Tensor:
     """Performs partitioning using randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the ``base`` backend.
 
     Args:
@@ -217,8 +217,8 @@ def learn_spn(
     if scope is None:
         if isinstance(leaf_modules, list):
             if len(leaf_modules) > 1:
-                assert Scope.all_pairwise_disjoint(
-                    [module.scope for module in leaf_modules]), "Leaf modules must have disjoint scopes."
+                if not Scope.all_pairwise_disjoint([module.scope for module in leaf_modules]):
+                    raise ValueError("Leaf modules must have disjoint scopes.")
                 scope = leaf_modules[0].scope
                 for leaf in leaf_modules[1:]:
                     scope = scope.join(leaf.scope)

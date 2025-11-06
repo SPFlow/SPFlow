@@ -31,7 +31,8 @@ class CondLeafModule(LeafModule):
 
         #mean, std = self.retrieve_params(data=torch.tensor([]), dispatch_ctx=init_default_dispatch_context())
         #event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[mean, std])
-        assert out_channels is not None
+        if out_channels is None:
+            raise ValueError("out_channels must be provided")
         super().__init__(scope, out_channels=out_channels)
         self.set_cond_f(cond_f)
 
@@ -299,7 +300,8 @@ def sample(
         # Sample from distribution
         samples = module.distribution.sample(n_samples=n_samples)
 
-    assert samples.shape[0] == sampling_ctx.channel_index[instance_mask].shape[0]
+    if samples.shape[0] != sampling_ctx.channel_index[instance_mask].shape[0]:
+        raise ValueError(f"Sample shape mismatch: got {samples.shape[0]}, expected {sampling_ctx.channel_index[instance_mask].shape[0]}")
 
     if module.out_channels == 1:
         # If the output of the input module has a single channel, set the output_ids to zero since this input was
