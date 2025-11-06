@@ -61,7 +61,7 @@ dev = [
   "pytest-xdist",
   "matplotlib>=3.9.2",
   "build",
-  "twine"
+  "twine",
   "pip-audit"
 ]
 
