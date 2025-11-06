@@ -37,8 +37,7 @@ dependencies = [
     "scikit-learn>=1.0",
     "torch>=2.0.1",
     "fast_pytorch_kmeans>=0.2.2",
-    "psutil",
-    "matplotlib>=3.9.2",
+    "pydot>=4.0.0",
 ]
 dynamic = ["version"]
 
@@ -58,10 +57,8 @@ dev = [
   "pre-commit",
   "imageio~=2.37.0",
   "scikit-image~=0.24.0",
-  "pytest-xdist"
-]
-vis = [
-  "pydot>=4.0.0"
+  "pytest-xdist",
+  "matplotlib>=3.9.2",
 ]
 
 
