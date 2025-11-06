@@ -193,7 +193,8 @@ def posterior(
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> torch.Tensor:
 
-    assert rat_spn.n_root_nodes > 1, "Posterior can only be computed for models with multiple classes."
+    if rat_spn.n_root_nodes <= 1:
+        raise ValueError("Posterior can only be computed for models with multiple classes.")
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     class_prob = rat_spn.root_node.weights # shape: (1, n_root_nodes, 1)
@@ -234,7 +235,8 @@ def sample(
 
         sampling_ctx.device = data.device
         logits = rat_spn.root_node.logits
-        assert logits.shape == (1, rat_spn.n_root_nodes, 1)
+        if logits.shape != (1, rat_spn.n_root_nodes, 1):
+            raise ValueError(f"Expected logits shape (1, {rat_spn.n_root_nodes}, 1), but got {logits.shape}")
         logits = logits.squeeze(-1)
         logits = logits.unsqueeze(0).expand(data.shape[0],-1,-1) # shape [b ,1, n_root_nodes]
 

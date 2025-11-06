@@ -64,8 +64,10 @@ A mixing layer that sums over the input channels, which is used for the RAT mode
         self._out_features = self.inputs.out_features
         self._out_channels_total = out_channels
 
-        assert out_channels == inputs.out_channels, "out_channels must match the out_channels of the input module."
-        assert self._out_features == 1, "MixingLayer represents the first layer of the RatSPN, so it must have a single output feature."
+        if out_channels != inputs.out_channels:
+            raise ValueError("out_channels must match the out_channels of the input module.")
+        if self._out_features != 1:
+            raise ValueError("MixingLayer represents the first layer of the RatSPN, so it must have a single output feature.")
 
         if num_repetitions is not None:
             self.num_repetitions = num_repetitions

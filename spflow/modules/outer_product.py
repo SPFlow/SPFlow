@@ -49,7 +49,8 @@ class OuterProduct(BaseProduct):
         super().__init__(inputs=inputs)
 
         if len(self.inputs) == 1:
-            assert num_splits is not None and num_splits > 1
+            if num_splits is None or num_splits <= 1:
+                raise ValueError("num_splits must be at least 2 when input is a single module")
 
         self.num_splits = num_splits
 
@@ -72,7 +73,8 @@ class OuterProduct(BaseProduct):
             inputs = self.inputs
 
         if self.input_is_split:
-            assert self.num_splits == inputs[0].num_splits, "num_splits must be the same for all inputs"
+            if self.num_splits != inputs[0].num_splits:
+                raise ValueError("num_splits must be the same for all inputs")
             shapes = inputs[0].get_out_shapes((self.out_features, self.out_channels))
         else:
             shapes = [(inp.out_features, inp.out_channels) for inp in inputs]
