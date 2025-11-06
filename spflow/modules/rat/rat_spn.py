@@ -1,7 +1,6 @@
 """Contains the SPFlow architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the ``base`` backend.
 """
-
-from typing import List, Union
+from __future__ import annotations
 
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 
@@ -10,7 +9,6 @@ from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
     init_default_dispatch_context,
 )
-from typing import Optional
 
 import torch
 from spflow import maximum_likelihood_estimation
@@ -37,14 +35,14 @@ class RatSPN(Module):
 
     def __init__(
             self,
-            leaf_modules: List[LeafModule],
+            leaf_modules: list[LeafModule],
             n_root_nodes: int,
             n_region_nodes: int,
             num_repetitions: int,
             depth: int,
-            outer_product: Optional[bool] = False,
-            split_halves: Optional[bool] = True,
-            num_splits: Optional[int] = 2,
+            outer_product: bool | None = False,
+            split_halves: bool | None = True,
+            num_splits: int | None = 2,
     ) -> None:
         r"""Initializer for ``RatSPN`` object.
 
@@ -172,7 +170,7 @@ def log_likelihood(
         rat_spn: RatSPN,
         data: torch.Tensor,
         check_support: bool = True,
-        dispatch_ctx: Optional[DispatchContext] = None,
+        dispatch_ctx: DispatchContext | None = None,
 ) -> torch.Tensor:
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -190,7 +188,7 @@ def posterior(
     rat_spn: RatSPN,
     data: torch.Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> torch.Tensor:
 
     if rat_spn.n_root_nodes <= 1:
@@ -225,8 +223,8 @@ def sample(
     data: torch.Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> torch.Tensor:
 
     # if no sampling context is provided, initialize a context by sampling from the root node

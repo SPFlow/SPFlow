@@ -1,4 +1,6 @@
-from typing import Optional, Union, Callable, Optional
+from __future__ import annotations
+
+from typing import Callable
 
 import torch
 from torch import Tensor, nn
@@ -18,7 +20,7 @@ import time
 
 class SplitAlternate(Split):
 
-    def __init__(self, inputs: Module, dim: int = 1, num_splits: Optional[int] = 2):
+    def __init__(self, inputs: Module, dim: int = 1, num_splits: int | None = 2):
         """
         Split a single module along a given dimension. This implementation splits the features in an alternating manner.
         Example:
@@ -72,7 +74,7 @@ def log_likelihood(
     module: SplitAlternate,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> list[Tensor]:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -98,8 +100,8 @@ def marginalize(
     module: SplitAlternate,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[None, Module]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> None | Module:
     # Initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     raise NotImplementedError

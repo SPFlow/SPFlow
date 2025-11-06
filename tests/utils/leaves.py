@@ -122,7 +122,7 @@ def make_leaf(cls, out_channels: int = None, out_features: int = None, scope: Sc
         # Default case: just call the class
         return cls(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
 
-def make_leaf_args(cls, out_channels: int = None, scope: Scope = None, num_repetitions = None) -> Dict:
+def make_leaf_args(cls, out_channels: int = None, scope: Scope = None, num_repetitions = None) -> dict:
 
     # Check special cases
     if cls == leaf.Binomial or cls == leaf.NegativeBinomial:

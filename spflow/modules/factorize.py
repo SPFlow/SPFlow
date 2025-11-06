@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from itertools import product
-from typing import Optional, Union
 
 import torch
 from torch import Tensor
@@ -26,7 +27,7 @@ class Factorize(BaseProduct):
 
     def __init__(
         self,
-        inputs: Union[list[Module], Module],
+        inputs: list[Module] | Module,
         depth: int,
         num_repetitions: int,
     ) -> None:
@@ -114,7 +115,7 @@ def log_likelihood(
     module: Factorize,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     # initialize dispatch context
 
@@ -132,8 +133,8 @@ def sample(
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -166,8 +167,8 @@ def marginalize(
     layer: Factorize,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[Product, Module, None]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> Product | Module | None:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     # compute layer scope (same for all outputs)

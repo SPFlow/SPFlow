@@ -4,8 +4,6 @@ Typical usage example:
 
     sampling_ctx = SamplingDispatch(instance_ids, output_ids)
 """
-from typing import Optional, Union
-
 import torch
 from torch import Tensor
 
@@ -31,11 +29,11 @@ class SamplingContext:
 
     def __init__(
         self,
-        num_samples: Optional[int] = None,
-        device: Optional[torch.device] = None,
-        channel_index: Optional[Tensor] = None,
-        mask: Optional[Tensor] = None,
-        repetition_index: Optional[Tensor] = None,
+        num_samples: int | None = None,
+        device: torch.device | None = None,
+        channel_index: Tensor | None = None,
+        mask: Tensor | None = None,
+        repetition_index: Tensor | None = None,
     ) -> None:
         """Initializes 'SamplingContext' object.
 
@@ -152,7 +150,7 @@ class SamplingContext:
 
 
 def init_default_sampling_context(
-    sampling_ctx: Optional[SamplingContext], num_samples: Optional[int] = None, device: Optional[torch.device] = None
+    sampling_ctx: SamplingContext | None, num_samples: int | None = None, device: torch.device | None = None
 ) -> SamplingContext:
     """Initializes sampling context, if it is not already initialized.
 

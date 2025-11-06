@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from __future__ import annotations
 
 import torch
 from torch import Tensor, nn
@@ -26,10 +26,10 @@ A mixing layer that sums over the input channels, which is used for the RAT mode
     def __init__(
             self,
             inputs: Module,
-            out_channels: Optional[int] = None,
-            num_repetitions: Optional[int] = None,
-            weights: Optional[Tensor] = None,
-            sum_dim: Optional[int] = 1,
+            out_channels: int | None = None,
+            num_repetitions: int | None = None,
+            weights: Tensor | None = None,
+            sum_dim: int | None = 1,
     ) -> None:
         """
         Args:
@@ -119,8 +119,8 @@ def sample(
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -174,7 +174,7 @@ def log_likelihood(
     module: MixingLayer,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)

@@ -7,7 +7,7 @@ Categorical, Bernoulli, etc.), enabling automatic leaf module selection during
 structure and parameter learning.
 """
 from inspect import isclass
-from typing import Optional, Union
+from typing import Optional
 
 from spflow.meta.data.feature_types import FeatureType
 from spflow.meta.data.meta_type import MetaType
@@ -31,12 +31,7 @@ class FeatureContext:
     def __init__(
         self,
         scope: Scope,
-        domains: Optional[
-            Union[
-                dict[int, Union[MetaType, FeatureType, type[FeatureType]]],
-                list[Union[MetaType, FeatureType, type[FeatureType]]],
-            ]
-        ] = None,
+        domains: dict[int, MetaType | FeatureType | type[FeatureType]] | list[MetaType | FeatureType | type[FeatureType]] | None = None,
     ):
         """Initialize a FeatureContext with feature type specifications.
 
@@ -80,10 +75,7 @@ class FeatureContext:
 
     def set_domains(
         self,
-        domains: Union[
-            dict[int, Union[MetaType, FeatureType, type[FeatureType]]],
-            list[Union[MetaType, FeatureType, type[FeatureType]]],
-        ],
+        domains: dict[int, MetaType | FeatureType | type[FeatureType]] | list[MetaType | FeatureType | type[FeatureType]],
         overwrite: bool = False,
     ):
         """Set or update feature type specifications.
@@ -125,11 +117,8 @@ class FeatureContext:
             self.domain_map[feature_id] = feature_type
 
     def get_domains(
-        self, feature_ids: Union[int, list[int]] = None
-    ) -> Union[
-        Union[MetaType, FeatureType, type[FeatureType]],
-        list[Union[MetaType, FeatureType, type[FeatureType]]],
-    ]:
+        self, feature_ids: int | list[int] | None = None
+    ) -> MetaType | FeatureType | type[FeatureType] | list[MetaType | FeatureType | type[FeatureType]]:
         """Retrieve feature type specifications for given features.
 
         Args:
@@ -149,7 +138,7 @@ class FeatureContext:
         else:
             return [self.domain_map[feature_id] for feature_id in feature_ids]
 
-    def select(self, feature_ids: Union[int, list[int]]) -> "FeatureContext":
+    def select(self, feature_ids: int | list[int]) -> "FeatureContext":
         """Create a new FeatureContext for a subset of features.
 
         Useful for creating domain-specific FeatureContexts from a larger context.

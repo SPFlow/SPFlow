@@ -2,7 +2,7 @@
 """
 import time
 from functools import partial
-from typing import Any, Optional, Union
+from typing import Any, Optional
 from collections.abc import Callable
 
 from sklearn.cluster import KMeans
@@ -78,7 +78,7 @@ def prune_sums(node):
 def partition_by_rdc(
         data: torch.Tensor,
         threshold: float = 0.3,
-        preprocessing: Optional[Callable] = None,
+        preprocessing: Callable | None = None,
 ) -> torch.Tensor:
     """Performs partitioning using randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the ``base`` backend.
 
@@ -127,7 +127,7 @@ def partition_by_rdc(
 def cluster_by_kmeans(
         data: torch.Tensor,
         n_clusters: int = 2,
-        preprocessing: Optional[Callable] = None,
+        preprocessing: Callable | None = None,
 ) -> torch.Tensor:
     """Performs clustering usig k-Means to be used with the LearnSPN algorithm in the ``base`` backend.
 
@@ -160,17 +160,17 @@ def cluster_by_kmeans(
 
 def learn_spn(
         data: torch.Tensor,
-        leaf_modules: Union[list[LeafModule], LeafModule],
+        leaf_modules: list[LeafModule] | LeafModule,
         out_channels: int = 1,
         min_features_slice: int = 2,
         min_instances_slice: int = 100,
         scope=None,
-        clustering_method: Union[str, Callable] = "kmeans",
-        partitioning_method: Union[str, Callable] = "rdc",
-        clustering_args: Optional[dict[str, Any]] = None,
-        partitioning_args: Optional[dict[str, Any]] = None,
+        clustering_method: str | Callable = "kmeans",
+        partitioning_method: str | Callable = "rdc",
+        clustering_args: dict[str, Any] | None = None,
+        partitioning_args: dict[str, Any] | None = None,
         check_support: bool = True,
-        full_data: torch.tensor = None,
+        full_data: torch.Tensor | None = None,
 ) -> Module:
     """LearnSPN structure and parameter learner for the ``base`` backend.
 
