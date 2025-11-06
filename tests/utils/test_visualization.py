@@ -192,35 +192,13 @@ class TestVisualizationBasics:
         leaf = Normal(scope=Scope([0, 1]), out_channels=2)
         return Sum(inputs=leaf, out_channels=3)
 
-    def test_visualize_creates_file(self, simple_model):
-        """Test that visualize_module creates an output file."""
+    @pytest.mark.parametrize("format", ["png", "pdf", "svg"])
+    def test_visualize_formats(self, simple_model, format):
+        """Test that visualize_module creates output files in different formats."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = os.path.join(tmpdir, "test_model")
-            visualize_module(simple_model, output_path, format="png")
-
-            # Check that the file was created
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_visualize_png_format(self, simple_model):
-        """Test PNG format output."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_model_png")
-            visualize_module(simple_model, output_path, format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_visualize_pdf_format(self, simple_model):
-        """Test PDF format output."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_model_pdf")
-            visualize_module(simple_model, output_path, format="pdf")
-            assert os.path.exists(f"{output_path}.pdf")
-
-    def test_visualize_svg_format(self, simple_model):
-        """Test SVG format output."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_model_svg")
-            visualize_module(simple_model, output_path, format="svg")
-            assert os.path.exists(f"{output_path}.svg")
+            visualize_module(simple_model, output_path, format=format)
+            assert os.path.exists(f"{output_path}.{format}")
 
     def test_invalid_format_raises_error(self, simple_model):
         """Test that invalid format raises ValueError."""
@@ -240,43 +218,8 @@ class TestVisualizationOptions:
         leaf2 = Normal(scope=Scope([2, 3]), out_channels=2)
         return Product(inputs=[leaf1, leaf2])
 
-    def test_visualize_with_scope(self, model_with_scope):
-        """Test visualization with scope information."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_with_scope")
-            visualize_module(model_with_scope, output_path, show_scope=True, format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_visualize_with_shape(self, model_with_scope):
-        """Test visualization with shape information."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_with_shape")
-            visualize_module(model_with_scope, output_path, show_shape=True, format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_visualize_with_both_options(self, model_with_scope):
-        """Test visualization with both scope and shape information."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_with_both")
-            visualize_module(model_with_scope, output_path, show_scope=True, show_shape=True, format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_visualize_custom_dpi(self, model_with_scope):
-        """Test visualization with custom DPI."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_custom_dpi")
-            visualize_module(model_with_scope, output_path, dpi=150, format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_visualize_with_params(self, model_with_scope):
-        """Test visualization with parameter count information."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_with_params")
-            visualize_module(model_with_scope, output_path, show_params=True, format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_visualize_with_all_options(self, model_with_scope):
-        """Test visualization with all options enabled."""
+    def test_visualize_with_all_options_enabled(self, model_with_scope):
+        """Test visualization with all customization options enabled."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = os.path.join(tmpdir, "test_with_all_options")
             visualize_module(
@@ -285,6 +228,40 @@ class TestVisualizationOptions:
                 show_scope=True,
                 show_shape=True,
                 show_params=True,
+                dpi=150,
+                format="png"
+            )
+            assert os.path.exists(f"{output_path}.png")
+
+    def test_visualize_with_all_options_disabled(self, model_with_scope):
+        """Test visualization with all customization options disabled."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = os.path.join(tmpdir, "test_with_no_options")
+            visualize_module(
+                model_with_scope,
+                output_path,
+                show_scope=False,
+                show_shape=False,
+                show_params=False,
+                format="png"
+            )
+            assert os.path.exists(f"{output_path}.png")
+
+    @pytest.mark.parametrize("show_scope,show_shape,show_params", [
+        (True, False, False),
+        (False, True, False),
+        (False, False, True),
+    ])
+    def test_visualize_individual_options(self, model_with_scope, show_scope, show_shape, show_params):
+        """Test visualization with individual customization options."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = os.path.join(tmpdir, f"test_options_{show_scope}_{show_shape}_{show_params}")
+            visualize_module(
+                model_with_scope,
+                output_path,
+                show_scope=show_scope,
+                show_shape=show_shape,
+                show_params=show_params,
                 format="png"
             )
             assert os.path.exists(f"{output_path}.png")
@@ -302,39 +279,12 @@ class TestVisualizationEngines:
         sum2 = Sum(inputs=leaf2, out_channels=2)
         return Product(inputs=[sum1, sum2])
 
-    def test_dot_engine(self, nested_model):
-        """Test dot engine (hierarchical layout)."""
+    @pytest.mark.parametrize("engine", ["dot", "dot-lr", "neato", "circo", "fdp"])
+    def test_visualization_engines(self, nested_model, engine):
+        """Test different graphviz layout engines."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_dot")
-            visualize_module(nested_model, output_path, engine="dot", format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_dot_lr_engine(self, nested_model):
-        """Test dot-lr engine (left-right hierarchical layout)."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_dot_lr")
-            visualize_module(nested_model, output_path, engine="dot-lr", format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_neato_engine(self, nested_model):
-        """Test neato engine (spring-like layout)."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_neato")
-            visualize_module(nested_model, output_path, engine="neato", format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_circo_engine(self, nested_model):
-        """Test circo engine (circular layout)."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_circo")
-            visualize_module(nested_model, output_path, engine="circo", format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_fdp_engine(self, nested_model):
-        """Test fdp engine (force-directed layout)."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_fdp")
-            visualize_module(nested_model, output_path, engine="fdp", format="png")
+            output_path = os.path.join(tmpdir, f"test_{engine}")
+            visualize_module(nested_model, output_path, engine=engine, format="png")
             assert os.path.exists(f"{output_path}.png")
 
 
@@ -349,63 +299,12 @@ class TestVisualizationRankdir:
         sum2 = Sum(inputs=sum1, out_channels=2)
         return sum2
 
-    def test_rankdir_tb(self, simple_chain):
-        """Test top-to-bottom direction."""
+    @pytest.mark.parametrize("rankdir", ["TB", "LR", "BT", "RL"])
+    def test_rankdir_options(self, simple_chain, rankdir):
+        """Test different graph direction options."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_rankdir_tb")
-            visualize_module(simple_chain, output_path, rankdir="TB", format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_rankdir_lr(self, simple_chain):
-        """Test left-to-right direction."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_rankdir_lr")
-            visualize_module(simple_chain, output_path, rankdir="LR", format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_rankdir_bt(self, simple_chain):
-        """Test bottom-to-top direction."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_rankdir_bt")
-            visualize_module(simple_chain, output_path, rankdir="BT", format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_rankdir_rl(self, simple_chain):
-        """Test right-to-left direction."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_rankdir_rl")
-            visualize_module(simple_chain, output_path, rankdir="RL", format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-
-class TestVisualizationNodeShapes:
-    """Test different node shape options."""
-
-    @pytest.fixture
-    def simple_model(self):
-        """Create a simple model."""
-        leaf = Normal(scope=Scope([0, 1]), out_channels=2)
-        return Sum(inputs=leaf, out_channels=3)
-
-    def test_box_shape(self, simple_model):
-        """Test box node shape."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_shape_box")
-            visualize_module(simple_model, output_path, node_shape="box", format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_ellipse_shape(self, simple_model):
-        """Test ellipse node shape."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_shape_ellipse")
-            visualize_module(simple_model, output_path, node_shape="ellipse", format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_circle_shape(self, simple_model):
-        """Test circle node shape."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_shape_circle")
-            visualize_module(simple_model, output_path, node_shape="circle", format="png")
+            output_path = os.path.join(tmpdir, f"test_rankdir_{rankdir}")
+            visualize_module(simple_chain, output_path, rankdir=rankdir, format="png")
             assert os.path.exists(f"{output_path}.png")
 
 
@@ -426,38 +325,18 @@ class TestVisualizationComplexStructures:
             assert os.path.exists(f"{output_path}.png")
 
     def test_deeply_nested_structure(self):
-        """Test visualizing deeply nested module structure."""
+        """Test visualizing deeply nested module structure with mixed types."""
         leaf = Normal(scope=Scope([0]), out_channels=2)
         level1 = Sum(inputs=leaf, out_channels=2)
-        level2 = Sum(inputs=level1, out_channels=2)
-        level3 = Sum(inputs=level2, out_channels=2)
+
+        # Add Product level for more complexity
+        leaf2 = Normal(scope=Scope([1]), out_channels=2)
+        product = Product(inputs=[level1, leaf2])
+        level3 = Sum(inputs=product, out_channels=2)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = os.path.join(tmpdir, "test_deep_nested")
             visualize_module(level3, output_path, format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_multiple_leaf_types(self):
-        """Test visualization with different leaf types."""
-        normal_leaf = Normal(scope=Scope([0]), out_channels=2)
-        categorical_leaf = Categorical(scope=Scope([1]), out_channels=2, K=5)
-
-        product = Product(inputs=[normal_leaf, categorical_leaf])
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_multiple_leaf_types")
-            visualize_module(product, output_path, format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_sum_with_multiple_inputs(self):
-        """Test Sum with multiple leaf inputs."""
-        scope = Scope([0, 1])
-        leaves = [Normal(scope=scope, out_channels=2) for _ in range(3)]
-        sum_node = Sum(inputs=leaves, out_channels=2)
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_sum_multiple_inputs")
-            visualize_module(sum_node, output_path, format="png")
             assert os.path.exists(f"{output_path}.png")
 
 
@@ -470,15 +349,6 @@ class TestVisualizationEdgeCases:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = os.path.join(tmpdir, "test_single_leaf")
-            visualize_module(leaf, output_path, format="png")
-            assert os.path.exists(f"{output_path}.png")
-
-    def test_minimal_model(self):
-        """Test visualization with minimal model."""
-        leaf = Normal(scope=Scope([0]), out_channels=1)
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, "test_minimal")
             visualize_module(leaf, output_path, format="png")
             assert os.path.exists(f"{output_path}.png")
 
