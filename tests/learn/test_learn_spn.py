@@ -42,7 +42,7 @@ def test_kmeans():
 
     # compute clusters using k-means
     cluster_mask = cluster_by_kmeans(
-        torch.tensor(torch.vstack([cluster_1, cluster_2, cluster_3, cluster_4, cluster_5]), dtype=torch.float32), n_clusters=5
+        torch.vstack([cluster_1, cluster_2, cluster_3, cluster_4, cluster_5]).float(), n_clusters=5
     )
 
     assert len(torch.unique(cluster_mask)) == 5
