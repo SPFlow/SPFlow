@@ -4,8 +4,11 @@
 [![License](https://img.shields.io/github/license/SPFlow/SPFlow.svg)](https://github.com/SPFlow/SPFlow/blob/master/LICENSE.md)
 [![Code style: black & isort](https://img.shields.io/badge/code%20style-black%20%26%20isort-000000.svg)](https://black.readthedocs.io/en/stable/)
 [![codecov](https://codecov.io/gh/SPFlow/SPFlow/branch/dev%2Ftorch/graph/badge.svg?token=4L7geh0Pxz)](https://codecov.io/gh/SPFlow/SPFlow)
+[![Semantic Versioning](https://img.shields.io/badge/semver-2.0.0-blue)](https://semver.org/)
 
 #### Development branch for SPFlow 1.0.0
+
+**Note:** This project adheres to [Semantic Versioning](https://semver.org/). See [VERSIONING.md](VERSIONING.md) for version bump guidelines and [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 —
 
