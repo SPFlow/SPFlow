@@ -116,6 +116,11 @@ class Scope:
                 Non-negative integer representing the random variable to remove.
         """
         self.query.remove(rv)
+        if len(self.query) == 0:
+            return None
+        else:
+            return self
+
 
     def equal_query(self, other: "Scope") -> bool:
         """Checks if the query of the scope is identical to that of another.
