@@ -189,6 +189,12 @@ def _get_module_children(module: Module) -> list[tuple[str, Module]]:
         if dist is not None and isinstance(dist, Module):
             children.append(("distribution", dist))
 
+    # Check for root_node attribute (RAT-SPN modules)
+    if module.__class__.__name__ == "RatSPN":
+        root_node = module.root_node
+        if root_node is not None and isinstance(root_node, Module):
+            children.append(("root_node", root_node))
+
     return children
 
 
