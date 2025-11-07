@@ -166,14 +166,6 @@ def visualize_module(
         engine = "dot"
         rankdir = "LR"
 
-    # Validate format parameter early
-    VALID_FORMATS = {"png", "pdf", "svg", "dot", "plain", "canon"}
-    if format not in VALID_FORMATS:
-        raise ValueError(
-            f"Unsupported format: {format}. "
-            f"Supported formats: {', '.join(sorted(VALID_FORMATS))}"
-        )
-
     # Create the pydot graph
     graph = pydot.Dot(graph_type="digraph", rankdir=rankdir, dpi=str(dpi))
 
@@ -209,21 +201,31 @@ def visualize_module(
     # Generate output file
     output_file = f"{output_path}.{format}"
 
+    # Validate format early using pattern matching
+    match format:
+        case "png" | "pdf" | "svg" | "dot" | "plain" | "canon":
+            pass  # Valid format, proceed
+        case _:
+            raise ValueError(
+                f"Unsupported format: {format}. "
+                "Supported formats: png, pdf, svg, dot, plain, canon"
+            )
+
     # Write output using the specified engine
     try:
-        if format == "png":
-            graph.write_png(output_file, prog=engine)
-        elif format == "pdf":
-            graph.write_pdf(output_file, prog=engine)
-        elif format == "svg":
-            graph.write_svg(output_file, prog=engine)
-        elif format == "dot":
-            graph.write_dot(output_file, prog=engine)
-        elif format == "plain":
-            graph.write_plain(output_file, prog=engine)
-        elif format == "canon":
-            graph.write(output_file, format="canon", prog=engine)
-        # Note: format is validated early, so no else clause needed
+        match format:
+            case "png":
+                graph.write_png(output_file, prog=engine)
+            case "pdf":
+                graph.write_pdf(output_file, prog=engine)
+            case "svg":
+                graph.write_svg(output_file, prog=engine)
+            case "dot":
+                graph.write_dot(output_file, prog=engine)
+            case "plain":
+                graph.write_plain(output_file, prog=engine)
+            case "canon":
+                graph.write(output_file, format="canon", prog=engine)
     except FileNotFoundError as e:
         # This error occurs when Graphviz is not installed or not in PATH
         raise RuntimeError(
