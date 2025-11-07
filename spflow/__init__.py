@@ -1,5 +1,5 @@
 __version__ = "1.0.0"
-__author__ = "TODO"
+__author__ = "The SPFlow Authors"
 
 from .exceptions import InvalidParameterCombinationError, ScopeError
 
