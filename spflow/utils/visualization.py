@@ -105,9 +105,9 @@ def _count_parameters(module: Module) -> int:
 def visualize_module(
     module: Module,
     output_path: str,
-    show_scope: bool = False,
-    show_shape: bool = False,
-    show_params: bool = False,
+    show_scope: bool = True,
+    show_shape: bool = True,
+    show_params: bool = True,
     format: str = "pdf",
     dpi: int = 300,
     engine: str = "dot",
@@ -121,10 +121,13 @@ def visualize_module(
         module: The root module to visualize.
         output_path: Path to save the visualization (without extension).
         show_scope: Whether to display scope information in node labels.
-        show_shape: Whether to display shape information (F: out_features, C: out_channels) in node labels.
+        show_shape: Whether to display shape information (D: out_features, C: out_channels) in node labels.
         show_params: Whether to display parameter count in node labels. Parameter counts are formatted
             with K/M suffixes for readability (e.g., "1.2K", "3.5M").
-        format: Output format - 'png', 'pdf', or 'svg'.
+        format: Output format - 'png', 'pdf', 'svg', 'dot', 'plain', or 'canon'.
+            Text-based formats are useful for viewing graph structure in the terminal:
+            - 'dot'/'canon': Graphviz DOT language source code
+            - 'plain': Simple text format with node positions and edges
         dpi: DPI for rasterized formats (png). Applied via graph-level dpi attribute.
         engine: Graphviz layout engine. Options:
             - 'dot' (default): Hierarchical top-down layout, best for directed acyclic graphs
@@ -150,10 +153,13 @@ def visualize_module(
         >>> from spflow.meta.data.scope import Scope
         >>> leaf = Normal(scope=Scope([0, 1]), out_channels=2)
         >>> model = Sum(inputs=leaf, out_channels=3)
+        >>> # Save as PDF (default format)
         >>> visualize_module(model, "my_model", show_scope=True, show_shape=True)
         >>> # Use different layout engines
         >>> visualize_module(model, "my_model_lr", engine="dot-lr")
         >>> visualize_module(model, "my_model_circular", engine="circo")
+        >>> visualize_module(model, "my_model_text", format="dot")
+        >>> visualize_module(model, "my_model_plain", format="plain")
     """
     # Handle special engine variants
     if engine == "dot-lr":
@@ -203,8 +209,17 @@ def visualize_module(
             graph.write_pdf(output_file, prog=engine)
         elif format == "svg":
             graph.write_svg(output_file, prog=engine)
+        elif format == "dot":
+            graph.write_dot(output_file, prog=engine)
+        elif format == "plain":
+            graph.write_plain(output_file, prog=engine)
+        elif format == "canon":
+            graph.write(output_file, format="canon", prog=engine)
         else:
-            raise ValueError(f"Unsupported format: {format}. Choose 'png', 'pdf', or 'svg'.")
+            raise ValueError(
+                f"Unsupported format: {format}. "
+                "Choose 'png', 'pdf', 'svg', 'dot', 'plain', or 'canon'."
+            )
     except FileNotFoundError as e:
         # This error occurs when Graphviz is not installed or not in PATH
         raise RuntimeError(
@@ -420,16 +435,44 @@ def _get_module_label(module: Module, show_scope: bool = False, show_shape: bool
 
     # Add shape information if requested
     if show_shape:
-        # For Sum nodes, show input and output channels
+        # Specialized labels for different module types
         if class_name == "Sum":
             c_in = module._in_channels_total
             c_out = module._out_channels_total
-            label_parts.append(f"C-in: {c_in}, C-out: {c_out}")
+            label = f"C-in: {c_in}, C-out: {c_out}"
+            if hasattr(module, "num_repetitions") and module.num_repetitions is not None:
+                label += f", R: {module.num_repetitions}"
+            label_parts.append(label)
+        elif class_name == "ElementwiseSum":
+            c_per_in = module._in_channels_per_input
+            c_out = module._num_sums
+            label = f"C-per-in: {c_per_in}, C-out: {c_out}"
+            if hasattr(module, "num_repetitions") and module.num_repetitions is not None:
+                label += f", R: {module.num_repetitions}"
+            label_parts.append(label)
+        elif class_name == "MixingLayer":
+            c_in = module._in_channels
+            c_out = module.out_channels
+            label_parts.append(f"C-in: {c_in} (reps), C-out: {c_out}")
+        elif class_name == "Product":
+            d = module.out_features
+            c = module.out_channels
+            label_parts.append(f"D: {d}, C: {c}")
+        elif class_name == "ElementwiseProduct":
+            f = module.out_features
+            c = module.out_channels
+            label_parts.append(f"F: {f}, C: {c}")
+        elif class_name == "OuterProduct":
+            c_in = module._max_out_channels
+            c_out = module.out_channels
+            # Calculate the exponent (number of inputs)
+            num_inputs = len(module.inputs) if hasattr(module, "inputs") else 2
+            label_parts.append(f"C-in: {c_in}, C-out: {c_out} ({c_in}^{num_inputs})")
         else:
             # For other modules, show out_features and out_channels
             out_features = module.out_features
             out_channels = module.out_channels
-            label_parts.append(f"F: {out_features}, C: {out_channels}")
+            label_parts.append(f"D: {out_features}, C: {out_channels}")
 
     # Add parameter count if requested (only if > 0 to avoid clutter for modules like Product)
     if show_params:
