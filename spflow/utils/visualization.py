@@ -166,6 +166,14 @@ def visualize_module(
         engine = "dot"
         rankdir = "LR"
 
+    # Validate format parameter early
+    VALID_FORMATS = {"png", "pdf", "svg", "dot", "plain", "canon"}
+    if format not in VALID_FORMATS:
+        raise ValueError(
+            f"Unsupported format: {format}. "
+            f"Supported formats: {', '.join(sorted(VALID_FORMATS))}"
+        )
+
     # Create the pydot graph
     graph = pydot.Dot(graph_type="digraph", rankdir=rankdir, dpi=str(dpi))
 
@@ -215,11 +223,7 @@ def visualize_module(
             graph.write_plain(output_file, prog=engine)
         elif format == "canon":
             graph.write(output_file, format="canon", prog=engine)
-        else:
-            raise ValueError(
-                f"Unsupported format: {format}. "
-                "Choose 'png', 'pdf', 'svg', 'dot', 'plain', or 'canon'."
-            )
+        # Note: format is validated early, so no else clause needed
     except FileNotFoundError as e:
         # This error occurs when Graphviz is not installed or not in PATH
         raise RuntimeError(
@@ -228,7 +232,7 @@ def visualize_module(
             "  1. Install the Graphviz system dependency:\n"
             "     - On macOS: brew install graphviz\n"
             "     - On Ubuntu/Debian: sudo apt-get install graphviz\n"
-            "     - On Windows: Download and install from https://graphviz.org/download/\n"
+            "     - On Windows: Download from https://graphviz.org/download/\n"
             "       Then add the Graphviz bin directory to your system PATH\n"
             "  2. Verify installation by running: dot -V\n\n"
             "For more details, see the README.md file in the SPFlow repository."
