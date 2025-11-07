@@ -29,10 +29,6 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
     "Typing :: Typed",
 ]
-urls = {
-    Homepage = "https://github.com/SPFlow/SPFlow",
-    Discussion = "https://github.com/SPFlow/SPFlow/discussions"
-}
 dependencies = [
     "plum-dispatch>=2.5.8",
     "numpy>=1.26.4",
@@ -44,6 +40,10 @@ dependencies = [
     "pydot>=4.0.0",
 ]
 dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/SPFlow/SPFlow"
+Discussion = "https://github.com/SPFlow/SPFlow/discussions"
 
 [tool.setuptools.packages]
 find = {}  # The package is discovered automatically (including the py.typed file):
