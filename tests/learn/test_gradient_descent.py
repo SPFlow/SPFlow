@@ -8,6 +8,7 @@ from spflow.modules import Module
 from spflow.learn.gradient_descent import negative_log_likelihood_loss, train_gradient_descent
 from spflow.meta.dispatch import dispatch
 from spflow.meta import Scope
+from tests.fixtures import auto_set_test_seed, auto_set_test_device
 
 
 # Define a DummyModel class for testing
@@ -61,7 +62,8 @@ def test_train_gradient_descent_basic(model, dataloader):
     initial_params = [p.clone() for p in model.parameters()]
     train_gradient_descent(model, dataloader, lr=0.01, epochs=1)
     for p, initial_p in zip(model.parameters(), initial_params):
-        assert not torch.allclose(p, initial_p)  # parameters should have changed
+        param_change = torch.abs(p - initial_p).max().item()
+        assert param_change > 1e-6, f"Parameters should change during training (change: {param_change})"
 
 
 def test_train_gradient_descent_custom_optimizer(model, dataloader):
