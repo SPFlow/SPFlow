@@ -286,7 +286,7 @@ def learn_spn(
             if len(leaves) == 1:
                 return Product(inputs=leaves[0])
             else:
-                return Product(inputs=Cat(leaves, dim=1))
+                return Product(leaves)
         else:
             return leaves[0]
 
@@ -322,7 +322,7 @@ def learn_spn(
                 )
                 product_inputs.append(sub_structure)
 
-            return Product(inputs=Cat(product_inputs, dim=1))
+            return Product(product_inputs)
 
         else:
             # if not enough instances to cluster, create leaf layer (can be set to prevent overfitting too much or to reduce network size)
