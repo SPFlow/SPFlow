@@ -13,4 +13,18 @@ class ScopeError(Exception):
 class GraphvizError(Exception):
     """Raised when Graphviz is not installed or fails to execute."""
 
-    pass
+    INSTALL_INSTRUCTIONS = (
+        "To fix this issue:\n"
+        "  1. Install the Graphviz system dependency:\n"
+        "     - On macOS: brew install graphviz\n"
+        "     - On Ubuntu/Debian: sudo apt-get install graphviz\n"
+        "     - On Windows: Download from https://graphviz.org/download/\n"
+        "  2. Verify installation by running: dot -V\n"
+        "  3. Check that Graphviz binaries are in your system PATH\n\n"
+        "For more details, see the README.md file in the SPFlow repository."
+    )
+
+    def __str__(self) -> str:
+        """Return the error message with installation instructions appended."""
+        message = super().__str__()
+        return f"{message}\n\n{self.INSTALL_INSTRUCTIONS}"
