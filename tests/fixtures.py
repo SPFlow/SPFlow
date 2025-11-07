@@ -13,6 +13,7 @@ def auto_set_test_seed():
         torch.cuda.manual_seed_all(0)
     yield
 
+
 @pytest.fixture(
     scope="function",
     autouse=True,

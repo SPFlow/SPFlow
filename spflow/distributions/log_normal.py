@@ -42,7 +42,7 @@ class LogNormal(Distribution):
         if not torch.isfinite(std).all():
             raise ValueError(f"Values for 'std' must be finite, but was: {std}")
 
-        if torch.all(std <= 0.0):
+        if torch.any(std <= 0.0):
             raise ValueError(f"Value for 'std' must be greater than 0.0, but was: {std}")
 
         self.log_std.data = std.log()

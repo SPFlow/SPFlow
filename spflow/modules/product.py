@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from __future__ import annotations
 
 import torch
 from torch import Tensor
@@ -19,7 +19,7 @@ class Product(Module):
     A product module that calculates the product over the feature dimension of its input modules.
     """
 
-    def __init__(self, inputs: Union[Module, list[Module]]) -> None:
+    def __init__(self, inputs: Module | list[Module]) -> None:
         """
         Args:
             inputs: Single input module or list of modules. The product is over the feature dimension of the input.
@@ -57,8 +57,8 @@ def marginalize(
     layer: Product,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[Product, Module, None]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> Product | Module | None:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -98,8 +98,8 @@ def sample(
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -126,7 +126,7 @@ def log_likelihood(
     product_layer: Product,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)

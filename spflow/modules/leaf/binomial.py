@@ -10,7 +10,10 @@ class Binomial(LeafModule):
     """
     Binomial distribution.
     """
-    def __init__(self, scope: Scope, n: Tensor, out_channels: int = None, num_repetitions: int = None, p: Tensor = None):
+
+    def __init__(
+        self, scope: Scope, n: Tensor, out_channels: int = None, num_repetitions: int = None, p: Tensor = None
+    ):
         """
         Args:
             scope (Scope): Scope of the module.
@@ -19,6 +22,8 @@ class Binomial(LeafModule):
             num_repetitions (int, optional): Number of repetitions for the distribution.
             p (Tensor): Probability of success in each trial.
         """
-        event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[p], num_repetitions=num_repetitions)
+        event_shape = parse_leaf_args(
+            scope=scope, out_channels=out_channels, params=[p], num_repetitions=num_repetitions
+        )
         super().__init__(scope, out_channels=event_shape[1])
         self.distribution = D.Binomial(n, p, event_shape=event_shape)

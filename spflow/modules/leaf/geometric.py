@@ -17,6 +17,8 @@ class Geometric(LeafModule):
             num_repetitions (int, optional): The number of repetitions for the leaf module.
             p (Tensor, optional): The probability tensor.
         """
-        event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[p], num_repetitions=num_repetitions)
+        event_shape = parse_leaf_args(
+            scope=scope, out_channels=out_channels, params=[p], num_repetitions=num_repetitions
+        )
         super().__init__(scope, out_channels=event_shape[1])
         self.distribution = D.Geometric(p, event_shape=event_shape)

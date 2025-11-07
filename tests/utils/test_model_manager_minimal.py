@@ -3,10 +3,10 @@ import unittest
 
 from pytest import fixture
 
-from spflow.meta.data import Scope
+from spflow.meta import Scope
 from spflow.modules import Product
 from spflow.modules.leaf import Normal
-from spflow.utils.model_manager import load_model, save_model
+from spflow.utils import load_model, save_model
 import torch
 
 

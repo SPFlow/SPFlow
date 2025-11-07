@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from itertools import product
-from typing import Optional, Union
 
 import torch
 from torch import Tensor
@@ -17,6 +18,7 @@ from spflow.modules import Product
 import numpy as np
 import time
 
+
 class Factorize(BaseProduct):
     r"""
     Factorize module that applies a factorization to the input features. This module is used to create a factorized
@@ -26,7 +28,7 @@ class Factorize(BaseProduct):
 
     def __init__(
         self,
-        inputs: Union[list[Module], Module],
+        inputs: list[Module] | Module,
         depth: int,
         num_repetitions: int,
     ) -> None:
@@ -41,7 +43,9 @@ class Factorize(BaseProduct):
 
         self.depth = depth
         self.num_repetitions = num_repetitions
-        indices = self._factorize(depth, num_repetitions) # shape: [num_features_in, num_features_out, num_repetitions]
+        indices = self._factorize(
+            depth, num_repetitions
+        )  # shape: [num_features_in, num_features_out, num_repetitions]
         self.register_buffer("indices", indices.to(torch.get_default_dtype()))
 
     @property
@@ -50,7 +54,7 @@ class Factorize(BaseProduct):
 
     @property
     def out_features(self) -> int:
-        return 2 ** self.depth
+        return 2**self.depth
 
     @property
     def feature_to_scope(self) -> list[Scope]:
@@ -85,7 +89,7 @@ class Factorize(BaseProduct):
         """
         scope = self.inputs[0].scope
         num_features = len(scope.query)
-        num_features_out = 2 ** depth
+        num_features_out = 2**depth
         assert num_features >= num_features_out
         cardinality = int(np.floor(num_features / num_features_out))
         group_sizes = np.ones(num_features_out, dtype=int) * cardinality
@@ -106,7 +110,7 @@ class Factorize(BaseProduct):
                     high = num_features
                 scopes[idxs[low:high], o, r] = 1
 
-        return scopes#.to(torch.int32)
+        return scopes  # .to(torch.int32)
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -114,17 +118,19 @@ def log_likelihood(
     module: Factorize,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     # initialize dispatch context
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx) # lls[0] shape: [batch_size, num_features, num_channel]
-    output = torch.einsum('bicr, ior->bocr', lls[0], module.indices)
-
+    lls = _get_input_log_likelihoods(
+        module, data, check_support, dispatch_ctx
+    )  # lls[0] shape: [batch_size, num_features, num_channel]
+    output = torch.einsum("bicr, ior->bocr", lls[0], module.indices)
 
     return output
+
 
 @dispatch  # type: ignore
 def sample(
@@ -132,16 +138,22 @@ def sample(
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     # gather indices for specific repetitions
-    rep_indices = sampling_ctx.repetition_idx.view(-1,1,1,1).expand(-1, module.indices.shape[0], module.indices.shape[1], -1)
-    indices = module.indices.unsqueeze(0).expand(data.shape[0], -1, -1, -1).to(dtype=torch.long, device=module.device)
+    rep_indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1).expand(
+        -1, module.indices.shape[0], module.indices.shape[1], -1
+    )
+    indices = (
+        module.indices.unsqueeze(0)
+        .expand(data.shape[0], -1, -1, -1)
+        .to(dtype=torch.long, device=module.device)
+    )
     indices = torch.gather(indices, dim=-1, index=rep_indices).squeeze(-1)
 
     # gather channel indices and mask
@@ -161,13 +173,14 @@ def sample(
 
     return data
 
+
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
     layer: Factorize,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[Product, Module, None]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> Product | Module | None:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     # compute layer scope (same for all outputs)
@@ -199,5 +212,3 @@ def marginalize(
         return marg_child
     else:
         return Factorize(inputs=[marg_child], depth=layer.depth, num_repetitions=layer.num_repetitions)
-
-

@@ -1,7 +1,7 @@
 import torch
 
 from spflow import log_likelihood, sample
-from spflow.meta.data import Scope
+from spflow.meta import Scope
 from spflow.modules import leaf
 from spflow.modules.leaf import Normal
 
@@ -12,7 +12,12 @@ from typing import Dict
 def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):
     lls = log_likelihood(module, data, check_support=True)
     if module.num_repetitions is not None:
-        assert lls.shape == (data.shape[0], len(module.scope.query), module.out_channels, module.num_repetitions)
+        assert lls.shape == (
+            data.shape[0],
+            len(module.scope.query),
+            module.out_channels,
+            module.num_repetitions,
+        )
     else:
         assert lls.shape == (data.shape[0], len(module.scope.query), module.out_channels)
     assert torch.isfinite(lls).all()
@@ -26,7 +31,9 @@ def evaluate_samples(node: LeafModule, data: torch.Tensor, is_mpe: bool, samplin
     assert torch.isfinite(s_query).all()
 
 
-def make_normal_leaf(scope=None, out_features=None, out_channels=None, num_repetitions=None, mean=None, std=None) -> Normal:
+def make_normal_leaf(
+    scope=None, out_features=None, out_channels=None, num_repetitions=None, mean=None, std=None
+) -> Normal:
     """
     Create a Normal leaf module.
 
@@ -37,8 +44,7 @@ def make_normal_leaf(scope=None, out_features=None, out_channels=None, num_repet
 
     if mean is not None:
         out_features = mean.shape[0]
-    #assert (scope is None) ^ (out_features is None), "Either scope or out_features must be given"
-
+    # assert (scope is None) ^ (out_features is None), "Either scope or out_features must be given"
 
     if scope is None:
         scope = Scope(list(range(0, out_features)))
@@ -68,7 +74,9 @@ def make_normal_data(mean=0.0, std=1.0, num_samples=10, out_features=2):
     return torch.randn(num_samples, out_features) * std + mean
 
 
-def make_leaf(cls, out_channels: int = None, out_features: int = None, scope: Scope = None, num_repetitions = None) -> LeafModule:
+def make_leaf(
+    cls, out_channels: int = None, out_features: int = None, scope: Scope = None, num_repetitions=None
+) -> LeafModule:
     assert (out_features is None) ^ (scope is None), "Either out_features or scope must be provided"
 
     if scope is None:
@@ -76,9 +84,13 @@ def make_leaf(cls, out_channels: int = None, out_features: int = None, scope: Sc
 
     # Check special cases
     if cls == leaf.Binomial:
-        return leaf.Binomial(scope=scope, out_channels=out_channels, n=torch.ones(1) * 3, num_repetitions=num_repetitions)
+        return leaf.Binomial(
+            scope=scope, out_channels=out_channels, n=torch.ones(1) * 3, num_repetitions=num_repetitions
+        )
     elif cls == leaf.NegativeBinomial:
-        return leaf.NegativeBinomial(scope=scope, out_channels=out_channels, n=torch.ones(1) * 3, num_repetitions=num_repetitions)
+        return leaf.NegativeBinomial(
+            scope=scope, out_channels=out_channels, n=torch.ones(1) * 3, num_repetitions=num_repetitions
+        )
     elif cls == leaf.Categorical:
         return leaf.Categorical(
             scope=scope,
@@ -122,8 +134,8 @@ def make_leaf(cls, out_channels: int = None, out_features: int = None, scope: Sc
         # Default case: just call the class
         return cls(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
 
-def make_leaf_args(cls, out_channels: int = None, scope: Scope = None, num_repetitions = None) -> Dict:
 
+def make_leaf_args(cls, out_channels: int = None, scope: Scope = None, num_repetitions=None) -> dict:
     # Check special cases
     if cls == leaf.Binomial or cls == leaf.NegativeBinomial:
         return {"n": torch.ones(1) * 3}
@@ -132,33 +144,34 @@ def make_leaf_args(cls, out_channels: int = None, scope: Scope = None, num_repet
     elif cls == leaf.Hypergeometric:
         if num_repetitions is None:
             return {
-                "n":torch.ones((len(scope.query), out_channels)) * 3,
-                "N":torch.ones((len(scope.query), out_channels)) * 10,
-                "K":torch.ones((len(scope.query), out_channels)) * 5,
+                "n": torch.ones((len(scope.query), out_channels)) * 3,
+                "N": torch.ones((len(scope.query), out_channels)) * 10,
+                "K": torch.ones((len(scope.query), out_channels)) * 5,
             }
         else:
             return {
-                "n":torch.ones((len(scope.query), out_channels, num_repetitions)) * 3,
-                "N":torch.ones((len(scope.query), out_channels, num_repetitions)) * 10,
-                "K":torch.ones((len(scope.query), out_channels, num_repetitions)) * 5,
-
+                "n": torch.ones((len(scope.query), out_channels, num_repetitions)) * 3,
+                "N": torch.ones((len(scope.query), out_channels, num_repetitions)) * 10,
+                "K": torch.ones((len(scope.query), out_channels, num_repetitions)) * 5,
             }
     elif cls == leaf.Uniform:
         if num_repetitions is None:
             return {
-                "start":torch.zeros((len(scope.query), out_channels)),
-                "end":torch.ones((len(scope.query), out_channels)),
-
+                "start": torch.zeros((len(scope.query), out_channels)),
+                "end": torch.ones((len(scope.query), out_channels)),
             }
         else:
             return {
-                "start":torch.zeros((len(scope.query), out_channels, num_repetitions)),
-                "end":torch.ones((len(scope.query), out_channels, num_repetitions)),
+                "start": torch.zeros((len(scope.query), out_channels, num_repetitions)),
+                "end": torch.ones((len(scope.query), out_channels, num_repetitions)),
             }
     else:
         return {}
 
-def make_cond_leaf(cls, out_channels: int = None, out_features: int = None, scope: Scope = None) -> LeafModule:
+
+def make_cond_leaf(
+    cls, out_channels: int = None, out_features: int = None, scope: Scope = None
+) -> LeafModule:
     assert (out_features is None) ^ (scope is None), "Either out_features or scope must be provided"
 
     if scope is None:
@@ -206,6 +219,7 @@ def make_data(cls, out_features: int, n_samples: int = 5) -> torch.Tensor:
         .distribution.distribution.sample((n_samples,))
         .squeeze(-1)
     )
+
 
 def make_cond_data(cls, out_features: int, n_samples: int = 5) -> torch.Tensor:
     scope = Scope(list(range(0, out_features)))

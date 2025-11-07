@@ -9,6 +9,7 @@ from scipy.stats import rankdata
 import numpy as np
 import torch
 
+
 def empirical_cdf(data):
     """Computes the empirical cummulative distribution function (CDF) for specified input data.
 

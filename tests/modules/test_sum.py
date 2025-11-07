@@ -4,10 +4,11 @@ import unittest
 
 from itertools import product
 
-from spflow.exceptions import InvalidParameterCombinationError, ScopeError
-from spflow.meta.data import Scope
+from spflow import InvalidParameterCombinationError, ScopeError
+from spflow.meta import Scope
 import pytest
-from spflow.meta.dispatch import init_default_sampling_context, init_default_dispatch_context, SamplingContext
+from spflow.meta import SamplingContext
+from spflow.meta.dispatch import init_default_sampling_context, init_default_dispatch_context
 from spflow import log_likelihood, sample, marginalize, sample_with_evidence
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
@@ -33,7 +34,9 @@ def make_sum(in_channels=None, out_channels=None, out_features=None, weights=Non
     if weights is not None:
         out_features = weights.shape[0]
 
-    inputs = make_normal_leaf(out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions)
+    inputs = make_normal_leaf(
+        out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions
+    )
 
     return Sum(out_channels=out_channels, inputs=inputs, weights=weights, num_repetitions=num_repetitions)
 
@@ -54,14 +57,24 @@ def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, 
     else:
         assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
 
+
 # ToDo: Look at this after elementwise product is tested
 @pytest.mark.parametrize(
-    "in_channels,out_channels,out_features,num_reps", product(in_channels_values, out_channels_values, [2, 4], num_repetitions)
+    "in_channels,out_channels,out_features,num_reps",
+    product(in_channels_values, out_channels_values, [2, 4], num_repetitions),
 )
 def test_log_likelihood_product_inputs(in_channels: int, out_channels: int, out_features: int, num_reps):
-    inputs_a = make_leaf(cls=Normal, out_channels=in_channels, scope=Scope(range(0, out_features // 2)), num_repetitions=num_reps)
+    inputs_a = make_leaf(
+        cls=Normal,
+        out_channels=in_channels,
+        scope=Scope(range(0, out_features // 2)),
+        num_repetitions=num_reps,
+    )
     inputs_b = make_leaf(
-        cls=Normal, out_channels=in_channels, scope=Scope(range(out_features // 2, out_features)), num_repetitions=num_reps
+        cls=Normal,
+        out_channels=in_channels,
+        scope=Scope(range(out_features // 2, out_features)),
+        num_repetitions=num_reps,
     )
     inputs = [inputs_a, inputs_b]
     prod = ElementwiseProduct(inputs=inputs)
@@ -94,7 +107,9 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps
             repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         else:
             repetition_index = None
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+        sampling_ctx = SamplingContext(
+            channel_index=channel_index, mask=mask, repetition_index=repetition_index
+        )
         samples = sample(module, data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]
@@ -102,13 +117,22 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps
 
 
 @pytest.mark.parametrize(
-    "in_channels,out_channels,out_features, num_reps", product(in_channels_values, out_channels_values, [2, 8], num_repetitions)
+    "in_channels,out_channels,out_features, num_reps",
+    product(in_channels_values, out_channels_values, [2, 8], num_repetitions),
 )
 def test_sample_product_inputs(in_channels: int, out_channels: int, out_features: int, num_reps):
     n_samples = 100
-    inputs_a = make_leaf(cls=Normal, out_channels=in_channels, scope=Scope(range(0, out_features // 2)), num_repetitions=num_reps)
+    inputs_a = make_leaf(
+        cls=Normal,
+        out_channels=in_channels,
+        scope=Scope(range(0, out_features // 2)),
+        num_repetitions=num_reps,
+    )
     inputs_b = make_leaf(
-        cls=Normal, out_channels=in_channels, scope=Scope(range(out_features // 2, out_features)), num_repetitions=num_reps
+        cls=Normal,
+        out_channels=in_channels,
+        scope=Scope(range(out_features // 2, out_features)),
+        num_repetitions=num_reps,
     )
     inputs = [inputs_a, inputs_b]
     prod = ElementwiseProduct(inputs=inputs)
@@ -123,7 +147,9 @@ def test_sample_product_inputs(in_channels: int, out_channels: int, out_features
             repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         else:
             repetition_index = None
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+        sampling_ctx = SamplingContext(
+            channel_index=channel_index, mask=mask, repetition_index=repetition_index
+        )
         samples = sample(module, data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]
@@ -162,7 +188,9 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
             repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         else:
             repetition_index = None
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+        sampling_ctx = SamplingContext(
+            channel_index=channel_index, mask=mask, repetition_index=repetition_index
+        )
 
         samples = sample_with_evidence(
             module,
@@ -235,7 +263,6 @@ def test_weights(in_channels: int, out_channels: int, out_features: int, num_rep
         weights=weights,
         in_channels=in_channels,
         num_repetitions=num_reps,
-
     )
     assert torch.allclose(module.weights.sum(dim=module.sum_dim), torch.tensor(1.0))
     assert torch.allclose(module.log_weights, module.weights.log())
@@ -271,7 +298,11 @@ def test_invalid_specification_of_out_channels_and_weights(
         else:
             weights = torch.rand((out_features, in_channels, out_channels))
         weights = weights / weights.sum(dim=2, keepdim=True)
-        Sum(weights=weights, inputs=make_normal_leaf(out_features=out_features, out_channels=3, num_repetitions=num_reps), num_repetitions=num_reps)
+        Sum(
+            weights=weights,
+            inputs=make_normal_leaf(out_features=out_features, out_channels=3, num_repetitions=num_reps),
+            num_repetitions=num_reps,
+        )
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
@@ -281,7 +312,9 @@ def test_invalid_parameter_combination(in_channels: int, out_channels: int, out_
     else:
         weights = torch.rand((out_features, in_channels, out_channels)) + 1.0
     with pytest.raises(InvalidParameterCombinationError):
-        make_sum(weights=weights, out_channels=out_channels, in_channels=in_channels, num_repetitions=num_reps)
+        make_sum(
+            weights=weights, out_channels=out_channels, in_channels=in_channels, num_repetitions=num_reps
+        )
 
 
 @pytest.mark.parametrize(
@@ -291,7 +324,7 @@ def test_invalid_parameter_combination(in_channels: int, out_channels: int, out_
         in_channels_values,
         out_channels_values,
         [[0], [1], [2], [0, 1], [1, 2], [0, 2], [0, 1, 2]],
-        num_repetitions
+        num_repetitions,
     ),
 )
 def test_marginalize(prune, in_channels: int, out_channels: int, marg_rvs: list[int], num_reps):
@@ -321,6 +354,7 @@ def test_marginalize(prune, in_channels: int, out_channels: int, marg_rvs: list[
     for d in range(1, len(weights_shape)):
         assert marginalized_module.weights.shape[d] == weights_shape[d]
 
+
 def test_multiple_input():
     in_channels = 2
     out_channels = 2
@@ -331,13 +365,33 @@ def test_multiple_input():
     mean = torch.rand((out_features, out_channels, num_reps))
     std = torch.rand((out_features, out_channels, num_reps))
 
-    normal_layer_a = make_normal_leaf(out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions, mean=mean, std=std)
-    normal_layer_b1 = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_repetitions, mean=mean[:,0:1,:], std=std[:,0:1,:])
-    normal_layer_b2 = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_repetitions, mean=mean[:,1:2,:], std=std[:,1:2,:])
+    normal_layer_a = make_normal_leaf(
+        out_features=out_features,
+        out_channels=in_channels,
+        num_repetitions=num_repetitions,
+        mean=mean,
+        std=std,
+    )
+    normal_layer_b1 = make_normal_leaf(
+        out_features=out_features,
+        out_channels=1,
+        num_repetitions=num_repetitions,
+        mean=mean[:, 0:1, :],
+        std=std[:, 0:1, :],
+    )
+    normal_layer_b2 = make_normal_leaf(
+        out_features=out_features,
+        out_channels=1,
+        num_repetitions=num_repetitions,
+        mean=mean[:, 1:2, :],
+        std=std[:, 1:2, :],
+    )
 
     module_a = Sum(inputs=normal_layer_a, out_channels=sum_out_channels, num_repetitions=num_reps)
 
-    module_b = Sum(inputs=[normal_layer_b1,normal_layer_b2], weights=module_a.weights, num_repetitions=num_reps)
+    module_b = Sum(
+        inputs=[normal_layer_b1, normal_layer_b2], weights=module_a.weights, num_repetitions=num_reps
+    )
 
     # test log likelihood
 
@@ -356,18 +410,17 @@ def test_multiple_input():
     channel_index = torch.randint(low=0, high=sum_out_channels, size=(n_samples, out_features))
     mask = torch.full((n_samples, out_features), True)
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-    sampling_ctx_a = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    sampling_ctx_a = SamplingContext(
+        channel_index=channel_index, mask=mask, repetition_index=repetition_index
+    )
 
     data_b = torch.full((n_samples, out_features), torch.nan)
 
-    sampling_ctx_b = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    sampling_ctx_b = SamplingContext(
+        channel_index=channel_index, mask=mask, repetition_index=repetition_index
+    )
 
     samples_a = sample(module_a, data_a, is_mpe=True, sampling_ctx=sampling_ctx_a)
     samples_b = sample(module_b, data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
 
-
     assert torch.allclose(samples_a, samples_b)
-
-
-
-

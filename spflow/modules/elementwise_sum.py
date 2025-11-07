@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from __future__ import annotations
 
 import torch
 from torch import Tensor, nn
@@ -27,9 +27,9 @@ class ElementwiseSum(Module):
     def __init__(
         self,
         inputs: list[Module],
-        out_channels: Optional[int] = None,
-        weights: Optional[Tensor] = None,
-        num_repetitions: Optional[int] = None,
+        out_channels: int | None = None,
+        weights: Tensor | None = None,
+        num_repetitions: int | None = None,
         sum_dim: int = 3,
     ) -> None:
         """
@@ -44,7 +44,7 @@ class ElementwiseSum(Module):
         """
         super().__init__()
 
-        if not input:
+        if not inputs:
             raise ValueError("'Sum' requires at least one input to be specified.")
 
         self.inputs = nn.ModuleList(inputs)
@@ -104,17 +104,15 @@ class ElementwiseSum(Module):
                 self._in_channels_per_input,
                 self._num_sums,
                 self._num_inputs,
-                self.num_repetitions
+                self.num_repetitions,
             )
         else:
             self.weights_shape = (
                 self._out_features,
                 self._in_channels_per_input,
                 self._num_sums,
-                self._num_inputs
+                self._num_inputs,
             )
-
-
 
         # Store unraveled in- and out-channel indices
         # E.g. for 2 inputs with 3 in_channels_per_input, the mapping should be:
@@ -211,8 +209,8 @@ def marginalize(
     module: ElementwiseSum,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[None, ElementwiseSum]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> None | ElementwiseSum:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -262,8 +260,8 @@ def sample(
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -272,16 +270,16 @@ def sample(
     # Index into the correct weight channels given by parent module
     # (stay in logits space since Categorical distribution accepts logits directly)
     if sampling_ctx.repetition_idx is not None:
-        logits = module.logits.unsqueeze(0).expand(
-            sampling_ctx.channel_index.shape[0], -1, -1, -1, -1, -1)
+        logits = module.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1, -1)
 
         indices = sampling_ctx.repetition_idx  # Shape (30000, 1, 1)
 
         # Use gather to select the correct repetition
         # Repeat indices to match the target dimension for gathering
 
-        indices = indices.view(-1, 1, 1, 1, 1, 1).expand(-1, logits.shape[1], logits.shape[2], logits.shape[3], logits.shape[4],
-                                                      -1)
+        indices = indices.view(-1, 1, 1, 1, 1, 1).expand(
+            -1, logits.shape[1], logits.shape[2], logits.shape[3], logits.shape[4], -1
+        )
         logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
     else:
         logits = module.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
@@ -307,9 +305,11 @@ def sample(
         dispatch_ctx.cache["log_likelihood"][inp] is not None for inp in module.inputs
     ):
         input_lls = [dispatch_ctx.cache["log_likelihood"][inp] for inp in module.inputs]
-        input_lls = torch.stack(input_lls, dim=module.sum_dim)#torch.stack(input_lls, dim=-1)
+        input_lls = torch.stack(input_lls, dim=module.sum_dim)  # torch.stack(input_lls, dim=-1)
         if sampling_ctx.repetition_idx is not None:
-            indices = sampling_ctx.repetition_idx.view(-1,1,1,1,1).expand(-1, input_lls.shape[1], input_lls.shape[2],input_lls.shape[3],-1)
+            indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1).expand(
+                -1, input_lls.shape[1], input_lls.shape[2], input_lls.shape[3], -1
+            )
             input_lls = torch.gather(input_lls, dim=-1, index=indices).squeeze(-1)
         is_conditional = True
     else:
@@ -360,7 +360,7 @@ def log_likelihood(
     module: ElementwiseSum,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -406,7 +406,7 @@ def em(
     module: ElementwiseSum,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> None:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)

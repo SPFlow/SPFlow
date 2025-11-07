@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "spflow"
 authors = [
-    { name = "The SPFlow authors", email = "todo@example.invalid" },
+    { name = "The SPFlow Authors" },
 ]
 description = "Sum Product Flow: An Easy and Extensible Library for Sum-Product Networks"
 readme = "README.md"
 license = { file = "LICENSE" }
 keywords = ["probabilistic circuits", "machine learning"]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
     # See https://pypi.org/classifiers/
     "Programming Language :: Python :: 3",
@@ -29,7 +29,6 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
     "Typing :: Typed",
 ]
-urls = { Homepage = "https://github.com/SPFlow/SPFlow" }
 dependencies = [
     "plum-dispatch>=2.5.8",
     "numpy>=1.26.4",
@@ -37,10 +36,14 @@ dependencies = [
     "scikit-learn>=1.0",
     "torch>=2.0.1",
     "fast_pytorch_kmeans>=0.2.2",
-    "psutil",
-    "matplotlib>=3.9.2",
+    "psutil",  # Required by fast_pytorch_kmeans
+    "pydot>=4.0.0",
 ]
 dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/SPFlow/SPFlow"
+Discussion = "https://github.com/SPFlow/SPFlow/discussions"
 
 [tool.setuptools.packages]
 find = {}  # The package is discovered automatically (including the py.typed file):
@@ -57,7 +60,12 @@ dev = [
   "pytest-cov",
   "pre-commit",
   "imageio~=2.37.0",
-    "scikit-image~=0.24.0",
+  "scikit-image~=0.24.0",
+  "pytest-xdist",
+  "matplotlib>=3.9.2",
+  "build",
+  "twine",
+  "pip-audit"
 ]
 
 
@@ -74,7 +82,6 @@ testpaths = [
 line-length = 110
 color = true
 target-version = [
-    "py39",
     "py310",
     "py311",
     "py312",
@@ -84,7 +91,7 @@ target-version = [
 # See https://docs.astral.sh/ruff/rules
 select = ["E", "F", "W", "I", "N", "D", "C90", "UP", "NPY"]
 line-length = 110  # Same as Black
-target-version = "py39"  # The lowest supported version
+target-version = "py310"  # The lowest supported version
 
 [tool.ruff.pydocstyle]
 convention = "google"

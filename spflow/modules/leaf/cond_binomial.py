@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from torch import Tensor
 
 from spflow import distributions as D
@@ -5,7 +7,7 @@ from spflow.meta.data import Scope
 from spflow.modules.leaf.leaf_module import LeafModule, log_likelihood as parent_log_likelihood
 from spflow.modules.leaf.cond_leaf_module import CondLeafModule
 from spflow.utils.leaf import parse_leaf_args
-from typing import Callable, List, Optional, Tuple, Union
+from collections.abc import Callable
 import torch
 from spflow.meta.dispatch.dispatch_context import (
     DispatchContext,
@@ -15,7 +17,13 @@ from spflow.meta.dispatch.dispatch import dispatch
 
 
 class CondBinomial(CondLeafModule):
-    def __init__(self, scope: Scope, n: Tensor, out_channels: int = None, cond_f: Optional[Union[Callable, list[Callable]]] = None):
+    def __init__(
+        self,
+        scope: Scope,
+        n: Tensor,
+        out_channels: int = None,
+        cond_f: Callable | list[Callable] | None = None,
+    ):
         """
         Initialize a Normal distribution leaf module.
 
@@ -25,22 +33,21 @@ class CondBinomial(CondLeafModule):
             mean (Tensor, optional): The mean parameter tensor.
             std (Tensor, optional): The standard deviation parameter tensor.
         """
-        assert out_channels is not None or cond_f is not None, "out_channels or cond_f must be provided."
+        if out_channels is None and cond_f is None:
+            raise ValueError("out_channels or cond_f must be provided.")
         self.set_cond_f(cond_f)
         p = self.retrieve_params(data=torch.tensor([]), dispatch_ctx=init_default_dispatch_context())
         event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[p])
         super().__init__(scope, out_channels=event_shape[1])
         self.distribution = D.Binomial(n, p, event_shape=event_shape)
 
-    def set_cond_f(self, cond_f: Optional[Union[list[Callable], Callable]] = None) -> None:
-
+    def set_cond_f(self, cond_f: list[Callable] | Callable | None = None) -> None:
         if isinstance(cond_f, list) and len(cond_f) != self.out_channels:
             raise ValueError(
                 "'CondLeafModule' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
             )
 
         self.cond_f = cond_f
-
 
     def retrieve_params(self, data: Tensor, dispatch_ctx: DispatchContext) -> torch.Tensor:
         r"""Retrieves the conditional parameters of the leaf layer.
@@ -100,10 +107,3 @@ class CondBinomial(CondLeafModule):
                 self.distribution.p = param
             else:
                 raise ValueError(f"Too many parameters for {self.__class__.__name__}.")
-
-
-
-
-
-
-

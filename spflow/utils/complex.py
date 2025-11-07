@@ -1,5 +1,6 @@
 import torch
 
+
 def complex_min(tensor):
     """
     Calculates the min for complex numbers by comparing the real part first and then the imaginary part.
@@ -21,6 +22,7 @@ def complex_min(tensor):
             min_val = value
 
     return min_val
+
 
 def complex_max(tensor):
     """
@@ -44,6 +46,7 @@ def complex_max(tensor):
 
     return max_val
 
+
 def complex_ge(tensor, value):
     """
     Compares a complex tensor with a complex value and returns a boolean tensor.
@@ -57,6 +60,7 @@ def complex_ge(tensor, value):
     """
     return (tensor.real > value.real) | ((tensor.real == value.real) & (tensor.imag >= value.imag))
 
+
 def complex_le(tensor, value):
     """
     Compares a complex tensor with a complex value and returns a boolean tensor.
@@ -69,5 +73,3 @@ def complex_le(tensor, value):
     torch.Tensor: A boolean tensor indicating whether each element in the tensor is less or equal to the value.
     """
     return (tensor.real < value.real) | ((tensor.real == value.real) & (tensor.imag <= value.imag))
-
-

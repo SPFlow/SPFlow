@@ -1,6 +1,3 @@
-import time
-from typing import Optional
-
 import torch
 
 from collections.abc import Callable
@@ -29,7 +26,8 @@ def negative_log_likelihood_loss(model: Module, data: Tensor) -> torch.Tensor:
     """
     return -1 * log_likelihood(model, data).sum()
 
-def nll_loss(ll: Tensor, target:Tensor) -> torch.Tensor:
+
+def nll_loss(ll: Tensor, target: Tensor) -> torch.Tensor:
     """
     Compute the cross entropy loss of a model given the data.
 
@@ -49,13 +47,13 @@ def train_gradient_descent(
     epochs: int = -1,
     verbose: bool = False,
     is_classification: bool = False,
-    optimizer: Optional[torch.optim.Optimizer] = None,
-    scheduler: Optional[torch.optim.lr_scheduler.LRScheduler] = None,
+    optimizer: torch.optim.Optimizer | None = None,
+    scheduler: torch.optim.lr_scheduler.LRScheduler | None = None,
     lr: float = 1e-3,
-    loss_fn: Optional[Callable[[Module, Tensor], Tensor]] = None,
-    validation_dataloader: torch.utils.data.DataLoader = None,
-    callback_batch: Optional[Callable[[Tensor, int], None]] = None,
-    callback_epoch: Optional[Callable[[list[Tensor], int], None]] = None,
+    loss_fn: Callable[[Module, Tensor], Tensor] | None = None,
+    validation_dataloader: torch.utils.data.DataLoader | None = None,
+    callback_batch: Callable[[Tensor, int], None] | None = None,
+    callback_epoch: Callable[[list[Tensor], int], None] | None = None,
 ):
     """
     Train a model using gradient descent.
@@ -76,8 +74,9 @@ def train_gradient_descent(
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     if scheduler is None:
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[int(epochs * 0.5), int(epochs * 0.75)],
-                                                      gamma=0.1)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            optimizer, milestones=[int(epochs * 0.5), int(epochs * 0.75)], gamma=0.1
+        )
 
     if loss_fn is None:
         if is_classification:
@@ -93,7 +92,6 @@ def train_gradient_descent(
         correct = 0
         total = 0
 
-        start_time = time.time()
         losses_epoch = []
         for batch in dataloader:
             # Reset gradients
@@ -137,12 +135,11 @@ def train_gradient_descent(
             # Call callback function after each batch
             if callback_batch is not None:
                 callback_batch(loss, steps)
-        print("Time taken for epoch: ", time.time() - start_time)
         scheduler.step()
-        #print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()/dataloader.batch_size}")
-        #print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()}")
+        # print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()/dataloader.batch_size}")
+        # print(f"Epoch [{epoch}/{epochs}]: Loss: {loss.item()}")
         if is_classification:
-            print(f"Accuracy: {100 * correct / total}") # ToDo: logger.info
+            logger.debug(f"Accuracy: {100 * correct / total}")
 
         # Call callback function after each epoch
         if callback_epoch is not None:
@@ -156,7 +153,7 @@ def train_gradient_descent(
             total_val = 0
             correct_val = 0
             with torch.no_grad():
-                for (data, y) in validation_dataloader:
+                for data, y in validation_dataloader:
                     if is_classification:
                         ll = log_likelihood(model, data)
                         val_loss = loss_fn(ll, y)
@@ -173,7 +170,7 @@ def train_gradient_descent(
                     # Call callback function after each batch
                     if callback_batch is not None:
                         callback_batch(val_loss, steps)
-            print(f"Validation Loss: {val_loss.item()}")
+            logger.debug(f"Validation Loss: {val_loss.item()}")
             if is_classification:
-                print(f"Validation Accuracy: {100 * correct_val / total_val}")
+                logger.debug(f"Validation Accuracy: {100 * correct_val / total_val}")
             model.train()

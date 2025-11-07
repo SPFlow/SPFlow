@@ -9,8 +9,6 @@ from spflow.utils.leaf import init_parameter
 
 
 class Normal(Distribution):
-
-
     def __init__(self, mean: Tensor = None, std: Tensor = None, event_shape: tuple[int, ...] = None):
         r"""
 
@@ -36,7 +34,7 @@ class Normal(Distribution):
     def std(self) -> Tensor:
         """Returns the standard deviation."""
         return self.log_std.exp()
-        #return self.log_std.clamp(min=-20.0, max=2.0).exp()
+        # return self.log_std.clamp(min=-20.0, max=2.0).exp()
 
     @std.setter
     def std(self, std):
@@ -45,11 +43,11 @@ class Normal(Distribution):
         if not torch.isfinite(std).all():
             raise ValueError(f"Values for 'std' must be finite, but was: {std}")
 
-        if torch.all(std <= 0.0):
+        if torch.any(std <= 0.0):
             raise ValueError(f"Value for 'std' must be greater than 0.0, but was: {std}")
 
         self.log_std.data = std.log()
-        #self.log_std.data = (std + 1e-6).log()
+        # self.log_std.data = (std + 1e-6).log()
 
     def mode(self) -> Tensor:
         return self.mean
@@ -80,15 +78,11 @@ class Normal(Distribution):
         else:
             std_est = torch.sqrt((weights * torch.pow(data - mean_est, 2)).sum(0) / n_total)
 
-
         # edge case (if all values are the same, not enough samples or very close to each other)
         if torch.any(zero_mask := torch.isclose(std_est, torch.tensor(0.0))):
             std_est[zero_mask] = torch.tensor(1e-8)
         if torch.any(nan_mask := torch.isnan(std_est)):
             std_est[nan_mask] = torch.tensor(1e-8)
-            
-
-
 
         if len(self.event_shape) == 2:
             # Repeat mean and std

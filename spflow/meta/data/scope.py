@@ -4,8 +4,9 @@ Typical usage example:
 
     scope = Scope(query_rvs, evidence_rvs)
 """
+from __future__ import annotations
+
 from collections.abc import Iterable
-from typing import Optional
 
 
 class Scope:
@@ -23,8 +24,8 @@ class Scope:
 
     def __init__(
         self,
-        query: Optional[list[int]] = None,
-        evidence: Optional[list[int]] = None,
+        query: list[int] | None = None,
+        evidence: list[int] | None = None,
     ) -> None:
         """Initializes ``Scope`` object.
 
@@ -115,7 +116,6 @@ class Scope:
                 Non-negative integer representing the random variable to remove.
         """
         self.query.remove(rv)
-
 
     def equal_query(self, other: "Scope") -> bool:
         """Checks if the query of the scope is identical to that of another.

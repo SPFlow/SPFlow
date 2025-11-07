@@ -2,15 +2,16 @@ from tests.fixtures import auto_set_test_seed, auto_set_test_device
 import unittest
 
 from itertools import product
-from spflow.meta.data import Scope
+from spflow.meta import Scope
 import pytest
-from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
+from spflow.meta import SamplingContext
+from spflow.meta.dispatch import init_default_sampling_context
 from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum
 from spflow.modules.leaf import Categorical, Binomial
-from spflow.modules.ops.cat import Cat
+from spflow.modules.ops import Cat
 from tests.utils.leaves import make_normal_leaf, make_normal_data, evaluate_log_likelihood
 import torch
 
@@ -22,7 +23,7 @@ num_repetitions = [None, 5]
 params = list(product(out_channels_values, out_features_values, num_repetitions, dim_values))
 
 
-def make_cat(out_channels=3, out_features=3, num_repetitions=None ,dim=1):
+def make_cat(out_channels=3, out_features=3, num_repetitions=None, dim=1):
     if dim == 1:
         # different scopes
         scope_a = Scope(list(range(0, out_features)))
@@ -55,7 +56,6 @@ def test_log_likelihood(out_channels: int, out_features: int, num_reps, dim: int
         assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
 
 
-
 @pytest.mark.parametrize("out_channels,out_features, num_reps, dim", params)
 def test_sample(out_channels: int, out_features: int, num_reps, dim: int, device):
     n_samples = 10
@@ -67,13 +67,17 @@ def test_sample(out_channels: int, out_features: int, num_reps, dim: int, device
     ).to(device)
     for i in range(module.out_channels):
         data = torch.full((n_samples, module.out_features), torch.nan).to(device)
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features)).to(device)
+        channel_index = torch.randint(
+            low=0, high=module.out_channels, size=(n_samples, module.out_features)
+        ).to(device)
         mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool).to(device)
         if num_reps is not None:
             repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
         else:
             repetition_index = None
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+        sampling_ctx = SamplingContext(
+            channel_index=channel_index, mask=mask, repetition_index=repetition_index
+        )
         samples = sample(module, data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]
@@ -114,8 +118,12 @@ def test_invalid_constructor_same_scope_dim1(device):
     scope_a = Scope(list(range(0, out_features)))
     scope_b = Scope(list(range(0, out_features)))
 
-    inputs_a = make_normal_leaf(scope_a, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
-    inputs_b = make_normal_leaf(scope_b, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
+    inputs_a = make_normal_leaf(scope_a, out_channels=out_channels, num_repetitions=num_repetitions).to(
+        device
+    )
+    inputs_b = make_normal_leaf(scope_b, out_channels=out_channels, num_repetitions=num_repetitions).to(
+        device
+    )
 
     with pytest.raises(ValueError):
         Cat(inputs=[inputs_a, inputs_b], dim=1).to(device)
@@ -128,8 +136,12 @@ def test_invalid_constructor_different_scope_dim2(device):
     scope_a = Scope(list(range(0, out_features)))
     scope_b = Scope(list(range(out_features, 2 * out_features)))
 
-    inputs_a = make_normal_leaf(scope_a, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
-    inputs_b = make_normal_leaf(scope_b, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
+    inputs_a = make_normal_leaf(scope_a, out_channels=out_channels, num_repetitions=num_repetitions).to(
+        device
+    )
+    inputs_b = make_normal_leaf(scope_b, out_channels=out_channels, num_repetitions=num_repetitions).to(
+        device
+    )
 
     with pytest.raises(ValueError):
         Cat(inputs=[inputs_a, inputs_b], dim=2).to(device)
@@ -142,8 +154,12 @@ def test_invalid_constructor_different_channels_dim1(device):
     scope_a = Scope(list(range(0, out_features)))
     scope_b = Scope(list(range(out_features, 2 * out_features)))
 
-    inputs_a = make_normal_leaf(scope_a, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
-    inputs_b = make_normal_leaf(scope_b, out_channels=out_channels + 1, num_repetitions=num_repetitions).to(device)
+    inputs_a = make_normal_leaf(scope_a, out_channels=out_channels, num_repetitions=num_repetitions).to(
+        device
+    )
+    inputs_b = make_normal_leaf(scope_b, out_channels=out_channels + 1, num_repetitions=num_repetitions).to(
+        device
+    )
 
     with pytest.raises(ValueError):
         Cat(inputs=[inputs_a, inputs_b], dim=1).to(device)
@@ -154,8 +170,12 @@ def test_invalid_constructor_different_features_dim2(device):
     out_channels = 3
     num_repetitions = 3
 
-    inputs_a = make_normal_leaf(out_features=out_features, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
-    inputs_b = make_normal_leaf(out_features=out_features + 1, out_channels=out_channels, num_repetitions=num_repetitions).to(device)
+    inputs_a = make_normal_leaf(
+        out_features=out_features, out_channels=out_channels, num_repetitions=num_repetitions
+    ).to(device)
+    inputs_b = make_normal_leaf(
+        out_features=out_features + 1, out_channels=out_channels, num_repetitions=num_repetitions
+    ).to(device)
 
     with pytest.raises(ValueError):
         Cat(inputs=[inputs_a, inputs_b], dim=2).to(device)

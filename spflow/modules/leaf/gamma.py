@@ -7,7 +7,14 @@ from spflow.utils.leaf import parse_leaf_args
 
 
 class Gamma(LeafModule):
-    def __init__(self, scope: Scope, out_channels: int = None, num_repetitions: int = None, alpha: Tensor = None, beta: Tensor = None):
+    def __init__(
+        self,
+        scope: Scope,
+        out_channels: int = None,
+        num_repetitions: int = None,
+        alpha: Tensor = None,
+        beta: Tensor = None,
+    ):
         """
         Initialize a Gamma distribution leaf module.
 
@@ -18,6 +25,8 @@ class Gamma(LeafModule):
             alpha (Tensor, optional): The alpha parameter tensor.
             beta (Tensor, optional): The beta parameter tensor.
         """
-        event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[alpha, beta], num_repetitions=num_repetitions)
+        event_shape = parse_leaf_args(
+            scope=scope, out_channels=out_channels, params=[alpha, beta], num_repetitions=num_repetitions
+        )
         super().__init__(scope, out_channels=event_shape[1])
         self.distribution = D.Gamma(alpha, beta, event_shape=event_shape)

@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from spflow.modules.ops.split_halves import Split
-from typing import Optional, Union
 
 import torch
 from torch import Tensor, nn
@@ -23,7 +24,7 @@ class BaseProduct(Module, ABC):
 
     def __init__(
         self,
-        inputs: Union[list[Module], Module],
+        inputs: list[Module] | Module,
     ) -> None:
         r"""Initializes ``BaseProduct`` object.
 
@@ -43,16 +44,15 @@ class BaseProduct(Module, ABC):
             self.num_splits = inputs[0].num_splits
         else:
             self.input_is_split = False
-            if inputs[0].out_features==1:
+            if inputs[0].out_features == 1:
                 self.num_splits = 1
             else:
                 self.num_splits = None
 
-        if not input:
+        if not inputs:
             raise ValueError(f"'{self.__class__.__name__}' requires at least one input to be specified.")
 
         self.inputs = nn.ModuleList(inputs)
-
 
         # Check that scopes are disjoint
         if not Scope.all_pairwise_disjoint([inp.scope for inp in self.inputs]):
@@ -104,14 +104,15 @@ class BaseProduct(Module, ABC):
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}"
 
+
 """
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
     module: BaseProduct,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[BaseProduct, Module, None]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> BaseProduct | Module | None:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -125,13 +126,15 @@ def marginalize(
 
     raise NotImplementedError("Not implemented yet.")
 """
+
+
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
     layer: BaseProduct,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[BaseProduct, Module, None]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> BaseProduct | Module | None:
     # initialize dispatch context
     raise NotImplementedError("Not implemented yet.")
     """
@@ -182,8 +185,8 @@ def sample(
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -224,7 +227,7 @@ def _get_input_log_likelihoods(
     module: BaseProduct,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> list[Tensor]:
     """
     Prepare the input log-likelihoods for the product module.
@@ -263,7 +266,7 @@ def log_likelihood(
     module: BaseProduct,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     raise NotImplementedError(
         "Not implemented for BaseProduct -- needs to be called on subclasses of BaseProduct."
