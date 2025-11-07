@@ -58,18 +58,6 @@ class Color(str, Enum):
 # directly to the parent module
 SKIP_OPS = {Cat, Split, SplitHalves, SplitAlternate}
 
-# Common Graphviz installation instructions
-_GRAPHVIZ_INSTALL_INSTRUCTIONS = (
-    "To fix this issue:\n"
-    "  1. Install the Graphviz system dependency:\n"
-    "     - On macOS: brew install graphviz\n"
-    "     - On Ubuntu/Debian: sudo apt-get install graphviz\n"
-    "     - On Windows: Download from https://graphviz.org/download/\n"
-    "  2. Verify installation by running: dot -V\n"
-    "  3. Check that Graphviz binaries are in your system PATH\n\n"
-    "For more details, see the README.md file in the SPFlow repository."
-)
-
 
 def _format_param_count(count: int) -> str:
     """Format parameter count with K/M suffixes for readability.
@@ -215,16 +203,6 @@ def visualize_module(
     # Generate output file
     output_file = f"{output_path}.{format}"
 
-    # Validate format early using pattern matching
-    match format:
-        case "png" | "pdf" | "svg" | "dot" | "plain" | "canon":
-            pass  # Valid format, proceed
-        case _:
-            raise ValueError(
-                f"Unsupported format: {format}. "
-                "Supported formats: png, pdf, svg, dot, plain, canon"
-            )
-
     # Write output using the specified engine
     try:
         match format:
@@ -240,19 +218,26 @@ def visualize_module(
                 graph.write_plain(output_file, prog=engine)
             case "canon":
                 graph.write(output_file, format="canon", prog=engine)
+            case _:
+                raise ValueError(
+                    f"Unsupported format: {format}. "
+                    "Supported formats: png, pdf, svg, dot, plain, canon"
+                )
+
+    except ValueError as e:
+        # Re-raise ValueErrors (e.g., unsupported format)
+        raise e
     except FileNotFoundError as e:
         # This error occurs when Graphviz is not installed or not in PATH
         raise GraphvizError(
-            f"Graphviz executable '{engine}' not found. This usually means Graphviz is not installed or not in your system PATH.\n\n"
-            f"{_GRAPHVIZ_INSTALL_INSTRUCTIONS}"
+            f"Graphviz executable '{engine}' not found. This usually means Graphviz is not installed or not in your system PATH."
         ) from e
     except Exception as e:
         # Catch other potential pydot/Graphviz errors
         if "graphviz" in str(e).lower() or "dot" in str(e).lower():
             raise GraphvizError(
                 f"Error executing Graphviz: {str(e)}\n\n"
-                f"This error typically indicates a problem with your Graphviz installation.\n\n"
-                f"{_GRAPHVIZ_INSTALL_INSTRUCTIONS}"
+                f"This error typically indicates a problem with your Graphviz installation."
             ) from e
         else:
             # Re-raise other unexpected errors
