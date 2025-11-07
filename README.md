@@ -238,6 +238,71 @@ Log-likelihood sample: tensor([[-0.4677],
         [-1.4382]], grad_fn=<SelectBackward0>)
 ```
 
+## Example 5: Graph Visualization
+
+``` python
+import torch
+from spflow.modules import Sum, Product
+from spflow.modules.leaf import Normal, Categorical
+from spflow.meta.data.scope import Scope
+
+
+# Define feature indices: X=0, Z1=1, Z2=2
+X_idx = 0
+Z1_idx = 1
+Z2_idx = 2
+
+# ===== Leaf modules =====
+# For left branch: Z1 with Sum[X, Z2]
+leaf_Z1_left = Categorical(scope=Scope([Z1_idx]), out_channels=2, K=3)
+leaf_X_1 = Normal(scope=Scope([X_idx]), out_channels=2)
+leaf_Z2_1 = Normal(scope=Scope([Z2_idx]), out_channels=2)
+leaf_X_2 = Normal(scope=Scope([X_idx]), out_channels=2)
+
+# For right branch: Z2 with Sum[Z1, X]
+leaf_Z2_right = Normal(scope=Scope([Z2_idx]), out_channels=2)
+leaf_Z1_1 = Categorical(scope=Scope([Z1_idx]), out_channels=2, K=3)
+leaf_X_3 = Normal(scope=Scope([X_idx]), out_channels=2)
+leaf_Z1_2 = Categorical(scope=Scope([Z1_idx]), out_channels=2, K=3)
+
+# ===== Left branch: Z1 with Sum[X, Z2] =====
+# Products combining X and Z2 (disjoint scopes -> [0,2])
+prod_x_z2 = Product(inputs=[leaf_X_1, leaf_Z2_1])  # scope [0,2]
+prod_z2_x = Product(inputs=[leaf_Z2_1, leaf_X_2])  # scope [0,2]
+
+# Sum over [X, Z2]
+sum_x_z2 = Sum(inputs=[prod_x_z2, prod_z2_x], out_channels=2)  # scope [0,2]
+
+# Product of Z1 with Sum[X,Z2] (disjoint scopes -> [0,1,2])
+prod_z1_sum_xz2 = Product(inputs=[leaf_Z1_left, sum_x_z2])  # scope [0,1,2]
+
+# ===== Right branch: Z2 with Sum[Z1, X] =====
+# Products combining Z1 and X (disjoint scopes -> [0,1])
+prod_z1_x_1 = Product(inputs=[leaf_Z1_1, leaf_X_3])  # scope [0,1]
+prod_z1_x_2 = Product(inputs=[leaf_Z1_2, leaf_X_3])  # scope [0,1]
+
+# Sum over [Z1, X]
+sum_z1_x = Sum(inputs=[prod_z1_x_1, prod_z1_x_2], out_channels=2)  # scope [0,1]
+
+# Product of Z2 with Sum[Z1,X] (disjoint scopes -> [0,1,2])
+prod_z2_sum_z1x = Product(inputs=[leaf_Z2_right, sum_z1_x])  # scope [0,1,2]
+
+# ===== Root Sum over [X, Z1, Z2] =====
+# Combines the two main products
+root = Sum(inputs=[prod_z1_sum_xz2, prod_z2_sum_z1x], out_channels=1)
+
+from spflow.utils.visualization import visualize_module
+
+# Create visualization with different layouts
+output_path = "/tmp/structure"
+visualize_module(root, output_path, show_scope=True, show_shape=True, show_params=True, format="vt")
+```
+
+Output:
+
+<img src="res/structure.svg" height="400"/>
+
+
 **For comprehensive examples and tutorials**, see the [User Guide](guides/user_guide2.ipynb) and [Guides](guides/) directory.
 
 ## Documentation
