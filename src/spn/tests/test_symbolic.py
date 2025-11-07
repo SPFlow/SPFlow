@@ -18,6 +18,8 @@ import numpy as np
 
 
 class TestSymbolic(unittest.TestCase):
+    # Skip since we have removed large datasets from the repo
+    @unittest.skip("Skipping test with data dependency")
     def test_bernoulli_spn_ll(self):
         train_data = get_binary_data("dna")[3]
         train_data = train_data[:, 0:3]
