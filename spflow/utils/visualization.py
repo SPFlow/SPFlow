@@ -58,6 +58,18 @@ class Color(str, Enum):
 # directly to the parent module
 SKIP_OPS = {Cat, Split, SplitHalves, SplitAlternate}
 
+# Common Graphviz installation instructions
+_GRAPHVIZ_INSTALL_INSTRUCTIONS = (
+    "To fix this issue:\n"
+    "  1. Install the Graphviz system dependency:\n"
+    "     - On macOS: brew install graphviz\n"
+    "     - On Ubuntu/Debian: sudo apt-get install graphviz\n"
+    "     - On Windows: Download from https://graphviz.org/download/\n"
+    "  2. Verify installation by running: dot -V\n"
+    "  3. Check that Graphviz binaries are in your system PATH\n\n"
+    "For more details, see the README.md file in the SPFlow repository."
+)
+
 
 def _format_param_count(count: int) -> str:
     """Format parameter count with K/M suffixes for readability.
@@ -232,29 +244,15 @@ def visualize_module(
         # This error occurs when Graphviz is not installed or not in PATH
         raise GraphvizError(
             f"Graphviz executable '{engine}' not found. This usually means Graphviz is not installed or not in your system PATH.\n\n"
-            "To fix this issue:\n"
-            "  1. Install the Graphviz system dependency:\n"
-            "     - On macOS: brew install graphviz\n"
-            "     - On Ubuntu/Debian: sudo apt-get install graphviz\n"
-            "     - On Windows: Download from https://graphviz.org/download/\n"
-            "       Then add the Graphviz bin directory to your system PATH\n"
-            "  2. Verify installation by running: dot -V\n\n"
-            "For more details, see the README.md file in the SPFlow repository."
+            f"{_GRAPHVIZ_INSTALL_INSTRUCTIONS}"
         ) from e
     except Exception as e:
         # Catch other potential pydot/Graphviz errors
         if "graphviz" in str(e).lower() or "dot" in str(e).lower():
             raise GraphvizError(
                 f"Error executing Graphviz: {str(e)}\n\n"
-                "This error typically indicates a problem with your Graphviz installation.\n\n"
-                "To fix this issue:\n"
-                "  1. Ensure Graphviz is properly installed:\n"
-                "     - On macOS: brew install graphviz\n"
-                "     - On Ubuntu/Debian: sudo apt-get install graphviz\n"
-                "     - On Windows: Download from https://graphviz.org/download/\n"
-                "  2. Verify installation: dot -V\n"
-                "  3. Check that Graphviz binaries are in your system PATH\n\n"
-                "For more details, see the README.md file in the SPFlow repository."
+                f"This error typically indicates a problem with your Graphviz installation.\n\n"
+                f"{_GRAPHVIZ_INSTALL_INSTRUCTIONS}"
             ) from e
         else:
             # Re-raise other unexpected errors
