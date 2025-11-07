@@ -36,7 +36,7 @@ class Poisson(Distribution):
         if not torch.isfinite(rate).all():
             raise ValueError(f"Values for 'rate' must be finite, but was: {rate}")
 
-        if torch.all(rate <= 0.0):
+        if torch.any(rate <= 0.0):
             raise ValueError(f"Value for 'rate' must be greater than 0.0, but was: {rate}")
 
         self.log_rate.data = rate.log()

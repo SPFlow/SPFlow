@@ -1,2 +1,3 @@
 from .expectation_maximization import expectation_maximization
 from .gradient_descent import train_gradient_descent
+from .learn_spn import learn_spn

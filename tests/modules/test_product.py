@@ -2,7 +2,8 @@ from tests.fixtures import auto_set_test_seed, auto_set_test_device
 import unittest
 from itertools import product
 
-from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
+from spflow.meta import SamplingContext
+from spflow.meta.dispatch import init_default_sampling_context
 from spflow import log_likelihood, sample, marginalize
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 from spflow.learn import expectation_maximization
@@ -19,7 +20,9 @@ params = list(product(in_channels_values, out_features_values, num_repetitions))
 
 def make_product(in_channels=None, out_features=None, inputs=None, num_repetitions=None):
     if inputs is None:
-        inputs = make_normal_leaf(out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions)
+        inputs = make_normal_leaf(
+            out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions
+        )
     return Product(inputs=inputs)
 
 
@@ -34,8 +37,6 @@ def test_log_likelihood(in_channels: int, out_features: int, num_reps, device):
         assert lls.shape == (data.shape[0], 1, product_layer.out_channels, num_reps)
 
 
-
-
 @pytest.mark.parametrize("in_channels,out_features,num_reps", params)
 def test_sample(in_channels: int, out_features: int, num_reps, device):
     n_samples = 10
@@ -48,7 +49,9 @@ def test_sample(in_channels: int, out_features: int, num_reps, device):
             repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         else:
             repetition_index = None
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+        sampling_ctx = SamplingContext(
+            channel_index=channel_index, mask=mask, repetition_index=repetition_index
+        )
         samples = sample(product_layer, data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, product_layer.scope.query]
@@ -104,9 +107,30 @@ def test_multiple_inputs():
     mean = torch.rand((out_features, out_channels, num_reps))
     std = torch.rand((out_features, out_channels, num_reps))
 
-    normal_layer_a = make_normal_leaf(scope=[0,1,2,3], out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions, mean=mean, std=std)
-    normal_layer_b1 = make_normal_leaf(scope=[0,1], out_features=out_features/2, out_channels=in_channels, num_repetitions=num_repetitions, mean=mean[0:2,:,:], std=std[0:2,:,:])
-    normal_layer_b2 = make_normal_leaf(scope=[2,3], out_features=out_features/2, out_channels=in_channels, num_repetitions=num_repetitions, mean=mean[2:4,:,:], std=std[2:4,:,:])
+    normal_layer_a = make_normal_leaf(
+        scope=[0, 1, 2, 3],
+        out_features=out_features,
+        out_channels=in_channels,
+        num_repetitions=num_repetitions,
+        mean=mean,
+        std=std,
+    )
+    normal_layer_b1 = make_normal_leaf(
+        scope=[0, 1],
+        out_features=out_features / 2,
+        out_channels=in_channels,
+        num_repetitions=num_repetitions,
+        mean=mean[0:2, :, :],
+        std=std[0:2, :, :],
+    )
+    normal_layer_b2 = make_normal_leaf(
+        scope=[2, 3],
+        out_features=out_features / 2,
+        out_channels=in_channels,
+        num_repetitions=num_repetitions,
+        mean=mean[2:4, :, :],
+        std=std[2:4, :, :],
+    )
 
     module_a = Product(inputs=normal_layer_a)
 
@@ -129,15 +153,17 @@ def test_multiple_inputs():
     channel_index = torch.randint(low=0, high=out_channels, size=(n_samples, out_features))
     mask = torch.full((n_samples, out_features), True)
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-    sampling_ctx_a = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    sampling_ctx_a = SamplingContext(
+        channel_index=channel_index, mask=mask, repetition_index=repetition_index
+    )
 
     data_b = torch.full((n_samples, out_features), torch.nan)
 
-    sampling_ctx_b = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    sampling_ctx_b = SamplingContext(
+        channel_index=channel_index, mask=mask, repetition_index=repetition_index
+    )
 
     samples_a = sample(module_a, data_a, is_mpe=True, sampling_ctx=sampling_ctx_a)
     samples_b = sample(module_b, data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
 
-
     assert torch.allclose(samples_a, samples_b)
-

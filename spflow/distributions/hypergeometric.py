@@ -138,24 +138,22 @@ class Hypergeometric(Distribution):
 
         else:
             valid[~nan_mask & valid] &= (
-                    (
-                            data
-                            >= torch.max(
+                (
+                    data
+                    >= torch.max(
                         torch.vstack(
                             [
-                                torch.zeros(self.event_shape, dtype=data.dtype,
-                                            device=data.device),
+                                torch.zeros(self.event_shape, dtype=data.dtype, device=data.device),
                                 n_nodes + K_nodes - N_nodes,
                             ]
                         ),
                         dim=0,
                     )[0].unsqueeze(0)
-                    )
-                    & (  # type: ignore
-                            data <= torch.min(torch.vstack([n_nodes, K_nodes]), dim=0)[
-                        0].unsqueeze(0)  # type: ignore
-                    )
-            )[...,:1][~nan_mask & valid]
+                )
+                & (  # type: ignore
+                    data <= torch.min(torch.vstack([n_nodes, K_nodes]), dim=0)[0].unsqueeze(0)  # type: ignore
+                )
+            )[..., :1][~nan_mask & valid]
 
         return valid
 

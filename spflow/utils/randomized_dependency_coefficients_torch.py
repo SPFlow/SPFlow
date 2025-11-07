@@ -56,7 +56,9 @@ def randomized_dependency_coefficients(data, k: int = 20, s: float = 1 / 6, phi:
     rand_gaussians = torch.randn(data.shape[1], 2, k, device=data.device)  # 2 for weight (of size 1) and bias
 
     # compute linear combinations of ecdf feature using generated weights
-    features = torch.stack([torch.mm(features, weights) for features, weights in zip(ecdf_features, rand_gaussians)])
+    features = torch.stack(
+        [torch.mm(features, weights) for features, weights in zip(ecdf_features, rand_gaussians)]
+    )
     features *= torch.sqrt(
         torch.tensor(s, dtype=data.dtype, device=data.device)
     )  # multiplying by sqrt(s) is equal to generating random weights from N(0,s)
@@ -84,8 +86,6 @@ def randomized_dependency_coefficients(data, k: int = 20, s: float = 1 / 6, phi:
     #return rdcs
     """
 
-
-
     distances = pwcca_distance_batch(features, i_indices, j_indices)
 
     # Fill the symmetric matrix
@@ -94,8 +94,3 @@ def randomized_dependency_coefficients(data, k: int = 20, s: float = 1 / 6, phi:
     rdcs_batch[j_indices, i_indices] = distances  # Make symmetric
 
     return rdcs_batch
-
-
-
-
-

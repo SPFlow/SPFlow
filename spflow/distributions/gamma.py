@@ -44,7 +44,7 @@ class Gamma(Distribution):
         if not torch.isfinite(alpha).all():
             raise ValueError(f"Values for 'beta' must be finite, but was: {alpha}")
 
-        if torch.all(alpha <= 0.0):
+        if torch.any(alpha <= 0.0):
             raise ValueError(f"Value for 'beta' must be greater than 0.0, but was: {alpha}")
 
         self.log_alpha.data = alpha.log()
@@ -61,7 +61,7 @@ class Gamma(Distribution):
         if not torch.isfinite(beta).all():
             raise ValueError(f"Values for 'beta' must be finite, but was: {beta}")
 
-        if torch.all(beta <= 0.0):
+        if torch.any(beta <= 0.0):
             raise ValueError(f"Value for 'beta' must be greater than 0.0, but was: {beta}")
 
         self.log_beta.data = beta.log()

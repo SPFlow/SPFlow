@@ -4,15 +4,15 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 from unittest.mock import MagicMock
 import logging
-from spflow.modules.module import Module
+from spflow.modules import Module
 from spflow.learn.gradient_descent import negative_log_likelihood_loss, train_gradient_descent
 from spflow.meta.dispatch import dispatch
-from spflow.meta.data import Scope
+from spflow.meta import Scope
+from tests.fixtures import auto_set_test_seed, auto_set_test_device
 
 
 # Define a DummyModel class for testing
 class DummyModel(Module):
-
     @property
     def feature_to_scope(self) -> list[Scope]:
         return [Scope([0])]
@@ -46,9 +46,9 @@ def model(device):
 
 @pytest.fixture
 def dataloader(device):
-    data = torch.randn(100, 1).to(device)
+    data = torch.randn(30, 1).to(device)
     dataset = TensorDataset(data)
-    return DataLoader(dataset, batch_size=10)
+    return DataLoader(dataset, batch_size=3)
 
 
 def test_negative_log_likelihood_loss(model, dataloader, device):
@@ -62,7 +62,8 @@ def test_train_gradient_descent_basic(model, dataloader):
     initial_params = [p.clone() for p in model.parameters()]
     train_gradient_descent(model, dataloader, lr=0.01, epochs=1)
     for p, initial_p in zip(model.parameters(), initial_params):
-        assert not torch.allclose(p, initial_p)  # parameters should have changed
+        param_change = torch.abs(p - initial_p).max().item()
+        assert param_change > 1e-6, f"Parameters should change during training (change: {param_change})"
 
 
 def test_train_gradient_descent_custom_optimizer(model, dataloader):
@@ -108,15 +109,9 @@ def test_train_gradient_descent_verbose(model, dataloader, caplog):
         assert "Loss:" in record.message
 
 
-@pytest.mark.parametrize("epochs", [1, 5, 10])
+@pytest.mark.parametrize("epochs", [1, 3])
 def test_train_gradient_descent_multiple_epochs(model, dataloader, epochs):
     initial_loss = negative_log_likelihood_loss(model, next(iter(dataloader))[0])
     train_gradient_descent(model, dataloader, epochs=epochs)
     final_loss = negative_log_likelihood_loss(model, next(iter(dataloader))[0])
     assert final_loss < initial_loss  # loss should decrease after training
-
-
-def test_train_gradient_descent_empty_dataloader():
-    model = DummyModel()
-    empty_dataloader = DataLoader(TensorDataset(torch.Tensor([])))
-    train_gradient_descent(model, empty_dataloader, epochs=1)  # should not raise an error

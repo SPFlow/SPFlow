@@ -11,9 +11,9 @@ jobs:
   "Lint":
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip' # caching pip dependencies
@@ -31,9 +31,9 @@ jobs:
     name: "Check Format"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip' # caching pip dependencies
@@ -55,34 +55,32 @@ jobs:
   # - We only test on the most recent version of macOS and Windows to save resources
   # - We test even fewer combinations for TensorFlow and Jax to save resources
 
+  "test_python":
+    name: "Python ${{ matrix.version-python }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version-python: ['3.10', '3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: "./.github/actions/run_tests"
+        with:
+          version-python: ${{ matrix.version-python }}
+          codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
   "Test_OS":
     name: "Test: Py ${{ matrix.version-python }} @ OS ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        version-python: ['3.11']
+        version-python: ['3.12']
         os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: "./.github/actions/run_tests"
         with:
           version-python: ${{ matrix.version-python }}
-          codecov-token: ${{ secrets.CODECOV_TOKEN }}
-
-  "Test_Torch":
-    name: "Test: Py ${{ matrix.version-python }} + Torch ${{ matrix.version-pytorch }}"
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false 
-      matrix:
-        version-python: ['3.9', '3.10', '3.11']  # 3.12 is not yet supported by torch
-        version-pytorch: ['2.1.1', '2.2.2', '2.3.1']
-    steps:
-      - uses: actions/checkout@v4
-      - uses: "./.github/actions/run_tests"
-        with:
-          version-python: ${{ matrix.version-python }}
-          version-pytorch: ${{ matrix.version-pytorch }}
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
 

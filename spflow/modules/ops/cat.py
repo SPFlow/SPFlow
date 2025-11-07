@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from __future__ import annotations
 
 import torch
 from torch import Tensor, nn
@@ -15,7 +15,6 @@ from spflow.modules.module import Module
 
 
 class Cat(Module):
-
     def __init__(self, inputs: list[Module], dim: int = -1):
         """
         Concatenation of multiple modules along a given dimension.
@@ -76,7 +75,6 @@ class Cat(Module):
         else:
             return self.inputs[0].feature_to_scope
 
-
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, dim={self.dim}"
 
@@ -86,7 +84,7 @@ def log_likelihood(
     module: Cat,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -106,17 +104,17 @@ def sample(
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     # initialize contexts
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
     if module.dim == 1:
-        #split_size = module.out_features // len(module.inputs)
-        #channel_index_per_module = sampling_ctx.channel_index.split(split_size, dim=module.dim)
-        #mask_per_module = sampling_ctx.mask.split(split_size, dim=module.dim)
+        # split_size = module.out_features // len(module.inputs)
+        # channel_index_per_module = sampling_ctx.channel_index.split(split_size, dim=module.dim)
+        # mask_per_module = sampling_ctx.mask.split(split_size, dim=module.dim)
         channel_index_per_module = []
         mask_per_module = []
         for s in module.feature_to_scope:
@@ -139,7 +137,6 @@ def sample(
             channel_index_per_module.append(oids_mod)
             mask = split_assignment == i & sampling_ctx.mask
             mask_per_module.append(mask)
-
 
     else:
         raise ValueError("Invalid dimension for concatenation.")
@@ -167,8 +164,8 @@ def marginalize(
     module: Cat,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[None, Module]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> None | Module:
     # Initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 

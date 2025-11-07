@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from abc import ABC
-from typing import Optional, Union
 from collections.abc import Callable
 
 import torch
@@ -14,10 +15,10 @@ from spflow.modules.module import Module
 from spflow.utils.leaf import apply_nan_strategy
 import time
 
-class LeafModule(Module, ABC):
 
-    def __init__(self, scope: Union[Scope, list[int]], out_channels: int = None):
-        r""" Base class for leaf modules in the SPFlow framework.
+class LeafModule(Module, ABC):
+    def __init__(self, scope: Scope | list[int], out_channels: int = None):
+        r"""Base class for leaf modules in the SPFlow framework.
 
         Args:
             scope: Scope object or list of ints specifying the scope of the distribution.
@@ -73,7 +74,7 @@ def em(
     leaf: LeafModule,
     data: torch.Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> None:
     """Performs a single expectation maximizaton (EM) step for the given leaf module.
 
@@ -89,7 +90,10 @@ def em(
         dispatch_ctx:
             Optional dispatch context.
     """
-    # TODO: resolve this circular import somehow
+    # Import here to avoid circular imports.
+    # The em() dispatch function for LeafModule needs to call maximum_likelihood_estimation,
+    # but spflow.__init__ imports from leaf modules, creating a circular dependency.
+    # Late import breaks the cycle without performance impact.
     from spflow import maximum_likelihood_estimation
 
     # initialize dispatch context
@@ -126,7 +130,7 @@ def log_likelihood(
     leaf: LeafModule,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     r"""Computes log-likelihoods for the leaf module given the data.
 
@@ -152,7 +156,7 @@ def log_likelihood(
         ValueError: Data outside of support.
     """
 
-    #start_time = time.time()
+    # start_time = time.time()
 
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
@@ -183,7 +187,7 @@ def log_likelihood(
             raise ValueError(f"Encountered data instances that are not in the support of the distribution.")
 
     # compute probabilities for values inside distribution support
-    #log_prob = leaf.distribution.log_prob(data.float())
+    # log_prob = leaf.distribution.log_prob(data.float())
     log_prob = leaf.distribution.log_prob(data.to(torch.get_default_dtype()))
 
     # Marginalize entries
@@ -193,7 +197,7 @@ def log_likelihood(
     if marg_mask.any():
         data[marg_mask] = torch.nan
 
-    #print(f"Leaf took {time.time() - start_time:.4f} seconds.")
+    # print(f"Leaf took {time.time() - start_time:.4f} seconds.")
 
     return log_prob
 
@@ -202,11 +206,11 @@ def log_likelihood(
 def maximum_likelihood_estimation(
     leaf: LeafModule,
     data: Tensor,
-    weights: Optional[Tensor] = None,
+    weights: Tensor | None = None,
     bias_correction: bool = True,
-    nan_strategy: Optional[Union[str, Callable]] = None,
+    nan_strategy: str | Callable | None = None,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
     preprocess_data: bool = True,
 ) -> None:
     r"""Maximum (weighted) likelihood estimation (MLE) of a leaf module.
@@ -260,8 +264,8 @@ def sample(
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     r"""Samples from the leaf nodes in the ``torch`` backend given potential evidence.
 
@@ -308,22 +312,24 @@ def sample(
         # Get mode of distribution as MPE
         samples = module.distribution.mode().unsqueeze(0)
         if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
-
             samples = samples.repeat(n_samples, 1, 1, 1).detach()
-            print("Repetition idx:", sampling_ctx.repetition_idx.shape)
-            print("Samples shape before gather:", samples.shape)
             # repetition_idx shape: (n_samples,)
             repetition_idx = sampling_ctx.repetition_idx[instance_mask]
 
-
-
-            indices = repetition_idx.view(-1,1,1,1).expand(-1,samples.shape[1], samples.shape[2],-1)
+            indices = repetition_idx.view(-1, 1, 1, 1).expand(-1, samples.shape[1], samples.shape[2], -1)
 
             # Gather samples according to repetition index
             samples = torch.gather(samples, dim=-1, index=indices).squeeze(-1)
 
-        elif sampling_ctx.repetition_idx is not None and samples.ndim != 4 or sampling_ctx.repetition_idx is None and samples.ndim == 4:
-            raise ValueError("Either there is no repetition index or the samples are not 4-dimensional. This should not happen.")
+        elif (
+            sampling_ctx.repetition_idx is not None
+            and samples.ndim != 4
+            or sampling_ctx.repetition_idx is None
+            and samples.ndim == 4
+        ):
+            raise ValueError(
+                "Either there is no repetition index or the samples are not 4-dimensional. This should not happen."
+            )
 
         else:
             samples = samples.repeat(n_samples, 1, 1).detach()
@@ -334,32 +340,37 @@ def sample(
 
         if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
             # repetition_idx shape: (n_samples,)
-            print("Repetition idx:", sampling_ctx.repetition_idx.shape)
-            print("Samples shape before gather:", samples.shape)
             repetition_idx = sampling_ctx.repetition_idx[instance_mask]
 
-            indices = repetition_idx.view(-1,1,1,1).expand(-1,samples.shape[1], samples.shape[2],-1)
+            indices = repetition_idx.view(-1, 1, 1, 1).expand(-1, samples.shape[1], samples.shape[2], -1)
 
             # Gather samples according to repetition index
-            samples = torch.gather(samples,dim=-1, index=indices).squeeze(-1)
+            samples = torch.gather(samples, dim=-1, index=indices).squeeze(-1)
 
-        elif sampling_ctx.repetition_idx is not None and samples.ndim != 4 or sampling_ctx.repetition_idx is None and samples.ndim == 4:
-            raise ValueError("Either there is no repetition index or the samples are not 4-dimensional. This should not happen.")
+        elif (
+            sampling_ctx.repetition_idx is not None
+            and samples.ndim != 4
+            or sampling_ctx.repetition_idx is None
+            and samples.ndim == 4
+        ):
+            raise ValueError(
+                "Either there is no repetition index or the samples are not 4-dimensional. This should not happen."
+            )
 
-    assert samples.shape[0] == sampling_ctx.channel_index[instance_mask].shape[0]
+    if samples.shape[0] != sampling_ctx.channel_index[instance_mask].shape[0]:
+        raise ValueError(
+            f"Sample shape mismatch: got {samples.shape[0]}, expected {sampling_ctx.channel_index[instance_mask].shape[0]}"
+        )
 
     if module.out_channels == 1:
         # If the output of the input module has a single channel, set the output_ids to zero since this input was
         # broadcasted to match the channel dimension of the other inputs
         sampling_ctx.channel_index.zero_()
 
-
     index = sampling_ctx.channel_index[instance_mask].unsqueeze(-1)
 
     # Index the channel_index to get the correct samples for each scope
-    samples = samples.gather(dim=2, index=index).squeeze(
-        2
-    )
+    samples = samples.gather(dim=2, index=index).squeeze(2)
 
     # Ensure, that no data is overwritten
     if data[samples_mask].isfinite().any():
@@ -377,8 +388,8 @@ def marginalize(
     layer: LeafModule,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Optional[LeafModule]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> LeafModule | None:
     """Structural marginalization for ``NormallLayer`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.

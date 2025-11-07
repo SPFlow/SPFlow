@@ -1,4 +1,6 @@
-from typing import Optional, Union, Callable, Optional
+from __future__ import annotations
+
+from typing import Callable
 
 import torch
 from torch import Tensor, nn
@@ -15,9 +17,14 @@ from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
 
 
-class SplitHalves(Split): # ToDo: make abstract and implement concrete classes
-
-    def __init__(self, inputs: Module, dim: int = 1, num_splits: Optional[int] = 2, split_func: Optional[Callable[[torch.Tensor], list[torch.Tensor]]] = None):
+class SplitHalves(Split):  # ToDo: make abstract and implement concrete classes
+    def __init__(
+        self,
+        inputs: Module,
+        dim: int = 1,
+        num_splits: int | None = 2,
+        split_func: Callable[[torch.Tensor], list[torch.Tensor]] | None = None,
+    ):
         """
         Split a single module along a given dimension. This implementation splits the features consecutively.
         Example:
@@ -39,7 +46,6 @@ class SplitHalves(Split): # ToDo: make abstract and implement concrete classes
         """
         super().__init__(inputs=inputs, dim=dim, num_splits=num_splits)
 
-
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, dim={self.dim}"
 
@@ -49,11 +55,9 @@ class SplitHalves(Split): # ToDo: make abstract and implement concrete classes
         num_scopes_per_chunk = len(scopes) // self.num_splits
         feature_to_scope = []
         for i in range(self.num_splits):
-             sub_scopes = scopes[i*num_scopes_per_chunk:(i+1)*num_scopes_per_chunk]
-             feature_to_scope.append(sub_scopes)
+            sub_scopes = scopes[i * num_scopes_per_chunk : (i + 1) * num_scopes_per_chunk]
+            feature_to_scope.append(sub_scopes)
         return feature_to_scope
-
-
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -61,7 +65,7 @@ def log_likelihood(
     module: SplitHalves,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> list[Tensor]:
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
@@ -74,16 +78,13 @@ def log_likelihood(
     return lls_split
 
 
-
-
-
 @dispatch(memoize=True)  # type: ignore
 def marginalize(
     module: SplitHalves,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[None, Module]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> None | Module:
     # Initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
     raise NotImplementedError

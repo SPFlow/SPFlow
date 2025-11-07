@@ -51,7 +51,7 @@ def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support) -
     return scope_data, weights
 
 
-def init_parameter(param: Tensor, event_shape: Tuple[int, ...], init: Callable) -> Tensor:
+def init_parameter(param: Tensor, event_shape: tuple[int, ...], init: Callable) -> Tensor:
     """Initializes a parameter tensor of a leaf node."""
 
     if param is None:
@@ -91,9 +91,9 @@ def parse_leaf_args(scope, out_channels, num_repetitions, params) -> tuple[int, 
                 raise InvalidParameterCombinationError(
                     "If out_channels is given, it must match the second dimension of all parameter tensors."
                 )
-            #raise InvalidParameterCombinationError(
-           #     "Either out_channels or distribution parameters must be given."
-           # )
+            # raise InvalidParameterCombinationError(
+        #     "Either out_channels or distribution parameters must be given."
+        # )
 
         if len(scope.query) != params[0].shape[0]:
             raise InvalidParameterCombinationError(

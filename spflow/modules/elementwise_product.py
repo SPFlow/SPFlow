@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from __future__ import annotations
 
 import torch
 from torch import Tensor
@@ -14,13 +14,13 @@ from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.ops.split_alternate import SplitAlternate
-import time
+
 
 class ElementwiseProduct(BaseProduct):
     def __init__(
         self,
-        inputs: Union[Module, tuple[Module, Module], list[Module]],
-        num_splits: Optional[int] = 2,
+        inputs: Module | tuple[Module, Module] | list[Module],
+        num_splits: int | None = 2,
     ) -> None:
         r"""Initializes ``ElementwiseProduct`` object.
 
@@ -72,7 +72,8 @@ class ElementwiseProduct(BaseProduct):
             inputs = self.inputs
 
         if self.input_is_split:
-            assert self.num_splits == inputs[0].num_splits, "num_splits must be the same for all inputs"
+            if self.num_splits != inputs[0].num_splits:
+                raise ValueError("num_splits must be the same for all inputs")
             shapes = inputs[0].get_out_shapes((self.out_features, self.out_channels))
         else:
             shapes = [(inp.out_features, inp.out_channels) for inp in inputs]
@@ -134,7 +135,6 @@ class ElementwiseProduct(BaseProduct):
             feature_to_scope.append(Scope.join_all(scopes))
         return feature_to_scope
 
-
     def map_out_channels_to_in_channels(self, index: Tensor) -> Tensor:
         if self.input_is_split:
             num_splits = self.num_splits
@@ -146,9 +146,7 @@ class ElementwiseProduct(BaseProduct):
                 raise NotImplementedError("Other Split types are not implemented yet.")
         else:
             num_splits = len(self.inputs)
-            return index.unsqueeze(-1).repeat(1,1,num_splits)
-
-
+            return index.unsqueeze(-1).repeat(1, 1, num_splits)
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
         if self.input_is_split:
@@ -164,10 +162,10 @@ def log_likelihood(
     module: ElementwiseProduct,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     # initialize dispatch context
-    #start_time = time.time()
+    # start_time = time.time()
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx)
@@ -189,7 +187,7 @@ def log_likelihood(
     else:
         output = output.view(output.size(0), module.out_features, module.out_channels)
 
-    #print(f"Elementwise Product took {time.time() - start_time:.4f} seconds")
+    # print(f"Elementwise Product took {time.time() - start_time:.4f} seconds")
 
     return output
 
@@ -203,8 +201,6 @@ def log_likelihood(
     dispatch_ctx: Optional[DispatchContext] = None,
 ) -> Tensor:
     # initialize dispatch context
-    start_time = time.time()
-    
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
     lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx)
@@ -219,7 +215,6 @@ def log_likelihood(
     
     # Compute the elementwise sum of left and right split
     output = torch.sum(torch.stack(lls, dim=-1), dim=-1)
-    print(f"Elementwise Product took {time.time() - start_time:.4f} seconds")
     return output
 
     # # View as [b, n, m, r]
@@ -231,4 +226,3 @@ def log_likelihood(
     #
     # return output
 """
-

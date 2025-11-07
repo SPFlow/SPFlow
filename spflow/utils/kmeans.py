@@ -4,7 +4,7 @@ Typical usage example:
 
     labels = kmeans(data, n_clusters)
 """
-from typing import Tuple, Union
+from typing import Tuple
 
 import torch
 
@@ -12,7 +12,7 @@ import torch
 def kmeans(
     data: torch.Tensor,
     n_clusters: int,
-    centroids: Union[str, torch.Tensor] = "kmeans++",
+    centroids: str | torch.Tensor = "kmeans++",
     max_iter: int = 300,
     tol: float = 1e-4,
 ) -> tuple[torch.Tensor, torch.Tensor]:

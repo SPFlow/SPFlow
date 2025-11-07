@@ -4,8 +4,6 @@ Typical usage example:
 
     sampling_ctx = SamplingDispatch(instance_ids, output_ids)
 """
-from typing import Optional, Union
-
 import torch
 from torch import Tensor
 
@@ -31,11 +29,11 @@ class SamplingContext:
 
     def __init__(
         self,
-        num_samples: Optional[int] = None,
-        device: Optional[torch.device] = None,
-        channel_index: Optional[Tensor] = None,
-        mask: Optional[Tensor] = None,
-        repetition_index: Optional[Tensor] = None,
+        num_samples: int | None = None,
+        device: torch.device | None = None,
+        channel_index: Tensor | None = None,
+        mask: Tensor | None = None,
+        repetition_index: Tensor | None = None,
     ) -> None:
         """Initializes 'SamplingContext' object.
 
@@ -53,7 +51,7 @@ class SamplingContext:
                 Tensor containing the repetition indices to sample from.
         """
         if device is None:
-            #device = torch.device("cpu" if not torch.cuda.is_available() else "cuda:0")
+            # device = torch.device("cpu" if not torch.cuda.is_available() else "cuda:0")
             if hasattr(torch, "get_default_device"):
                 device = torch.get_default_device()
             else:
@@ -145,14 +143,18 @@ class SamplingContext:
 
     def copy(self):
         """Returns a copy of the sampling context."""
-        return SamplingContext(channel_index=self.channel_index.clone(), mask=self.mask.clone(), repetition_index=self.repetition_idx.clone() if self.repetition_idx is not None else None)
+        return SamplingContext(
+            channel_index=self.channel_index.clone(),
+            mask=self.mask.clone(),
+            repetition_index=self.repetition_idx.clone() if self.repetition_idx is not None else None,
+        )
 
     def __repr__(self) -> str:
         return f"SamplingContext(channel_index.shape={self.channel_index.shape}), mask.shape={self.mask.shape}), num_samples={self.channel_index.shape[0]})"
 
 
 def init_default_sampling_context(
-    sampling_ctx: Optional[SamplingContext], num_samples: Optional[int] = None, device: Optional[torch.device] = None
+    sampling_ctx: SamplingContext | None, num_samples: int | None = None, device: torch.device | None = None
 ) -> SamplingContext:
     """Initializes sampling context, if it is not already initialized.
 

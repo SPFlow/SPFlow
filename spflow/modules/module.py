@@ -5,7 +5,6 @@ All valid SPFlow modules in the ``base`` backend should inherit from this class 
 
 from abc import ABC, abstractmethod
 from functools import reduce
-from typing import Optional
 
 import torch
 from torch import Tensor, nn
@@ -53,7 +52,7 @@ class Module(nn.Module, ABC):
     @property
     @abstractmethod
     def feature_to_scope(self) -> list[Scope]:
-        """ Returns the mapping from features to scopes."""
+        """Returns the mapping from features to scopes."""
         pass
 
     @property
@@ -63,17 +62,57 @@ class Module(nn.Module, ABC):
         it returns the device of the first parameter. If the model has no parameters,
         it returns 'cpu' as the default device.
         """
-        return next(iter(self.parameters())).device
+        try:
+            return next(iter(self.parameters())).device
+        except StopIteration:
+            return torch.device("cpu")
 
-    def forward(
-        self, data: Tensor, check_support: bool = True, dispatch_ctx: Optional[DispatchContext] = None
-    ):
+    def forward(self, data: Tensor, check_support: bool = True, dispatch_ctx: DispatchContext | None = None):
         """Forward pass is simply the log-likelihood function."""
         return log_likelihood(self, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
 
-
     def extra_repr(self) -> str:
-         return f"D={self.out_features}, C={self.out_channels}, R={self.num_repetitions}"
+        return f"D={self.out_features}, C={self.out_channels}, R={self.num_repetitions}"
+
+    def to_str(
+        self,
+        format: str = "tree",
+        max_depth: int | None = None,
+        show_params: bool = True,
+        show_scope: bool = True,
+    ) -> str:
+        """
+        Convert this module to a readable string representation.
+
+        This method provides visualization formats for understanding module structure.
+
+        Args:
+            format: Visualization format, one of:
+                - "tree": ASCII tree view (default, recommended)
+                - "pytorch": Default PyTorch format
+            max_depth: Maximum depth to display (None = unlimited). Only applies to tree format.
+            show_params: Whether to show parameter shapes (Sum weights, etc.). Only applies to tree format.
+            show_scope: Whether to show scope information. Only applies to tree format.
+
+        Returns:
+            String representation of the module.
+
+        Examples:
+            >>> leaf = Normal(scope=Scope([0, 1]), out_channels=2)
+            >>> model = Sum(inputs=leaf, out_channels=3)
+            >>> print(model.to_str())  # Tree view (default)
+            >>> print(model.to_str(format="pytorch"))  # PyTorch format
+            >>> print(model.to_str(max_depth=2))  # Limit depth
+        """
+        from spflow.utils.module_display import module_to_str
+
+        return module_to_str(
+            self,
+            format=format,
+            max_depth=max_depth,
+            show_params=show_params,
+            show_scope=show_scope,
+        )
 
 
 @dispatch(memoize=True)  # type: ignore
@@ -81,7 +120,7 @@ def log_likelihood(
     module: Module,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     """Raises ``NotImplementedError`` for modules in the ``base`` backend that have not dispatched a log-likelihood inference routine.
 
@@ -112,7 +151,7 @@ def likelihood(
     module: Module,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     """Computes likelihoods for modules in the ``base`` backend given input data.
 
@@ -143,8 +182,8 @@ def sample(
     module: Module,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     r"""Samples from modules in the ``base`` backend without any evidence.
 
@@ -185,8 +224,8 @@ def sample_with_evidence(
     evidence: Tensor,
     is_mpe: bool = False,
     check_support: bool = False,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     r"""Samples from modules backend with evidence.
 
@@ -233,8 +272,8 @@ def sample(
     num_samples: int = 1,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     r"""Samples specified numbers of instances from modules in the ``base`` backend without any evidence.
 
@@ -280,7 +319,7 @@ def em(
     module: Module,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> None:
     """Performs a single expectation maximization (EM) step for this module.
 

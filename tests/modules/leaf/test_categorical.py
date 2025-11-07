@@ -2,7 +2,6 @@ from tests.fixtures import auto_set_test_seed, auto_set_test_device
 import unittest
 from itertools import product
 
-from typing import Union
 from spflow.meta.dispatch import init_default_sampling_context
 from tests.utils.leaves import evaluate_log_likelihood, evaluate_samples
 import pytest
@@ -10,7 +9,7 @@ import torch
 from pytest import raises
 
 from spflow import maximum_likelihood_estimation, marginalize
-from spflow.meta.data import Scope
+from spflow.meta import Scope
 from spflow.modules.leaf import Categorical
 
 

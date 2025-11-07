@@ -1,7 +1,7 @@
-from abc import ABC
-from typing import Optional, Union
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
 from collections.abc import Callable
-from abc import abstractmethod
 
 import torch
 from torch import Tensor
@@ -17,8 +17,9 @@ from spflow.utils.leaf import parse_leaf_args
 
 
 class CondLeafModule(LeafModule):
-    def __init__(self, scope: Scope, out_channels: int = None,
-                 cond_f: Optional[Union[Callable, list[Callable]]] = None):
+    def __init__(
+        self, scope: Scope, out_channels: int = None, cond_f: Callable | list[Callable] | None = None
+    ):
         """
         Initialize a Normal distribution leaf module.
 
@@ -29,14 +30,14 @@ class CondLeafModule(LeafModule):
             std (Tensor, optional): The standard deviation parameter tensor.
         """
 
-        #mean, std = self.retrieve_params(data=torch.tensor([]), dispatch_ctx=init_default_dispatch_context())
-        #event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[mean, std])
-        assert out_channels is not None
+        # mean, std = self.retrieve_params(data=torch.tensor([]), dispatch_ctx=init_default_dispatch_context())
+        # event_shape = parse_leaf_args(scope=scope, out_channels=out_channels, params=[mean, std])
+        if out_channels is None:
+            raise ValueError("out_channels must be provided")
         super().__init__(scope, out_channels=out_channels)
         self.set_cond_f(cond_f)
 
-    def set_cond_f(self, cond_f: Optional[Union[list[Callable], Callable]] = None) -> None:
-
+    def set_cond_f(self, cond_f: list[Callable] | Callable | None = None) -> None:
         if isinstance(cond_f, list) and len(cond_f) != self.out_channels:
             raise ValueError(
                 "'CondLeafModule' received list of 'cond_f' functions, but length does not not match number of conditional nodes."
@@ -45,9 +46,7 @@ class CondLeafModule(LeafModule):
         self.cond_f = cond_f
 
     @abstractmethod
-    def retrieve_params(
-            self, data: torch.Tensor, dispatch_ctx: DispatchContext
-    ):
+    def retrieve_params(self, data: torch.Tensor, dispatch_ctx: DispatchContext):
         pass
 
     @abstractmethod
@@ -55,13 +54,12 @@ class CondLeafModule(LeafModule):
         pass
 
 
-
 @dispatch(memoize=True)  # type: ignore
 def em(
     leaf: LeafModule,
     data: torch.Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> None:
     """Performs a single expectation maximizaton (EM) step for the given leaf module.
 
@@ -77,7 +75,10 @@ def em(
         dispatch_ctx:
             Optional dispatch context.
     """
-    # TODO: resolve this circular import somehow
+    # Import here to avoid circular imports.
+    # The em() dispatch function for CondLeafModule needs to call maximum_likelihood_estimation,
+    # but spflow.__init__ imports from leaf modules, creating a circular dependency.
+    # Late import breaks the cycle without performance impact.
     from spflow import maximum_likelihood_estimation
 
     # initialize dispatch context
@@ -114,7 +115,7 @@ def log_likelihood(
     leaf: CondLeafModule,
     data: Tensor,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> Tensor:
     r"""Computes log-likelihoods for the leaf module given the data.
 
@@ -141,9 +142,8 @@ def log_likelihood(
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
 
-    *params, = leaf.retrieve_params(torch.tensor([]), dispatch_ctx)
+    (*params,) = leaf.retrieve_params(torch.tensor([]), dispatch_ctx)
     leaf.set_params(*params)
-
 
     # get information relevant for the scope
     data = data[:, leaf.scope.query]
@@ -185,11 +185,11 @@ def log_likelihood(
 def maximum_likelihood_estimation(
     leaf: CondLeafModule,
     data: Tensor,
-    weights: Optional[Tensor] = None,
+    weights: Tensor | None = None,
     bias_correction: bool = True,
-    nan_strategy: Optional[Union[str, Callable]] = None,
+    nan_strategy: str | Callable | None = None,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
 ) -> None:
     r"""Maximum (weighted) likelihood estimation (MLE) of a leaf module.
 
@@ -224,7 +224,7 @@ def maximum_likelihood_estimation(
     """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    *params, = leaf.retrieve_params(torch.tensor([]), dispatch_ctx)
+    (*params,) = leaf.retrieve_params(torch.tensor([]), dispatch_ctx)
     leaf.set_params(*params)
 
     # select relevant data for scope
@@ -243,8 +243,8 @@ def sample(
     data: Tensor,
     is_mpe: bool = False,
     check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-    sampling_ctx: Optional[SamplingContext] = None,
+    dispatch_ctx: DispatchContext | None = None,
+    sampling_ctx: SamplingContext | None = None,
 ) -> Tensor:
     r"""Samples from the leaf nodes in the ``torch`` backend given potential evidence.
 
@@ -272,7 +272,7 @@ def sample(
         Each row corresponds to a sample.
     """
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    *params, = module.retrieve_params(torch.tensor([]), dispatch_ctx)
+    (*params,) = module.retrieve_params(torch.tensor([]), dispatch_ctx)
     module.set_params(*params)
     sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
@@ -299,7 +299,10 @@ def sample(
         # Sample from distribution
         samples = module.distribution.sample(n_samples=n_samples)
 
-    assert samples.shape[0] == sampling_ctx.channel_index[instance_mask].shape[0]
+    if samples.shape[0] != sampling_ctx.channel_index[instance_mask].shape[0]:
+        raise ValueError(
+            f"Sample shape mismatch: got {samples.shape[0]}, expected {sampling_ctx.channel_index[instance_mask].shape[0]}"
+        )
 
     if module.out_channels == 1:
         # If the output of the input module has a single channel, set the output_ids to zero since this input was
@@ -327,8 +330,8 @@ def marginalize(
     layer: CondLeafModule,
     marg_rvs: list[int],
     prune: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Optional[LeafModule]:
+    dispatch_ctx: DispatchContext | None = None,
+) -> LeafModule | None:
     """Structural marginalization for ``NormallLayer`` objects in the ``torch`` backend.
 
     Structurally marginalizes the specified layer module.
@@ -351,7 +354,7 @@ def marginalize(
     """
     # initialize dispatch context
     dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    *params, = layer.retrieve_params(torch.tensor([]), dispatch_ctx)
+    (*params,) = layer.retrieve_params(torch.tensor([]), dispatch_ctx)
     layer.set_params(*params)
 
     # Marginalized scope
@@ -371,7 +374,4 @@ def marginalize(
     cond_f = lambda data: marg_params_dict
 
     # Construct new object of the same class as the layer
-    return layer.__class__(
-        scope=scope_marg,
-        cond_f=cond_f
-    )
+    return layer.__class__(scope=scope_marg, cond_f=cond_f)
