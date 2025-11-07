@@ -6,24 +6,7 @@
 [![codecov](https://codecov.io/gh/SPFlow/SPFlow/branch/dev%2Ftorch/graph/badge.svg?token=4L7geh0Pxz)](https://codecov.io/gh/SPFlow/SPFlow)
 [![Semantic Versioning](https://img.shields.io/badge/semver-2.0.0-blue)](https://semver.org/)
 
-> **Development Branch:** This is the development branch for SPFlow 1.0.0, a complete rewrite with PyTorch as the primary backend.
-
-## Table of Contents
-
-- [About](#about)
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Documentation](#documentation)
-- [Learning Algorithms](#learning-algorithms)
-- [Development Status](#development-status)
-- [Contributing](#contributing)
-- [Citation](#citation)
-- [Authors & Contributors](#authors--contributors)
-- [License](#license)
-- [Acknowledgments](#acknowledgments)
-
-## About
+> **NOTE**: SPFlow 1.0.0 is a complete rewrite of SPFlow using PyTorch and has not yet been officially released. The pre-v1.0.0 version is still available on PyPI (`spflow==0.0.46`) and in the `legacy` branch of this repository.
 
 **SPFlow** is a flexible, modular library for building and reasoning with **Sum-Product Networks (SPNs)** and **Probabilistic Circuits (PCs)**. These are deep generative and discriminative models that enable tractable (polynomial-time) probabilistic inference while maintaining expressive power. SPFlow is built on [PyTorch](https://pytorch.org/), providing GPU acceleration and seamless integration with modern deep learning workflows.
 
