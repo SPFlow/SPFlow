@@ -8,6 +8,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Literal
 
+from spflow.exceptions import GraphvizError
+
 try:
     import pydot
 except ImportError as e:
@@ -228,7 +230,7 @@ def visualize_module(
                 graph.write(output_file, format="canon", prog=engine)
     except FileNotFoundError as e:
         # This error occurs when Graphviz is not installed or not in PATH
-        raise RuntimeError(
+        raise GraphvizError(
             f"Graphviz executable '{engine}' not found. This usually means Graphviz is not installed or not in your system PATH.\n\n"
             "To fix this issue:\n"
             "  1. Install the Graphviz system dependency:\n"
@@ -242,7 +244,7 @@ def visualize_module(
     except Exception as e:
         # Catch other potential pydot/Graphviz errors
         if "graphviz" in str(e).lower() or "dot" in str(e).lower():
-            raise RuntimeError(
+            raise GraphvizError(
                 f"Error executing Graphviz: {str(e)}\n\n"
                 "This error typically indicates a problem with your Graphviz installation.\n\n"
                 "To fix this issue:\n"

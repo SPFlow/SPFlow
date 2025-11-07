@@ -8,3 +8,9 @@ class ScopeError(Exception):
     """Raised when an invalid scope is provided."""
 
     pass
+
+
+class GraphvizError(Exception):
+    """Raised when Graphviz is not installed or fails to execute."""
+
+    pass
