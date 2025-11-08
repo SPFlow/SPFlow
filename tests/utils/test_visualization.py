@@ -1,12 +1,15 @@
 """Tests for the graph visualization utilities."""
 
+import errno
 import os
 import shutil
 import tempfile
+from unittest.mock import patch
 
 import pytest
 import pydot
 
+from spflow.exceptions import GraphvizError
 from spflow.meta import Scope
 from spflow.modules.leaf import Categorical, Normal
 from spflow.modules.product import Product
@@ -443,3 +446,56 @@ class TestVisualizationIntegration:
             output_path = os.path.join(tmpdir, "test_mixed_complexity")
             visualize_module(root, output_path, show_scope=True, show_shape=True, format="png")
             assert os.path.exists(f"{output_path}.png")
+
+
+class TestGraphvizErrorHandling:
+    """Test error handling when Graphviz is not available."""
+
+    @pytest.fixture
+    def simple_model(self):
+        """Create a simple model for testing."""
+        leaf = Normal(scope=Scope([0, 1]), out_channels=2)
+        return Sum(inputs=leaf, out_channels=3)
+
+    def test_missing_graphviz_executable_raises_graphviz_error(self, simple_model):
+        """Test that FileNotFoundError from missing graphviz is wrapped in GraphvizError."""
+        with patch("pydot.Dot.write_png") as mock_write:
+            # Simulate graphviz executable not found
+            mock_write.side_effect = FileNotFoundError(
+                errno.ENOENT, "dot not found in path"
+            )
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output_path = os.path.join(tmpdir, "test_model")
+                with pytest.raises(
+                    GraphvizError, match="Graphviz executable.*not found"
+                ):
+                    visualize_module(simple_model, output_path, format="png")
+
+    def test_graphviz_assertion_error_raises_graphviz_error(self, simple_model):
+        """Test that AssertionError from graphviz failure is wrapped in GraphvizError."""
+        with patch("pydot.Dot.write_png") as mock_write:
+            # Simulate graphviz returning non-zero exit code
+            mock_write.side_effect = AssertionError(
+                '"dot" with args [...] returned code: 1'
+            )
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output_path = os.path.join(tmpdir, "test_model")
+                with pytest.raises(
+                    GraphvizError, match="Error executing Graphviz"
+                ):
+                    visualize_module(simple_model, output_path, format="png")
+
+    def test_graphviz_oserror_raises_graphviz_error(self, simple_model):
+        """Test that OSError from graphviz execution is wrapped in GraphvizError."""
+        with patch("pydot.Dot.write_pdf") as mock_write:
+            # Simulate OSError during graphviz execution
+            mock_write.side_effect = OSError("Error executing graphviz")
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output_path = os.path.join(tmpdir, "test_model")
+                with pytest.raises(
+                    GraphvizError, match="Error executing Graphviz"
+                ):
+                    visualize_module(simple_model, output_path, format="pdf")
