@@ -12,6 +12,7 @@ from spflow.exceptions import GraphvizError
 
 try:
     import pydot
+    from pydot.exceptions import PydotException
 except ImportError as e:
     raise ImportError(
         "The 'pydot' package is required for visualization functionality.\n\n"
@@ -224,24 +225,17 @@ def visualize_module(
                     "Supported formats: png, pdf, svg, dot, plain, canon"
                 )
 
-    except ValueError as e:
-        # Re-raise ValueErrors (e.g., unsupported format)
-        raise e
     except FileNotFoundError as e:
         # This error occurs when Graphviz is not installed or not in PATH
         raise GraphvizError(
             f"Graphviz executable '{engine}' not found. This usually means Graphviz is not installed or not in your system PATH."
         ) from e
-    except Exception as e:
-        # Catch other potential pydot/Graphviz errors
-        if "graphviz" in str(e).lower() or "dot" in str(e).lower():
-            raise GraphvizError(
-                f"Error executing Graphviz: {str(e)}\n\n"
-                f"This error typically indicates a problem with your Graphviz installation."
-            ) from e
-        else:
-            # Re-raise other unexpected errors
-            raise
+    except (AssertionError, OSError, PydotException) as e:
+        # Catch errors from pydot/graphviz execution
+        raise GraphvizError(
+            f"Error executing Graphviz: {str(e)}\n\n"
+            f"This error typically indicates a problem with your Graphviz installation."
+        ) from e
 
 
 def _build_graph(
