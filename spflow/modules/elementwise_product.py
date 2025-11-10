@@ -1,17 +1,16 @@
 from __future__ import annotations
 
+from typing import Optional, Dict, Any
+
 import torch
 from torch import Tensor
 
 from spflow.meta.data import Scope
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.dispatch.dispatch_context import (
-    DispatchContext,
-    init_default_dispatch_context,
-)
-from spflow.modules.base_product import BaseProduct, _get_input_log_likelihoods
+from spflow.meta.dispatch import SamplingContext
+from spflow.modules.base_product import BaseProduct
 from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
+from spflow.utils.cache import Cache, init_cache
 from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.ops.split_alternate import SplitAlternate
 
@@ -156,73 +155,42 @@ class ElementwiseProduct(BaseProduct):
             num_splits = len(self.inputs)
             return mask.unsqueeze(-1).repeat(1, 1, num_splits)
 
+    def log_likelihood(
+        self,
+        data: Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> Tensor:
+        """Compute log P(data | module) for elementwise product.
 
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-    module: ElementwiseProduct,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> Tensor:
-    # initialize dispatch context
-    # start_time = time.time()
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        Args:
+            data: The data tensor.
+            check_support: Whether to check the support of the module.
+            cache: Optional cache dictionary.
 
-    lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx)
+        Returns:
+            Log likelihood tensor.
+        """
+        # initialize cache
+        cache = init_cache(cache)
 
-    # Check if we need to expand to enable broadcasting along channels
-    for i, ll in enumerate(lls):
-        if ll.shape[2] == 1:
-            if ll.ndim == 4:
-                lls[i] = ll.expand(-1, -1, module.out_channels, -1)
-            else:
-                lls[i] = ll.expand(-1, -1, module.out_channels)
+        lls = self._get_input_log_likelihoods(data, check_support, cache)
 
-    # Compute the elementwise sum of left and right split
-    output = torch.sum(torch.stack(lls, dim=-1), dim=-1)
+        # Check if we need to expand to enable broadcasting along channels
+        for i, ll in enumerate(lls):
+            if ll.shape[2] == 1:
+                if ll.ndim == 4:
+                    lls[i] = ll.expand(-1, -1, self.out_channels, -1)
+                else:
+                    lls[i] = ll.expand(-1, -1, self.out_channels)
 
-    # View as [b, n, m, r]
-    if output.ndim == 4:
-        output = output.view(output.size(0), module.out_features, module.out_channels, -1)
-    else:
-        output = output.view(output.size(0), module.out_features, module.out_channels)
+        # Compute the elementwise sum of left and right split
+        output = torch.sum(torch.stack(lls, dim=-1), dim=-1)
 
-    # print(f"Elementwise Product took {time.time() - start_time:.4f} seconds")
+        # View as [b, n, m, r]
+        if output.ndim == 4:
+            output = output.view(output.size(0), self.out_features, self.out_channels, -1)
+        else:
+            output = output.view(output.size(0), self.out_features, self.out_channels)
 
-    return output
-
-
-"""
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-    module: ElementwiseProduct,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: Optional[DispatchContext] = None,
-) -> Tensor:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-
-    lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx)
-    
-    # # Check if we need to expand to enable broadcasting along channels
-    # for i, ll in enumerate(lls):
-    #     if ll.shape[2] == 1:
-    #         if ll.ndim == 4:
-    #             lls[i] = ll.expand(-1, -1, module.out_channels, -1)
-    #         else:
-    #             lls[i] = ll.expand(-1, -1, module.out_channels)
-    
-    # Compute the elementwise sum of left and right split
-    output = torch.sum(torch.stack(lls, dim=-1), dim=-1)
-    return output
-
-    # # View as [b, n, m, r]
-    # if output.ndim == 4:
-    #     output = output.view(output.size(0), module.out_features, module.out_channels, -1)
-    # else:
-    #     output = output.view(output.size(0), module.out_features, module.out_channels)
-    #
-    #
-    # return output
-"""
+        return output

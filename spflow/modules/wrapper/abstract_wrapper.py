@@ -4,8 +4,8 @@ from spflow.modules.leaf.leaf_module import LeafModule
 from spflow.distributions.distribution import Distribution
 from abc import abstractmethod
 
-class AbstractWrapper(Module):
 
+class AbstractWrapper(Module):
     def __init__(self, module: Module):
         super().__init__()
         self.module = module
@@ -24,7 +24,7 @@ class AbstractWrapper(Module):
 
     @property
     def feature_to_scope(self) -> list[Scope]:
-        """ Returns the mapping from features to scopes."""
+        """Returns the mapping from features to scopes."""
         return self.module.feature_to_scope
 
     @property
@@ -36,9 +36,5 @@ class AbstractWrapper(Module):
         """
         return next(iter(self.module.parameters())).device
 
-
     def extra_repr(self) -> str:
         return f"D={self.out_features}, C={self.out_channels}, R={self.num_repetitions}"
-
-
-

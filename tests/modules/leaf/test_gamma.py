@@ -10,7 +10,6 @@ import pytest
 import torch
 from pytest import raises
 
-from spflow import maximum_likelihood_estimation, marginalize
 from spflow.meta import Scope
 from spflow.modules.leaf import Gamma
 

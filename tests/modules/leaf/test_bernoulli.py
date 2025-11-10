@@ -7,7 +7,6 @@ from tests.fixtures import auto_set_test_seed, auto_set_test_device
 import pytest
 import torch
 
-from spflow import maximum_likelihood_estimation, marginalize
 from spflow.meta import Scope
 from spflow.modules.leaf.bernoulli import Bernoulli
 

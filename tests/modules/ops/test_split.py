@@ -7,8 +7,6 @@ from itertools import product
 from spflow.meta import Scope
 import pytest
 from spflow.meta import SamplingContext
-from spflow.meta.dispatch import init_default_sampling_context
-from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum
@@ -48,7 +46,7 @@ def test_log_likelihood(
         num_reps=num_reps,
     ).to(device)
     data = make_normal_data(out_features=module.out_features).to(device)
-    lls = log_likelihood(module, data)
+    lls = module.log_likelihood(data)
     assert len(lls) == num_splits
     for ll in lls:
         if num_reps is not None:
@@ -88,7 +86,7 @@ def test_sample(
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
-        samples = sample(module, data, sampling_ctx=sampling_ctx)
+        samples = module.sample(data=data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]
         assert torch.isfinite(samples_query).all()

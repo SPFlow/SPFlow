@@ -2,16 +2,11 @@
 """
 from __future__ import annotations
 
-from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
+from typing import Any
 
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.dispatch.dispatch_context import (
-    DispatchContext,
-    init_default_dispatch_context,
-)
+from spflow.meta.dispatch import SamplingContext
 
 import torch
-from spflow import maximum_likelihood_estimation
 from spflow.modules import Product
 from spflow.modules import Sum
 from spflow.modules import OuterProduct
@@ -19,6 +14,7 @@ from spflow.modules import ElementwiseProduct
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.ops.split_halves import SplitHalves
+from spflow.utils.cache import Cache, init_cache
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.leaf.leaf_module import LeafModule
 from spflow.modules.factorize import Factorize
@@ -175,98 +171,185 @@ class RatSPN(Module):
     def out_channels(self) -> int:
         return self.root_node.out_channels
 
+    def log_likelihood(
+        self,
+        data: torch.Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> torch.Tensor:
+        """Compute log P(data | module).
 
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-    rat_spn: RatSPN,
-    data: torch.Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> torch.Tensor:
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    ll = log_likelihood(
-        rat_spn.root_node,
-        data,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
-    )
-    return ll
+        Args:
+            data: Input data tensor.
+            check_support: Whether to check data support.
+            cache: Optional cache dictionary for caching intermediate results.
 
+        Returns:
+            Log-likelihood values.
+        """
+        cache = init_cache(cache)
+        ll = self.root_node.log_likelihood(
+            data,
+            check_support=check_support,
+            cache=cache,
+        )
+        return ll
 
-@dispatch(memoize=True)  # type: ignore
-def posterior(
-    rat_spn: RatSPN,
-    data: torch.Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> torch.Tensor:
-    if rat_spn.n_root_nodes <= 1:
-        raise ValueError("Posterior can only be computed for models with multiple classes.")
+    def posterior(
+        self,
+        data: torch.Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> torch.Tensor:
+        """Compute posterior probabilities for multi-class models.
 
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    class_prob = rat_spn.root_node.weights  # shape: (1, n_root_nodes, 1)
-    class_prob = class_prob.squeeze(-1)  # shape: (1, n_root_nodes)
-    ll = log_likelihood(
-        rat_spn.root_node.inputs,
-        data,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
-    )  # shape: (batch_size,1 , n_root_nodes)
+        Args:
+            data: Input data tensor.
+            check_support: Whether to check data support.
+            cache: Optional cache dictionary for caching intermediate results.
 
-    ll = ll.squeeze(1)  # shape: (batch_size, n_root_nodes)
+        Returns:
+            Posterior probabilities.
+        """
+        if self.n_root_nodes <= 1:
+            raise ValueError("Posterior can only be computed for models with multiple classes.")
 
-    # logp(y | x) = logp(x, y) - logp(x)
-    #             = logp(x | y) + logp(y) - logp(x)
-    #             = logp(x | y) + logp(y) - logsumexp(logp(x,y), dim=y)
+        cache = init_cache(cache)
+        class_prob = self.root_node.weights  # shape: (1, n_root_nodes, 1)
+        class_prob = class_prob.squeeze(-1)  # shape: (1, n_root_nodes)
+        ll = self.root_node.inputs.log_likelihood(
+            data,
+            check_support=check_support,
+            cache=cache,
+        )  # shape: (batch_size,1 , n_root_nodes)
 
-    ll_x_and_y = ll + class_prob
-    ll_x = torch.logsumexp(ll_x_and_y, dim=1, keepdim=True)
-    ll_y_given_x = ll_x_and_y - ll_x
+        ll = ll.squeeze(1)  # shape: (batch_size, n_root_nodes)
 
-    return ll_y_given_x
+        # logp(y | x) = logp(x, y) - logp(x)
+        #             = logp(x | y) + logp(y) - logp(x)
+        #             = logp(x | y) + logp(y) - logsumexp(logp(x,y), dim=y)
 
+        ll_x_and_y = ll + class_prob
+        ll_x = torch.logsumexp(ll_x_and_y, dim=1, keepdim=True)
+        ll_y_given_x = ll_x_and_y - ll_x
 
-@dispatch  # type: ignore
-def sample(
-    rat_spn: RatSPN,
-    data: torch.Tensor,
-    is_mpe: bool = False,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-    sampling_ctx: SamplingContext | None = None,
-) -> torch.Tensor:
-    # if no sampling context is provided, initialize a context by sampling from the root node
-    if sampling_ctx is None and rat_spn.n_root_nodes > 1:
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+        return ll_y_given_x
 
-        sampling_ctx.device = data.device
-        logits = rat_spn.root_node.logits
-        if logits.shape != (1, rat_spn.n_root_nodes, 1):
-            raise ValueError(f"Expected logits shape (1, {rat_spn.n_root_nodes}, 1), but got {logits.shape}")
-        logits = logits.squeeze(-1)
-        logits = logits.unsqueeze(0).expand(data.shape[0], -1, -1)  # shape [b ,1, n_root_nodes]
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: torch.Tensor | None = None,
+        is_mpe: bool = False,
+        check_support: bool = True,
+        cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
+    ) -> torch.Tensor:
+        """Generate samples from the module.
 
-        if is_mpe:
-            sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
+        Args:
+            num_samples: Number of samples to generate.
+            data: Data tensor with NaN values to fill with samples.
+            is_mpe: Whether to perform maximum a posteriori estimation.
+            check_support: Whether to check data support.
+            cache: Optional cache dictionary.
+            sampling_ctx: Optional sampling context.
+
+        Returns:
+            Sampled values.
+        """
+        cache = init_cache(cache)
+
+        # Handle num_samples case (create empty data tensor)
+        if data is None:
+            if num_samples is None:
+                num_samples = 1
+            data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
+
+        # if no sampling context is provided, initialize a context by sampling from the root node
+        if sampling_ctx is None and self.n_root_nodes > 1:
+            sampling_ctx = SamplingContext(data.shape[0])
+
+            sampling_ctx.device = data.device
+            logits = self.root_node.logits
+            if logits.shape != (1, self.n_root_nodes, 1):
+                raise ValueError(f"Expected logits shape (1, {self.n_root_nodes}, 1), but got {logits.shape}")
+            logits = logits.squeeze(-1)
+            logits = logits.unsqueeze(0).expand(data.shape[0], -1, -1)  # shape [b ,1, n_root_nodes]
+
+            if is_mpe:
+                sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
+            else:
+                sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
+
         else:
-            sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
+            if sampling_ctx is None:
+                sampling_ctx = SamplingContext(data.shape[0])
 
-    else:
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+        # if the model only has one root node, we can directly sample from the mixing layer
+        if self.n_root_nodes > 1:
+            sample_root = self.root_node.inputs
+        else:
+            sample_root = self.root_node
 
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        return sample_root.sample(
+            data=data,
+            is_mpe=is_mpe,
+            check_support=check_support,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
 
-    # if the model only has one root node, we can directly sample from the mixing layer
-    if rat_spn.n_root_nodes > 1:
-        sample_root = rat_spn.root_node.inputs
-    else:
-        sample_root = rat_spn.root_node
+    def expectation_maximization(
+        self,
+        data: torch.Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> None:
+        """Expectation-maximization step.
 
-    return sample(
-        sample_root,
-        data,
-        is_mpe=is_mpe,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
-        sampling_ctx=sampling_ctx,
-    )
+        Args:
+            data: Input data tensor.
+            check_support: Whether to check data support.
+            cache: Optional cache dictionary.
+        """
+        cache = init_cache(cache)
+        self.root_node.expectation_maximization(data, check_support=check_support, cache=cache)
+
+    def maximum_likelihood_estimation(
+        self,
+        data: torch.Tensor,
+        weights: torch.Tensor | None = None,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> None:
+        """Update parameters via maximum likelihood estimation.
+
+        Args:
+            data: Input data tensor.
+            weights: Optional sample weights.
+            check_support: Whether to check data support.
+            cache: Optional cache dictionary.
+        """
+        cache = init_cache(cache)
+        self.root_node.maximum_likelihood_estimation(
+            data, weights=weights, check_support=check_support, cache=cache
+        )
+
+    def marginalize(
+        self,
+        marg_rvs: list[int],
+        prune: bool = True,
+        cache: Cache | None = None,
+    ) -> Module | None:
+        """Marginalize out specified random variables.
+
+        Args:
+            marg_rvs: List of random variables to marginalize.
+            prune: Whether to prune the module.
+            cache: Optional cache dictionary.
+
+        Returns:
+            Marginalized module or None.
+        """
+        cache = init_cache(cache)
+        return self.root_node.marginalize(marg_rvs, prune=prune, cache=cache)

@@ -13,6 +13,7 @@
 # from spflow import log_likelihood, marginalize, sample
 from spflow.meta import SamplingContext
 from spflow.meta.dispatch import init_default_sampling_context
+
 # from spflow.learn import train_gradient_descent
 # from spflow.modules import Sum, Product
 # from spflow.modules.base_product import BaseProduct

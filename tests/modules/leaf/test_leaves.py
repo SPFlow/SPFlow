@@ -6,12 +6,10 @@ from spflow.learn import train_gradient_descent
 from tests.fixtures import auto_set_test_seed, auto_set_test_device
 
 from spflow.meta import SamplingContext
-from spflow.meta.dispatch import init_default_sampling_context
 from tests.utils.leaves import evaluate_log_likelihood
 import pytest
 import torch
 
-from spflow import maximum_likelihood_estimation, sample, marginalize
 from spflow.meta import Scope
 from spflow.modules import leaf
 from tests.utils.leaves import make_leaf, make_data
@@ -68,7 +66,7 @@ def test_sample(leaf_cls, out_features: int, out_channels: int, num_reps, is_mpe
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
 
     # Sample
-    samples = sample(module, data, is_mpe=is_mpe, check_support=True, sampling_ctx=sampling_ctx)
+    samples = module.sample(data=data, is_mpe=is_mpe, check_support=True, sampling_ctx=sampling_ctx)
 
     assert samples.shape == (n_samples, out_features)
 
@@ -94,7 +92,7 @@ def test_maximum_likelihood_estimation(
     sampler = make_leaf(cls=leaf_cls, scope=scope, out_channels=1)
     data = sampler.distribution.distribution.sample((100000,)).squeeze(-1)
 
-    maximum_likelihood_estimation(module, data, bias_correction=bias_correction)
+    module.maximum_likelihood_estimation(data, bias_correction=bias_correction)
 
     # Check that module and sampler params are equal
     for param_name, param_module in module.distribution.named_parameters():
@@ -190,7 +188,7 @@ def test_marginalize(leaf_cls, out_channels: int, prune: bool, marg_rvs, num_rep
     module = make_leaf(
         leaf_cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps
     )
-    marginalizeed_module = marginalize(module, marg_rvs)
+    marginalizeed_module = module.marginalize(marg_rvs)
 
     # If the number of marginalized rvs is equal to the number of out_features, the module should be None
     if len(marg_rvs) == out_features:

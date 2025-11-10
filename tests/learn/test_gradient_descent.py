@@ -1,13 +1,13 @@
+import logging
+
 import pytest
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
-from unittest.mock import MagicMock
-import logging
+
+from spflow.meta import Scope
 from spflow.modules import Module
 from spflow.learn.gradient_descent import negative_log_likelihood_loss, train_gradient_descent
-from spflow.meta.dispatch import dispatch
-from spflow.meta import Scope
 from tests.fixtures import auto_set_test_seed, auto_set_test_device
 
 
@@ -32,11 +32,45 @@ class DummyModel(Module):
     def forward(self, x):
         return self.linear(x)
 
+    def log_likelihood(self, data, check_support: bool = True, cache=None):
+        return self(data)
 
-# Mock the log_likelihood function
-@dispatch(memoize=True)
-def log_likelihood(model: DummyModel, data: torch.Tensor):
-    return model(data)
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: torch.Tensor | None = None,
+        is_mpe: bool = False,
+        check_support: bool = True,
+        cache=None,
+        sampling_ctx=None,
+    ):
+        raise NotImplementedError
+
+    def sample_with_evidence(
+        self,
+        evidence: torch.Tensor,
+        num_samples: int = 1,
+        is_mpe: bool = False,
+        check_support: bool = True,
+        cache=None,
+        sampling_ctx=None,
+    ):
+        raise NotImplementedError
+
+    def expectation_maximization(self, data: torch.Tensor, check_support: bool = True, cache=None):
+        raise NotImplementedError
+
+    def maximum_likelihood_estimation(
+        self,
+        data: torch.Tensor,
+        weights: torch.Tensor | None = None,
+        check_support: bool = True,
+        cache=None,
+    ):
+        raise NotImplementedError
+
+    def marginalize(self, marg_rvs: list[int], prune: bool = True, cache=None):
+        return self
 
 
 @pytest.fixture

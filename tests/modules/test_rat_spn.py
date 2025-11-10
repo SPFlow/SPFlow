@@ -8,8 +8,7 @@ from spflow import InvalidParameterCombinationError, ScopeError
 from spflow.meta import Scope
 import pytest
 from spflow.meta import SamplingContext
-from spflow.meta.dispatch import init_default_sampling_context, init_default_dispatch_context
-from spflow import log_likelihood, sample, marginalize, sample_with_evidence
+from spflow.meta.dispatch import init_default_sampling_context
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum, ElementwiseProduct
@@ -104,9 +103,8 @@ def test_log_likelihood(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes,
     )
     assert len(module.scope) == num_features
     data = make_data(cls=leaf_cls, out_features=num_features, n_samples=10)
-    ctx = init_default_dispatch_context()
     # data = data.unsqueeze(1).repeat(1,3,1)
-    lls = log_likelihood(module, data, dispatch_ctx=ctx)
+    lls = module.log_likelihood(data)
 
     assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
 
@@ -136,7 +134,7 @@ def test_sample(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_p
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
-        samples = sample(module, data, sampling_ctx=sampling_ctx)
+        samples = module.sample(data=data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]
         assert torch.isfinite(samples_query).all()
@@ -175,13 +173,13 @@ def test_multidistribution_input(region_nodes, leaves, num_reps, root_nodes, out
         split_halves=split_halves,
     )
 
-    lls = log_likelihood(model, data)
+    lls = model.log_likelihood(data)
 
     assert lls.shape == (data.shape[0], model.out_features, model.out_channels)
 
     repetition_idx = torch.zeros((1,), dtype=torch.long)
     sampling_ctx = init_default_sampling_context(sampling_ctx=None, num_samples=1)
     sampling_ctx.repetition_idx = repetition_idx
-    samples = sample(model, sampling_ctx=sampling_ctx)
+    samples = model.sample(sampling_ctx=sampling_ctx)
 
     assert samples.shape == (1, out_features_1 + out_features_2)

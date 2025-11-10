@@ -1,17 +1,17 @@
 from __future__ import annotations
 
+from typing import Any, Dict, Optional
+
 import torch
 from torch import Tensor, nn
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import (
-    DispatchContext,
-    init_default_dispatch_context,
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.meta.dispatch.dispatch import dispatch
 from spflow.modules.module import Module
+from spflow.utils.cache import Cache, init_cache
 
 
 class Cat(Module):
@@ -78,121 +78,123 @@ class Cat(Module):
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, dim={self.dim}"
 
+    def log_likelihood(
+        self,
+        data: Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> Tensor:
+        """Compute log likelihood by concatenating input likelihoods."""
+        cache = init_cache(cache)
+        log_cache = cache.setdefault("log_likelihood", {})
 
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-    module: Cat,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> Tensor:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        # get log likelihoods for all inputs
+        lls = []
+        for input_module in self.inputs:
+            input_ll = input_module.log_likelihood(data, check_support, cache)
+            log_cache[input_module] = input_ll
+            lls.append(input_ll)
 
-    # get log likelihoods for all inputs
-    lls = []
-    for input_module in module.inputs:
-        lls.append(log_likelihood(input_module, data, check_support, dispatch_ctx))
+        # Concatenate log likelihoods
+        output = torch.cat(lls, dim=self.dim)
+        log_cache[self] = output
+        return output
 
-    # Concatenate log likelihoods
-    return torch.cat(lls, dim=module.dim)
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        check_support: bool = True,
+        cache: Cache | None = None,
+        sampling_ctx: Optional[SamplingContext] = None,
+    ) -> Tensor:
+        """Sample from concatenated inputs, distributing sampling context appropriately."""
+        # Prepare data tensor
+        data = self._prepare_sample_data(num_samples, data)
 
+        cache = init_cache(cache)
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-@dispatch  # type: ignore
-def sample(
-    module: Cat,
-    data: Tensor,
-    is_mpe: bool = False,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-    sampling_ctx: SamplingContext | None = None,
-) -> Tensor:
-    # initialize contexts
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        if self.dim == 1:
+            # split_size = self.out_features // len(self.inputs)
+            # channel_index_per_module = sampling_ctx.channel_index.split(split_size, dim=self.dim)
+            # mask_per_module = sampling_ctx.mask.split(split_size, dim=self.dim)
+            channel_index_per_module = []
+            mask_per_module = []
+            for s in self.feature_to_scope:
+                query = Scope.join_all(s).query
+                channel_index_per_module.append(sampling_ctx.channel_index[:, query])
+                mask_per_module.append(sampling_ctx.mask[:, query])
 
-    if module.dim == 1:
-        # split_size = module.out_features // len(module.inputs)
-        # channel_index_per_module = sampling_ctx.channel_index.split(split_size, dim=module.dim)
-        # mask_per_module = sampling_ctx.mask.split(split_size, dim=module.dim)
-        channel_index_per_module = []
-        mask_per_module = []
-        for s in module.feature_to_scope:
-            query = Scope.join_all(s).query
-            channel_index_per_module.append(sampling_ctx.channel_index[:, query])
-            mask_per_module.append(sampling_ctx.mask[:, query])
+        elif self.dim == 2:
+            # Concatenation happens at out_channels
+            # Therefore, we need to use modulo to get the correct output_ids
+            channel_index_per_module = []
+            mask_per_module = []
 
-    elif module.dim == 2:
-        # Concatenation happens at out_channels
-        # Therefore, we need to use modulo to get the correct output_ids
-        channel_index_per_module = []
-        mask_per_module = []
+            # Get split assignments
+            split_size = self.out_channels // len(self.inputs)
+            split_assignment = sampling_ctx.channel_index // split_size
+            for i, _ in enumerate(self.inputs):
+                oids = sampling_ctx.channel_index
+                oids_mod = oids.remainder(split_size)
+                channel_index_per_module.append(oids_mod)
+                mask = (split_assignment == i) & sampling_ctx.mask
+                mask_per_module.append(mask)
 
-        # Get split assignments
-        split_size = module.out_channels // len(module.inputs)
-        split_assignment = sampling_ctx.channel_index // split_size
-        for i, _ in enumerate(module.inputs):
-            oids = sampling_ctx.channel_index
-            oids_mod = oids.remainder(split_size)
-            channel_index_per_module.append(oids_mod)
-            mask = split_assignment == i & sampling_ctx.mask
-            mask_per_module.append(mask)
+        else:
+            raise ValueError("Invalid dimension for concatenation.")
 
-    else:
-        raise ValueError("Invalid dimension for concatenation.")
+        # Iterate over inputs
+        for i in range(len(self.inputs)):
+            input_module = self.inputs[i]
+            sampling_ctx_copy = sampling_ctx.copy()
+            sampling_ctx_copy.update(channel_index=channel_index_per_module[i], mask=mask_per_module[i])
 
-    # Iterate over inputs
-    for i in range(len(module.inputs)):
-        input_module = module.inputs[i]
-        sampling_ctx_copy = sampling_ctx.copy()
-        sampling_ctx_copy.update(channel_index=channel_index_per_module[i], mask=mask_per_module[i])
+            input_module.sample(
+                data=data,
+                is_mpe=is_mpe,
+                check_support=check_support,
+                cache=cache,
+                sampling_ctx=sampling_ctx_copy,
+            )
 
-        sample(
-            input_module,
-            data,
-            is_mpe=is_mpe,
-            check_support=check_support,
-            dispatch_ctx=dispatch_ctx,
-            sampling_ctx=sampling_ctx_copy,
-        )
+        return data
 
-    return data
+    def marginalize(
+        self,
+        marg_rvs: list[int],
+        prune: bool = True,
+        cache: Cache | None = None,
+    ) -> Optional["Module"]:
+        """Marginalize out specified random variables from the concatenated inputs."""
+        cache = init_cache(cache)
 
+        # compute module scope (same for all outputs)
+        module_scope = self.scope
 
-@dispatch(memoize=True)  # type: ignore
-def marginalize(
-    module: Cat,
-    marg_rvs: list[int],
-    prune: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> None | Module:
-    # Initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        mutual_rvs = set(module_scope.query).intersection(set(marg_rvs))
 
-    # compute module scope (same for all outputs)
-    module_scope = module.scope
+        # Node scope is only being partially marginalized
+        if mutual_rvs:
+            inputs = []
+            # marginalize child modules
+            for input_module in self.inputs:
+                marg_child_module = input_module.marginalize(marg_rvs, prune=prune, cache=cache)
 
-    mutual_rvs = set(module_scope.query).intersection(set(marg_rvs))
+                # if marginalized child is not None
+                if marg_child_module:
+                    inputs.append(marg_child_module)
 
-    # Node scope is only being partially marginalized
-    if mutual_rvs:
-        inputs = []
-        # marginalize child modules
-        for input_module in module.inputs:
-            marg_child_module = marginalize(input_module, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+            # if all children were marginalized, return None
+            if len(inputs) == 0:
+                return None
 
-            # if marginalized child is not None
-            if marg_child_module:
-                inputs.append(marg_child_module)
+            # if only a single input survived marginalization, return it if pruning is enabled
+            if prune and len(inputs) == 1:
+                return inputs[0]
 
-        # if all children were marginalized, return None
-        if len(inputs) == 0:
-            return None
-
-        # if only a single input survived marginalization, return it if pruning is enabled
-        if prune and len(inputs) == 1:
-            return inputs[0]
-
-        return Cat(inputs=inputs, dim=module.dim)
-    else:
-        return module
+            return Cat(inputs=inputs, dim=self.dim)
+        else:
+            return self

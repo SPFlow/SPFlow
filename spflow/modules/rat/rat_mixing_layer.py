@@ -1,17 +1,15 @@
 from __future__ import annotations
 
+from typing import Any
+
 import torch
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.meta.data import Scope
-from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.dispatch.dispatch_context import (
-    DispatchContext,
-    init_default_dispatch_context,
-)
+from spflow.meta.dispatch import SamplingContext
 from spflow.modules.module import Module
+from spflow.utils.cache import Cache, init_cache
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
@@ -112,88 +110,112 @@ class MixingLayer(Sum):
     def feature_to_scope(self) -> list[Scope]:
         return self.inputs.feature_to_scope
 
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        check_support: bool = True,
+        cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
+    ) -> Tensor:
+        """Generate samples from the module.
 
-@dispatch  # type: ignore
-def sample(
-    module: MixingLayer,
-    data: Tensor,
-    is_mpe: bool = False,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-    sampling_ctx: SamplingContext | None = None,
-) -> Tensor:
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        Args:
+            num_samples: Number of samples to generate.
+            data: Data tensor with NaN values to fill with samples.
+            is_mpe: Whether to perform maximum a posteriori estimation.
+            check_support: Whether to check data support.
+            cache: Optional cache dictionary.
+            sampling_ctx: Optional sampling context.
 
-    logits = module.logits
+        Returns:
+            Sampled values.
+        """
+        cache = init_cache(cache)
 
-    logits = logits.unsqueeze(0).expand(
-        sampling_ctx.channel_index.shape[0], -1, -1, -1
-    )  # shape [b , n_features , in_c, out_c]
+        # Handle num_samples case (create empty data tensor)
+        if data is None:
+            if num_samples is None:
+                num_samples = 1
+            data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
 
-    if (
-        "log_likelihood" in dispatch_ctx.cache
-        and dispatch_ctx.cache["log_likelihood"][module.inputs] is not None
-    ):
-        input_lls = dispatch_ctx.cache["log_likelihood"][module.inputs]
+        # Initialize sampling context if not provided
+        if sampling_ctx is None:
+            sampling_ctx = SamplingContext(data.shape[0])
 
-        # Compute log posterior by reweighing logits with input lls
-        log_prior = logits
-        log_posterior = log_prior + input_lls.unsqueeze(3)
-        log_posterior = log_posterior.log_softmax(dim=2)
-        logits = log_posterior
+        logits = self.logits
 
-    if is_mpe:
-        # Take the argmax of the logits to obtain the most probable index
-        repetition_idx = torch.argmax(logits.sum(-1), dim=-1).squeeze(-1)
-    else:
-        # Sample from categorical distribution defined by weights to obtain indices for repetitions
-        # sum up the input channel for distribution
-        repetition_idx = torch.distributions.Categorical(logits=logits.sum(-1)).sample()
+        logits = logits.unsqueeze(0).expand(
+            sampling_ctx.channel_index.shape[0], -1, -1, -1
+        )  # shape [b , n_features , in_c, out_c]
 
-    # get repetition index for the given channels
-    # repetition_idx = repetition_idx.gather(dim=1,index=sampling_ctx.channel_index).squeeze()
+        # Check if we have cached input log-likelihoods to compute posterior
+        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
+            input_lls = cache["log_likelihood"][self.inputs]
 
-    sampling_ctx.repetition_idx = repetition_idx
+            # Compute log posterior by reweighing logits with input lls
+            log_prior = logits
+            log_posterior = log_prior + input_lls.unsqueeze(3)
+            log_posterior = log_posterior.log_softmax(dim=2)
+            logits = log_posterior
 
-    # Sample from input module
-    sample(
-        module.inputs,
-        data,
-        is_mpe=is_mpe,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
-        sampling_ctx=sampling_ctx,
-    )
+        if is_mpe:
+            # Take the argmax of the logits to obtain the most probable index
+            repetition_idx = torch.argmax(logits.sum(-1), dim=-1).squeeze(-1)
+        else:
+            # Sample from categorical distribution defined by weights to obtain indices for repetitions
+            # sum up the input channel for distribution
+            repetition_idx = torch.distributions.Categorical(logits=logits.sum(-1)).sample()
 
-    return data
+        # get repetition index for the given channels
+        # repetition_idx = repetition_idx.gather(dim=1,index=sampling_ctx.channel_index).squeeze()
 
+        sampling_ctx.repetition_idx = repetition_idx
 
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-    module: MixingLayer,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> Tensor:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        # Sample from input module
+        self.inputs.sample(
+            data=data,
+            is_mpe=is_mpe,
+            check_support=check_support,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
 
-    ll = log_likelihood(
-        module.inputs,
-        data,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
-    )
+        return data
 
-    log_weights = module.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC)
+    def log_likelihood(
+        self,
+        data: Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> Tensor:
+        """Compute log P(data | module).
 
-    # Weighted log-likelihoods
-    weighted_lls = (
-        ll.permute(0, 1, 3, 2) + log_weights
-    )  # shape: (B, F, R, OC) + (1, F, IC, OC) = (B, F, R = IC, OC)
+        Args:
+            data: Input data tensor.
+            check_support: Whether to check data support.
+            cache: Optional cache dictionary for caching intermediate results.
 
-    # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
-    output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1)  # shape: (B, F, OC, R)
+        Returns:
+            Log-likelihood values.
+        """
+        cache = init_cache(cache)
 
-    return output.view(-1, module.out_features, module.out_channels)
+        ll = self.inputs.log_likelihood(
+            data,
+            check_support=check_support,
+            cache=cache,
+        )
+
+        log_weights = self.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC)
+
+        # Weighted log-likelihoods
+        weighted_lls = (
+            ll.permute(0, 1, 3, 2) + log_weights
+        )  # shape: (B, F, R, OC) + (1, F, IC, OC) = (B, F, R = IC, OC)
+
+        # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
+        output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)  # shape: (B, F, OC, R)
+
+        return output.view(-1, self.out_features, self.out_channels)

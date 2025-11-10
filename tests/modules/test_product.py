@@ -3,8 +3,6 @@ import unittest
 from itertools import product
 
 from spflow.meta import SamplingContext
-from spflow.meta.dispatch import init_default_sampling_context
-from spflow import log_likelihood, sample, marginalize
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 from spflow.learn import expectation_maximization
 from spflow.modules import Product
@@ -30,7 +28,7 @@ def make_product(in_channels=None, out_features=None, inputs=None, num_repetitio
 def test_log_likelihood(in_channels: int, out_features: int, num_reps, device):
     product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
     data = make_normal_data(out_features=out_features)
-    lls = log_likelihood(product_layer, data)
+    lls = product_layer.log_likelihood(data)
     if num_reps is None:
         assert lls.shape == (data.shape[0], 1, product_layer.out_channels)
     else:
@@ -52,7 +50,7 @@ def test_sample(in_channels: int, out_features: int, num_reps, device):
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
-        samples = sample(product_layer, data, sampling_ctx=sampling_ctx)
+        samples = product_layer.sample(data=data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, product_layer.scope.query]
         assert torch.isfinite(samples_query).all()
@@ -84,7 +82,7 @@ def test_marginalize(prune, in_channels: int, marg_rvs: list[int], num_reps, dev
     module = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
 
     # Marginalize scope
-    marginalized_module = marginalize(module, marg_rvs, prune=prune)
+    marginalized_module = module.marginalize(marg_rvs, prune=prune)
 
     if len(marg_rvs) == out_features:
         assert marginalized_module is None
@@ -140,8 +138,8 @@ def test_multiple_inputs():
 
     data = make_normal_data(out_features=out_features)
 
-    ll_a = log_likelihood(module_a, data)
-    ll_b = log_likelihood(module_b, data)
+    ll_a = module_a.log_likelihood(data)
+    ll_b = module_b.log_likelihood(data)
 
     assert torch.allclose(ll_a, ll_b)
 
@@ -163,7 +161,7 @@ def test_multiple_inputs():
         channel_index=channel_index, mask=mask, repetition_index=repetition_index
     )
 
-    samples_a = sample(module_a, data_a, is_mpe=True, sampling_ctx=sampling_ctx_a)
-    samples_b = sample(module_b, data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
+    samples_a = module_a.sample(data=data_a, is_mpe=True, sampling_ctx=sampling_ctx_a)
+    samples_b = module_b.sample(data=data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
 
     assert torch.allclose(samples_a, samples_b)

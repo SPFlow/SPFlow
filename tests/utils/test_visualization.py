@@ -162,7 +162,7 @@ class TestVisualizationSkipModules:
         # Get all nodes
         nodes = graph.get_nodes()
         # Filter out the default node (pydot creates a default node entry)
-        nodes = [n for n in nodes if n.get_name() not in ('node', 'edge', 'graph')]
+        nodes = [n for n in nodes if n.get_name() not in ("node", "edge", "graph")]
 
         # Check that no node represents a Cat module by examining the module structure
         # We can't directly check the module attribute in pydot, so we verify the structure
@@ -189,7 +189,7 @@ class TestVisualizationSkipModules:
 
         # Get all nodes
         nodes = graph.get_nodes()
-        nodes = [n for n in nodes if n.get_name() not in ('node', 'edge', 'graph')]
+        nodes = [n for n in nodes if n.get_name() not in ("node", "edge", "graph")]
 
         # The graph should have exactly 3 nodes: Product, Sum, Normal (no Cat)
         assert len(nodes) == 3, f"Expected 3 nodes (Product, Sum, Normal), got {len(nodes)}"
@@ -251,7 +251,7 @@ class TestVisualizationOptions:
                 show_shape=True,
                 show_params=True,
                 dpi=150,
-                format="png"
+                format="png",
             )
             assert os.path.exists(f"{output_path}.png")
 
@@ -265,15 +265,18 @@ class TestVisualizationOptions:
                 show_scope=False,
                 show_shape=False,
                 show_params=False,
-                format="png"
+                format="png",
             )
             assert os.path.exists(f"{output_path}.png")
 
-    @pytest.mark.parametrize("show_scope,show_shape,show_params", [
-        (True, False, False),
-        (False, True, False),
-        (False, False, True),
-    ])
+    @pytest.mark.parametrize(
+        "show_scope,show_shape,show_params",
+        [
+            (True, False, False),
+            (False, True, False),
+            (False, False, True),
+        ],
+    )
     def test_visualize_individual_options(self, model_with_scope, show_scope, show_shape, show_params):
         """Test visualization with individual customization options."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -284,7 +287,7 @@ class TestVisualizationOptions:
                 show_scope=show_scope,
                 show_shape=show_shape,
                 show_params=show_params,
-                format="png"
+                format="png",
             )
             assert os.path.exists(f"{output_path}.png")
 
@@ -461,30 +464,22 @@ class TestGraphvizErrorHandling:
         """Test that FileNotFoundError from missing graphviz is wrapped in GraphvizError."""
         with patch("pydot.Dot.write_png") as mock_write:
             # Simulate graphviz executable not found
-            mock_write.side_effect = FileNotFoundError(
-                errno.ENOENT, "dot not found in path"
-            )
+            mock_write.side_effect = FileNotFoundError(errno.ENOENT, "dot not found in path")
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 output_path = os.path.join(tmpdir, "test_model")
-                with pytest.raises(
-                    GraphvizError, match="Graphviz executable.*not found"
-                ):
+                with pytest.raises(GraphvizError, match="Graphviz executable.*not found"):
                     visualize_module(simple_model, output_path, format="png")
 
     def test_graphviz_assertion_error_raises_graphviz_error(self, simple_model):
         """Test that AssertionError from graphviz failure is wrapped in GraphvizError."""
         with patch("pydot.Dot.write_png") as mock_write:
             # Simulate graphviz returning non-zero exit code
-            mock_write.side_effect = AssertionError(
-                '"dot" with args [...] returned code: 1'
-            )
+            mock_write.side_effect = AssertionError('"dot" with args [...] returned code: 1')
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 output_path = os.path.join(tmpdir, "test_model")
-                with pytest.raises(
-                    GraphvizError, match="Error executing Graphviz"
-                ):
+                with pytest.raises(GraphvizError, match="Error executing Graphviz"):
                     visualize_module(simple_model, output_path, format="png")
 
     def test_graphviz_oserror_raises_graphviz_error(self, simple_model):
@@ -495,7 +490,5 @@ class TestGraphvizErrorHandling:
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 output_path = os.path.join(tmpdir, "test_model")
-                with pytest.raises(
-                    GraphvizError, match="Error executing Graphviz"
-                ):
+                with pytest.raises(GraphvizError, match="Error executing Graphviz"):
                     visualize_module(simple_model, output_path, format="pdf")

@@ -5,8 +5,6 @@ from itertools import product
 from spflow.meta import Scope
 import pytest
 from spflow.meta import SamplingContext
-from spflow.meta.dispatch import init_default_sampling_context
-from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum
@@ -49,7 +47,7 @@ def test_log_likelihood(out_channels: int, out_features: int, num_reps, dim: int
         dim=dim,
     ).to(device)
     data = make_normal_data(out_features=module.out_features).to(device)
-    lls = log_likelihood(module, data)
+    lls = module.log_likelihood(data)
     if num_reps == None:
         assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
     else:
@@ -78,7 +76,7 @@ def test_sample(out_channels: int, out_features: int, num_reps, dim: int, device
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
-        samples = sample(module, data, sampling_ctx=sampling_ctx)
+        samples = module.sample(data=data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]
         assert torch.isfinite(samples_query).all()
@@ -218,7 +216,7 @@ def test_marginalize(prune, out_channels: int, dim: int, marg_rvs: list[int], nu
     ).to(device)
 
     # Marginalize scope
-    marginalized_module = marginalize(module, marg_rvs, prune=prune)
+    marginalized_module = module.marginalize(marg_rvs, prune=prune)
 
     if len(marg_rvs) == module.out_features:
         assert marginalized_module is None
@@ -245,10 +243,10 @@ def test_marginalize_one_of_two_inputs(device):
 
     # Marginalize categorical scope, expect binomial to be returned
     marg_rvs_cat = inputs_cat.scope.query
-    marginalized_module = marginalize(module, marg_rvs_cat, prune=True)
+    marginalized_module = module.marginalize(marg_rvs_cat, prune=True)
     assert isinstance(marginalized_module, type(inputs_bin))
 
     # Marginalize binomial scope, expect categorical to be returned
     marg_rvs_bin = inputs_bin.scope.query
-    marginalized_module = marginalize(module, marg_rvs_bin, prune=True)
+    marginalized_module = module.marginalize(marg_rvs_bin, prune=True)
     assert isinstance(marginalized_module, type(inputs_cat))

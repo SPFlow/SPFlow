@@ -13,7 +13,6 @@ from spflow.modules.outer_product import OuterProduct
 from spflow.modules.ops import SplitHalves
 from spflow.modules.ops import SplitAlternate
 from spflow.modules import Factorize
-from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_data, make_leaf
 from spflow.modules.leaf import Normal
@@ -51,7 +50,7 @@ def test_log_likelihood(cls, in_channels: int, out_features: int, num_reps):
         cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps
     )
     data = make_data(cls=Normal, out_features=out_features * len(module.inputs))
-    lls = log_likelihood(module, data)
+    lls = module.log_likelihood(data)
     if num_reps is not None:
         assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
     else:
@@ -83,7 +82,7 @@ def test_log_likelihood_broadcasting_channels(cls, out_features: int, num_reps):
     data = make_data(cls=Normal, out_features=out_features * len(module.inputs))
 
     # Compute the log-likelihood
-    lls = log_likelihood(module, data)
+    lls = module.log_likelihood(data)
     if num_reps is not None:
         assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
     else:
@@ -108,7 +107,7 @@ def test_sample(cls, in_channels: int, out_features: int, num_reps):
     else:
         repetition_index = None
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = sample(module, data, sampling_ctx=sampling_ctx)
+    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
 
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
@@ -145,7 +144,7 @@ def test_sample_two_inputs_broadcasting_channels(cls, out_features: int, num_rep
     else:
         repetition_index = None
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = sample(module, data, sampling_ctx=sampling_ctx)
+    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
 
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]

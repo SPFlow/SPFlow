@@ -1,17 +1,15 @@
 from __future__ import annotations
 
+from typing import Any
+
 import torch
 from torch import Tensor
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.dispatch.dispatch_context import (
-    DispatchContext,
-    init_default_dispatch_context,
-)
 from spflow.modules.module import Module
 from spflow.modules.ops.cat import Cat
+from spflow.utils.cache import Cache, init_cache
 
 
 class Product(Module):
@@ -51,93 +49,178 @@ class Product(Module):
     def feature_to_scope(self) -> list[Scope]:
         return [Scope.join_all(self.inputs.feature_to_scope)]
 
+    def log_likelihood(
+        self,
+        data: Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> Tensor:
+        """Compute log P(data | module).
 
-@dispatch(memoize=True)  # type: ignore
-def marginalize(
-    layer: Product,
-    marg_rvs: list[int],
-    prune: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> Product | Module | None:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        Args:
+            data: Input data tensor.
+            check_support: Whether to check data support.
+            cache: Optional cache dictionary.
 
-    # compute layer scope (same for all outputs)
-    layer_scope = layer.scope
-    marg_child = None
-    mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
+        Returns:
+            Log-likelihood values.
+        """
+        cache = init_cache(cache)
 
-    # layer scope is being fully marginalized over
-    if len(mutual_rvs) == len(layer_scope.query):
-        # passing this loop means marginalizing over the whole scope of this branch
-        pass
-    # node scope is being partially marginalized
-    elif mutual_rvs:
-        # marginalize child modules
-        marg_child_layer = marginalize(layer.inputs, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+        # compute child log-likelihoods
+        ll = self.inputs.log_likelihood(
+            data,
+            check_support=check_support,
+            cache=cache,
+        )
 
-        # if marginalized child is not None
-        if marg_child_layer:
-            marg_child = marg_child_layer
+        # multiply children (sum in log-space)
+        result = torch.sum(ll, dim=1, keepdim=True)
 
-    else:
-        marg_child = layer.inputs
+        # Cache the result for EM step
+        if "log_likelihood" not in cache:
+            cache["log_likelihood"] = {}
+        cache["log_likelihood"][self] = result
 
-    if marg_child is None:
-        return None
+        return result
 
-    elif prune and marg_child.out_features == 1:
-        return marg_child
-    else:
-        return Product(inputs=marg_child)
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        check_support: bool = True,
+        cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
+    ) -> Tensor:
+        """Generate samples from the module.
 
+        Args:
+            num_samples: Number of samples to generate.
+            data: Data tensor with NaN values to fill with samples.
+            is_mpe: Whether to perform maximum a posteriori estimation.
+            check_support: Whether to check data support.
+            cache: Optional cache dictionary.
+            sampling_ctx: Optional sampling context.
 
-@dispatch  # type: ignore
-def sample(
-    module: Product,
-    data: Tensor,
-    is_mpe: bool = False,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-    sampling_ctx: SamplingContext | None = None,
-) -> Tensor:
-    # initialize contexts
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        Returns:
+            Sampled values.
+        """
+        cache = init_cache(cache)
 
-    # Expand mask and channels to match input module shape
-    mask = sampling_ctx.mask.expand(data.shape[0], module.inputs.out_features)
-    channel_index = sampling_ctx.channel_index.expand(data.shape[0], module.inputs.out_features)
-    sampling_ctx.update(channel_index=channel_index, mask=mask)
+        # Handle num_samples case (create empty data tensor)
+        if data is None:
+            if num_samples is None:
+                num_samples = 1
+            data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
 
-    sample(
-        module.inputs,
-        data,
-        is_mpe=is_mpe,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
-        sampling_ctx=sampling_ctx,
-    )
-    return data
+        # Initialize sampling context if not provided
+        if sampling_ctx is None:
+            sampling_ctx = SamplingContext(data.shape[0])
 
+        # Expand mask and channels to match input module shape
+        mask = sampling_ctx.mask.expand(data.shape[0], self.inputs.out_features)
+        channel_index = sampling_ctx.channel_index.expand(data.shape[0], self.inputs.out_features)
+        sampling_ctx.update(channel_index=channel_index, mask=mask)
 
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-    product_layer: Product,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> Tensor:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        # Delegate to input module for actual sampling
+        self.inputs.sample(
+            data=data,
+            is_mpe=is_mpe,
+            check_support=check_support,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
+        return data
 
-    # compute child log-likelihoods
-    ll = log_likelihood(
-        product_layer.inputs,
-        data,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
-    )
+    def expectation_maximization(
+        self,
+        data: Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> None:
+        """Expectation-maximization step.
 
-    # multiply childen (sum in log-space)
-    return torch.sum(ll, dim=1, keepdim=True)
+        For Product modules (no learnable parameters), this delegates to the input.
+
+        Args:
+            data: Input data tensor.
+            check_support: Whether to check data support.
+            cache: Optional cache dictionary.
+        """
+        cache = init_cache(cache)
+
+        # Product has no learnable parameters, delegate to input
+        self.inputs.expectation_maximization(data, check_support=check_support, cache=cache)
+
+    def maximum_likelihood_estimation(
+        self,
+        data: Tensor,
+        weights: Tensor | None = None,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> None:
+        """Update parameters via maximum likelihood estimation.
+
+        For Product modules (no learnable parameters), this delegates to the input.
+
+        Args:
+            data: Input data tensor.
+            weights: Optional sample weights (currently unused).
+            check_support: Whether to check data support.
+            cache: Optional cache dictionary.
+        """
+        cache = init_cache(cache)
+
+        # Product has no learnable parameters, delegate to input
+        self.inputs.maximum_likelihood_estimation(
+            data, weights=weights, check_support=check_support, cache=cache
+        )
+
+    def marginalize(
+        self,
+        marg_rvs: list[int],
+        prune: bool = True,
+        cache: Cache | None = None,
+    ) -> Product | Module | None:
+        """Marginalize out specified random variables.
+
+        Args:
+            marg_rvs: List of random variables to marginalize.
+            prune: Whether to prune the module.
+            cache: Optional cache dictionary.
+
+        Returns:
+            Marginalized module or None.
+        """
+        cache = init_cache(cache)
+
+        # compute layer scope (same for all outputs)
+        layer_scope = self.scope
+        marg_child = None
+        mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
+
+        # layer scope is being fully marginalized over
+        if len(mutual_rvs) == len(layer_scope.query):
+            # passing this loop means marginalizing over the whole scope of this branch
+            return None
+
+        # node scope is being partially marginalized
+        elif mutual_rvs:
+            # marginalize child modules
+            marg_child_layer = self.inputs.marginalize(marg_rvs, prune=prune, cache=cache)
+
+            # if marginalized child is not None
+            if marg_child_layer:
+                marg_child = marg_child_layer
+
+        else:
+            marg_child = self.inputs
+
+        if marg_child is None:
+            return None
+
+        elif prune and marg_child.out_features == 1:
+            return marg_child
+        else:
+            return Product(inputs=marg_child)

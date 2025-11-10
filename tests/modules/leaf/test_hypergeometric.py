@@ -8,7 +8,6 @@ import torch
 from pytest import raises
 from scipy.stats import hypergeom
 
-from spflow import maximum_likelihood_estimation, sample, marginalize, log_likelihood
 from spflow.meta import Scope
 from spflow.modules.leaf import Hypergeometric
 

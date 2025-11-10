@@ -1,20 +1,17 @@
 from __future__ import annotations
 
 from itertools import product
+from typing import Optional, Dict, Any
 
 import torch
 from torch import Tensor
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.dispatch.dispatch_context import (
-    DispatchContext,
-    init_default_dispatch_context,
-)
-from spflow.modules.base_product import BaseProduct, _get_input_log_likelihoods
+from spflow.modules.base_product import BaseProduct
 from spflow.modules.module import Module
 from spflow.modules import Product
+from spflow.utils.cache import Cache, init_cache
 import numpy as np
 import time
 
@@ -112,103 +109,132 @@ class Factorize(BaseProduct):
 
         return scopes  # .to(torch.int32)
 
+    def log_likelihood(
+        self,
+        data: Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> Tensor:
+        """Compute log P(data | module) for factorize.
 
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-    module: Factorize,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> Tensor:
-    # initialize dispatch context
+        Args:
+            data: The data tensor.
+            check_support: Whether to check the support of the module.
+            cache: Optional cache dictionary.
 
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        Returns:
+            Log likelihood tensor.
+        """
+        # initialize cache
+        cache = init_cache(cache)
 
-    lls = _get_input_log_likelihoods(
-        module, data, check_support, dispatch_ctx
-    )  # lls[0] shape: [batch_size, num_features, num_channel]
-    output = torch.einsum("bicr, ior->bocr", lls[0], module.indices)
+        lls = self._get_input_log_likelihoods(
+            data, check_support, cache
+        )  # lls[0] shape: [batch_size, num_features, num_channel]
+        output = torch.einsum("bicr, ior->bocr", lls[0], self.indices)
 
-    return output
+        return output
 
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        check_support: bool = True,
+        cache: Cache | None = None,
+        sampling_ctx: Optional[SamplingContext] = None,
+    ) -> Tensor:
+        """Generate samples from the factorize module.
 
-@dispatch  # type: ignore
-def sample(
-    module: Factorize,
-    data: Tensor,
-    is_mpe: bool = False,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-    sampling_ctx: SamplingContext | None = None,
-) -> Tensor:
-    # initialize contexts
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        Args:
+            num_samples: Number of samples to generate.
+            data: The data tensor to populate with samples.
+            is_mpe: Whether to use maximum probability estimation instead of sampling.
+            check_support: Whether to check the support of the input module.
+            cache: Optional cache dictionary for intermediate results.
+            sampling_ctx: Optional sampling context.
 
-    # gather indices for specific repetitions
-    rep_indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1).expand(
-        -1, module.indices.shape[0], module.indices.shape[1], -1
-    )
-    indices = (
-        module.indices.unsqueeze(0)
-        .expand(data.shape[0], -1, -1, -1)
-        .to(dtype=torch.long, device=module.device)
-    )
-    indices = torch.gather(indices, dim=-1, index=rep_indices).squeeze(-1)
+        Returns:
+            The data tensor populated with samples.
+        """
+        # Prepare data tensor
+        data = self._prepare_sample_data(num_samples, data)
 
-    # gather channel indices and mask
-    channel_index = torch.sum(sampling_ctx.channel_index.unsqueeze(1) * indices, dim=-1)
-    mask = torch.sum(sampling_ctx.mask.unsqueeze(1) * indices, dim=-1).bool()
+        # initialize contexts
+        cache = init_cache(cache)
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    sampling_ctx.update(channel_index=channel_index, mask=mask)
+        # gather indices for specific repetitions
+        rep_indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1).expand(
+            -1, self.indices.shape[0], self.indices.shape[1], -1
+        )
+        indices = (
+            self.indices.unsqueeze(0)
+            .expand(data.shape[0], -1, -1, -1)
+            .to(dtype=torch.long, device=self.device)
+        )
+        indices = torch.gather(indices, dim=-1, index=rep_indices).squeeze(-1)
 
-    sample(
-        module.inputs[0],
-        data,
-        is_mpe=is_mpe,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
-        sampling_ctx=sampling_ctx,
-    )
+        # gather channel indices and mask
+        channel_index = torch.sum(sampling_ctx.channel_index.unsqueeze(1) * indices, dim=-1)
+        mask = torch.sum(sampling_ctx.mask.unsqueeze(1) * indices, dim=-1).bool()
 
-    return data
+        sampling_ctx.update(channel_index=channel_index, mask=mask)
 
+        self.inputs[0].sample(
+            data=data,
+            is_mpe=is_mpe,
+            check_support=check_support,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
 
-@dispatch(memoize=True)  # type: ignore
-def marginalize(
-    layer: Factorize,
-    marg_rvs: list[int],
-    prune: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> Product | Module | None:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    # compute layer scope (same for all outputs)
-    layer_scope = layer.scope
-    marg_child = None
-    mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
+        return data
 
-    # layer scope is being fully marginalized over
-    if len(mutual_rvs) == len(layer_scope.query):
-        # passing this loop means marginalizing over the whole scope of this branch
-        pass
-    # node scope is being partially marginalized
-    elif mutual_rvs:
-        # marginalize child modules
-        marg_child_layer = marginalize(layer.inputs[0], marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+    def marginalize(
+        self,
+        marg_rvs: list[int],
+        prune: bool = True,
+        cache: Cache | None = None,
+    ) -> Optional[Product | Module]:
+        """Marginalize out specified random variables.
 
-        # if marginalized child is not None
-        if marg_child_layer:
-            marg_child = marg_child_layer
+        Args:
+            marg_rvs: List of random variables to marginalize over.
+            prune: Whether to prune the structure.
+            cache: Optional cache dictionary.
 
-    else:
-        marg_child = layer.inputs[0]
+        Returns:
+            The marginalized module or None if fully marginalized.
+        """
+        # initialize cache
+        cache = init_cache(cache)
+        # compute layer scope (same for all outputs)
+        layer_scope = self.scope
+        marg_child = None
+        mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
 
-    if marg_child is None:
-        return None
+        # layer scope is being fully marginalized over
+        if len(mutual_rvs) == len(layer_scope.query):
+            # passing this loop means marginalizing over the whole scope of this branch
+            pass
+        # node scope is being partially marginalized
+        elif mutual_rvs:
+            # marginalize child modules
+            marg_child_layer = self.inputs[0].marginalize(marg_rvs, prune=prune, cache=cache)
 
-    # ToDo: check if this is correct / prune if only one scope is left?
-    elif prune and marg_child.out_features == 1:
-        return marg_child
-    else:
-        return Factorize(inputs=[marg_child], depth=layer.depth, num_repetitions=layer.num_repetitions)
+            # if marginalized child is not None
+            if marg_child_layer:
+                marg_child = marg_child_layer
+
+        else:
+            marg_child = self.inputs[0]
+
+        if marg_child is None:
+            return None
+
+        # ToDo: check if this is correct / prune if only one scope is left?
+        elif prune and marg_child.out_features == 1:
+            return marg_child
+        else:
+            return Factorize(inputs=[marg_child], depth=self.depth, num_repetitions=self.num_repetitions)
