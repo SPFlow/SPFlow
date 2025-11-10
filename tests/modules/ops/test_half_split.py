@@ -6,8 +6,6 @@ from itertools import product
 from spflow.meta import Scope
 import pytest
 from spflow.meta import SamplingContext
-from spflow.meta.dispatch import init_default_sampling_context
-from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum
@@ -42,8 +40,8 @@ def test_split_result(cls, device):
     assert spn1.out_channels == spn2.out_channels
     assert spn1.out_features == spn2.out_features
     data = make_normal_data(out_features=num_features).to(device)
-    ll_1 = log_likelihood(spn1, data)
-    ll_2 = log_likelihood(spn2, data)
+    ll_1 = spn1.log_likelihood(data)
+    ll_2 = spn2.log_likelihood(data)
     assert torch.allclose(ll_1, ll_2)
 
     n_samples = 100
@@ -58,7 +56,7 @@ def test_split_result(cls, device):
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
     sampling_ctx2 = SamplingContext(channel_index=channel_index, mask=mask)
 
-    s1 = sample(spn1, data1, sampling_ctx=sampling_ctx, is_mpe=True)
-    s2 = sample(spn2, data2, sampling_ctx=sampling_ctx2, is_mpe=True)
+    s1 = spn1.sample(data=data1, sampling_ctx=sampling_ctx, is_mpe=True)
+    s2 = spn2.sample(data=data2, sampling_ctx=sampling_ctx2, is_mpe=True)
 
     assert torch.allclose(s1, s2)

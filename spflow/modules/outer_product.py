@@ -1,22 +1,18 @@
 from __future__ import annotations
 
 from itertools import product
+from typing import Optional, Dict, Any
 
 import torch
 from torch import Tensor
 
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.dispatch.dispatch_context import (
-    DispatchContext,
-    init_default_dispatch_context,
-)
-from spflow.modules.base_product import BaseProduct, _get_input_log_likelihoods
+from spflow.modules.base_product import BaseProduct
 from spflow.modules.module import Module
 from spflow.meta.data import Scope
+from spflow.utils.cache import Cache, init_cache
 from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.ops.split_alternate import SplitAlternate
-import time
 
 
 class OuterProduct(BaseProduct):
@@ -175,35 +171,43 @@ class OuterProduct(BaseProduct):
         else:
             return mask.unsqueeze(-1).repeat(1, 1, num_inputs)
 
+    def log_likelihood(
+        self,
+        data: Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> Tensor:
+        """Compute log P(data | module) for outer product.
 
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-    module: OuterProduct,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> Tensor:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        Args:
+            data: The data tensor.
+            check_support: Whether to check the support of the module.
+            cache: Optional cache dictionary.
 
-    lls = _get_input_log_likelihoods(module, data, check_support, dispatch_ctx)
+        Returns:
+            Log likelihood tensor.
+        """
+        # initialize cache
+        cache = init_cache(cache)
 
-    # Compute the outer sum of pairwise log-likelihoods
-    # [b, n, m1] + [b, n, m2] -> [b, n, m1, 1] + [b, n, 1, m2]  -> [b, n, m1, m2] -> [b, n, 1, m1*m2] ...
+        lls = self._get_input_log_likelihoods(data, check_support, cache)
 
-    output = lls[0]
-    for i in range(1, len(lls)):
-        output = output.unsqueeze(3) + lls[i].unsqueeze(2)
-        if output.ndim == 4:
-            output = output.view(output.size(0), module.out_features, -1)
-        elif output.ndim == 5:
-            output = output.view(output.size(0), module.out_features, -1, module.num_repetitions)
+        # Compute the outer sum of pairwise log-likelihoods
+        # [b, n, m1] + [b, n, m2] -> [b, n, m1, 1] + [b, n, 1, m2]  -> [b, n, m1, m2] -> [b, n, 1, m1*m2] ...
+
+        output = lls[0]
+        for i in range(1, len(lls)):
+            output = output.unsqueeze(3) + lls[i].unsqueeze(2)
+            if output.ndim == 4:
+                output = output.view(output.size(0), self.out_features, -1)
+            elif output.ndim == 5:
+                output = output.view(output.size(0), self.out_features, -1, self.num_repetitions)
+            else:
+                raise ValueError("Invalid number of dimensions")
+
+        # View as [b, n, m1 * m2, r]
+        if self.num_repetitions is None:
+            output = output.view(output.size(0), self.out_features, self.out_channels)
         else:
-            raise ValueError("Invalid number of dimensions")
-
-    # View as [b, n, m1 * m2, r]
-    if module.num_repetitions is None:
-        output = output.view(output.size(0), module.out_features, module.out_channels)
-    else:
-        output = output.view(output.size(0), module.out_features, module.out_channels, module.num_repetitions)
-    return output
+            output = output.view(output.size(0), self.out_features, self.out_channels, self.num_repetitions)
+        return output

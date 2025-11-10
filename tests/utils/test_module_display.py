@@ -7,7 +7,7 @@ from spflow.meta import Scope
 from spflow.modules.leaf import Normal
 from spflow.modules.sum import Sum
 from spflow.modules.product import Product
-from spflow.utils import module_to_str
+from spflow.utils.module_display import module_to_str
 
 
 class TestModuleToStrBasics:
@@ -117,13 +117,7 @@ class TestModuleToStrCustomization:
 
     def test_combined_customization(self, nested_model):
         """Test combining multiple customization options."""
-        output = module_to_str(
-            nested_model,
-            format="tree",
-            max_depth=1,
-            show_params=False,
-            show_scope=False
-        )
+        output = module_to_str(nested_model, format="tree", max_depth=1, show_params=False, show_scope=False)
 
         assert isinstance(output, str)
         assert len(output) > 0
@@ -161,12 +155,7 @@ class TestModuleToStrMethod:
 
     def test_to_str_method_with_customization(self, model_with_method):
         """Test Module.to_str() with customization options."""
-        output = model_with_method.to_str(
-            format="tree",
-            max_depth=1,
-            show_params=False,
-            show_scope=False
-        )
+        output = model_with_method.to_str(format="tree", max_depth=1, show_params=False, show_scope=False)
 
         assert isinstance(output, str)
         assert "Sum" in output
@@ -223,10 +212,7 @@ class TestModuleToStrComplexStructures:
         """Test Sum with multiple Normal leaf inputs (same scope)."""
         # Sum requires same scope inputs
         scope = Scope([0, 1])
-        leaves = [
-            Normal(scope=scope, out_channels=2)
-            for _ in range(3)
-        ]
+        leaves = [Normal(scope=scope, out_channels=2) for _ in range(3)]
         sum_node = Sum(inputs=leaves, out_channels=2)
 
         output = module_to_str(sum_node, format="tree")
@@ -287,23 +273,21 @@ class TestModuleToStrEdgeCases:
         # With max_depth=0, should show root but no children
         assert isinstance(output, str)
 
-    @pytest.mark.parametrize("show_params,show_scope", [
-        (True, True),
-        (True, False),
-        (False, True),
-        (False, False),
-    ])
+    @pytest.mark.parametrize(
+        "show_params,show_scope",
+        [
+            (True, True),
+            (True, False),
+            (False, True),
+            (False, False),
+        ],
+    )
     def test_format_consistency_across_options(self, show_params, show_scope):
         """Test that different customization options don't cause errors."""
         leaf = Normal(scope=Scope([0, 1]), out_channels=2)
         model = Sum(inputs=leaf, out_channels=3)
 
-        output = module_to_str(
-            model,
-            format="tree",
-            show_params=show_params,
-            show_scope=show_scope
-        )
+        output = module_to_str(model, format="tree", show_params=show_params, show_scope=show_scope)
         assert isinstance(output, str)
         assert len(output) > 0
 
@@ -326,6 +310,7 @@ class TestModuleToStrStringProperties:
         # Should be able to print it without errors
         print(output)
 
+
 class TestModuleToStrParameterDisplay:
     """Test parameter and scope display in different formats."""
 
@@ -338,4 +323,3 @@ class TestModuleToStrParameterDisplay:
 
         # Tree should contain dimension info
         assert "D=" in output_with_params or "C=" in output_with_params
-

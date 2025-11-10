@@ -6,7 +6,6 @@ from itertools import product
 
 from spflow.meta import Scope
 import pytest
-from spflow import log_likelihood, marginalize
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum, Product
 from spflow.modules.ops import Cat
@@ -139,7 +138,7 @@ def heatmap(spn, X, y):
 
     # Assuming you have a trained SPN called `spn`
     # Calculate the likelihoods (probabilities) for each point in the grid
-    probs = log_likelihood(spn, torch.tensor(grid, dtype=torch.float32))
+    probs = spn.log_likelihood(torch.tensor(grid, dtype=torch.float32))
 
     # Reshape the probabilities back into a grid form
     probs = probs[:, 0, 0].reshape(xx.shape).detach().numpy()

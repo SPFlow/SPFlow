@@ -1,24 +1,20 @@
 from __future__ import annotations
 
-from abc import abstractmethod
-from typing import Callable
+from abc import abstractmethod, ABC
+from typing import Any, Callable, Dict, Optional
 
 import torch
 from torch import Tensor, nn
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import (
-    DispatchContext,
-    init_default_dispatch_context,
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.meta.dispatch.dispatch import dispatch
 from spflow.modules.module import Module
 
 
-# abstract split module
-class Split(Module):
+class Split(Module, ABC):
     def __init__(self, inputs: Module, dim: int = 1, num_splits: int | None = 2):
         """
         Base Split module to split a single module along a given dimension.
@@ -68,70 +64,63 @@ class Split(Module):
     def feature_to_scope(self) -> list[Scope]:
         pass
 
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        check_support: bool = True,
+        cache: Optional[Dict[str, Any]] = None,
+        sampling_ctx: SamplingContext | None = None,
+    ) -> Tensor:
+        # Prepare data tensor
+        data = self._prepare_sample_data(num_samples, data)
 
-@dispatch  # type: ignore
-def sample(
-    module: Split,
-    data: Tensor,
-    is_mpe: bool = False,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-    sampling_ctx: SamplingContext | None = None,
-) -> Tensor:
-    # initialize contexts
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        # initialize context
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    # Expand mask and channels to match input module shape
-    mask = sampling_ctx.mask.expand(data.shape[0], module.inputs[0].out_features)
-    channel_index = sampling_ctx.channel_index.expand(data.shape[0], module.inputs[0].out_features)
-    sampling_ctx.update(channel_index=channel_index, mask=mask)
+        # Expand mask and channels to match input module shape
+        mask = sampling_ctx.mask.expand(data.shape[0], self.inputs[0].out_features)
+        channel_index = sampling_ctx.channel_index.expand(data.shape[0], self.inputs[0].out_features)
+        sampling_ctx.update(channel_index=channel_index, mask=mask)
 
-    sample(
-        module.inputs[0],
-        data,
-        is_mpe=is_mpe,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
-        sampling_ctx=sampling_ctx,
-    )
-    return data
+        self.inputs[0].sample(
+            data=data,
+            is_mpe=is_mpe,
+            check_support=check_support,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
+        return data
 
+    def marginalize(
+        self,
+        marg_rvs: list[int],
+        prune: bool = True,
+        cache: Optional[Dict[str, Any]] = None,
+    ) -> None | Module:
+        # compute module scope (same for all outputs)
+        module_scope = self.scope
 
-@dispatch(memoize=True)  # type: ignore
-def marginalize(
-    module: Split,
-    marg_rvs: list[int],
-    prune: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> None | Module:
-    # Initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        mutual_rvs = set(module_scope.query).intersection(set(marg_rvs))
 
-    # compute module scope (same for all outputs)
-    module_scope = module.scope
+        # Node scope is only being partially marginalized
+        if mutual_rvs:
+            # marginalize child modules
 
-    mutual_rvs = set(module_scope.query).intersection(set(marg_rvs))
+            marg_child_module = self.inputs[0].marginalize(marg_rvs, prune=prune, cache=cache)
 
-    # Node scope is only being partially marginalized
-    if mutual_rvs:
-        # marginalize child modules
+            # if marginalized child is not None
+            if marg_child_module:
+                if prune and marg_child_module.out_features == 1:
+                    return marg_child_module
+                else:
+                    return self.__class__(inputs=marg_child_module, dim=self.dim, num_splits=self.num_splits)
 
-        marg_child_module = marginalize(module.inputs[0], marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
-
-        # if marginalized child is not None
-        if marg_child_module:
-            if prune and marg_child_module.out_features == 1:
-                return marg_child_module
+            # if all children were marginalized, return None
             else:
-                return module.__class__(
-                    inputs=marg_child_module, dim=module.dim, num_splits=module.num_splits
-                )
+                return None
 
-        # if all children were marginalized, return None
+            # if only a single input survived marginalization, return it if pruning is enabled
         else:
-            return None
-
-        # if only a single input survived marginalization, return it if pruning is enabled
-    else:
-        return module
+            return self

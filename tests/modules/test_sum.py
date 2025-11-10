@@ -8,8 +8,6 @@ from spflow import InvalidParameterCombinationError, ScopeError
 from spflow.meta import Scope
 import pytest
 from spflow.meta import SamplingContext
-from spflow.meta.dispatch import init_default_sampling_context, init_default_dispatch_context
-from spflow import log_likelihood, sample, marginalize, sample_with_evidence
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum, ElementwiseProduct
@@ -50,8 +48,7 @@ def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, 
         num_repetitions=num_reps,
     )
     data = make_normal_data(out_features=out_features)
-    ctx = init_default_dispatch_context()
-    lls = log_likelihood(module, data, dispatch_ctx=ctx)
+    lls = module.log_likelihood(data)
     if num_reps is not None:
         assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
     else:
@@ -82,8 +79,7 @@ def test_log_likelihood_product_inputs(in_channels: int, out_channels: int, out_
     module = Sum(out_channels=out_channels, inputs=prod, num_repetitions=num_reps)
 
     data = make_normal_data(out_features=out_features)
-    ctx = init_default_dispatch_context()
-    lls = log_likelihood(module, data, dispatch_ctx=ctx)
+    lls = module.log_likelihood(data)
     if num_reps is not None:
         assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
     else:
@@ -110,7 +106,7 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
-        samples = sample(module, data, sampling_ctx=sampling_ctx)
+        samples = module.sample(data=data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]
         assert torch.isfinite(samples_query).all()
@@ -150,7 +146,7 @@ def test_sample_product_inputs(in_channels: int, out_channels: int, out_features
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
-        samples = sample(module, data, sampling_ctx=sampling_ctx)
+        samples = module.sample(data=data, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         samples_query = samples[:, module.scope.query]
         assert torch.isfinite(samples_query).all()
@@ -179,9 +175,6 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
 
         data_copy = data.clone()
 
-        # Perform log-likelihood computation
-        dispatch_ctx = init_default_dispatch_context()
-
         channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
         mask = torch.full(channel_index.shape, True)
         if num_reps is not None:
@@ -192,18 +185,19 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
 
-        samples = sample_with_evidence(
-            module,
-            data,
+        cache = {}
+        samples = module.sample_with_evidence(
+            evidence=data,
             is_mpe=False,
             check_support=False,
-            dispatch_ctx=dispatch_ctx,
+            cache=cache,
             sampling_ctx=sampling_ctx,
         )
 
         # Check that log_likelihood is cached
-        assert dispatch_ctx.cache["log_likelihood"][module] is not None
-        assert dispatch_ctx.cache["log_likelihood"][module].isfinite().all()
+        cached_ll = cache["log_likelihood"][module.inputs]
+        assert cached_ll is not None
+        assert cached_ll.isfinite().all()
 
         # Check for correct shape
         assert samples.shape == data.shape
@@ -338,7 +332,7 @@ def test_marginalize(prune, in_channels: int, out_channels: int, marg_rvs: list[
     weights_shape = module.weights.shape
 
     # Marginalize scope
-    marginalized_module = marginalize(module, marg_rvs, prune=prune)
+    marginalized_module = module.marginalize(marg_rvs, prune=prune)
 
     if len(marg_rvs) == out_features:
         assert marginalized_module is None
@@ -397,8 +391,8 @@ def test_multiple_input():
 
     data = make_normal_data(out_features=out_features)
 
-    ll_a = log_likelihood(module_a, data)
-    ll_b = log_likelihood(module_b, data)
+    ll_a = module_a.log_likelihood(data)
+    ll_b = module_b.log_likelihood(data)
 
     assert torch.allclose(ll_a, ll_b)
 
@@ -420,7 +414,7 @@ def test_multiple_input():
         channel_index=channel_index, mask=mask, repetition_index=repetition_index
     )
 
-    samples_a = sample(module_a, data_a, is_mpe=True, sampling_ctx=sampling_ctx_a)
-    samples_b = sample(module_b, data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
+    samples_a = module_a.sample(data=data_a, is_mpe=True, sampling_ctx=sampling_ctx_a)
+    samples_b = module_b.sample(data=data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
 
     assert torch.allclose(samples_a, samples_b)

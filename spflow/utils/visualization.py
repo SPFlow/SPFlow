@@ -54,6 +54,7 @@ class Color(str, Enum):
     PINK = "#e377c2"  # tab10[6] - Cat
     GRAY = "#7f7f7f"  # tab10[7] - Default/Unknown types
 
+
 # Ops modules to skip in visualization (pass-through/helper modules)
 # When these modules are encountered, they are bypassed and their inputs are connected
 # directly to the parent module
@@ -199,7 +200,14 @@ def visualize_module(
     )
 
     # Build the graph
-    _build_graph(module, graph, show_scope=show_scope, show_shape=show_shape, show_params=show_params, skip_ops=skip_ops)
+    _build_graph(
+        module,
+        graph,
+        show_scope=show_scope,
+        show_shape=show_shape,
+        show_params=show_params,
+        skip_ops=skip_ops,
+    )
 
     # Generate output file
     output_file = f"{output_path}.{format}"
@@ -221,8 +229,7 @@ def visualize_module(
                 graph.write(output_file, format="canon", prog=engine)
             case _:
                 raise ValueError(
-                    f"Unsupported format: {format}. "
-                    "Supported formats: png, pdf, svg, dot, plain, canon"
+                    f"Unsupported format: {format}. " "Supported formats: png, pdf, svg, dot, plain, canon"
                 )
 
     except FileNotFoundError as e:
@@ -282,14 +289,18 @@ def _build_graph(
             if isinstance(inputs, list):
                 # Multiple inputs - recursively add each
                 for input_module in inputs:
-                    child_id = _build_graph(input_module, graph, show_scope, show_shape, show_params, visited, parent_id, skip_ops)
+                    child_id = _build_graph(
+                        input_module, graph, show_scope, show_shape, show_params, visited, parent_id, skip_ops
+                    )
                     # Only add edge if child was actually added to graph (not skipped)
                     if child_id is not None:
                         edge = pydot.Edge(str(child_id), str(parent_id))
                         graph.add_edge(edge)
             else:
                 # Single input - recursively add it
-                child_id = _build_graph(inputs, graph, show_scope, show_shape, show_params, visited, parent_id, skip_ops)
+                child_id = _build_graph(
+                    inputs, graph, show_scope, show_shape, show_params, visited, parent_id, skip_ops
+                )
                 # Only add edge if child was actually added to graph (not skipped)
                 if child_id is not None:
                     edge = pydot.Edge(str(child_id), str(parent_id))
@@ -326,14 +337,32 @@ def _build_graph(
         if isinstance(inputs, list):
             # Multiple inputs
             for input_module in inputs:
-                child_id = _build_graph(input_module, graph, show_scope, show_shape, show_params, visited, parent_id=node_id, skip_ops=skip_ops)
+                child_id = _build_graph(
+                    input_module,
+                    graph,
+                    show_scope,
+                    show_shape,
+                    show_params,
+                    visited,
+                    parent_id=node_id,
+                    skip_ops=skip_ops,
+                )
                 # Only add edge if child was actually added to graph (not skipped)
                 if child_id is not None:
                     edge = pydot.Edge(str(child_id), str(node_id))
                     graph.add_edge(edge)
         else:
             # Single input
-            child_id = _build_graph(inputs, graph, show_scope, show_shape, show_params, visited, parent_id=node_id, skip_ops=skip_ops)
+            child_id = _build_graph(
+                inputs,
+                graph,
+                show_scope,
+                show_shape,
+                show_params,
+                visited,
+                parent_id=node_id,
+                skip_ops=skip_ops,
+            )
             # Only add edge if child was actually added to graph (not skipped)
             if child_id is not None:
                 edge = pydot.Edge(str(child_id), str(node_id))
@@ -341,7 +370,16 @@ def _build_graph(
 
     # Special handling for RatSPN: traverse through root_node
     if hasattr(module, "root_node"):
-        child_id = _build_graph(module.root_node, graph, show_scope, show_shape, show_params, visited, parent_id=node_id, skip_ops=skip_ops)
+        child_id = _build_graph(
+            module.root_node,
+            graph,
+            show_scope,
+            show_shape,
+            show_params,
+            visited,
+            parent_id=node_id,
+            skip_ops=skip_ops,
+        )
         # Only add edge if child was actually added to graph (not skipped)
         if child_id is not None:
             edge = pydot.Edge(str(child_id), str(node_id))
@@ -398,7 +436,9 @@ def _format_scope_string(scopes: list[int]) -> str:
     return ", ".join(result)
 
 
-def _get_module_label(module: Module, show_scope: bool = False, show_shape: bool = False, show_params: bool = False) -> str:
+def _get_module_label(
+    module: Module, show_scope: bool = False, show_shape: bool = False, show_params: bool = False
+) -> str:
     """Generate a label for a module node.
 
     Uses HTML labels with bold module names for better visibility.

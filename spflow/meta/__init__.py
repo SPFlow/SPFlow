@@ -1,3 +1,3 @@
-from . import data, dispatch
+from . import data
 from .data import Scope, FeatureContext, FeatureTypes
-from .dispatch import DispatchContext, SamplingContext
+from .dispatch import SamplingContext

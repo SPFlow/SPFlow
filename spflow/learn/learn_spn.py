@@ -7,7 +7,6 @@ from collections.abc import Callable
 
 from sklearn.cluster import KMeans
 import torch
-from spflow import maximum_likelihood_estimation
 from spflow.modules import Product
 from spflow.modules import Sum
 from spflow.utils.kmeans import kmeans
@@ -276,8 +275,10 @@ def learn_spn(
                     scope=Scope(sorted(scope_inter)), out_channels=leaf_module.out_channels
                 )
                 # estimate leaf node parameters from data
-                maximum_likelihood_estimation(
-                    leaf_layer, data, check_support=check_support, preprocess_data=False
+                leaf_layer.maximum_likelihood_estimation(
+                    data,
+                    check_support=check_support,
+                    preprocess_data=False,
                 )
 
                 leaves.append(leaf_layer)

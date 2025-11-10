@@ -5,7 +5,6 @@ from collections.abc import Callable
 from torch import Tensor
 import torch.nn as nn
 
-from spflow import log_likelihood
 from spflow.modules.module import Module
 
 import logging
@@ -24,7 +23,7 @@ def negative_log_likelihood_loss(model: Module, data: Tensor) -> torch.Tensor:
     Returns:
         Negative log-likelihood loss.
     """
-    return -1 * log_likelihood(model, data).sum()
+    return -1 * model.log_likelihood(data).sum()
 
 
 def nll_loss(ll: Tensor, target: Tensor) -> torch.Tensor:
@@ -100,7 +99,7 @@ def train_gradient_descent(
             # Compute negative log likelihood
             if is_classification:
                 data, y = batch
-                ll = log_likelihood(model, data)
+                ll = model.log_likelihood(data)
                 loss = loss_fn(ll, y)
                 predicted = torch.argmax(ll, dim=-1).squeeze()
 
@@ -155,7 +154,7 @@ def train_gradient_descent(
             with torch.no_grad():
                 for data, y in validation_dataloader:
                     if is_classification:
-                        ll = log_likelihood(model, data)
+                        ll = model.log_likelihood(data)
                         val_loss = loss_fn(ll, y)
                         predicted = torch.argmax(ll, dim=-1).squeeze()
 

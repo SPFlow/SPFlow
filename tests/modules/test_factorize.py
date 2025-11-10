@@ -5,7 +5,6 @@ from itertools import product
 
 from spflow.meta import SamplingContext
 from spflow.meta.dispatch import init_default_sampling_context
-from spflow import log_likelihood, sample, marginalize
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, make_data
 from spflow.modules.leaf import Normal, Bernoulli
 from spflow.learn import expectation_maximization
@@ -36,7 +35,7 @@ def test_log_likelihood(in_channels: int, out_features: int, num_reps, depth):
         in_channels=in_channels, out_features=out_features, num_repetitions=num_reps, depth=depth
     )
     data = make_normal_data(out_features=out_features)
-    lls = log_likelihood(factorization_layer, data)
+    lls = factorization_layer.log_likelihood(data)
     if num_reps is None:
         assert lls.shape == (
             data.shape[0],
@@ -69,7 +68,7 @@ def test_sample(in_channels: int, out_features: int, num_reps, depth):
     else:
         repetition_index = None
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = sample(factorization_layer, data, sampling_ctx=sampling_ctx)
+    samples = factorization_layer.sample(data=data, sampling_ctx=sampling_ctx)
     assert samples.shape == data.shape
     samples_query = samples[:, factorization_layer.scope.query]
     assert torch.isfinite(samples_query).all()
@@ -96,7 +95,7 @@ def test_marginalize(prune, in_channels: int, marg_rvs: list[int], num_reps):
     module = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
 
     # Marginalize scope
-    marginalized_module = marginalize(module, marg_rvs, prune=prune)
+    marginalized_module = module.marginalize(marg_rvs, prune=prune)
 
     if len(marg_rvs) == out_features:
         assert marginalized_module is None
@@ -131,13 +130,16 @@ def test_multidistribution_input():
     module = Factorize(inputs=[module_1, module_2], depth=2, num_repetitions=num_reps)
 
     data = torch.cat((data_1, data_2), dim=1)
-    lls = log_likelihood(module, data)
+    lls = module.log_likelihood(data)
 
     assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
 
     repetition_idx = torch.zeros((1,), dtype=torch.long)
     sampling_ctx = init_default_sampling_context(sampling_ctx=None, num_samples=1)
     sampling_ctx.repetition_idx = repetition_idx
-    samples = sample(module, sampling_ctx=sampling_ctx)
+
+    # Create data tensor to populate with samples
+    data_to_sample = torch.full((1, out_features_1 + out_features_2), torch.nan)
+    samples = module.sample(data=data_to_sample, sampling_ctx=sampling_ctx)
 
     assert samples.shape == (1, out_features_1 + out_features_2)

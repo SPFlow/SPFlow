@@ -1,13 +1,12 @@
-from typing import Optional, Union
+from typing import Optional, Union, Dict, Any, List
 
 import torch
 from torch import Tensor
 
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.dispatch.dispatch_context import DispatchContext, init_default_dispatch_context
 from spflow.modules.module import Module
 from spflow.modules.wrapper.abstract_wrapper import AbstractWrapper
+from spflow.utils.cache import Cache, init_cache
 
 
 class MarginalizationContext:
@@ -32,180 +31,265 @@ class ImageWrapper(AbstractWrapper):
         self.num_channel = num_channel
         self.height = height
         self.width = width
-        assert len(
-            module.scope.query) == height * width * num_channel, f"Module out_features {module.out_features} does not match the expected size {height * width * num_channel}."
+        assert (
+            len(module.scope.query) == height * width * num_channel
+        ), f"Module out_features {module.out_features} does not match the expected size {height * width * num_channel}."
 
     def flatten(self, tensor: torch.Tensor):
         assert tensor.dim() == 4, f"Input tensor must be 4-dimensional but got {tensor.dim()}-dimensional."
-        assert tensor.shape[
-                   1] == self.num_channel, f"Input tensor channel dimension must; match num_channel {self.num_channel} but got {tensor.shape[1]}."
+        assert (
+            tensor.shape[1] == self.num_channel
+        ), f"Input tensor channel dimension must; match num_channel {self.num_channel} but got {tensor.shape[1]}."
 
         return tensor.view(tensor.shape[0], -1)
 
     def to_image_format(self, tensor: torch.Tensor, batch: bool = True):
-
         if batch:
-            assert tensor.dim() == 2, f"Input tensor must be 2-dimensional but got {tensor.dim()}-dimensional."
+            assert (
+                tensor.dim() == 2
+            ), f"Input tensor must be 2-dimensional but got {tensor.dim()}-dimensional."
             return tensor.view(tensor.shape[0], self.num_channel, self.height, self.width)
         else:
-            assert tensor.dim() == 1, f"Input tensor must be 1-dimensional but got {tensor.dim()}-dimensional."
+            assert (
+                tensor.dim() == 1
+            ), f"Input tensor must be 1-dimensional but got {tensor.dim()}-dimensional."
             return tensor.view(self.num_channel, self.height, self.width)
 
     def extra_repr(self):
         return f"C={self.num_channel}, H={self.height}, W={self.width}"
 
-
-@dispatch(memoize=True)  # type: ignore
-def em(
-        wrapper: ImageWrapper,
+    def expectation_maximization(
+        self,
         data: Tensor,
         check_support: bool = True,
-        dispatch_ctx: Optional[DispatchContext] = None,
-) -> None:
-    """Performs a single expectation maximizaton (EM) step for the given leaf module.
+        cache: Cache | None = None,
+    ) -> None:
+        """Performs a single expectation maximization (EM) step for the wrapped module.
 
-    Args:
-        leaf:
-            Leaf module to perform EM step for.
-        data:
-            Two-dimensional PyTorch tensor containing the input data.
-            Each row corresponds to a sample.
-        check_support:
-            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
-            Defaults to True.
-        dispatch_ctx:
-            Optional dispatch context.
-    """
+        Args:
+            data:
+                Four-dimensional PyTorch tensor containing the input data.
+                Shape: (batch_size, num_channel, height, width).
+            check_support:
+                Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+                Defaults to True.
+            cache:
+                Optional cache dictionary for memoization.
+        """
+        cache = init_cache(cache)
 
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        assert data.shape == (
+            data.shape[0],
+            self.num_channel,
+            self.height,
+            self.width,
+        ), f"Data shape must be (batch_size, num_channel, height, width) but got {data.shape}."
 
-    assert data.shape == (data.shape[0], wrapper.num_channel, wrapper.height,
-                          wrapper.width), f"Data shape must be (batch_size, num_channel, height, width) but got {data.shape}."
+        data = self.flatten(data)
+        self.module.expectation_maximization(data, check_support=check_support, cache=cache)
 
-    data = wrapper.flatten(data)
-    em(wrapper.module, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
+    def maximum_likelihood_estimation(
+        self,
+        data: Tensor,
+        weights: Optional[Tensor] = None,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> None:
+        """Update parameters via maximum likelihood estimation for the wrapped module.
 
+        Args:
+            data:
+                Four-dimensional PyTorch tensor containing the input data.
+                Shape: (batch_size, num_channel, height, width).
+            weights:
+                Optional sample weights tensor.
+            check_support:
+                Boolean value indicating whether or not if the data is in the support of the leaf distributions.
+                Defaults to True.
+            cache:
+                Optional cache dictionary for memoization.
+        """
+        cache = init_cache(cache)
 
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-        wrapper: ImageWrapper,
+        assert data.shape == (
+            data.shape[0],
+            self.num_channel,
+            self.height,
+            self.width,
+        ), f"Data shape must be (batch_size, num_channel, height, width) but got {data.shape}."
+
+        data = self.flatten(data)
+        self.module.maximum_likelihood_estimation(
+            data, weights=weights, check_support=check_support, cache=cache
+        )
+
+    def log_likelihood(
+        self,
         data: Tensor,
         check_support: bool = True,
-        dispatch_ctx: Optional[DispatchContext] = None,
-) -> Tensor:
-    r"""Computes log-likelihoods for the leaf module given the data.
+        cache: Cache | None = None,
+    ) -> Tensor:
+        r"""Computes log-likelihoods for the wrapped module given the data.
 
-    Missing values (i.e., NaN) are marginalized over.
+        Missing values (i.e., NaN) are marginalized over.
 
-    Args:
-        leaf:
-            Leaf to perform inference for.
-        data:
-            Two-dimensional PyTorch tensor containing the input data.
-            Each row corresponds to a sample.
-        check_support:
-            Boolean value indicating whether or not if the data is in the support of the distribution.
-            Defaults to True.
-        dispatch_ctx:
-            Optional dispatch context.
+        Args:
+            data:
+                Four-dimensional PyTorch tensor containing the input data.
+                Shape: (batch_size, num_channel, height, width).
+            check_support:
+                Boolean value indicating whether or not if the data is in the support of the distribution.
+                Defaults to True.
+            cache:
+                Optional cache dictionary for memoization.
 
-    Returns:
-        Two-dimensional PyTorch tensor containing the log-likelihoods of the input data for the sum node.
-        Each row corresponds to an input sample.
+        Returns:
+            Two-dimensional PyTorch tensor containing the log-likelihoods of the input data.
+            Each row corresponds to an input sample.
 
-    Raises:
-        ValueError: Data outside of support.
-    """
+        Raises:
+            ValueError: Data outside of support.
+        """
+        cache = init_cache(cache)
 
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        assert data.shape == (
+            data.shape[0],
+            self.num_channel,
+            self.height,
+            self.width,
+        ), f"Data shape must be (batch_size, num_channel, height, width) but got {data.shape}."
+        data = self.flatten(data)
 
-    assert data.shape == (data.shape[0], wrapper.num_channel, wrapper.height,
-                          wrapper.width), f"Data shape must be (batch_size, num_channel, height, width) but got {data.shape}."
-    data = wrapper.flatten(data)
+        log_prob = self.module.log_likelihood(data, check_support, cache)
 
-    log_prob = log_likelihood(wrapper.module, data, check_support, dispatch_ctx)
+        return log_prob
 
-    return log_prob
+    def _prepare_sample_data(self, num_samples: int | None, data: Tensor | None) -> Tensor:
+        """Override to create 4D image tensor.
 
+        Args:
+            num_samples: Number of samples to generate.
+            data: Existing data tensor.
 
-@dispatch  # type: ignore
-def sample(
-        wrapper: ImageWrapper,
-        data: Tensor,
+        Returns:
+            Data tensor ready for sampling (4D image format).
+
+        Raises:
+            ValueError: If both num_samples and data are provided but num_samples != data.shape[0].
+        """
+        # Same validation as base
+        if data is not None and num_samples is not None:
+            if data.shape[0] != num_samples:
+                raise ValueError(
+                    f"num_samples ({num_samples}) must match data.shape[0] ({data.shape[0]}) or be None"
+                )
+
+        # Create 4D image tensor if needed
+        if data is None:
+            if num_samples is None:
+                num_samples = 1
+            data = torch.full(
+                (num_samples, self.num_channel, self.height, self.width),
+                float("nan"),
+            ).to(self.device)
+
+        return data
+
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
         is_mpe: bool = False,
         check_support: bool = True,
-        dispatch_ctx: Optional[DispatchContext] = None,
+        cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
-) -> Tensor:
-    r"""Samples specified numbers of instances from modules in the ``base`` backend without any evidence.
+    ) -> Tensor:
+        r"""Samples from the wrapped module, returning results in image format.
 
-    Samples a specified number of instance from the module by creating an empty two-dimensional NumPy array (i.e., filled with NaN values) of appropriate size and filling it.
+        Args:
+            num_samples:
+                Number of samples to generate.
+            data:
+                Four-dimensional PyTorch tensor containing the input data.
+                Shape: (batch_size, num_channel, height, width).
+            is_mpe:
+                Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
+                Defaults to False.
+            check_support:
+                Boolean value indicating whether if the data is in the support of the leaf distributions.
+                Defaults to True.
+            cache:
+                Optional cache dictionary for memoization.
+            sampling_ctx:
+                Optional sampling context containing the instances (i.e., rows) of ``data`` to fill with sampled values and the output indices of the node to sample from.
 
-    Args:
-        module:
-            Module to sample from.
-        num_samples:
-            Number of samples to generate.
-        is_mpe:
-            Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
-            Defaults to False.
-        check_support:
-            Boolean value indicating whether if the data is in the support of the leaf distributions.
-            Defaults to True.
-        dispatch_ctx:
-            Optional dispatch context.
-        sampling_ctx:
-            Optional sampling context containing the instances (i.e., rows) of ``data`` to fill with sampled values and the output indices of the node to sample from.
+        Returns:
+            Four-dimensional PyTorch tensor in image format containing the sampled values.
+            Shape: (batch_size, num_channel, height, width).
+        """
+        # Prepare data tensor
+        data = self._prepare_sample_data(num_samples, data)
 
-    Returns:
-        Two-dimensional NumPy array containing the sampled values.
-        Each row corresponds to a sample.
-    """
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        cache = init_cache(cache)
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-    sample(
-        wrapper.module,
-        data,
-        is_mpe=is_mpe,
-        check_support=check_support,
-        dispatch_ctx=dispatch_ctx,
-        sampling_ctx=sampling_ctx,
-    )
-    return wrapper.to_image_format(data)
-    # return data.view(data.shape[0], wrapper.num_channel, wrapper.height, wrapper.width)
+        # Flatten data to 2D for processing
+        flat_data = self.flatten(data)
 
+        self.module.sample(
+            data=flat_data,
+            is_mpe=is_mpe,
+            check_support=check_support,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
+        return self.to_image_format(flat_data)
 
-@dispatch(memoize=True)  # type: ignore
-def marginalize(
-        wrapper: ImageWrapper,
+    def marginalize(
+        self,
         marg_ctx: MarginalizationContext,
         prune: bool = True,
-        dispatch_ctx: Optional[DispatchContext] = None,
-) -> Union[None, ImageWrapper]:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        cache: Cache | None = None,
+    ) -> Union[None, "ImageWrapper"]:
+        """Marginalizes out spatial dimensions from the wrapped module.
 
-    marg_rvs = []
-    scope = torch.tensor(wrapper.scope.query)
+        Args:
+            marg_ctx:
+                MarginalizationContext specifying which dimensions to marginalize (channels, height, width).
+            prune:
+                Boolean value indicating whether to prune the structure after marginalization.
+                Defaults to True.
+            cache:
+                Optional cache dictionary for memoization.
 
-    scope = wrapper.to_image_format(scope, batch=False)
+        Returns:
+            New ImageWrapper with marginalized module and adjusted dimensions, or None if module is fully marginalized.
+        """
+        cache = init_cache(cache)
 
-    reduction_h = len(marg_ctx.h)
-    reduction_w = len(marg_ctx.w)
-    reduction_c = len(marg_ctx.c)
-    for height_id in marg_ctx.h:
-        marg_rvs.extend(scope[:, height_id, :].flatten().tolist())
-    for width_id in marg_ctx.w:
-        marg_rvs.extend(scope[:, :, width_id].flatten().tolist())
-    for channel_id in marg_ctx.c:
-        marg_rvs.extend(scope[channel_id, :, :].flatten().tolist())
+        marg_rvs = []
+        scope = torch.tensor(self.scope.query)
 
-    marg_input = marginalize(wrapper.module, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
+        scope = self.to_image_format(scope, batch=False)
 
-    if marg_input is None:
-        return None
+        reduction_h = len(marg_ctx.h)
+        reduction_w = len(marg_ctx.w)
+        reduction_c = len(marg_ctx.c)
+        for height_id in marg_ctx.h:
+            marg_rvs.extend(scope[:, height_id, :].flatten().tolist())
+        for width_id in marg_ctx.w:
+            marg_rvs.extend(scope[:, :, width_id].flatten().tolist())
+        for channel_id in marg_ctx.c:
+            marg_rvs.extend(scope[channel_id, :, :].flatten().tolist())
 
-    else:
-        return ImageWrapper(module=marg_input, height=wrapper.height - reduction_h, width=wrapper.width - reduction_w,
-                            num_channel=wrapper.num_channel - reduction_c)
+        marg_input = self.module.marginalize(marg_rvs, prune=prune, cache=cache)
+
+        if marg_input is None:
+            return None
+        else:
+            return ImageWrapper(
+                module=marg_input,
+                height=self.height - reduction_h,
+                width=self.width - reduction_w,
+                num_channel=self.num_channel - reduction_c,
+            )

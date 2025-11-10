@@ -1,17 +1,15 @@
 from __future__ import annotations
 
+from typing import Optional, Dict, Any
+
 import torch
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.dispatch.dispatch_context import (
-    DispatchContext,
-    init_default_dispatch_context,
-)
 from spflow.modules.module import Module
+from spflow.utils.cache import Cache, init_cache
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
@@ -84,7 +82,6 @@ class ElementwiseSum(Module):
         self.scope = inputs[0].scope
 
         # Multiple inputs, stack and sum over stacked dimension
-        self.inputs = nn.ModuleList(inputs)
         self._out_features = self.inputs[0].out_features
 
         if num_repetitions is None:
@@ -136,10 +133,10 @@ class ElementwiseSum(Module):
             )  # avoid zeros
 
             # Normalize
-            weights /= torch.sum(weights, axis=self.sum_dim, keepdims=True)
+            weights /= torch.sum(weights, dim=self.sum_dim, keepdim=True)
 
         # Register unnormalized log-probabilities for weights as torch parameters
-        self.logits = torch.nn.Parameter()
+        self.logits = torch.nn.Parameter(torch.zeros(self.weights_shape))
 
         # Initialize weights (which sets self.logits under the hood accordingly)
         self.weights = weights
@@ -154,7 +151,7 @@ class ElementwiseSum(Module):
 
     @property
     def feature_to_scope(self) -> list[Scope]:
-        return self.inputs.feature_to_scope
+        return self.inputs[0].feature_to_scope
 
     @property
     def log_weights(self) -> Tensor:
@@ -203,248 +200,300 @@ class ElementwiseSum(Module):
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, weights={self.weights_shape}"
 
+    def marginalize(
+        self,
+        marg_rvs: list[int],
+        prune: bool = True,
+        cache: Cache | None = None,
+    ) -> Optional["ElementwiseSum"]:
+        """Marginalize out specified random variables.
 
-@dispatch(memoize=True)  # type: ignore
-def marginalize(
-    module: ElementwiseSum,
-    marg_rvs: list[int],
-    prune: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> None | ElementwiseSum:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        Args:
+            marg_rvs: List of random variables to marginalize over.
+            prune: Whether to prune the structure.
+            cache: Optional cache dictionary.
 
-    # compute module scope (same for all outputs)
-    module_scope = module.scope
-    marg_input = None
+        Returns:
+            The marginalized module or None if fully marginalized.
+        """
+        # initialize cache
+        cache = init_cache(cache)
 
-    # for idx,s in enumerate(module_scope):
-    mutual_rvs = set(module_scope.query).intersection(set(marg_rvs))
-    module_weights = module.weights
+        # compute module scope (same for all outputs)
+        module_scope = self.scope
+        marg_input = None
 
-    # module scope is being fully marginalized over
-    if len(mutual_rvs) == len(module_scope.query):
-        # passing this loop means marginalizing over the whole scope of this branch
-        pass
+        mutual_rvs = set(module_scope.query).intersection(set(marg_rvs))
+        module_weights = self.weights
 
-    # node scope is being partially marginalized
-    elif mutual_rvs:
-        # marginalize input modules
-        marg_input = [
-            marginalize(inp, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx) for inp in module.inputs
-        ]
+        # module scope is being fully marginalized over
+        if len(mutual_rvs) == len(module_scope.query):
+            # passing this loop means marginalizing over the whole scope of this branch
+            pass
 
-        if all(mi is None for mi in marg_input):
-            marg_input = None
+        # node scope is being partially marginalized
+        elif mutual_rvs:
+            # marginalize input modules
+            marg_input = [inp.marginalize(marg_rvs, prune=prune, cache=cache) for inp in self.inputs]
 
-        # if marginalized input is not None
-        if marg_input:
-            indices = [module.scope.query.index(el) for el in list(mutual_rvs)]
-            mask = torch.ones_like(torch.tensor(module_scope.query), dtype=torch.bool)
-            mask[indices] = False
-            module_weights = module_weights[mask]
+            if all(mi is None for mi in marg_input):
+                marg_input = None
 
-    else:
-        marg_input = module.inputs
+            # if marginalized input is not None
+            if marg_input:
+                indices = [self.scope.query.index(el) for el in list(mutual_rvs)]
+                mask = torch.ones_like(torch.tensor(module_scope.query), dtype=torch.bool)
+                mask[indices] = False
+                module_weights = module_weights[mask]
 
-    if marg_input is None:
-        return None
+        else:
+            marg_input = self.inputs
 
-    else:
-        return ElementwiseSum(inputs=[inp for inp in marg_input], weights=module_weights)
+        if marg_input is None:
+            return None
 
+        else:
+            return ElementwiseSum(inputs=[inp for inp in marg_input], weights=module_weights)
 
-@dispatch  # type: ignore
-def sample(
-    module: ElementwiseSum,
-    data: Tensor,
-    is_mpe: bool = False,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-    sampling_ctx: SamplingContext | None = None,
-) -> Tensor:
-    # initialize contexts
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        check_support: bool = True,
+        cache: Cache | None = None,
+        sampling_ctx: Optional[SamplingContext] = None,
+    ) -> Tensor:
+        """Generate samples from the elementwise sum.
 
-    # Index into the correct weight channels given by parent module
-    # (stay in logits space since Categorical distribution accepts logits directly)
-    if sampling_ctx.repetition_idx is not None:
-        logits = module.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1, -1)
+        Args:
+            num_samples: Number of samples to generate.
+            data: The data tensor to populate with samples.
+            is_mpe: Whether to use maximum probability estimation instead of sampling.
+            check_support: Whether to check the support of the input module.
+            cache: Optional cache dictionary for intermediate results.
+            sampling_ctx: Optional sampling context.
 
-        indices = sampling_ctx.repetition_idx  # Shape (30000, 1, 1)
+        Returns:
+            The data tensor populated with samples.
+        """
+        # Prepare data tensor
+        data = self._prepare_sample_data(num_samples, data)
 
-        # Use gather to select the correct repetition
-        # Repeat indices to match the target dimension for gathering
+        # initialize contexts
+        cache = init_cache(cache)
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-        indices = indices.view(-1, 1, 1, 1, 1, 1).expand(
-            -1, logits.shape[1], logits.shape[2], logits.shape[3], logits.shape[4], -1
-        )
-        logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
-    else:
-        logits = module.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
-    cids_mapped = module.unraveled_channel_indices[sampling_ctx.channel_index]
-
-    # Take the first element of the tuple (input_channel_idx, output_channel_idx)
-    # This is the out_channels index for all inputs in the Stack module
-    cids_in_channels_per_input = cids_mapped[..., 0]
-    cids_num_sums = cids_mapped[..., 1]
-
-    # Index weights with cids_num_sums (selects the correct output channel)
-    cids_num_sums = cids_num_sums[..., None, None, None].expand(
-        -1, -1, logits.shape[-3], -1, logits.shape[-1]
-    )
-    logits = logits.gather(dim=3, index=cids_num_sums).squeeze(3)
-
-    # Index logits with oids_in_channels_per_input to get the correct logits for each input
-    logits = logits.gather(
-        dim=2, index=cids_in_channels_per_input[..., None, None].expand(-1, -1, -1, logits.shape[-1])
-    ).squeeze(2)
-
-    if "log_likelihood" in dispatch_ctx.cache and all(
-        dispatch_ctx.cache["log_likelihood"][inp] is not None for inp in module.inputs
-    ):
-        input_lls = [dispatch_ctx.cache["log_likelihood"][inp] for inp in module.inputs]
-        input_lls = torch.stack(input_lls, dim=module.sum_dim)  # torch.stack(input_lls, dim=-1)
+        # Index into the correct weight channels given by parent module
+        # (stay in logits space since Categorical distribution accepts logits directly)
         if sampling_ctx.repetition_idx is not None:
-            indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1).expand(
-                -1, input_lls.shape[1], input_lls.shape[2], input_lls.shape[3], -1
+            logits = self.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1, -1)
+
+            indices = sampling_ctx.repetition_idx  # Shape (30000, 1, 1)
+
+            # Use gather to select the correct repetition
+            # Repeat indices to match the target dimension for gathering
+
+            indices = indices.view(-1, 1, 1, 1, 1, 1).expand(
+                -1, logits.shape[1], logits.shape[2], logits.shape[3], logits.shape[4], -1
             )
-            input_lls = torch.gather(input_lls, dim=-1, index=indices).squeeze(-1)
-        is_conditional = True
-    else:
-        is_conditional = False
+            logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
+        else:
+            logits = self.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
+        cids_mapped = self.unraveled_channel_indices[sampling_ctx.channel_index]
 
-    if is_conditional:
-        cids_in_channels_input_lls = (
-            cids_in_channels_per_input.unsqueeze(2).unsqueeze(3).expand(-1, -1, -1, input_lls.shape[3])
+        # Take the first element of the tuple (input_channel_idx, output_channel_idx)
+        # This is the out_channels index for all inputs in the Stack module
+        cids_in_channels_per_input = cids_mapped[..., 0]
+        cids_num_sums = cids_mapped[..., 1]
+
+        # Index weights with cids_num_sums (selects the correct output channel)
+        cids_num_sums = cids_num_sums[..., None, None, None].expand(
+            -1, -1, logits.shape[-3], -1, logits.shape[-1]
         )
-        input_lls = input_lls.gather(dim=2, index=cids_in_channels_input_lls).squeeze(2)
+        logits = logits.gather(dim=3, index=cids_num_sums).squeeze(3)
 
-        # Compute log posterior by reweighing logits with input lls
-        log_prior = logits
-        log_posterior = log_prior + input_lls
-        log_posterior = log_posterior.log_softmax(dim=2)
-        logits = log_posterior
+        # Index logits with oids_in_channels_per_input to get the correct logits for each input
+        logits = logits.gather(
+            dim=2, index=cids_in_channels_per_input[..., None, None].expand(-1, -1, -1, logits.shape[-1])
+        ).squeeze(2)
 
-    # Sample/MPE from categorical distribution defined by weights to obtain indices into the Stack dimension
-    if is_mpe:
-        cids_stack = torch.argmax(logits, dim=-1)
-    else:
-        cids_stack = torch.distributions.Categorical(logits=logits).sample()
+        if "log_likelihood" in cache and all(cache["log_likelihood"][inp] is not None for inp in self.inputs):
+            input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
+            input_lls = torch.stack(input_lls, dim=self.sum_dim)  # torch.stack(input_lls, dim=-1)
+            if sampling_ctx.repetition_idx is not None:
+                indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1).expand(
+                    -1, input_lls.shape[1], input_lls.shape[2], input_lls.shape[3], -1
+                )
+                input_lls = torch.gather(input_lls, dim=-1, index=indices).squeeze(-1)
+            is_conditional = True
+        else:
+            is_conditional = False
 
-    # Sample from input module
-    sampling_ctx.channel_index = cids_in_channels_per_input
+        if is_conditional:
+            cids_in_channels_input_lls = (
+                cids_in_channels_per_input.unsqueeze(2).unsqueeze(3).expand(-1, -1, -1, input_lls.shape[3])
+            )
+            input_lls = input_lls.gather(dim=2, index=cids_in_channels_input_lls).squeeze(2)
 
-    for i, inp in enumerate(module.inputs):
-        # Update feature_mask
-        mask = sampling_ctx.mask & (cids_stack == i)
+            # Compute log posterior by reweighing logits with input lls
+            log_prior = logits
+            log_posterior = log_prior + input_lls
+            log_posterior = log_posterior.log_softmax(dim=2)
+            logits = log_posterior
 
-        sampling_ctx_cpy = sampling_ctx.copy()
-        sampling_ctx_cpy.mask = mask
+        # Sample/MPE from categorical distribution defined by weights to obtain indices into the Stack dimension
+        if is_mpe:
+            cids_stack = torch.argmax(logits, dim=-1)
+        else:
+            cids_stack = torch.distributions.Categorical(logits=logits).sample()
 
         # Sample from input module
-        sample(
-            inp,
-            data,
-            check_support=check_support,
-            dispatch_ctx=dispatch_ctx,
-            sampling_ctx=sampling_ctx_cpy,
-        )
+        sampling_ctx.channel_index = cids_in_channels_per_input
 
-    return data
+        for i, inp in enumerate(self.inputs):
+            # Update feature_mask
+            mask = sampling_ctx.mask & (cids_stack == i)
 
+            sampling_ctx_cpy = sampling_ctx.copy()
+            sampling_ctx_cpy.mask = mask
 
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-    module: ElementwiseSum,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> Tensor:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+            # Sample from input module
+            inp.sample(
+                data=data,
+                is_mpe=is_mpe,
+                check_support=check_support,
+                cache=cache,
+                sampling_ctx=sampling_ctx_cpy,
+            )
 
-    # Get input log-likelihoods
-    lls = []
-    for inp in module.inputs:
-        ll = log_likelihood(
-            inp,
-            data,
-            check_support=check_support,
-            dispatch_ctx=dispatch_ctx,
-        )
+        return data
 
-        # Prepare for broadcasting
-        if inp.out_channels == 1 and module._in_channels_per_input > 1:
-            ll = ll.expand(data.shape[0], module.out_features, module._in_channels_per_input)
+    def log_likelihood(
+        self,
+        data: Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> Tensor:
+        """Compute log P(data | module) for elementwise sum.
 
-        lls.append(ll)
+        Args:
+            data: The data tensor.
+            check_support: Whether to check the support of the module.
+            cache: Optional cache dictionary.
 
-    # Stack input log-likelihoods
-    ll = torch.stack(lls, dim=module.sum_dim)
+        Returns:
+            Log likelihood tensor.
+        """
+        # initialize cache
+        cache = init_cache(cache)
+        log_cache = cache.setdefault("log_likelihood", {})
 
-    ll = ll.unsqueeze(3)  # shape: (B, F, IC, 1)
+        # Get input log-likelihoods
+        lls = []
+        for inp in self.inputs:
+            ll = inp.log_likelihood(
+                data,
+                check_support=check_support,
+                cache=cache,
+            )
 
-    log_weights = module.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC)
+            # Prepare for broadcasting
+            if inp.out_channels == 1 and self._in_channels_per_input > 1:
+                ll = ll.expand(data.shape[0], self.out_features, self._in_channels_per_input)
 
-    # Weighted log-likelihoods
-    weighted_lls = ll + log_weights  # shape: (B, F, IC, OC)
+            log_cache[inp] = ll
+            lls.append(ll)
 
-    # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
-    output = torch.logsumexp(weighted_lls, dim=module.sum_dim + 1)
-    if module.num_repetitions is not None:
-        output = output.view(data.shape[0], module.out_features, module.out_channels, module.num_repetitions)
-    else:
-        output = output.view(data.shape[0], module.out_features, module.out_channels)
+        # Stack input log-likelihoods
+        stacked_lls = torch.stack(lls, dim=self.sum_dim)
 
-    return output
+        ll = stacked_lls.unsqueeze(3)  # shape: (B, F, IC, 1)
 
+        log_weights = self.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC)
 
-@dispatch(memoize=True)  # type: ignore
-def em(
-    module: ElementwiseSum,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> None:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        # Weighted log-likelihoods
+        weighted_lls = ll + log_weights  # shape: (B, F, IC, OC)
 
-    with torch.no_grad():
-        # ----- expectation step -----
+        # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
+        output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)
+        if self.num_repetitions is not None:
+            output = output.view(data.shape[0], self.out_features, self.out_channels, self.num_repetitions)
+        else:
+            output = output.view(data.shape[0], self.out_features, self.out_channels)
 
-        # Get input LLs
-        input_lls = [dispatch_ctx.cache["log_likelihood"][inp] for inp in module.inputs]
-        input_lls = torch.stack(input_lls, dim=3)
+        log_cache[self] = output
+        return output
 
-        # Get module lls
-        module_lls = dispatch_ctx.cache["log_likelihood"][module]
+    def expectation_maximization(
+        self,
+        data: Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> None:
+        """Expectation-maximization step.
 
-        log_weights = module.log_weights.unsqueeze(0)
-        input_lls = input_lls.unsqueeze(3)
-        # Get input channel indices
-        s = (
-            module_lls.shape[0],
-            module.out_features,
-            module._in_channels_per_input,
-            module._num_sums,
-            1,
-        )
-        if module.num_repetitions is not None:
-            s = s + (module.num_repetitions,)
-        log_grads = torch.log(module_lls.grad).view(s)
-        module_lls = module_lls.view(s)
+        Args:
+            data: The data tensor.
+            check_support: Whether to check the support of the module.
+            cache: Optional cache dictionary.
+        """
+        # initialize cache
+        cache = init_cache(cache)
 
-        log_expectations = log_weights + log_grads + input_lls - module_lls
-        log_expectations = log_expectations.logsumexp(0)  # Sum over batch dimension
-        log_expectations = log_expectations.log_softmax(module.sum_dim)  # Normalize
+        with torch.no_grad():
+            # ----- expectation step -----
 
-        # ----- maximization step -----
-        module.log_weights = log_expectations
+            # Get input LLs
+            input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
+            input_lls = torch.stack(input_lls, dim=3)
 
-        # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients
-        # TODO: Check if the above is still true after the whole reimplementation (don't we set param.data = ...?)
+            # Get module lls
+            module_lls = cache["log_likelihood"][self]
 
-    for inp in module.inputs:
-        em(inp, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
+            log_weights = self.log_weights.unsqueeze(0)
+            input_lls = input_lls.unsqueeze(3)
+            # Get input channel indices
+            s = (
+                module_lls.shape[0],
+                self.out_features,
+                self._in_channels_per_input,
+                self._num_sums,
+                1,
+            )
+            if self.num_repetitions is not None:
+                s = s + (self.num_repetitions,)
+            log_grads = torch.log(module_lls.grad).view(s)
+            module_lls = module_lls.view(s)
+
+            log_expectations = log_weights + log_grads + input_lls - module_lls
+            log_expectations = log_expectations.logsumexp(0)  # Sum over batch dimension
+            log_expectations = log_expectations.log_softmax(self.sum_dim)  # Normalize
+
+            # ----- maximization step -----
+            self.log_weights = log_expectations
+
+            # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients
+            # TODO: Check if the above is still true after the whole reimplementation (don't we set param.data = ...?)
+
+        for inp in self.inputs:
+            inp.expectation_maximization(data, check_support=check_support, cache=cache)
+
+    def maximum_likelihood_estimation(
+        self,
+        data: Tensor,
+        weights: Optional[Tensor] = None,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> None:
+        """Update parameters via maximum likelihood estimation.
+
+        For ElementwiseSum modules, this is equivalent to EM.
+
+        Args:
+            data: Input data tensor.
+            weights: Optional sample weights (currently unused).
+            check_support: Whether to check data support.
+            cache: Optional cache dictionary.
+        """
+        self.expectation_maximization(data, check_support=check_support, cache=cache)

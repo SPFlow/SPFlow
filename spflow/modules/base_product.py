@@ -5,16 +5,13 @@ from spflow.modules.ops.split_halves import Split
 
 import torch
 from torch import Tensor, nn
+from typing import Optional, Dict, Any
 
 from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
-from spflow.meta.dispatch.dispatch import dispatch
-from spflow.meta.dispatch.dispatch_context import (
-    DispatchContext,
-    init_default_dispatch_context,
-)
 from spflow.modules.module import Module
+from spflow.utils.cache import Cache, init_cache
 
 
 class BaseProduct(Module, ABC):
@@ -104,170 +101,144 @@ class BaseProduct(Module, ABC):
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}"
 
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        check_support: bool = True,
+        cache: Cache | None = None,
+        sampling_ctx: Optional[SamplingContext] = None,
+    ) -> Tensor:
+        """Generate samples from the product module.
 
-"""
-@dispatch(memoize=True)  # type: ignore
-def marginalize(
-    module: BaseProduct,
-    marg_rvs: list[int],
-    prune: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> BaseProduct | Module | None:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        Args:
+            num_samples: Number of samples to generate.
+            data: The data tensor to populate with samples.
+            is_mpe: Whether to use maximum probability estimation instead of sampling.
+            check_support: Whether to check the support of the input module.
+            cache: Optional cache dictionary for intermediate results.
+            sampling_ctx: Optional sampling context.
 
-    # This is not yet implemented Reasons: Marginalization over the element-product has a couple of challenges - if
-    # the input is a single module, we need to ensure, that the splits are still equally sized and we need to
-    # eventually update the split_indices which seems non-trivial (mapping from scopes to features where one feature
-    # can contain multiple scopes) - if the input are two modules, we need to ensure, that both inputs have the same
-    # number of features after marginalization
+        Returns:
+            The data tensor populated with samples.
+        """
+        # Prepare data tensor
+        data = self._prepare_sample_data(num_samples, data)
 
+        # initialize contexts
+        cache = init_cache(cache)
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
+        # Map to (i, j) to index left/right inputs
+        channel_index = self.map_out_channels_to_in_channels(sampling_ctx.channel_index)
+        mask = self.map_out_mask_to_in_mask(sampling_ctx.mask)
 
-    raise NotImplementedError("Not implemented yet.")
-"""
+        cid_per_module = []
+        mask_per_module = []
 
+        inputs = self.inputs
+        for i in range(len(self.inputs)):
+            cid_per_module.append(channel_index[..., i])
+            mask_per_module.append(mask[..., i])
 
-@dispatch(memoize=True)  # type: ignore
-def marginalize(
-    layer: BaseProduct,
-    marg_rvs: list[int],
-    prune: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> BaseProduct | Module | None:
-    # initialize dispatch context
-    raise NotImplementedError("Not implemented yet.")
-    """
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        # Iterate over inputs, their channel indices and masks
+        for inp, cid, mask in zip(inputs, cid_per_module, mask_per_module):
+            if cid.ndim == 1:
+                cid = cid.unsqueeze(1)
+            if mask.ndim == 1:
+                mask = mask.unsqueeze(1)
+            sampling_ctx.update(channel_index=cid, mask=mask)
+            inp.sample(
+                data=data,
+                is_mpe=is_mpe,
+                check_support=check_support,
+                cache=cache,
+                sampling_ctx=sampling_ctx,
+            )
 
-    # compute layer scope (same for all outputs)
-    layer_scope = layer.scope
-    marg_child = None
-    mutual_rvs = set(layer_scope.query).intersection(set(marg_rvs))
+        return data
 
-    # layer scope is being fully marginalized over
-    if len(mutual_rvs) == len(layer_scope.query):
-        # passing this loop means marginalizing over the whole scope of this branch
+    def marginalize(
+        self,
+        marg_rvs: list[int],
+        prune: bool = True,
+        cache: Cache | None = None,
+    ) -> Optional["BaseProduct | Module"]:
+        """Marginalize out specified random variables.
+
+        Args:
+            marg_rvs: List of random variables to marginalize over.
+            prune: Whether to prune the structure.
+            cache: Optional cache dictionary.
+
+        Returns:
+            The marginalized module or None if fully marginalized.
+        """
+        # This is not yet implemented for BaseProduct
+        # Reasons: Marginalization over the element-product has a couple of challenges:
+        # - If the input is a single module, we need to ensure the splits are still equally sized
+        # - We need to eventually update the split_indices (non-trivial mapping)
+        # - If the input are two modules, we need to ensure both inputs have the same number of features
+        raise NotImplementedError(
+            "Not implemented for BaseProduct -- needs to be called on subclasses of BaseProduct."
+        )
+
+    @abstractmethod
+    def log_likelihood(
+        self,
+        data: Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> Tensor:
+        """Compute log P(data | module).
+
+        Args:
+            data: The data tensor.
+            check_support: Whether to check the support of the module.
+            cache: Optional cache dictionary.
+
+        Returns:
+            Log likelihood tensor.
+        """
         pass
-    # node scope is being partially marginalized
-    elif mutual_rvs:
-        # marginalize child modules
-        for inp in layer.inputs:
-            marg_inp = marginalize(inp, marg_rvs, prune=prune, dispatch_ctx=dispatch_ctx)
 
-            if marg_inp:
-                if marg_child is None:
-                    marg_child = [marg_inp]
-                else:
-                    marg_child.append(marg_inp)
+    def _get_input_log_likelihoods(
+        self,
+        data: Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> list[Tensor]:
+        """
+        Prepare the input log-likelihoods for the product module.
 
-    else:
-        marg_child = layer.inputs
+        Args:
+            data: The data tensor.
+            check_support: Whether to check the support of the input module.
+            cache: The cache dictionary.
+        """
 
-    if marg_child is None:
-        return None
+        log_cache = None
+        if cache is not None:
+            log_cache = cache.setdefault("log_likelihood", {})
 
-    # ToDo: check if this is correct / prune if only one scope is left?
-    elif prune and marg_child.out_features == 1:
-        return marg_child
-    else:
-        try:
-            layer.check_shapes(marg_child)
-        except ValueError:
-            raise ValueError(f"Structural marginalization of {marg_rvs} is not possible as the resulting hapes of inputs {marg_child} are not broadcastable")
-        return layer.__class__(inputs=marg_child)
-    """
-
-
-@dispatch  # type: ignore
-def sample(
-    module: BaseProduct,
-    data: Tensor,
-    is_mpe: bool = False,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-    sampling_ctx: SamplingContext | None = None,
-) -> Tensor:
-    # initialize contexts
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
-
-    # Map to (i, j) to index left/right inputs
-    channel_index = module.map_out_channels_to_in_channels(sampling_ctx.channel_index)
-    mask = module.map_out_mask_to_in_mask(sampling_ctx.mask)
-
-    cid_per_module = []
-    mask_per_module = []
-
-    inputs = module.inputs
-    for i in range(len(module.inputs)):
-        cid_per_module.append(channel_index[..., i])
-        mask_per_module.append(mask[..., i])
-
-    # Iterate over inputs, their channel indices and masks
-    for inp, cid, mask in zip(inputs, cid_per_module, mask_per_module):
-        if cid.ndim == 1:
-            cid = cid.unsqueeze(1)
-        if mask.ndim == 1:
-            mask = mask.unsqueeze(1)
-        sampling_ctx.update(channel_index=cid, mask=mask)
-        sample(
-            inp,
-            data,
-            is_mpe=is_mpe,
-            check_support=check_support,
-            dispatch_ctx=dispatch_ctx,
-            sampling_ctx=sampling_ctx,
-        )
-
-    return data
-
-
-def _get_input_log_likelihoods(
-    module: BaseProduct,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> list[Tensor]:
-    """
-    Prepare the input log-likelihoods for the product module.
-
-    Args:
-        module: The product module.
-        data: The data tensor.
-        check_support: Whether to check the support of the input module.
-        dispatch_ctx: The dispatch context.
-    """
-
-    if module.input_is_split:
-        lls = log_likelihood(
-            module.inputs[0],
-            data,
-            check_support=check_support,
-            dispatch_ctx=dispatch_ctx,
-        )
-
-    else:
-        lls = []
-        for inp in module.inputs:
-            ll = log_likelihood(
-                inp,
+        if self.input_is_split:
+            lls = self.inputs[0].log_likelihood(
                 data,
                 check_support=check_support,
-                dispatch_ctx=dispatch_ctx,
+                cache=cache,
             )
-            lls.append(ll)
 
-    return lls
+        else:
+            lls = []
+            for inp in self.inputs:
+                ll = inp.log_likelihood(
+                    data,
+                    check_support=check_support,
+                    cache=cache,
+                )
+                if log_cache is not None:
+                    log_cache[inp] = ll
+                lls.append(ll)
 
-
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-    module: BaseProduct,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> Tensor:
-    raise NotImplementedError(
-        "Not implemented for BaseProduct -- needs to be called on subclasses of BaseProduct."
-    )
+        return lls

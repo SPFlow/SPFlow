@@ -73,9 +73,7 @@ def module_to_str(
     elif format == "tree":
         return _tree_view(module, max_depth, show_params, show_scope, _depth, _is_last, _prefix)
     else:
-        raise ValueError(
-            f"Unknown format: {format!r}. Must be one of 'tree' or 'pytorch'."
-        )
+        raise ValueError(f"Unknown format: {format!r}. Must be one of 'tree' or 'pytorch'.")
 
 
 def _tree_view(
@@ -221,5 +219,3 @@ def _format_scope(scope: Any) -> str:
             return "{" + ", ".join(str(i) for i in query_list) + "}"
 
     return ""
-
-

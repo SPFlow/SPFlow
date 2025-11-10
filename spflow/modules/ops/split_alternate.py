@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable, Dict, Optional
 
 import torch
 from torch import Tensor, nn
 
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import (
-    DispatchContext,
-    init_default_dispatch_context,
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.meta.dispatch.dispatch import dispatch
 from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
-import time
+from spflow.utils.cache import Cache, init_cache
 
 
 class SplitAlternate(Split):
@@ -66,39 +63,23 @@ class SplitAlternate(Split):
         self.split_masks = [fn(mask) for mask in self.split_masks]
         return self
 
+    def log_likelihood(
+        self, data: Tensor, check_support: bool = True, cache: Cache | None = None
+    ) -> list[Tensor]:
+        cache = init_cache(cache)
+        log_cache = cache.setdefault("log_likelihood", {})
 
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-    module: SplitAlternate,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> list[Tensor]:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        # get log likelihoods for all inputs
+        lls = self.inputs[0].log_likelihood(data, check_support, cache)
+        log_cache[self.inputs[0]] = lls
 
-    # get log likelihoods for all inputs
-    lls = log_likelihood(module.inputs[0], data, check_support, dispatch_ctx)
-
-    # For computational speed up hard code the loglikelihoods for most common cases: Num splits = 2 and 3
-    # For general cases, we use the split masks to get the log likelihoods for each split
-    if module.num_splits == 1:
-        return [lls]
-    elif module.num_splits == 2:
-        return [lls[:, 0::2, ...], lls[:, 1::2, ...]]
-    elif module.num_splits == 3:
-        return [lls[:, 0::3, ...], lls[:, 1::3, ...], lls[:, 2::3, ...]]
-    else:
-        return [lls[:, mask, ...] for mask in module.split_masks]
-
-
-@dispatch(memoize=True)  # type: ignore
-def marginalize(
-    module: SplitAlternate,
-    marg_rvs: list[int],
-    prune: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> None | Module:
-    # Initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    raise NotImplementedError
+        # For computational speed up hard code the loglikelihoods for most common cases: Num splits = 2 and 3
+        # For general cases, we use the split masks to get the log likelihoods for each split
+        if self.num_splits == 1:
+            return [lls]
+        elif self.num_splits == 2:
+            return [lls[:, 0::2, ...], lls[:, 1::2, ...]]
+        elif self.num_splits == 3:
+            return [lls[:, 0::3, ...], lls[:, 1::3, ...], lls[:, 2::3, ...]]
+        else:
+            return [lls[:, mask, ...] for mask in self.split_masks]

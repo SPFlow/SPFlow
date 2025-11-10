@@ -6,8 +6,6 @@ import logging
 import torch
 from torch import Tensor
 
-from spflow import em, log_likelihood
-from spflow.meta.dispatch.dispatch_context import DispatchContext
 from spflow.modules.module import Module
 
 
@@ -49,11 +47,13 @@ def expectation_maximization(
         max_steps = 2**64 - 1
 
     for step in range(max_steps):
-        # initialize new dispatch context
-        dispatch_ctx = DispatchContext()
+        # Shared cache for this EM iteration
+        cache = {"log_likelihood": {}}
 
         # compute log likelihoods and sum them together
-        acc_ll = log_likelihood(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx).sum()
+        module_lls = module.log_likelihood(data, check_support=check_support, cache=cache)
+        cache["log_likelihood"][module] = module_lls
+        acc_ll = module_lls.sum()
         avg_ll = acc_ll.detach().clone() / data.shape[0]
 
         ll_history.append(avg_ll)
@@ -62,8 +62,8 @@ def expectation_maximization(
             logger.info(f"Step {step}: Average log-likelihood: {avg_ll}")
 
         # retain gradients for all module log-likelihoods
-        for lls in dispatch_ctx.cache["log_likelihood"].values():
-            if lls.requires_grad:
+        for lls in cache["log_likelihood"].values():
+            if torch.is_tensor(lls) and lls.requires_grad:
                 lls.retain_grad()
 
         # compute gradients (if there are differentiable parameters to begin with)
@@ -71,7 +71,7 @@ def expectation_maximization(
             acc_ll.backward(retain_graph=True)
 
         # recursively perform expectation maximization
-        em(module, data, check_support=check_support, dispatch_ctx=dispatch_ctx)
+        module.expectation_maximization(data, check_support=check_support, cache=cache)
 
         # end update loop if max steps reached or loss converged
         if avg_ll <= prev_avg_ll:

@@ -1,20 +1,14 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable, Dict, Optional
 
 import torch
 from torch import Tensor, nn
 
 from spflow.meta.data import Scope
-from spflow.meta.dispatch import (
-    DispatchContext,
-    init_default_dispatch_context,
-    SamplingContext,
-    init_default_sampling_context,
-)
-from spflow.meta.dispatch.dispatch import dispatch
 from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
+from spflow.utils.cache import Cache, init_cache
 
 
 class SplitHalves(Split):  # ToDo: make abstract and implement concrete classes
@@ -59,32 +53,19 @@ class SplitHalves(Split):  # ToDo: make abstract and implement concrete classes
             feature_to_scope.append(sub_scopes)
         return feature_to_scope
 
+    def log_likelihood(
+        self,
+        data: Tensor,
+        check_support: bool = True,
+        cache: Cache | None = None,
+    ) -> list[Tensor]:
+        cache = init_cache(cache)
+        log_cache = cache.setdefault("log_likelihood", {})
 
-@dispatch(memoize=True)  # type: ignore
-def log_likelihood(
-    module: SplitHalves,
-    data: Tensor,
-    check_support: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> list[Tensor]:
-    # initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
+        # get log likelihoods for all inputs
+        lls = self.inputs[0].log_likelihood(data, check_support, cache)
+        log_cache[self.inputs[0]] = lls
 
-    # get log likelihoods for all inputs
-    lls = log_likelihood(module.inputs[0], data, check_support, dispatch_ctx)
+        lls_split = lls.split(self.inputs[0].out_features // self.num_splits, dim=self.dim)
 
-    lls_split = lls.split(module.inputs[0].out_features // module.num_splits, dim=module.dim)
-
-    return lls_split
-
-
-@dispatch(memoize=True)  # type: ignore
-def marginalize(
-    module: SplitHalves,
-    marg_rvs: list[int],
-    prune: bool = True,
-    dispatch_ctx: DispatchContext | None = None,
-) -> None | Module:
-    # Initialize dispatch context
-    dispatch_ctx = init_default_dispatch_context(dispatch_ctx)
-    raise NotImplementedError
+        return list(lls_split)

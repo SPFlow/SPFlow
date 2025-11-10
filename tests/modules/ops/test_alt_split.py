@@ -5,9 +5,6 @@ from spflow.modules import ElementwiseProduct
 from itertools import product
 from spflow.meta import Scope
 import pytest
-from spflow.meta import SamplingContext
-from spflow.meta.dispatch import init_default_sampling_context
-from spflow import log_likelihood, sample, marginalize
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.modules import Sum
@@ -45,6 +42,6 @@ def test_split_result(device):
     assert spn1.out_channels == spn2.out_channels
     assert spn1.out_features == spn2.out_features
     data = make_normal_data(out_features=num_features).to(device)
-    ll_1 = log_likelihood(spn1, data)
-    ll_2 = log_likelihood(spn2, data)
+    ll_1 = spn1.log_likelihood(data)
+    ll_2 = spn2.log_likelihood(data)
     assert torch.allclose(ll_1, ll_2)
