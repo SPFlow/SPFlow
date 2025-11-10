@@ -15,7 +15,7 @@ from spflow.meta.data import Scope
 from spflow.modules import leaf
 from tests.utils.leaves import make_leaf, make_data, make_leaf_args, make_normal_leaf
 from spflow.learn.expectation_maximization import expectation_maximization
-from spflow.modules.wrapper.ImageWrapper import ImageWrapper, Pixel, MarginalizeContext
+from spflow.modules.wrapper.ImageWrapper import ImageWrapper, Pixel, MarginalizationContext
 from spflow.modules import Product, Sum
 
 num_channel = [1, 3]
@@ -111,7 +111,7 @@ def test_marginalize(height_indices, width_indices, channel_indices):
     num_features = height * width * num_channel
 
     module = make_wrapper(num_channel, implicit_product=False, num_reps=num_reps)
-    marg_ctx = MarginalizeContext(channel_idx=channel_indices, h=height_indices, w=width_indices)
+    marg_ctx = MarginalizationContext(c=channel_indices, h=height_indices, w=width_indices)
     marginalized_module = marginalize(module, marg_ctx)
 
 
