@@ -43,10 +43,12 @@ class ImageWrapper(AbstractWrapper):
         return tensor.view(tensor.shape[0], -1)
 
     def to_image_format(self, tensor: torch.Tensor, batch: bool = True):
-        assert tensor.dim() == 2, f"Input tensor must be 2-dimensional but got {tensor.dim()}-dimensional."
+
         if batch:
+            assert tensor.dim() == 2, f"Input tensor must be 2-dimensional but got {tensor.dim()}-dimensional."
             return tensor.view(tensor.shape[0], self.num_channel, self.height, self.width)
         else:
+            assert tensor.dim() == 1, f"Input tensor must be 1-dimensional but got {tensor.dim()}-dimensional."
             return tensor.view(self.num_channel, self.height, self.width)
 
     def extra_repr(self):
