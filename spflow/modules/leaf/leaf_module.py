@@ -247,98 +247,6 @@ class LeafModule(Module, ABC):
         """
         return {k: v[indices] for k, v in self.params().items()}
 
-    def check_support(self, data: Tensor) -> Tensor:
-        r"""Checks whether ``data`` falls inside the support of this distribution.
-
-        The base implementation consults the underlying torch distribution support
-        (if available) and then applies optional subclass-specific masks via
-        ``_custom_support_mask``. NaNs are treated as valid (they are marginalized),
-        while ``+/-inf`` entries are always rejected.
-
-        Args:
-            data: Tensor that has already been reshaped for the leaf scope (see
-                ``log_likelihood`` / ``apply_nan_strategy``). Additional leaf-specific
-                dimensions (channels, repetitions) may be size ``1`` because all
-                repetitions share the same support.
-
-        Returns:
-            Boolean tensor (same shape as ``data``) indicating per-entry support
-            membership.
-        """
-
-        nan_mask = torch.isnan(data)
-        valid = torch.ones_like(data, dtype=torch.bool)
-
-        support_masks: list[Tensor] = []
-
-        if self._use_distribution_support():
-            dist_mask = self._distribution_support_mask(data)
-            if dist_mask is not None:
-                support_masks.append(dist_mask)
-
-        custom_mask = self._custom_support_mask(data)
-        if custom_mask is not None:
-            support_masks.append(custom_mask)
-
-        for mask in support_masks:
-            aligned = self._align_support_mask(mask, data)
-            valid[~nan_mask] &= aligned[~nan_mask]
-
-        valid[~nan_mask & valid] &= ~data[~nan_mask & valid].isinf()
-
-        return valid
-
-    def _use_distribution_support(self) -> bool:
-        """Whether ``check_support`` should consult ``self.distribution.support``."""
-        return True
-
-    def _custom_support_mask(self, data: Tensor) -> Tensor | None:
-        """Hook for subclasses that need bespoke support checks."""
-        return None
-
-    def _distribution_support_mask(self, data: Tensor) -> Tensor | None:
-        """Return the distribution-provided support mask if available."""
-        distribution = self.distribution
-        support = getattr(distribution, "support", None)
-        if support is None or not hasattr(support, "check"):
-            return None
-        try:
-            return support.check(data)
-        except NotImplementedError:
-            # Custom distributions may not implement support checks.
-            return None
-
-    def _align_support_mask(self, mask: Tensor, data: Tensor) -> Tensor:
-        """Align a support mask with the shape of ``data`` for boolean indexing."""
-        if mask.dim() < data.dim():
-            expand_dims = data.dim() - mask.dim()
-            mask = mask.reshape(*mask.shape, *([1] * expand_dims))
-
-        if mask.dim() != data.dim():
-            raise RuntimeError(
-                f"Support mask rank {mask.dim()} incompatible with data rank {data.dim()} "
-                f"in {self.__class__.__name__}. Provide a custom check_support override."
-            )
-
-        slices: list[slice] = []
-        for mask_size, data_size in zip(mask.shape, data.shape):
-            if mask_size == data_size:
-                slices.append(slice(None))
-            elif data_size == 1 and mask_size > 1:
-                slices.append(slice(0, 1))
-            elif mask_size == 1 and data_size > 1:
-                slices.append(slice(None))
-            else:
-                raise RuntimeError(
-                    f"Support mask shape {tuple(mask.shape)} incompatible with data shape "
-                    f"{tuple(data.shape)} in {self.__class__.__name__}."
-                )
-
-        mask = mask[tuple(slices)]
-        if mask.shape != data.shape:
-            mask = mask.expand_as(data)
-        return mask
-
     # MLE Helper Methods
     def _prepare_mle_weights(self, data: Tensor, weights: Optional[Tensor] = None) -> Tensor:
         """Prepare weights for MLE, ensuring proper shape and device.
@@ -496,7 +404,6 @@ class LeafModule(Module, ABC):
     def expectation_maximization(
         self,
         data: torch.Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Performs a single expectation maximizaton (EM) step for the leaf module.
@@ -505,9 +412,6 @@ class LeafModule(Module, ABC):
             data:
                 Two-dimensional PyTorch tensor containing the input data.
                 Each row corresponds to a sample.
-            check_support:
-                Boolean value indicating whether or not if the data is in the support of the leaf distributions.
-                Defaults to True.
             cache:
                 Optional cache dictionary for intermediate results.
         """
@@ -532,7 +436,6 @@ class LeafModule(Module, ABC):
                 data,
                 weights=expectations,
                 bias_correction=False,
-                check_support=check_support,
                 cache=cache,
             )
 
@@ -542,7 +445,6 @@ class LeafModule(Module, ABC):
     def log_likelihood(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> Tensor:
         r"""Computes log-likelihoods for the leaf module given the data.
@@ -553,18 +455,12 @@ class LeafModule(Module, ABC):
             data:
                 Two-dimensional PyTorch tensor containing the input data.
                 Each row corresponds to a sample.
-            check_support:
-                Boolean value indicating whether or not if the data is in the support of the distribution.
-                Defaults to True.
             cache:
                 Optional cache dictionary.
 
         Returns:
             Two-dimensional PyTorch tensor containing the log-likelihoods of the input data for the sum node.
             Each row corresponds to an input sample.
-
-        Raises:
-            ValueError: Data outside of support.
         """
         # initialize cache
         cache = init_cache(cache)
@@ -580,7 +476,7 @@ class LeafModule(Module, ABC):
         marg_mask = torch.isnan(data)
         has_marginalizations = marg_mask.any()
 
-        # If there are any marg_ids, set them to 0.0 to ensure that log_prob call is succesfull
+        # If there are any marg_ids, set them to 0.0 to ensure that log_prob call is successful
         # and doesn't throw errors due to NaNs
         if has_marginalizations:
             data[marg_mask] = self._supported_value
@@ -595,15 +491,6 @@ class LeafModule(Module, ABC):
             data = data.unsqueeze(-1)
 
         dist = self.distribution
-
-        if check_support:
-            # create mask based on distribution's support
-            valid_mask = self.check_support(data)
-
-            if not torch.all(valid_mask):
-                raise ValueError(
-                    f"Encountered data instances that are not in the support of the distribution."
-                )
 
         # compute probabilities for values inside distribution support
         expected_shape = dist.batch_shape + dist.event_shape
@@ -652,7 +539,6 @@ class LeafModule(Module, ABC):
         data: Tensor,
         weights: Optional[Tensor] = None,
         nan_strategy: Optional[str | Callable] = None,
-        check_support: bool = True,
         cache: Cache | None = None,
         preprocess_data: bool = True,
     ) -> tuple[Tensor, Tensor]:
@@ -669,7 +555,6 @@ class LeafModule(Module, ABC):
                          - 'ignore': Drop rows containing any NaN
                          - callable: Apply custom imputation function
                          - None: No special handling
-            check_support: Whether to validate data falls in the distribution's support.
             cache: Optional cache dictionary for intermediate results (useful for EM).
             preprocess_data: Whether to select scope-relevant features. Set False if data
                            is already scope-filtered (performance optimization).
@@ -683,9 +568,9 @@ class LeafModule(Module, ABC):
         # Step 1: Select scope-relevant features
         scoped_data = data[:, self.scope.query] if preprocess_data else data
 
-        # Step 2: Apply NaN strategy (drop/impute) + support check
+        # Step 2: Apply NaN strategy (drop/impute)
         scoped_data, normalized_weights = apply_nan_strategy(
-            nan_strategy, scoped_data, self, weights, check_support
+            nan_strategy, scoped_data, self, weights
         )
 
         # Step 3: Prepare weights for broadcasting
@@ -703,7 +588,6 @@ class LeafModule(Module, ABC):
         weights: Optional[Tensor] = None,
         bias_correction: bool = True,
         nan_strategy: Optional[str | Callable] = None,
-        check_support: bool = True,
         cache: Cache | None = None,
         preprocess_data: bool = True,
     ) -> None:
@@ -742,9 +626,6 @@ class LeafModule(Module, ABC):
                 If 'ignore', missing values (i.e., NaN entries) are ignored.
                 If a callable, it is called using ``data`` and should return another PyTorch tensor of same size.
                 Defaults to None.
-            check_support:
-                Boolean value indicating whether or not if the data is in the support of the leaf distributions.
-                Defaults to True.
             cache:
                 Optional cache dictionary.
             preprocess_data:
@@ -759,7 +640,6 @@ class LeafModule(Module, ABC):
             data=data,
             weights=weights,
             nan_strategy=nan_strategy,
-            check_support=check_support,
             cache=cache,
             preprocess_data=preprocess_data,
         )
@@ -773,7 +653,6 @@ class LeafModule(Module, ABC):
         num_samples: int | None = None,
         data: Tensor | None = None,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
@@ -790,9 +669,6 @@ class LeafModule(Module, ABC):
             is_mpe:
                 Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
                 Defaults to False.
-            check_support:
-                Boolean value indicating whether if the data is in the support of the leaf distributions.
-                Defaults to True.
             cache:
                 Optional cache dictionary.
             sampling_ctx:
@@ -900,7 +776,6 @@ class LeafModule(Module, ABC):
         evidence: Tensor,
         num_samples: int = 1,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
@@ -922,7 +797,6 @@ class LeafModule(Module, ABC):
         return self.sample(
             data=evidence,
             is_mpe=is_mpe,
-            check_support=check_support,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

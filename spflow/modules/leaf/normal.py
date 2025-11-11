@@ -4,8 +4,6 @@ from spflow.meta.data import Scope
 from spflow.modules.leaf.leaf_module import (
     LeafModule,
     LogSpaceParameter,
-    MLEBatch,
-    MLEParameterEstimate,
     validate_all_or_none,
 )
 from spflow.utils.leaf import parse_leaf_args, init_parameter
@@ -63,23 +61,30 @@ class Normal(LeafModule):
         """Returns the underlying torch distribution object."""
         return torch.distributions.Normal(self.mean, self.std)
 
-    def _mle_compute_statistics(self, batch: MLEBatch) -> dict[str, MLEParameterEstimate]:
-        """Compute Normal-specific sufficient statistics within the template method."""
-        weights = batch.weights
-        data = batch.data
+    def _mle_compute_statistics(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> None:
+        """Compute Normal-specific sufficient statistics and assign parameters.
 
+        Args:
+            data: Scope-filtered data of shape (batch_size, num_scope_features).
+            weights: Normalized weights of shape (batch_size, 1, ...).
+            bias_correction: Whether to apply Bessel's correction (n-1 vs n).
+        """
         n_total = weights.sum()
         mean_est = (weights * data).sum(0) / n_total
 
         centered = data - mean_est
         var_numerator = (weights * centered.pow(2)).sum(0)
-        denom = n_total - 1 if batch.bias_correction else n_total
+        denom = n_total - 1 if bias_correction else n_total
         std_est = torch.sqrt(var_numerator / denom)
 
-        return {
-            "mean": MLEParameterEstimate(mean_est),
-            "std": MLEParameterEstimate(std_est, lb=0.0),
-        }
+        # Handle edge cases (NaN, zero, or near-zero std) before broadcasting
+        std_est = self._handle_mle_edge_cases(std_est, lb=0.0)
+
+        # Broadcast to event_shape and assign directly
+        self.mean.data = self._broadcast_to_event_shape(mean_est)
+        self.std = self._broadcast_to_event_shape(std_est)
 
     def params(self) -> dict[str, Tensor]:
         """Returns the parameters of the distribution."""

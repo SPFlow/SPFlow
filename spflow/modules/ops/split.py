@@ -69,7 +69,6 @@ class Split(Module, ABC):
         num_samples: int | None = None,
         data: Tensor | None = None,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache: Optional[Dict[str, Any]] = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
@@ -87,7 +86,6 @@ class Split(Module, ABC):
         self.inputs[0].sample(
             data=data,
             is_mpe=is_mpe,
-            check_support=check_support,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

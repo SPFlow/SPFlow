@@ -175,14 +175,12 @@ class Sum(Module):
     def log_likelihood(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> Tensor:
         """Compute log P(data | module).
 
         Args:
             data: Input data tensor.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary for caching intermediate results.
 
         Returns:
@@ -193,7 +191,6 @@ class Sum(Module):
         # Get input log-likelihoods
         ll = self.inputs.log_likelihood(
             data,
-            check_support=check_support,
             cache=cache,
         )
 
@@ -224,7 +221,6 @@ class Sum(Module):
         num_samples: int | None = None,
         data: Tensor | None = None,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
@@ -234,7 +230,6 @@ class Sum(Module):
             num_samples: Number of samples to generate.
             data: Data tensor with NaN values to fill with samples.
             is_mpe: Whether to perform maximum a posteriori estimation.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
             sampling_ctx: Optional sampling context.
 
@@ -313,7 +308,6 @@ class Sum(Module):
         self.inputs.sample(
             data=data,
             is_mpe=is_mpe,
-            check_support=check_support,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )
@@ -323,14 +317,12 @@ class Sum(Module):
     def expectation_maximization(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Expectation-maximization step.
 
         Args:
             data: Input data tensor.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary with log-likelihoods.
         """
         cache = init_cache(cache)
@@ -361,13 +353,12 @@ class Sum(Module):
             self.log_weights = log_expectations
 
         # Recursively call EM on inputs
-        self.inputs.expectation_maximization(data, check_support=check_support, cache=cache)
+        self.inputs.expectation_maximization(data, cache=cache)
 
     def maximum_likelihood_estimation(
         self,
         data: Tensor,
         weights: Tensor | None = None,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Update parameters via maximum likelihood estimation.
@@ -377,10 +368,9 @@ class Sum(Module):
         Args:
             data: Input data tensor.
             weights: Optional sample weights (currently unused).
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
         """
-        self.expectation_maximization(data, check_support=check_support, cache=cache)
+        self.expectation_maximization(data, cache=cache)
 
     def marginalize(
         self,

@@ -63,14 +63,12 @@ class SplitAlternate(Split):
         self.split_masks = [fn(mask) for mask in self.split_masks]
         return self
 
-    def log_likelihood(
-        self, data: Tensor, check_support: bool = True, cache: Cache | None = None
-    ) -> list[Tensor]:
+    def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> list[Tensor]:
         cache = init_cache(cache)
         log_cache = cache.setdefault("log_likelihood", {})
 
         # get log likelihoods for all inputs
-        lls = self.inputs[0].log_likelihood(data, check_support, cache)
+        lls = self.inputs[0].log_likelihood(data, cache=cache)
         log_cache[self.inputs[0]] = lls
 
         # For computational speed up hard code the loglikelihoods for most common cases: Num splits = 2 and 3

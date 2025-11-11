@@ -158,14 +158,12 @@ class ElementwiseProduct(BaseProduct):
     def log_likelihood(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> Tensor:
         """Compute log P(data | module) for elementwise product.
 
         Args:
             data: The data tensor.
-            check_support: Whether to check the support of the module.
             cache: Optional cache dictionary.
 
         Returns:
@@ -174,7 +172,7 @@ class ElementwiseProduct(BaseProduct):
         # initialize cache
         cache = init_cache(cache)
 
-        lls = self._get_input_log_likelihoods(data, check_support, cache)
+        lls = self._get_input_log_likelihoods(data, cache)
 
         # Check if we need to expand to enable broadcasting along channels
         for i, ll in enumerate(lls):

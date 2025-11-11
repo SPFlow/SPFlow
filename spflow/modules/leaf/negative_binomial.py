@@ -3,7 +3,7 @@ from torch import Tensor, nn
 from typing import Optional, Callable
 
 from spflow.meta.data import Scope
-from spflow.modules.leaf.leaf_module import LeafModule, BoundedParameter, MLEBatch, MLEParameterEstimate
+from spflow.modules.leaf.leaf_module import LeafModule, BoundedParameter
 from spflow.utils.leaf import parse_leaf_args, init_parameter
 from spflow.utils.cache import Cache
 
@@ -73,20 +73,28 @@ class NegativeBinomial(LeafModule):
     def _supported_value(self):
         return 0
 
-    def _mle_compute_statistics(self, batch: MLEBatch) -> dict[str, MLEParameterEstimate]:
-        """Estimate success probability for the Negative Binomial distribution."""
-        data = batch.data
-        weights = batch.weights
+    def _mle_compute_statistics(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> None:
+        """Estimate success probability for Negative Binomial and assign.
 
+        Args:
+            data: Scope-filtered data of shape (batch_size, num_scope_features).
+            weights: Normalized weights of shape (batch_size, 1, ...).
+            bias_correction: Whether to apply bias correction.
+        """
         n_total = weights.sum() * self.n
-        if batch.bias_correction:
+        if bias_correction:
             n_total = n_total - 1
 
         n_success = (weights * data).sum(0)
         success_est = self._broadcast_to_event_shape(n_success)
         p_est = 1 - n_total / (success_est + n_total)
 
-        return {"p": MLEParameterEstimate(p_est, lb=0.0, ub=1.0, broadcast=False)}
+        # Clamp to [0, 1] before assigning to handle floating point precision issues
+        p_est = self._handle_mle_edge_cases(p_est, lb=0.0, ub=1.0)
+        # Assign directly - BoundedParameter ensures [0, 1]
+        self.p = p_est
 
     def params(self) -> dict[str, Tensor]:
         return {"n": self.n, "p": self.p}

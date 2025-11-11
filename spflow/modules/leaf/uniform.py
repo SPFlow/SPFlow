@@ -2,7 +2,7 @@ import torch
 from torch import Tensor
 
 from spflow.meta.data import Scope
-from spflow.modules.leaf.leaf_module import LeafModule, MLEBatch
+from spflow.modules.leaf.leaf_module import LeafModule
 from spflow.utils.leaf import parse_leaf_args
 
 
@@ -66,41 +66,17 @@ class Uniform(LeafModule):
     def _supported_value(self):
         return self.start
 
-    def _mle_compute_statistics(self, batch: MLEBatch) -> dict[str, Tensor]:
-        """Uniform parameters are fixed buffers; nothing to update during MLE."""
-        return {}
+    def _mle_compute_statistics(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> None:
+        """Uniform parameters are fixed buffers; nothing to update during MLE.
 
-    def _use_distribution_support(self) -> bool:
-        """Uniform uses a half-open support; skip torch's closed interval."""
-        return False
-
-    def _custom_support_mask(self, data: Tensor) -> Tensor:
-        """Allow start <= x < end, unless support_outside enables all values."""
-        original_data_shape = data.shape
-        start = self.start
-        end = self.end
-
-        # Add batch dimension to parameters
-        start_expanded = start.unsqueeze(0)  # (1, features, channels) or (1, features, channels, repetitions)
-        end_expanded = end.unsqueeze(0)
-
-        # If data has fewer dimensions than start, expand it for the comparison
-        # This handles the case where data is (batch, features) but start is (1, features, channels)
-        data_expanded = data
-        num_added_dims = 0
-        while data_expanded.dim() < start_expanded.dim():
-            data_expanded = data_expanded.unsqueeze(-1)  # Add trailing dimensions
-            num_added_dims += 1
-
-        interval_mask = (data_expanded >= start_expanded) & (data_expanded < end_expanded)
-        mask = interval_mask | self.support_outside
-
-        # Reduce the mask back to the original data shape
-        # After broadcasting, the mask includes extra dimensions, so we take the first element along those
-        for _ in range(num_added_dims):
-            mask = mask[..., 0]  # Select first element along last dimension
-
-        return mask
+        Args:
+            data: Scope-filtered data of shape (batch_size, num_scope_features).
+            weights: Normalized weights of shape (batch_size, 1, ...).
+            bias_correction: Not used for Uniform (fixed parameters).
+        """
+        pass
 
     def params(self) -> dict[str, Tensor]:
         return {"start": self.start, "end": self.end}

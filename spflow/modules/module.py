@@ -98,14 +98,12 @@ class Module(nn.Module, ABC):
     def log_likelihood(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> Tensor:
         """Compute log P(data | module).
 
         Args:
             data: Input data tensor.
-            check_support: Whether to check data support. Defaults to True.
             cache: Optional cache dictionary for intermediate results.
 
         Returns:
@@ -119,7 +117,6 @@ class Module(nn.Module, ABC):
         num_samples: int | None = None,
         data: Tensor | None = None,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
@@ -129,7 +126,6 @@ class Module(nn.Module, ABC):
             num_samples: Number of samples to generate.
             data: Optional data tensor for structured sampling.
             is_mpe: Whether to perform maximum a posteriori estimation.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
             sampling_ctx: Optional sampling context.
 
@@ -142,7 +138,6 @@ class Module(nn.Module, ABC):
         self,
         evidence: Tensor,
         is_mpe: bool = False,
-        check_support: bool = False,
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
@@ -156,9 +151,6 @@ class Module(nn.Module, ABC):
             is_mpe:
                 Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
                 Defaults to False.
-            check_support:
-                Boolean value indicating whether if the data is in the support of the leaf distributions.
-                Defaults to True.
             cache:
                 Optional cache dictionary to reuse across calls.
             sampling_ctx:
@@ -170,12 +162,11 @@ class Module(nn.Module, ABC):
         """
         cache = init_cache(cache)
 
-        self.log_likelihood(evidence, check_support=check_support, cache=cache)
+        self.log_likelihood(evidence, cache=cache)
 
         return self.sample(
             data=evidence,
             is_mpe=is_mpe,
-            check_support=check_support,
             sampling_ctx=sampling_ctx,
             cache=cache,
         )
@@ -183,26 +174,23 @@ class Module(nn.Module, ABC):
     def expectation_maximization(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Expectation-maximization step.
 
         Args:
             data: Input data tensor.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
         """
         cache = init_cache(cache)
 
         for input_module in self.inputs:
-            input_module.expectation_maximization(data, check_support=check_support, cache=cache)
+            input_module.expectation_maximization(data, cache=cache)
 
     def maximum_likelihood_estimation(
         self,
         data: Tensor,
         weights: Tensor | None = None,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Update parameters via maximum likelihood estimation.
@@ -210,7 +198,6 @@ class Module(nn.Module, ABC):
         Args:
             data: Input data tensor.
             weights: Optional sample weights.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
         """
         cache = init_cache(cache)
@@ -219,7 +206,6 @@ class Module(nn.Module, ABC):
             input_module.maximum_likelihood_estimation(
                 data,
                 weights=weights,
-                check_support=check_support,
                 cache=cache,
             )
 
@@ -242,9 +228,9 @@ class Module(nn.Module, ABC):
         """
         pass
 
-    def forward(self, data: Tensor, check_support: bool = True, cache: Cache | None = None):
+    def forward(self, data: Tensor, cache: Cache | None = None):
         """Forward pass is simply the log-likelihood function."""
-        return self.log_likelihood(data, check_support=check_support, cache=cache)
+        return self.log_likelihood(data, cache=cache)
 
     def extra_repr(self) -> str:
         return f"D={self.out_features}, C={self.out_channels}, R={self.num_repetitions}"
@@ -292,7 +278,6 @@ class Module(nn.Module, ABC):
     def probability(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> Tensor:
         """Computes likelihoods for modules given input data.
@@ -303,9 +288,6 @@ class Module(nn.Module, ABC):
             data:
                 Tensor containing the input data.
                 Each row corresponds to a sample.
-            check_support:
-                Boolean value indicating whether if the data is in the support of the leaf distributions.
-                Defaults to True.
             cache:
                 Optional cache dictionary.
 
@@ -313,4 +295,4 @@ class Module(nn.Module, ABC):
             Tensor containing the likelihoods of the input data.
             Each row corresponds to an input sample.
         """
-        return torch.exp(self.log_likelihood(data, check_support=check_support, cache=cache))
+        return torch.exp(self.log_likelihood(data, cache=cache))

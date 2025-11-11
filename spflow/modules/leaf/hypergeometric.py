@@ -3,7 +3,7 @@ from torch import Tensor
 from typing import Optional, Callable
 
 from spflow.meta.data import Scope
-from spflow.modules.leaf.leaf_module import LeafModule, MLEBatch
+from spflow.modules.leaf.leaf_module import LeafModule
 from spflow.utils.leaf import parse_leaf_args
 from spflow.utils.cache import Cache
 
@@ -95,50 +95,20 @@ class Hypergeometric(LeafModule):
     def _supported_value(self):
         return self.n + self.K - self.N
 
-    def _mle_compute_statistics(self, batch: MLEBatch) -> dict[str, Tensor]:
-        """Hypergeometric parameters are fixed buffers; nothing to estimate."""
-        return {}
+    def _mle_compute_statistics(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> None:
+        """Hypergeometric parameters are fixed buffers; nothing to estimate.
+
+        Args:
+            data: Scope-filtered data of shape (batch_size, num_scope_features).
+            weights: Normalized weights of shape (batch_size, 1, ...).
+            bias_correction: Not used for Hypergeometric (fixed parameters).
+        """
+        pass
 
     def params(self) -> dict[str, Tensor]:
         return {"K": self.K, "N": self.N, "n": self.n}
-
-    def _custom_support_mask(self, data: Tensor) -> Tensor:
-        """Hypergeometric support requires integer counts within valid bounds."""
-        original_data_shape = data.shape
-        K = self.K.to(dtype=data.dtype, device=data.device)
-        N = self.N.to(dtype=data.dtype, device=data.device)
-        n_param = self.n.to(dtype=data.dtype, device=data.device)
-
-        min_successes = torch.maximum(
-            torch.zeros_like(N),
-            n_param + K - N,
-        )
-        max_successes = torch.minimum(n_param, K)
-
-        # Add batch dimension to parameters
-        min_successes_expanded = min_successes.unsqueeze(
-            0
-        )  # (1, features, channels) or (1, features, channels, repetitions)
-        max_successes_expanded = max_successes.unsqueeze(0)
-
-        # If data has fewer dimensions than min_successes, expand it for the comparison
-        # This handles the case where data is (batch, features) but min_successes is (1, features, channels)
-        data_expanded = data
-        num_added_dims = 0
-        while data_expanded.dim() < min_successes_expanded.dim():
-            data_expanded = data_expanded.unsqueeze(-1)  # Add trailing dimensions
-            num_added_dims += 1
-
-        integer_mask = torch.remainder(data_expanded, 1) == 0
-        range_mask = (data_expanded >= min_successes_expanded) & (data_expanded <= max_successes_expanded)
-        mask = integer_mask & range_mask
-
-        # Reduce the mask back to the original data shape
-        # After broadcasting, the mask includes extra dimensions, so we take the first element along those
-        for _ in range(num_added_dims):
-            mask = mask[..., 0]  # Select first element along last dimension
-
-        return mask
 
 
 class _HypergeometricDistribution:
@@ -150,6 +120,85 @@ class _HypergeometricDistribution:
         self.event_shape = event_shape
         self.batch_shape = ()  # No batch shape for hypergeometric, event_shape contains all the structure
 
+    def _align_support_mask(self, mask: Tensor, data: Tensor) -> Tensor:
+        """Align a support mask with the shape of ``data`` for boolean indexing."""
+        if mask.dim() < data.dim():
+            expand_dims = data.dim() - mask.dim()
+            mask = mask.reshape(*mask.shape, *([1] * expand_dims))
+
+        if mask.dim() != data.dim():
+            raise RuntimeError(
+                f"Support mask rank {mask.dim()} incompatible with data rank {data.dim()} "
+                f"in {self.__class__.__name__}. Provide a custom check_support override."
+            )
+
+        slices: list[slice] = []
+        for mask_size, data_size in zip(mask.shape, data.shape):
+            if mask_size == data_size:
+                slices.append(slice(None))
+            elif data_size == 1 and mask_size > 1:
+                slices.append(slice(0, 1))
+            elif mask_size == 1 and data_size > 1:
+                slices.append(slice(None))
+            else:
+                raise RuntimeError(
+                    f"Support mask shape {tuple(mask.shape)} incompatible with data shape "
+                    f"{tuple(data.shape)} in {self.__class__.__name__}."
+                )
+
+        mask = mask[tuple(slices)]
+        if mask.shape != data.shape:
+            mask = mask.expand_as(data)
+        return mask
+
+    def check_support(self, data: Tensor) -> Tensor:
+        """Hypergeometric support: integer counts within valid bounds.
+
+        Valid range: max(0, n+K-N) <= x <= min(n, K)
+        """
+        nan_mask = torch.isnan(data)
+        valid = torch.ones_like(data, dtype=torch.bool)
+
+        K = self.K.to(dtype=data.dtype, device=data.device)
+        N = self.N.to(dtype=data.dtype, device=data.device)
+        n_param = self.n.to(dtype=data.dtype, device=data.device)
+
+        min_successes = torch.maximum(torch.zeros_like(N), n_param + K - N)
+        max_successes = torch.minimum(n_param, K)
+
+        # Add batch dimensions to parameters
+        min_successes_expanded = min_successes.unsqueeze(0)
+        max_successes_expanded = max_successes.unsqueeze(0)
+
+        # Expand data to match parameter dimensions if needed
+        data_expanded = data
+        num_added_dims = 0
+        while data_expanded.dim() < min_successes_expanded.dim():
+            data_expanded = data_expanded.unsqueeze(-1)
+            num_added_dims += 1
+
+        integer_mask = torch.remainder(data_expanded, 1) == 0
+        range_mask = (data_expanded >= min_successes_expanded) & (data_expanded <= max_successes_expanded)
+        support_mask = integer_mask & range_mask
+
+        # Reduce the mask back to original data shape
+        for _ in range(num_added_dims):
+            support_mask = support_mask[..., 0]
+
+        # Apply support mask
+        aligned = self._align_support_mask(support_mask, data)
+        valid[~nan_mask] &= aligned[~nan_mask]
+
+        # Reject infinities
+        valid[~nan_mask & valid] &= ~data[~nan_mask & valid].isinf()
+
+        invalid_mask = (~valid) & (~nan_mask)
+        if invalid_mask.any():
+            invalid_values = data[invalid_mask].detach().cpu().tolist()
+            raise ValueError(f"Hypergeometric received data outside of support: {invalid_values}")
+
+        return valid
+
     @property
     def mode(self):
         return torch.floor((self.n + 1) * (self.K + 1) / (self.N + 2))
@@ -158,6 +207,7 @@ class _HypergeometricDistribution:
         N = self.N
         K = self.K
         n = self.n
+        support_mask = self.check_support(k)
 
         N_minus_K = N - K  # type: ignore
         n_minus_k = n - k  # type: ignore
@@ -189,6 +239,8 @@ class _HypergeometricDistribution:
             - lgamma_1
             + lgamma_N_p_2  # type: ignore
         )
+
+        result = result.masked_fill(~support_mask, float("-inf"))
 
         return result
 

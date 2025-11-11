@@ -3,7 +3,7 @@ from torch import Tensor, nn
 from typing import Optional, Callable
 
 from spflow.meta.data import Scope
-from spflow.modules.leaf.leaf_module import LeafModule, BoundedParameter, MLEBatch, MLEParameterEstimate
+from spflow.modules.leaf.leaf_module import LeafModule, BoundedParameter
 from spflow.utils.leaf import parse_leaf_args, init_parameter
 from spflow.utils.cache import Cache
 
@@ -43,16 +43,23 @@ class Bernoulli(LeafModule):
         """Returns the supported values of the distribution."""
         return 0.0
 
-    def _mle_compute_statistics(self, batch: MLEBatch) -> dict[str, MLEParameterEstimate]:
-        """Compute Bernoulli probability estimates using the shared template batch."""
-        weights = batch.weights
-        data = batch.data
+    def _mle_compute_statistics(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> None:
+        """Compute Bernoulli probability estimate and assign parameter.
 
+        Args:
+            data: Scope-filtered data of shape (batch_size, num_scope_features).
+            weights: Normalized weights of shape (batch_size, 1, ...).
+            bias_correction: Not used for Bernoulli (included for template consistency).
+        """
         n_total = weights.sum()
         n_success = (weights * data).sum(dim=0)
         p_est = n_success / n_total
 
-        return {"p": MLEParameterEstimate(p_est, lb=0.0, ub=1.0)}
+        # Broadcast to event_shape and assign directly
+        # BoundedParameter descriptor handles clamping to [0, 1]
+        self.p = self._broadcast_to_event_shape(p_est)
 
     def params(self) -> dict[str, Tensor]:
         """Returns the parameters of the distribution."""

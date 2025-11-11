@@ -108,7 +108,9 @@ def test_hypergeometric_support_enforces_integer_bounds():
     invalid_low = torch.tensor([[[-1.0]]])
     invalid_high = torch.tensor([[[6.0]]])
 
-    assert torch.all(leaf.check_support(valid))
-    assert not torch.all(leaf.check_support(invalid_fractional))
-    assert not torch.all(leaf.check_support(invalid_low))
-    assert not torch.all(leaf.check_support(invalid_high))
+    assert torch.all(leaf.distribution.check_support(valid))
+
+    with pytest.raises(ValueError):
+        leaf.distribution.check_support(invalid_fractional)
+        leaf.distribution.check_support(invalid_low)
+        leaf.distribution.check_support(invalid_high)

@@ -32,7 +32,7 @@ class DummyModel(Module):
     def forward(self, x):
         return self.linear(x)
 
-    def log_likelihood(self, data, check_support: bool = True, cache=None):
+    def log_likelihood(self, data, cache=None):
         return self(data)
 
     def sample(
@@ -40,31 +40,18 @@ class DummyModel(Module):
         num_samples: int | None = None,
         data: torch.Tensor | None = None,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache=None,
         sampling_ctx=None,
     ):
         raise NotImplementedError
 
-    def sample_with_evidence(
-        self,
-        evidence: torch.Tensor,
-        num_samples: int = 1,
-        is_mpe: bool = False,
-        check_support: bool = True,
-        cache=None,
-        sampling_ctx=None,
-    ):
-        raise NotImplementedError
-
-    def expectation_maximization(self, data: torch.Tensor, check_support: bool = True, cache=None):
+    def expectation_maximization(self, data: torch.Tensor, cache=None):
         raise NotImplementedError
 
     def maximum_likelihood_estimation(
         self,
         data: torch.Tensor,
         weights: torch.Tensor | None = None,
-        check_support: bool = True,
         cache=None,
     ):
         raise NotImplementedError

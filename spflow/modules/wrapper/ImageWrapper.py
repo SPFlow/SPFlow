@@ -65,7 +65,6 @@ class ImageWrapper(AbstractWrapper):
     def expectation_maximization(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Performs a single expectation maximization (EM) step for the wrapped module.
@@ -74,9 +73,6 @@ class ImageWrapper(AbstractWrapper):
             data:
                 Four-dimensional PyTorch tensor containing the input data.
                 Shape: (batch_size, num_channel, height, width).
-            check_support:
-                Boolean value indicating whether or not if the data is in the support of the leaf distributions.
-                Defaults to True.
             cache:
                 Optional cache dictionary for memoization.
         """
@@ -88,13 +84,12 @@ class ImageWrapper(AbstractWrapper):
             )
 
         data = self.flatten(data)
-        self.module.expectation_maximization(data, check_support=check_support, cache=cache)
+        self.module.expectation_maximization(data, cache=cache)
 
     def maximum_likelihood_estimation(
         self,
         data: Tensor,
         weights: Optional[Tensor] = None,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Update parameters via maximum likelihood estimation for the wrapped module.
@@ -105,9 +100,6 @@ class ImageWrapper(AbstractWrapper):
                 Shape: (batch_size, num_channel, height, width).
             weights:
                 Optional sample weights tensor.
-            check_support:
-                Boolean value indicating whether or not if the data is in the support of the leaf distributions.
-                Defaults to True.
             cache:
                 Optional cache dictionary for memoization.
         """
@@ -120,13 +112,12 @@ class ImageWrapper(AbstractWrapper):
 
         data = self.flatten(data)
         self.module.maximum_likelihood_estimation(
-            data, weights=weights, check_support=check_support, cache=cache
+            data, weights=weights, cache=cache
         )
 
     def log_likelihood(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> Tensor:
         r"""Computes log-likelihoods for the wrapped module given the data.
@@ -137,9 +128,6 @@ class ImageWrapper(AbstractWrapper):
             data:
                 Four-dimensional PyTorch tensor containing the input data.
                 Shape: (batch_size, num_channel, height, width).
-            check_support:
-                Boolean value indicating whether or not if the data is in the support of the distribution.
-                Defaults to True.
             cache:
                 Optional cache dictionary for memoization.
 
@@ -158,7 +146,7 @@ class ImageWrapper(AbstractWrapper):
             )
         data = self.flatten(data)
 
-        log_prob = self.module.log_likelihood(data, check_support, cache)
+        log_prob = self.module.log_likelihood(data, cache=cache)
 
         return log_prob
 
@@ -198,7 +186,6 @@ class ImageWrapper(AbstractWrapper):
         num_samples: int | None = None,
         data: Tensor | None = None,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
@@ -213,9 +200,6 @@ class ImageWrapper(AbstractWrapper):
             is_mpe:
                 Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
                 Defaults to False.
-            check_support:
-                Boolean value indicating whether if the data is in the support of the leaf distributions.
-                Defaults to True.
             cache:
                 Optional cache dictionary for memoization.
             sampling_ctx:
@@ -237,7 +221,6 @@ class ImageWrapper(AbstractWrapper):
         self.module.sample(
             data=flat_data,
             is_mpe=is_mpe,
-            check_support=check_support,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )
