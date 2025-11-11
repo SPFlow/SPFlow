@@ -40,7 +40,7 @@ class Binomial(LeafModule):
         p = init_parameter(param=p, event_shape=event_shape, init=torch.rand)
 
         if not torch.isfinite(n).all() or n.lt(0.0).any():
-            raise ValueError(f"Values for 'n' must be finite and greater than 0, but was: {n}")
+            raise ValueError(f"Values for 'n' must be finite and non-negative, but was: {n}")
 
         n = torch.broadcast_to(n, event_shape).clone()
         self.register_buffer("_n", n)
@@ -65,9 +65,9 @@ class Binomial(LeafModule):
             ValueError: Invalid arguments.
         """
 
-        if torch.any(n < 1.0) or not torch.isfinite(n).any():  # ToDo is 0 a valid value for n?
+        if torch.any(n < 0.0) or not torch.isfinite(n).all():
             raise ValueError(
-                f"Value of 'n' for 'Binomial' distribution must to be greater than 0, but was: {n}"
+                f"Value of 'n' for 'Binomial' distribution must be non-negative and finite, but was: {n}"
             )
 
         self._n = n
