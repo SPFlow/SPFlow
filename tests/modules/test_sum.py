@@ -189,7 +189,6 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
         samples = module.sample_with_evidence(
             evidence=data,
             is_mpe=False,
-            check_support=False,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

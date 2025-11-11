@@ -3,7 +3,7 @@ from torch import Tensor, nn
 from typing import Optional, Callable
 
 from spflow.meta.data import Scope
-from spflow.modules.leaf.leaf_module import LeafModule, MLEBatch, MLEParameterEstimate
+from spflow.modules.leaf.leaf_module import LeafModule
 from spflow.utils.leaf import parse_leaf_args, init_parameter
 from spflow.utils.cache import Cache
 
@@ -71,11 +71,16 @@ class Categorical(LeafModule):
         """Returns the supported values of the distribution."""
         return 1
 
-    def _mle_compute_statistics(self, batch: MLEBatch) -> dict[str, MLEParameterEstimate]:
-        """Estimate categorical probabilities for each feature."""
-        data = batch.data
-        weights = batch.weights
+    def _mle_compute_statistics(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> None:
+        """Estimate categorical probabilities for each feature and assign parameter.
 
+        Args:
+            data: Scope-filtered data of shape (batch_size, num_scope_features).
+            weights: Normalized weights of shape (batch_size, 1, ...).
+            bias_correction: Not used for Categorical (included for template consistency).
+        """
         weights_flat = weights.reshape(weights.shape[0], -1)[:, 0]
         n_total = weights_flat.sum()
 
@@ -95,7 +100,9 @@ class Categorical(LeafModule):
             p_entries.append(torch.stack(cat_probs))
 
         p_est = torch.stack(p_entries, dim=0).to(data.device)
-        return {"p": MLEParameterEstimate(p_est, lb=0.0, ub=1.0)}
+        # Broadcast to event_shape (num_features, out_channels, K) and assign
+        # p setter handles normalization and clamping
+        self.p = self._broadcast_to_event_shape(p_est)
 
     def params(self) -> dict[str, Tensor]:
         """Returns the parameters of the distribution."""

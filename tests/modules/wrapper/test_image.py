@@ -43,7 +43,7 @@ def test_log_likelihood(num_channel: int, num_reps):
 
     data = make_data(cls=leaf.Normal, out_features=out_features, n_samples=5)
     data = data.view(data.shape[0], num_channel, height, width)
-    lls = module.log_likelihood(data, check_support=True)
+    lls = module.log_likelihood(data)
     if num_reps is not None:
         assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
     else:

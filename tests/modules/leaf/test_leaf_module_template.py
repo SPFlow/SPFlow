@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 from spflow.meta import Scope
-from spflow.modules.leaf.leaf_module import LeafModule, LogSpaceParameter, MLEBatch, MLEParameterEstimate
+from spflow.modules.leaf.leaf_module import LeafModule, LogSpaceParameter
 
 
 class DummyLeaf(LeafModule):
@@ -21,7 +21,8 @@ class DummyLeaf(LeafModule):
         self.loc = nn.Parameter(loc)
         self.log_scale = nn.Parameter(torch.empty_like(scale))
         self.scale = scale.clone().detach()
-        self.last_batch: MLEBatch | None = None
+        self.last_data: torch.Tensor | None = None
+        self.last_weights: torch.Tensor | None = None
 
     @property
     def distribution(self) -> torch.distributions.Distribution:
@@ -34,15 +35,17 @@ class DummyLeaf(LeafModule):
     def params(self) -> dict[str, torch.Tensor]:
         return {"loc": self.loc, "scale": self.scale}
 
-    def _mle_compute_statistics(self, batch: MLEBatch) -> dict[str, MLEParameterEstimate]:
-        self.last_batch = batch
-        weights = batch.weights
-        mean_est = (weights * batch.data).sum(dim=0) / weights.sum()
+    def _mle_compute_statistics(
+        self, data: torch.Tensor, weights: torch.Tensor, bias_correction: bool
+    ) -> None:
+        """Compute statistics and assign parameters directly."""
+        self.last_data = data
+        self.last_weights = weights
+        mean_est = (weights * data).sum(dim=0) / weights.sum()
         scale_est = torch.full_like(mean_est, 0.5)
-        return {
-            "loc": MLEParameterEstimate(mean_est),
-            "scale": MLEParameterEstimate(scale_est, lb=0.0),
-        }
+        # Assign directly - LogSpaceParameter handles log-space storage
+        self.loc.data = self._broadcast_to_event_shape(mean_est)
+        self.scale = self._broadcast_to_event_shape(scale_est)
 
 
 def test_leaf_module_template_handles_nan_strategy_and_descriptors():
@@ -52,19 +55,17 @@ def test_leaf_module_template_handles_nan_strategy_and_descriptors():
     data = torch.tensor([[0.0], [1.0], [float("nan")], [2.0]])
     weights = torch.tensor([1.0, 1.0, 1.0, 2.0])
 
-    diagnostics = leaf.maximum_likelihood_estimation(
+    leaf.maximum_likelihood_estimation(
         data,
         weights=weights,
         nan_strategy="ignore",
-        check_support=True,
     )
 
-    assert leaf.last_batch is not None
+    assert leaf.last_data is not None
+    assert leaf.last_weights is not None
     # NaN row should be removed once by the template helper.
-    assert leaf.last_batch.data.shape[0] == 3
-    assert torch.all(torch.isfinite(leaf.last_batch.data))
-    assert diagnostics["retained_samples"] == 3
-    assert set(diagnostics["updated_parameters"]) == {"loc", "scale"}
+    assert leaf.last_data.shape[0] == 3
+    assert torch.all(torch.isfinite(leaf.last_data))
 
     expected_loc = torch.ones_like(leaf.loc) * 1.25  # Weighted mean after ignoring NaNs.
     torch.testing.assert_close(leaf.loc.detach(), expected_loc)

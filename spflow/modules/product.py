@@ -52,14 +52,12 @@ class Product(Module):
     def log_likelihood(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> Tensor:
         """Compute log P(data | module).
 
         Args:
             data: Input data tensor.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
 
         Returns:
@@ -70,7 +68,6 @@ class Product(Module):
         # compute child log-likelihoods
         ll = self.inputs.log_likelihood(
             data,
-            check_support=check_support,
             cache=cache,
         )
 
@@ -89,7 +86,6 @@ class Product(Module):
         num_samples: int | None = None,
         data: Tensor | None = None,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
@@ -99,7 +95,6 @@ class Product(Module):
             num_samples: Number of samples to generate.
             data: Data tensor with NaN values to fill with samples.
             is_mpe: Whether to perform maximum a posteriori estimation.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
             sampling_ctx: Optional sampling context.
 
@@ -126,7 +121,6 @@ class Product(Module):
         self.inputs.sample(
             data=data,
             is_mpe=is_mpe,
-            check_support=check_support,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )
@@ -135,7 +129,6 @@ class Product(Module):
     def expectation_maximization(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Expectation-maximization step.
@@ -144,19 +137,17 @@ class Product(Module):
 
         Args:
             data: Input data tensor.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
         """
         cache = init_cache(cache)
 
         # Product has no learnable parameters, delegate to input
-        self.inputs.expectation_maximization(data, check_support=check_support, cache=cache)
+        self.inputs.expectation_maximization(data, cache=cache)
 
     def maximum_likelihood_estimation(
         self,
         data: Tensor,
         weights: Tensor | None = None,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Update parameters via maximum likelihood estimation.
@@ -166,14 +157,15 @@ class Product(Module):
         Args:
             data: Input data tensor.
             weights: Optional sample weights (currently unused).
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
         """
         cache = init_cache(cache)
 
         # Product has no learnable parameters, delegate to input
         self.inputs.maximum_likelihood_estimation(
-            data, weights=weights, check_support=check_support, cache=cache
+            data,
+            weights=weights,
+            cache=cache,
         )
 
     def marginalize(

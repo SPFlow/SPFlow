@@ -6,8 +6,6 @@ from spflow.meta.data import Scope
 from spflow.modules.leaf.leaf_module import (
     LeafModule,
     LogSpaceParameter,
-    MLEBatch,
-    MLEParameterEstimate,
     validate_all_or_none,
 )
 from spflow.utils.leaf import parse_leaf_args, init_parameter
@@ -61,10 +59,16 @@ class Gamma(LeafModule):
     def _supported_value(self):
         return 1.0
 
-    def _mle_compute_statistics(self, batch: MLEBatch) -> dict[str, MLEParameterEstimate]:
-        """Estimate Gamma alpha/beta parameters from sufficient statistics."""
-        data = batch.data
-        weights = batch.weights
+    def _mle_compute_statistics(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> None:
+        """Estimate Gamma alpha/beta parameters and assign.
+
+        Args:
+            data: Scope-filtered data of shape (batch_size, num_scope_features).
+            weights: Normalized weights of shape (batch_size, 1, ...).
+            bias_correction: Whether to apply bias correction for alpha and beta.
+        """
         n_total = weights.sum()
 
         data_log = data.log()
@@ -76,7 +80,7 @@ class Gamma(LeafModule):
         alpha_est = mean_x / theta_est
         beta_est = 1 / theta_est
 
-        if batch.bias_correction:
+        if bias_correction:
             alpha_est = alpha_est - 1 / n_total * (
                 3 * alpha_est
                 - 2 / 3 * (alpha_est / (1 + alpha_est))
@@ -84,10 +88,9 @@ class Gamma(LeafModule):
             )
             beta_est = beta_est * ((n_total - 1) / n_total)
 
-        return {
-            "alpha": MLEParameterEstimate(alpha_est, lb=0.0),
-            "beta": MLEParameterEstimate(beta_est, lb=0.0),
-        }
+        # Broadcast to event_shape and assign - LogSpaceParameter ensures positivity
+        self.alpha = self._broadcast_to_event_shape(alpha_est)
+        self.beta = self._broadcast_to_event_shape(beta_est)
 
     def params(self) -> dict[str, Tensor]:
         return {"alpha": self.alpha, "beta": self.beta}

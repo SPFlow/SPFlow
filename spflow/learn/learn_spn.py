@@ -170,7 +170,6 @@ def learn_spn(
     partitioning_method: str | Callable = "rdc",
     clustering_args: dict[str, Any] | None = None,
     partitioning_args: dict[str, Any] | None = None,
-    check_support: bool = True,
     full_data: torch.Tensor | None = None,
 ) -> Module:
     """LearnSPN structure and parameter learner for the ``base`` backend.
@@ -205,9 +204,6 @@ def learn_spn(
         partitioning_args:
             Optional dictionary mapping keyword arguments to objects.
             Passed to ``partitioning_method`` each time it is called.
-        check_support:
-            Boolean value indicating whether or not if the data is in the support of the leaf distributions.
-            Defaults to True.
 
     Returns:
         A node representing the learned SPN.
@@ -278,7 +274,6 @@ def learn_spn(
                 # estimate leaf node parameters from data
                 leaf_layer.maximum_likelihood_estimation(
                     data,
-                    check_support=check_support,
                 )
 
                 leaves.append(leaf_layer)

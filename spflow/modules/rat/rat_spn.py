@@ -174,14 +174,12 @@ class RatSPN(Module):
     def log_likelihood(
         self,
         data: torch.Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> torch.Tensor:
         """Compute log P(data | module).
 
         Args:
             data: Input data tensor.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary for caching intermediate results.
 
         Returns:
@@ -190,7 +188,6 @@ class RatSPN(Module):
         cache = init_cache(cache)
         ll = self.root_node.log_likelihood(
             data,
-            check_support=check_support,
             cache=cache,
         )
         return ll
@@ -198,14 +195,12 @@ class RatSPN(Module):
     def posterior(
         self,
         data: torch.Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> torch.Tensor:
         """Compute posterior probabilities for multi-class models.
 
         Args:
             data: Input data tensor.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary for caching intermediate results.
 
         Returns:
@@ -219,7 +214,6 @@ class RatSPN(Module):
         class_prob = class_prob.squeeze(-1)  # shape: (1, n_root_nodes)
         ll = self.root_node.inputs.log_likelihood(
             data,
-            check_support=check_support,
             cache=cache,
         )  # shape: (batch_size,1 , n_root_nodes)
 
@@ -240,7 +234,6 @@ class RatSPN(Module):
         num_samples: int | None = None,
         data: torch.Tensor | None = None,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> torch.Tensor:
@@ -250,7 +243,6 @@ class RatSPN(Module):
             num_samples: Number of samples to generate.
             data: Data tensor with NaN values to fill with samples.
             is_mpe: Whether to perform maximum a posteriori estimation.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
             sampling_ctx: Optional sampling context.
 
@@ -291,7 +283,6 @@ class RatSPN(Module):
         return sample_root.sample(
             data=data,
             is_mpe=is_mpe,
-            check_support=check_support,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )
@@ -299,24 +290,21 @@ class RatSPN(Module):
     def expectation_maximization(
         self,
         data: torch.Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Expectation-maximization step.
 
         Args:
             data: Input data tensor.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
         """
         cache = init_cache(cache)
-        self.root_node.expectation_maximization(data, check_support=check_support, cache=cache)
+        self.root_node.expectation_maximization(data, cache=cache)
 
     def maximum_likelihood_estimation(
         self,
         data: torch.Tensor,
         weights: torch.Tensor | None = None,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Update parameters via maximum likelihood estimation.
@@ -324,12 +312,13 @@ class RatSPN(Module):
         Args:
             data: Input data tensor.
             weights: Optional sample weights.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
         """
         cache = init_cache(cache)
         self.root_node.maximum_likelihood_estimation(
-            data, weights=weights, check_support=check_support, cache=cache
+            data,
+            weights=weights,
+            cache=cache,
         )
 
     def marginalize(

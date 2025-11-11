@@ -81,7 +81,6 @@ class Cat(Module):
     def log_likelihood(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> Tensor:
         """Compute log likelihood by concatenating input likelihoods."""
@@ -91,7 +90,7 @@ class Cat(Module):
         # get log likelihoods for all inputs
         lls = []
         for input_module in self.inputs:
-            input_ll = input_module.log_likelihood(data, check_support, cache)
+            input_ll = input_module.log_likelihood(data, cache=cache)
             log_cache[input_module] = input_ll
             lls.append(input_ll)
 
@@ -105,7 +104,6 @@ class Cat(Module):
         num_samples: int | None = None,
         data: Tensor | None = None,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
@@ -155,7 +153,6 @@ class Cat(Module):
             input_module.sample(
                 data=data,
                 is_mpe=is_mpe,
-                check_support=check_support,
                 cache=cache,
                 sampling_ctx=sampling_ctx_copy,
             )

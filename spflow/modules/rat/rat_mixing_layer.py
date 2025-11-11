@@ -115,7 +115,6 @@ class MixingLayer(Sum):
         num_samples: int | None = None,
         data: Tensor | None = None,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
@@ -125,7 +124,6 @@ class MixingLayer(Sum):
             num_samples: Number of samples to generate.
             data: Data tensor with NaN values to fill with samples.
             is_mpe: Whether to perform maximum a posteriori estimation.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
             sampling_ctx: Optional sampling context.
 
@@ -176,7 +174,6 @@ class MixingLayer(Sum):
         self.inputs.sample(
             data=data,
             is_mpe=is_mpe,
-            check_support=check_support,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )
@@ -186,14 +183,12 @@ class MixingLayer(Sum):
     def log_likelihood(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> Tensor:
         """Compute log P(data | module).
 
         Args:
             data: Input data tensor.
-            check_support: Whether to check data support.
             cache: Optional cache dictionary for caching intermediate results.
 
         Returns:
@@ -203,7 +198,6 @@ class MixingLayer(Sum):
 
         ll = self.inputs.log_likelihood(
             data,
-            check_support=check_support,
             cache=cache,
         )
 

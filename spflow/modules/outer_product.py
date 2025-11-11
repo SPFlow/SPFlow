@@ -174,14 +174,12 @@ class OuterProduct(BaseProduct):
     def log_likelihood(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> Tensor:
         """Compute log P(data | module) for outer product.
 
         Args:
             data: The data tensor.
-            check_support: Whether to check the support of the module.
             cache: Optional cache dictionary.
 
         Returns:
@@ -190,7 +188,7 @@ class OuterProduct(BaseProduct):
         # initialize cache
         cache = init_cache(cache)
 
-        lls = self._get_input_log_likelihoods(data, check_support, cache)
+        lls = self._get_input_log_likelihoods(data, cache)
 
         # Compute the outer sum of pairwise log-likelihoods
         # [b, n, m1] + [b, n, m2] -> [b, n, m1, 1] + [b, n, 1, m2]  -> [b, n, m1, m2] -> [b, n, 1, m1*m2] ...

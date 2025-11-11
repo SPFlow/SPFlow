@@ -71,26 +71,3 @@ def test_uniform_constructor_start_greater_than_end(out_features: int, out_chann
     start, end = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
         make_leaf(start=end, end=start)
-
-
-def test_uniform_support_half_open_interval():
-    start = torch.tensor([[0.0]])
-    end = torch.tensor([[1.0]])
-    leaf = Uniform(scope=Scope([0]), start=start, end=end, support_outside=False)
-
-    inside = torch.tensor([[[0.5]]])
-    boundary = torch.tensor([[[1.0]]])
-    below = torch.tensor([[[-0.1]]])
-
-    assert torch.all(leaf.check_support(inside))
-    assert not torch.all(leaf.check_support(boundary))
-    assert not torch.all(leaf.check_support(below))
-
-
-def test_uniform_support_outside_flag_allows_values():
-    start = torch.tensor([[0.0]])
-    end = torch.tensor([[1.0]])
-    leaf = Uniform(scope=Scope([0]), start=start, end=end, support_outside=True)
-
-    outside = torch.tensor([[[2.0]]])
-    assert torch.all(leaf.check_support(outside))

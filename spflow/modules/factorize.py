@@ -117,14 +117,12 @@ class Factorize(BaseProduct):
     def log_likelihood(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> Tensor:
         """Compute log P(data | module) for factorize.
 
         Args:
             data: The data tensor.
-            check_support: Whether to check the support of the module.
             cache: Optional cache dictionary.
 
         Returns:
@@ -134,7 +132,8 @@ class Factorize(BaseProduct):
         cache = init_cache(cache)
 
         lls = self._get_input_log_likelihoods(
-            data, check_support, cache
+            data,
+            cache=cache,
         )  # lls[0] shape: [batch_size, num_features, num_channel]
         output = torch.einsum("bicr, ior->bocr", lls[0], self.indices)
 
@@ -145,7 +144,6 @@ class Factorize(BaseProduct):
         num_samples: int | None = None,
         data: Tensor | None = None,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
@@ -155,7 +153,6 @@ class Factorize(BaseProduct):
             num_samples: Number of samples to generate.
             data: The data tensor to populate with samples.
             is_mpe: Whether to use maximum probability estimation instead of sampling.
-            check_support: Whether to check the support of the input module.
             cache: Optional cache dictionary for intermediate results.
             sampling_ctx: Optional sampling context.
 
@@ -189,7 +186,6 @@ class Factorize(BaseProduct):
         self.inputs[0].sample(
             data=data,
             is_mpe=is_mpe,
-            check_support=check_support,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

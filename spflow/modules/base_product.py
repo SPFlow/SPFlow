@@ -106,7 +106,6 @@ class BaseProduct(Module, ABC):
         num_samples: int | None = None,
         data: Tensor | None = None,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
@@ -116,7 +115,6 @@ class BaseProduct(Module, ABC):
             num_samples: Number of samples to generate.
             data: The data tensor to populate with samples.
             is_mpe: Whether to use maximum probability estimation instead of sampling.
-            check_support: Whether to check the support of the input module.
             cache: Optional cache dictionary for intermediate results.
             sampling_ctx: Optional sampling context.
 
@@ -152,7 +150,6 @@ class BaseProduct(Module, ABC):
             inp.sample(
                 data=data,
                 is_mpe=is_mpe,
-                check_support=check_support,
                 cache=cache,
                 sampling_ctx=sampling_ctx,
             )
@@ -188,14 +185,12 @@ class BaseProduct(Module, ABC):
     def log_likelihood(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> Tensor:
         """Compute log P(data | module).
 
         Args:
             data: The data tensor.
-            check_support: Whether to check the support of the module.
             cache: Optional cache dictionary.
 
         Returns:
@@ -206,7 +201,6 @@ class BaseProduct(Module, ABC):
     def _get_input_log_likelihoods(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> list[Tensor]:
         """
@@ -214,7 +208,6 @@ class BaseProduct(Module, ABC):
 
         Args:
             data: The data tensor.
-            check_support: Whether to check the support of the input module.
             cache: The cache dictionary.
         """
 
@@ -225,7 +218,6 @@ class BaseProduct(Module, ABC):
         if self.input_is_split:
             lls = self.inputs[0].log_likelihood(
                 data,
-                check_support=check_support,
                 cache=cache,
             )
 
@@ -234,7 +226,6 @@ class BaseProduct(Module, ABC):
             for inp in self.inputs:
                 ll = inp.log_likelihood(
                     data,
-                    check_support=check_support,
                     cache=cache,
                 )
                 if log_cache is not None:

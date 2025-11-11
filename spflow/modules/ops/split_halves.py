@@ -56,14 +56,13 @@ class SplitHalves(Split):  # ToDo: make abstract and implement concrete classes
     def log_likelihood(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> list[Tensor]:
         cache = init_cache(cache)
         log_cache = cache.setdefault("log_likelihood", {})
 
         # get log likelihoods for all inputs
-        lls = self.inputs[0].log_likelihood(data, check_support, cache)
+        lls = self.inputs[0].log_likelihood(data, cache=cache)
         log_cache[self.inputs[0]] = lls
 
         lls_split = lls.split(self.inputs[0].out_features // self.num_splits, dim=self.dim)

@@ -9,7 +9,7 @@ from typing import Dict
 
 
 def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):
-    lls = module.log_likelihood(data, check_support=True)
+    lls = module.log_likelihood(data)
     if module.num_repetitions is not None:
         assert lls.shape == (
             data.shape[0],
@@ -23,7 +23,7 @@ def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):
 
 
 def evaluate_samples(node: LeafModule, data: torch.Tensor, is_mpe: bool, sampling_ctx):
-    samples = node.sample(data=data, is_mpe=is_mpe, check_support=True, sampling_ctx=sampling_ctx)
+    samples = node.sample(data=data, is_mpe=is_mpe, sampling_ctx=sampling_ctx)
     assert samples.shape == data.shape
     s_query = samples[:, node.scope.query]
     assert s_query.shape == (data.shape[0], len(node.scope.query))

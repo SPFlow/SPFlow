@@ -7,7 +7,7 @@ from torch import Tensor
 from spflow.exceptions import InvalidParameterCombinationError
 
 
-def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support) -> tuple[Tensor, Tensor]:
+def apply_nan_strategy(nan_strategy, scope_data, leaf, weights) -> tuple[Tensor, Tensor]:
     if weights is None:
         weights = torch.ones(scope_data.shape[0], device=leaf.device)
     if weights.ndim != 1 or weights.shape[0] != scope_data.shape[0]:
@@ -16,12 +16,6 @@ def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support) -
         )
     # reshape weights
     weights = weights.reshape((-1, 1))
-    if check_support:
-        # create dimension for check_support
-        scope_data = scope_data.unsqueeze(2)
-        if torch.any(~leaf.check_support(scope_data)):
-            raise ValueError("Encountered values outside of the support.")
-        scope_data = scope_data.squeeze(2)
     # NaN entries (no information)
     nan_mask = torch.isnan(scope_data)
     if torch.all(nan_mask):

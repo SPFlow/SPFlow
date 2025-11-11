@@ -6,8 +6,6 @@ from spflow.meta.data import Scope
 from spflow.modules.leaf.leaf_module import (
     LeafModule,
     LogSpaceParameter,
-    MLEBatch,
-    MLEParameterEstimate,
     validate_all_or_none,
 )
 from spflow.utils.leaf import parse_leaf_args, init_parameter
@@ -60,23 +58,28 @@ class LogNormal(LeafModule):
     def _supported_value(self):
         return 1.0
 
-    def _mle_compute_statistics(self, batch: MLEBatch) -> dict[str, MLEParameterEstimate]:
-        """Estimate LogNormal mean and std in log-space using template helpers."""
-        data = batch.data
-        weights = batch.weights
+    def _mle_compute_statistics(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> None:
+        """Estimate LogNormal mean and std and assign parameters.
+
+        Args:
+            data: Scope-filtered data of shape (batch_size, num_scope_features).
+            weights: Normalized weights of shape (batch_size, 1, ...).
+            bias_correction: Whether to apply Bessel's correction (n-1 vs n).
+        """
         n_total = weights.sum()
 
         log_data = data.log()
         mean_est = (weights * log_data).sum(0) / n_total
 
         var_numerator = (weights * torch.pow(log_data - mean_est, 2)).sum(0)
-        denom = n_total - 1 if batch.bias_correction else n_total
+        denom = n_total - 1 if bias_correction else n_total
         std_est = torch.sqrt(var_numerator / denom)
 
-        return {
-            "mean": MLEParameterEstimate(mean_est),
-            "std": MLEParameterEstimate(std_est, lb=0.0),
-        }
+        # Broadcast to event_shape and assign directly
+        self.mean.data = self._broadcast_to_event_shape(mean_est)
+        self.std = self._broadcast_to_event_shape(std_est)
 
     def params(self) -> dict[str, Tensor]:
         return {"mean": self.mean, "std": self.std}

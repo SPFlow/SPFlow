@@ -260,7 +260,6 @@ class ElementwiseSum(Module):
         num_samples: int | None = None,
         data: Tensor | None = None,
         is_mpe: bool = False,
-        check_support: bool = True,
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
@@ -270,7 +269,6 @@ class ElementwiseSum(Module):
             num_samples: Number of samples to generate.
             data: The data tensor to populate with samples.
             is_mpe: Whether to use maximum probability estimation instead of sampling.
-            check_support: Whether to check the support of the input module.
             cache: Optional cache dictionary for intermediate results.
             sampling_ctx: Optional sampling context.
 
@@ -362,7 +360,6 @@ class ElementwiseSum(Module):
             inp.sample(
                 data=data,
                 is_mpe=is_mpe,
-                check_support=check_support,
                 cache=cache,
                 sampling_ctx=sampling_ctx_cpy,
             )
@@ -372,14 +369,12 @@ class ElementwiseSum(Module):
     def log_likelihood(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> Tensor:
         """Compute log P(data | module) for elementwise sum.
 
         Args:
             data: The data tensor.
-            check_support: Whether to check the support of the module.
             cache: Optional cache dictionary.
 
         Returns:
@@ -394,7 +389,6 @@ class ElementwiseSum(Module):
         for inp in self.inputs:
             ll = inp.log_likelihood(
                 data,
-                check_support=check_support,
                 cache=cache,
             )
 
@@ -428,14 +422,12 @@ class ElementwiseSum(Module):
     def expectation_maximization(
         self,
         data: Tensor,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Expectation-maximization step.
 
         Args:
             data: The data tensor.
-            check_support: Whether to check the support of the module.
             cache: Optional cache dictionary.
         """
         # initialize cache
@@ -477,13 +469,12 @@ class ElementwiseSum(Module):
             # TODO: Check if the above is still true after the whole reimplementation (don't we set param.data = ...?)
 
         for inp in self.inputs:
-            inp.expectation_maximization(data, check_support=check_support, cache=cache)
+            inp.expectation_maximization(data, cache=cache)
 
     def maximum_likelihood_estimation(
         self,
         data: Tensor,
         weights: Optional[Tensor] = None,
-        check_support: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Update parameters via maximum likelihood estimation.
@@ -493,7 +484,6 @@ class ElementwiseSum(Module):
         Args:
             data: Input data tensor.
             weights: Optional sample weights (currently unused).
-            check_support: Whether to check data support.
             cache: Optional cache dictionary.
         """
-        self.expectation_maximization(data, check_support=check_support, cache=cache)
+        self.expectation_maximization(data, cache=cache)

@@ -1,6 +1,3 @@
-"""Contains the expectation maximization optimization parameter learner for SPFlow in the ``torch`` backend.
-"""
-
 import logging
 
 import torch
@@ -16,7 +13,6 @@ def expectation_maximization(
     module: Module,
     data: Tensor,
     max_steps: int = -1,
-    check_support: bool = True,
     verbose: bool = False,
 ) -> Tensor:
     """Performs partitioning usig randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the ``torch`` backend.
@@ -30,9 +26,6 @@ def expectation_maximization(
         max_steps:
             Integer representing the maximum number of iterations.
             Defaults to -1, in which case the optimization is performed until convergence.
-        check_support:
-            Boolean value indicating whether if the data is in the support of the leaf distributions.
-            Defaults to True.
         verbose:
             Boolean value indicating whether to print the log-likelihood for each iteration step.
             Defaults to False.
@@ -51,7 +44,7 @@ def expectation_maximization(
         cache = {"log_likelihood": {}}
 
         # compute log likelihoods and sum them together
-        module_lls = module.log_likelihood(data, check_support=check_support, cache=cache)
+        module_lls = module.log_likelihood(data, cache=cache)
         cache["log_likelihood"][module] = module_lls
         acc_ll = module_lls.sum()
         avg_ll = acc_ll.detach().clone() / data.shape[0]
@@ -71,7 +64,7 @@ def expectation_maximization(
             acc_ll.backward(retain_graph=True)
 
         # recursively perform expectation maximization
-        module.expectation_maximization(data, check_support=check_support, cache=cache)
+        module.expectation_maximization(data, cache=cache)
 
         # end update loop if max steps reached or loss converged
         if avg_ll <= prev_avg_ll:

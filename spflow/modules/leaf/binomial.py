@@ -6,9 +6,6 @@ from spflow.meta.data import Scope
 from spflow.modules.leaf.leaf_module import (
     LeafModule,
     BoundedParameter,
-    MLEBatch,
-    MLEEstimates,
-    MLEParameterEstimate,
 )
 from spflow.utils.leaf import parse_leaf_args, init_parameter
 from spflow.utils.cache import Cache
@@ -83,49 +80,27 @@ class Binomial(LeafModule):
     def _supported_value(self):
         return 0.0
 
-    def _use_distribution_support(self) -> bool:
-        """Skip torch's support check due to shape broadcast issues; use custom check instead."""
-        return False
+    def _mle_compute_statistics(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> None:
+        """Estimate Binomial success probability and assign.
 
-    def _custom_support_mask(self, data: Tensor) -> Tensor:
-        """Binomial support: {0, 1, 2, ..., n}."""
-        n = self.n
-        original_data_shape = data.shape
-
-        # Add batch dimension to n
-        n_expanded = n.unsqueeze(0)  # (1, features, channels) or (1, features, channels, repetitions)
-
-        # If data has fewer dimensions than n, expand it for the comparison
-        # This handles the case where data is (batch, features) but n is (1, features, channels)
-        data_expanded = data
-        num_added_dims = 0
-        while data_expanded.dim() < n_expanded.dim():
-            data_expanded = data_expanded.unsqueeze(-1)  # Add trailing dimensions
-            num_added_dims += 1
-
-        integer_mask = torch.remainder(data_expanded, 1) == 0
-        range_mask = (data_expanded >= 0) & (data_expanded <= n_expanded)
-        mask = integer_mask & range_mask
-
-        # Reduce the mask back to the original data shape
-        # After broadcasting, the mask includes extra dimensions, so we take the first element along those
-        for _ in range(num_added_dims):
-            mask = mask[..., 0]  # Select first element along last dimension
-
-        return mask
-
-    def _mle_compute_statistics(self, batch: MLEBatch) -> MLEEstimates:
-        """Estimate Binomial success probabilities (p) using shared template helpers."""
-        data = batch.data
-        weights = batch.weights
-
+        Args:
+            data: Scope-filtered data of shape (batch_size, num_scope_features).
+            weights: Normalized weights of shape (batch_size, 1, ...).
+            bias_correction: Not used for Binomial (included for template consistency).
+        """
         normalized_weights = weights / weights.sum()
         n_total = normalized_weights.sum() * self.n
         n_success = (normalized_weights * data).sum(0)
         success_est = self._broadcast_to_event_shape(n_success)
         p_est = success_est / n_total
 
-        return {"p": MLEParameterEstimate(p_est, lb=0.0, ub=1.0, broadcast=False)}
+        # p_est is already in the correct shape (broadcast=False in old code)
+        # Clamp to [0, 1] before assigning to handle floating point precision issues
+        p_est = self._handle_mle_edge_cases(p_est, lb=0.0, ub=1.0)
+        # Assign directly - BoundedParameter ensures [0, 1]
+        self.p = p_est
 
     def params(self) -> dict[str, Tensor]:
         return {"n": self.n, "p": self.p}

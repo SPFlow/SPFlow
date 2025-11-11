@@ -3,7 +3,7 @@ from torch import Tensor, nn
 from typing import Optional, Callable
 
 from spflow.meta.data import Scope
-from spflow.modules.leaf.leaf_module import LeafModule, LogSpaceParameter, MLEBatch, MLEParameterEstimate
+from spflow.modules.leaf.leaf_module import LeafModule, LogSpaceParameter
 from spflow.utils.leaf import parse_leaf_args, init_parameter
 from spflow.utils.cache import Cache
 
@@ -44,17 +44,24 @@ class Exponential(LeafModule):
     def _supported_value(self):
         return 0.0
 
-    def _mle_compute_statistics(self, batch: MLEBatch) -> dict[str, MLEParameterEstimate]:
-        """Compute Exponential rate estimates from the prepared batch."""
-        data = batch.data
-        weights = batch.weights
+    def _mle_compute_statistics(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> None:
+        """Compute Exponential rate estimate and assign parameter.
+
+        Args:
+            data: Scope-filtered data of shape (batch_size, num_scope_features).
+            weights: Normalized weights of shape (batch_size, 1, ...).
+            bias_correction: Whether to apply correction (subtract 1 from n_total).
+        """
         n_total = weights.sum()
 
-        if batch.bias_correction:
-            n_total -= 1
+        if bias_correction:
+            n_total = n_total - 1
 
         rate_est = n_total / (weights * data).sum(0)
-        return {"rate": MLEParameterEstimate(rate_est, lb=0.0)}
+        # Broadcast to event_shape and assign - LogSpaceParameter ensures positivity
+        self.rate = self._broadcast_to_event_shape(rate_est)
 
     def params(self) -> dict[str, Tensor]:
         return {"rate": self.rate}

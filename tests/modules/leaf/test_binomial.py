@@ -60,18 +60,3 @@ def test_constructor_n_negative(out_features: int, out_channels: int):
     n, p = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
         make_module(n=torch.full_like(n, 0.0), p=p)
-
-
-def test_binomial_support_handles_channels_and_repetitions():
-    scope = Scope([0])
-    n = torch.full((1, 2, 2), 5.0)
-    p = torch.full((1, 2, 2), 0.5)
-    leaf = Binomial(scope=scope, n=n, p=p, num_repetitions=2)
-
-    valid = torch.tensor([[[[3.0]]]])
-    invalid_fraction = torch.tensor([[[[1.5]]]])
-    invalid_high = torch.tensor([[[[6.0]]]])
-
-    assert torch.all(leaf.check_support(valid))
-    assert not torch.all(leaf.check_support(invalid_fraction))
-    assert not torch.all(leaf.check_support(invalid_high))
