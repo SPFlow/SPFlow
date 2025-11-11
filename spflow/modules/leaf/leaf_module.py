@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
 import torch
-from torch import Tensor
+from torch import Tensor, nn
+from spflow.utils.projections import proj_real_to_bounded, proj_bounded_to_real
 
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
@@ -13,6 +15,249 @@ from spflow.modules.module import Module
 from spflow.utils.cache import Cache, init_cache
 from spflow.utils.leaf import apply_nan_strategy
 import time
+from spflow.exceptions import InvalidParameterCombinationError
+
+
+class LogSpaceParameter:
+    """Descriptor for parameters stored in log-space but exposed in real space.
+
+    This descriptor pattern eliminates repeated property boilerplate for log-space parameters
+    (e.g., std, rate, alpha, beta) across distributions. The actual parameter is stored internally
+    as `log_{name}` for numerical stability, while the descriptor exposes it in real space via
+    exponential transformation.
+
+    Example:
+        >>> class Normal(LeafModule):
+        ...     std = LogSpaceParameter('std')
+        ...     def __init__(self, scope, std=None):
+        ...         super().__init__(scope)
+        ...         self.log_std = nn.Parameter(std.log() if std is not None else ...)
+        ...
+        >>> normal = Normal(scope, std=torch.tensor(1.0))
+        >>> normal.std  # Returns exp(log_std)
+        >>> normal.std = torch.tensor(2.0)  # Validates and stores as log_std = ln(2.0)
+
+    Args:
+        name: Name of the parameter (e.g., 'std', 'rate'). The actual storage uses 'log_{name}'.
+        validator: Optional custom validator function. Defaults to _default_positive_validator
+                  which checks finiteness and positivity.
+    """
+
+    def __init__(self, name: str, validator: Callable[[Tensor], None] | None = None):
+        self.name = name
+        self.log_name = f"log_{name}"
+        self.validator = validator or self._default_positive_validator
+
+    def _default_positive_validator(self, value: Tensor) -> None:
+        """Validate that values are finite and strictly positive."""
+        if not torch.isfinite(value).all():
+            raise ValueError(f"Values for '{self.name}' must be finite, but was: {value}")
+        if torch.any(value <= 0.0):
+            raise ValueError(f"Value for '{self.name}' must be greater than 0.0, but was: {value}")
+
+    def __get__(self, obj: Any, objtype: Any = None) -> Tensor:
+        """Get the parameter in real space (exponential of log-space storage)."""
+        if obj is None:
+            return self
+        return getattr(obj, self.log_name).exp()
+
+    def __set__(self, obj: Any, value: Tensor) -> None:
+        """Set the parameter by storing its logarithm in log-space.
+
+        Args:
+            obj: The instance owning this descriptor.
+            value: The parameter value in real space to store.
+        """
+        param = getattr(obj, self.log_name)
+        tensor_value = torch.as_tensor(value, dtype=param.dtype, device=param.device)
+        self.validator(tensor_value)
+        param.data = tensor_value.log()
+
+
+class BoundedParameter:
+    """Descriptor for parameters constrained to [lb, ub], stored via projections.
+
+    This descriptor pattern eliminates repeated property boilerplate for bounded parameters
+    (e.g., probability p in [0,1]). The actual parameter is stored in an auxiliary unbounded space
+    using projection functions, allowing unconstrained optimization while enforcing bounds when
+    accessed.
+
+    The descriptor uses `proj_real_to_bounded` and `proj_bounded_to_real` from spflow.utils.projections
+    to map between unbounded and bounded representations, providing numerical stability for parameters
+    that must stay within strict bounds.
+
+    Example:
+        >>> class Binomial(LeafModule):
+        ...     p = BoundedParameter('p', lb=0.0, ub=1.0)
+        ...     def __init__(self, scope, p=None):
+        ...         super().__init__(scope)
+        ...         if p is not None:
+        ...             self.log_p = nn.Parameter(proj_bounded_to_real(p, lb=0.0, ub=1.0))
+        ...
+        >>> binomial = Binomial(scope, p=torch.tensor(0.5))
+        >>> binomial.p  # Returns proj_real_to_bounded(log_p, lb=0.0, ub=1.0)
+        >>> binomial.p = torch.tensor(0.3)  # Validates and stores as log_p = proj_bounded_to_real(...)
+
+    Args:
+        name: Name of the parameter (e.g., 'p'). Storage uses 'log_{name}'.
+        lb: Lower bound (inclusive). None means unbounded below. Default is None.
+        ub: Upper bound (inclusive). None means unbounded above. Default is None.
+        validator: Optional custom validator function. Defaults to _make_bounds_validator()
+                  which checks finiteness and bounds.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        lb: float | Tensor | None = None,
+        ub: float | Tensor | None = None,
+        validator: Callable[[Tensor], None] | None = None,
+    ):
+        self.name = name
+        self.log_name = f"log_{name}"
+        self.lb = lb
+        self.ub = ub
+        self.validator = validator or self._make_bounds_validator()
+
+    def _make_bounds_validator(self) -> Callable[[Tensor], None]:
+        """Create a validator function that checks bounds and finiteness."""
+
+        def validate(value: Tensor) -> None:
+            if not torch.isfinite(value).all():
+                raise ValueError(f"Values for '{self.name}' must be finite, but was: {value}")
+            if self.lb is not None:
+                lb_tensor = torch.as_tensor(self.lb, dtype=value.dtype, device=value.device)
+                if torch.lt(value, lb_tensor).any():
+                    raise ValueError(f"Values for '{self.name}' must be >= {self.lb}, but was: {value}")
+            if self.ub is not None:
+                ub_tensor = torch.as_tensor(self.ub, dtype=value.dtype, device=value.device)
+                if torch.gt(value, ub_tensor).any():
+                    raise ValueError(f"Values for '{self.name}' must be <= {self.ub}, but was: {value}")
+
+        return validate
+
+    def _project_bounds(self, param: Tensor) -> tuple[Tensor | None, Tensor | None]:
+        lb = torch.as_tensor(self.lb, dtype=param.dtype, device=param.device) if self.lb is not None else None
+        ub = torch.as_tensor(self.ub, dtype=param.dtype, device=param.device) if self.ub is not None else None
+        return lb, ub
+
+    def __get__(self, obj: Any, objtype: Any = None) -> Tensor:
+        """Get the parameter in bounded space (via projection from unbounded storage)."""
+        if obj is None:
+            return self
+        param = getattr(obj, self.log_name)
+        lb, ub = self._project_bounds(param)
+        return proj_real_to_bounded(param, lb=lb, ub=ub)
+
+    def __set__(self, obj: Any, value: Tensor) -> None:
+        """Set the parameter by projecting from bounded to unbounded space.
+
+        Args:
+            obj: The instance owning this descriptor.
+            value: The parameter value in bounded space to store.
+        """
+        param = getattr(obj, self.log_name)
+        tensor_value = torch.as_tensor(value, dtype=param.dtype, device=param.device)
+        self.validator(tensor_value)
+        lb, ub = self._project_bounds(param)
+        param.data = proj_bounded_to_real(tensor_value, lb=lb, ub=ub)
+
+
+def validate_all_or_none(**params: Any) -> bool:
+    """Ensure paired parameters are provided together (all or none).
+
+    This utility function eliminates repeated validation logic in distributions that require
+    pairs of parameters (e.g., mean+std in Normal, alpha+beta in Gamma).
+
+    Raises InvalidParameterCombinationError if some but not all parameters are provided.
+
+    Args:
+        **params: Keyword arguments where names are parameter names and values are the
+                 actual parameter tensors (or None if not provided).
+
+    Returns:
+        bool: True if any parameters were provided (all of them), False if none were provided.
+
+    Raises:
+        InvalidParameterCombinationError: If some parameters are provided but not all.
+
+    Example:
+        >>> validate_all_or_none(mean=mean_val, std=std_val)  # OK: both provided
+        True
+        >>> validate_all_or_none(mean=None, std=None)  # OK: neither provided
+        False
+        >>> validate_all_or_none(mean=mean_val, std=None)  # ERROR: only mean provided
+        InvalidParameterCombinationError
+    """
+
+    provided = [name for name, value in params.items() if value is not None]
+    if provided and len(provided) != len(params):
+        missing = [name for name in params if name not in provided]
+        group = ", ".join(params.keys())
+        missing_group = ", ".join(missing)
+        provided_group = ", ".join(provided)
+        raise InvalidParameterCombinationError(
+            f"Parameters ({group}) must be provided together; missing {missing_group} when only "
+            f"{provided_group or 'none'} were provided."
+        )
+    return bool(provided)
+
+
+@dataclass
+class MLEBatch:
+    """Container with normalized data shared across MLE template hooks.
+
+    This dataclass encapsulates all the normalized inputs and metadata needed by the
+    MLE template pattern. It is created by _init_mle_batch and passed to _mle_compute_statistics.
+
+    Attributes:
+        data: Scope-filtered data tensor of shape (batch_size, num_scope_features).
+              Missing values have been handled according to nan_strategy.
+        weights: Normalized weight tensor of shape (batch_size, 1, ...) with proper
+                broadcasting shape for element-wise multiplication with data.
+        bias_correction: Boolean flag indicating whether bias correction was requested.
+        cache: Dictionary for storing intermediate computation results for reuse in EM steps.
+        diagnostics: Metadata dict tracking original/retained sample counts, nan_strategy used,
+                    and other debugging information.
+    """
+
+    data: Tensor
+    weights: Tensor
+    bias_correction: bool
+    cache: Cache
+    diagnostics: dict[str, Any]
+
+
+@dataclass
+class MLEParameterEstimate:
+    """Metadata wrapper for per-parameter MLE updates.
+
+    When returning from _mle_compute_statistics, individual parameter estimates can be
+    wrapped in this dataclass to provide additional metadata (bounds, broadcast requirements)
+    that _apply_mle_estimates will respect. Alternatively, plain tensors can be returned
+    and will be treated with default metadata.
+
+    Example:
+        >>> return {
+        ...     'std': LogSpaceParameter.estimate(tensor_value),
+        ...     'mean': tensor_value,  # Will use defaults: broadcast=True, no bounds
+        ... }
+
+    Attributes:
+        value: The estimated parameter tensor.
+        lb: Optional lower bound. If provided, _apply_mle_estimates will clamp the value.
+        ub: Optional upper bound. If provided, _apply_mle_estimates will clamp the value.
+        broadcast: Whether to broadcast this parameter to event_shape. Defaults to True.
+                  Set to False if the estimate already has the correct shape.
+    """
+
+    value: Tensor
+    lb: float | Tensor | None = None
+    ub: float | Tensor | None = None
+    broadcast: bool = True
+
+
+MLEEstimates = dict[str, Tensor | MLEParameterEstimate]
 
 
 class LeafModule(Module, ABC):
@@ -50,6 +295,11 @@ class LeafModule(Module, ABC):
         """Returns the parameters of the distribution."""
         pass
 
+    @abstractmethod
+    def _mle_compute_statistics(self, batch: MLEBatch) -> MLEEstimates:
+        """Compute distribution-specific statistics required for MLE updates."""
+        raise NotImplementedError
+
     def log_prob(self, x: Tensor) -> Tensor:
         """Computes the log probability of the given samples."""
         return self.distribution.log_prob(x)
@@ -71,34 +321,96 @@ class LeafModule(Module, ABC):
         return {k: v[indices] for k, v in self.params().items()}
 
     def check_support(self, data: Tensor) -> Tensor:
-        r"""Checks if specified data is in support of the represented distribution.
+        r"""Checks whether ``data`` falls inside the support of this distribution.
 
-        Determines whether or note instances are part of the support of this distribution.
-
-        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+        The base implementation consults the underlying torch distribution support
+        (if available) and then applies optional subclass-specific masks via
+        ``_custom_support_mask``. NaNs are treated as valid (they are marginalized),
+        while ``+/-inf`` entries are always rejected.
 
         Args:
-            data:
-                Two-dimensional PyTorch tensor containing sample instances.
-                Each row is regarded as a sample.
+            data: Tensor that has already been reshaped for the leaf scope (see
+                ``log_likelihood`` / ``apply_nan_strategy``). Additional leaf-specific
+                dimensions (channels, repetitions) may be size ``1`` because all
+                repetitions share the same support.
 
         Returns:
-            Two dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
+            Boolean tensor (same shape as ``data``) indicating per-entry support
+            membership.
         """
 
-        # nan entries (regarded as valid)
         nan_mask = torch.isnan(data)
-
         valid = torch.ones_like(data, dtype=torch.bool)
 
-        # check only first entry of num_leaf node dim since all leaf node repetition have the same support
+        support_masks: list[Tensor] = []
 
-        valid[~nan_mask] = self.distribution.support.check(data)[..., [0]][~nan_mask]
+        if self._use_distribution_support():
+            dist_mask = self._distribution_support_mask(data)
+            if dist_mask is not None:
+                support_masks.append(dist_mask)
 
-        # check for infinite values
+        custom_mask = self._custom_support_mask(data)
+        if custom_mask is not None:
+            support_masks.append(custom_mask)
+
+        for mask in support_masks:
+            aligned = self._align_support_mask(mask, data)
+            valid[~nan_mask] &= aligned[~nan_mask]
+
         valid[~nan_mask & valid] &= ~data[~nan_mask & valid].isinf()
 
         return valid
+
+    def _use_distribution_support(self) -> bool:
+        """Whether ``check_support`` should consult ``self.distribution.support``."""
+        return True
+
+    def _custom_support_mask(self, data: Tensor) -> Tensor | None:
+        """Hook for subclasses that need bespoke support checks."""
+        return None
+
+    def _distribution_support_mask(self, data: Tensor) -> Tensor | None:
+        """Return the distribution-provided support mask if available."""
+        distribution = self.distribution
+        support = getattr(distribution, "support", None)
+        if support is None or not hasattr(support, "check"):
+            return None
+        try:
+            return support.check(data)
+        except NotImplementedError:
+            # Custom distributions may not implement support checks.
+            return None
+
+    def _align_support_mask(self, mask: Tensor, data: Tensor) -> Tensor:
+        """Align a support mask with the shape of ``data`` for boolean indexing."""
+        if mask.dim() < data.dim():
+            expand_dims = data.dim() - mask.dim()
+            mask = mask.reshape(*mask.shape, *([1] * expand_dims))
+
+        if mask.dim() != data.dim():
+            raise RuntimeError(
+                f"Support mask rank {mask.dim()} incompatible with data rank {data.dim()} "
+                f"in {self.__class__.__name__}. Provide a custom check_support override."
+            )
+
+        slices: list[slice] = []
+        for mask_size, data_size in zip(mask.shape, data.shape):
+            if mask_size == data_size:
+                slices.append(slice(None))
+            elif data_size == 1 and mask_size > 1:
+                slices.append(slice(0, 1))
+            elif mask_size == 1 and data_size > 1:
+                slices.append(slice(None))
+            else:
+                raise RuntimeError(
+                    f"Support mask shape {tuple(mask.shape)} incompatible with data shape "
+                    f"{tuple(data.shape)} in {self.__class__.__name__}."
+                )
+
+        mask = mask[tuple(slices)]
+        if mask.shape != data.shape:
+            mask = mask.expand_as(data)
+        return mask
 
     # MLE Helper Methods
     def _prepare_mle_weights(self, data: Tensor, weights: Optional[Tensor] = None) -> Tensor:
@@ -121,21 +433,58 @@ class LeafModule(Module, ABC):
             weights = weights.view(_shape)
         return weights
 
-    def _handle_mle_edge_cases(self, param_est: Tensor) -> Tensor:
-        """Handle edge cases in parameter estimation (zeros and NaNs).
-
-        Replaces zero values and NaNs with 1e-8 to avoid numerical issues.
+    def _handle_mle_edge_cases(
+        self,
+        param_est: Tensor,
+        lb: float | Tensor | None = None,
+        ub: float | Tensor | None = None,
+    ) -> Tensor:
+        """Handle NaNs, zeros, and optional bounds in parameter estimation.
 
         Args:
             param_est: The estimated parameter tensor.
+            lb: Optional lower bound (inclusive). Values at/below this bound are nudged by `eps`.
+            ub: Optional upper bound (inclusive). Values at/above this bound are nudged by `eps`.
 
         Returns:
             Parameter tensor with edge cases handled.
         """
-        if torch.any(zero_mask := torch.isclose(param_est, torch.tensor(0.0))):
-            param_est[zero_mask] = torch.tensor(1e-8)
-        if torch.any(nan_mask := torch.isnan(param_est)):
-            param_est[nan_mask] = torch.tensor(1e-8)
+        eps = torch.tensor(1e-8, dtype=param_est.dtype, device=param_est.device)
+
+        def _to_tensor(bound: float | Tensor | None) -> Tensor | None:
+            if bound is None:
+                return None
+            if isinstance(bound, Tensor):
+                return bound.to(device=param_est.device, dtype=param_est.dtype)
+            return torch.as_tensor(bound, device=param_est.device, dtype=param_est.dtype)
+
+        lb_tensor = _to_tensor(lb)
+        ub_tensor = _to_tensor(ub)
+
+        nan_mask = torch.isnan(param_est)
+        if nan_mask.any():
+            param_est = param_est.clone()
+            param_est[nan_mask] = eps
+
+        if lb_tensor is not None:
+            below_mask = param_est <= lb_tensor
+            if below_mask.any():
+                param_est = param_est.clone()
+                param_est[below_mask] = lb_tensor[below_mask] + eps if lb_tensor.ndim else lb_tensor + eps
+        else:
+            zero_mask = torch.isclose(
+                param_est, torch.tensor(0.0, device=param_est.device, dtype=param_est.dtype)
+            )
+            if zero_mask.any():
+                param_est = param_est.clone()
+                param_est[zero_mask] = eps
+
+        if ub_tensor is not None:
+            above_mask = param_est >= ub_tensor
+            if above_mask.any():
+                param_est = param_est.clone()
+                param_est[above_mask] = ub_tensor[above_mask] - eps if ub_tensor.ndim else ub_tensor - eps
+
         return param_est
 
     def _broadcast_to_event_shape(self, param_est: Tensor) -> Tensor:
@@ -150,9 +499,22 @@ class LeafModule(Module, ABC):
             Parameter tensor broadcast to proper event_shape.
         """
         if len(self.event_shape) == 2:
-            param_est = param_est.unsqueeze(1).repeat(1, self.out_channels)
+            param_est = param_est.unsqueeze(1).repeat(
+                1,
+                self.out_channels,
+                *([1] * (param_est.dim() - 1)),
+            )
         elif len(self.event_shape) == 3:
-            param_est = param_est.unsqueeze(1).unsqueeze(1).repeat(1, self.out_channels, self.num_repetitions)
+            param_est = (
+                param_est.unsqueeze(1)
+                .unsqueeze(1)
+                .repeat(
+                    1,
+                    self.out_channels,
+                    self.num_repetitions,
+                    *([1] * (param_est.dim() - 1)),
+                )
+            )
 
         return param_est
 
@@ -183,20 +545,26 @@ class LeafModule(Module, ABC):
         else:
             return self.event_shape[1]
 
-    # ToDo: Remove?
-    def get_partial_module(self, indices: list[int]) -> Module:
-        r"""Returns a partial module with the specified indices."""
-
-        new_query = []
-        for i in indices:
-            new_query.append(self.scope.query[i])
-        new_scope = Scope(new_query, self.scope.evidence)
-        return self.__class__(scope=new_scope, out_channels=self.out_channels)
-
     @property
     def feature_to_scope(self) -> list[Scope]:
         """Returns a list of scopes corresponding to the features in the leaf module."""
         return [Scope([i]) for i in self.scope.query]
+
+    @property
+    def device(self) -> torch.device:
+        """Get the device of the module.
+
+        Returns the device of the first parameter if available, otherwise the first buffer.
+        This is necessary for modules that may have no learnable parameters (e.g., Uniform,
+        Hypergeometric).
+
+        Returns:
+            torch.device: The device (CPU, CUDA, etc.) where the module's parameters/buffers reside.
+        """
+        try:
+            return next(iter(self.parameters())).device
+        except StopIteration:
+            return next(iter(self.buffers())).device
 
     def expectation_maximization(
         self,
@@ -352,6 +720,125 @@ class LeafModule(Module, ABC):
 
         return log_prob
 
+    def _init_mle_batch(
+        self,
+        data: Tensor,
+        weights: Optional[Tensor] = None,
+        bias_correction: bool = True,
+        nan_strategy: Optional[str | Callable] = None,
+        check_support: bool = True,
+        cache: Cache | None = None,
+        preprocess_data: bool = True,
+    ) -> MLEBatch:
+        """Prepare normalized tensors and bookkeeping for the MLE template method.
+
+        This is the first step of the MLE template pattern. It handles:
+        - Selecting relevant features from the full data using the leaf's scope
+        - Applying NaN strategies (e.g., dropping or imputing missing values)
+        - Checking data support if requested
+        - Normalizing weights for numerical stability
+        - Creating diagnostics for debugging
+
+        Args:
+            data: Input data tensor of shape (batch_size, num_features).
+            weights: Optional weight tensor for weighted MLE. Shape (batch_size,) or (batch_size, 1).
+                    If None, uniform weights are used.
+            bias_correction: Whether to apply bias correction in parameter estimation.
+            nan_strategy: How to handle missing values (NaN). Options: 'ignore' or callable.
+            check_support: Whether to validate that data falls in the distribution's support.
+            cache: Optional cache dictionary for intermediate results.
+            preprocess_data: Whether to select scope-relevant features. Set False if data
+                           is already scope-filtered.
+
+        Returns:
+            MLEBatch: Container with normalized data, weights, and metadata for _mle_compute_statistics.
+        """
+        cache = init_cache(cache)
+        scoped_data = data[:, self.scope.query] if preprocess_data else data
+        # Apply NaN strategy + support check up-front to stay consistent across leaves.
+        scoped_data, normalized_weights = apply_nan_strategy(
+            nan_strategy, scoped_data, self, weights, check_support
+        )
+        # Convert weights back to 1D before broadcast prep.
+        normalized_weights_flat = normalized_weights.squeeze(-1)
+        mle_weights = self._prepare_mle_weights(scoped_data, normalized_weights_flat)
+        diagnostics = {
+            "original_samples": data.shape[0],
+            "retained_samples": scoped_data.shape[0],
+            "nan_strategy": nan_strategy,
+            "check_support": check_support,
+        }
+        return MLEBatch(
+            data=scoped_data,
+            weights=mle_weights,
+            bias_correction=bias_correction,
+            cache=cache,
+            diagnostics=diagnostics,
+        )
+
+    def _apply_mle_estimates(self, estimates: Optional[MLEEstimates]) -> dict[str, Tensor]:
+        """Apply template estimates by broadcasting, clamping, and assigning via descriptors.
+
+        This is the final step of the MLE template pattern. It handles:
+        - Broadcasting parameter estimates to match the leaf's event_shape (for multi-channel/
+          multi-repetition distributions)
+        - Clamping values within optional bounds (lower/upper limits)
+        - Assigning through descriptors (LogSpaceParameter, BoundedParameter) which handle
+          projection and validation automatically
+        - Falling back to direct parameter or attribute assignment if no descriptor is present
+
+        The method respects descriptor-based storage patterns, allowing parameters to be
+        kept in auxiliary spaces (log-space, projection space) while appearing in real space.
+
+        Args:
+            estimates: Dictionary mapping parameter names to estimated values. Values can be
+                      either Tensor directly or MLEParameterEstimate instances that contain
+                      metadata (bounds, broadcast flags).
+
+        Returns:
+            dict[str, Tensor]: Mapping of parameter names to final applied values (in real space,
+                              after broadcasting and clamping).
+
+        Example:
+            >>> batch = leaf._init_mle_batch(data, weights)
+            >>> estimates = leaf._mle_compute_statistics(batch)
+            >>> applied = leaf._apply_mle_estimates(estimates)
+            >>> applied  # {'std': tensor(...), 'mean': tensor(...)}
+        """
+        applied: dict[str, Tensor] = {}
+        if not estimates:
+            return applied
+        for name, estimate in estimates.items():
+            if isinstance(estimate, MLEParameterEstimate):
+                value = estimate.value
+                lb = estimate.lb
+                ub = estimate.ub
+                broadcast = estimate.broadcast
+            else:
+                value = estimate
+                lb = None
+                ub = None
+                broadcast = True
+
+            param_value = value
+            if broadcast:
+                param_value = self._broadcast_to_event_shape(param_value)
+            if lb is not None or ub is not None:
+                param_value = self._handle_mle_edge_cases(param_value, lb=lb, ub=ub)
+            class_attr = getattr(type(self), name, None)
+            if hasattr(class_attr, "__set__"):
+                # Parameter is managed by a descriptor (e.g., LogSpaceParameter, BoundedParameter)
+                # The descriptor will handle projection and validation
+                class_attr.__set__(self, param_value)
+            else:
+                current_attr = getattr(self, name, None)
+                if isinstance(current_attr, nn.Parameter):
+                    current_attr.data = param_value
+                else:
+                    setattr(self, name, param_value)
+            applied[name] = param_value
+        return applied
+
     def maximum_likelihood_estimation(
         self,
         data: Tensor,
@@ -394,18 +881,23 @@ class LeafModule(Module, ABC):
         Raises:
             ValueError: Invalid arguments.
         """
-        # initialize cache
-        cache = init_cache(cache)
-
-        # select relevant data for scope
-        if preprocess_data:
-            data = data[:, self.scope.query]
-
-        # apply NaN strategy
-        scope_data, weights = apply_nan_strategy(nan_strategy, data, self, weights, check_support)
-
-        # Forward to the actual distribution
-        self.distribution.maximum_likelihood_estimation(scope_data, weights, bias_correction)
+        batch = self._init_mle_batch(
+            data=data,
+            weights=weights,
+            bias_correction=bias_correction,
+            nan_strategy=nan_strategy,
+            check_support=check_support,
+            cache=cache,
+            preprocess_data=preprocess_data,
+        )
+        estimates = self._mle_compute_statistics(batch)
+        applied = self._apply_mle_estimates(estimates)
+        diagnostics = {
+            **batch.diagnostics,
+            "updated_parameters": tuple(applied.keys()),
+            "weights_sum": float(batch.weights.sum().item()),
+        }
+        return diagnostics
 
     def sample(
         self,

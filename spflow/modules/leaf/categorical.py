@@ -3,7 +3,7 @@ from torch import Tensor, nn
 from typing import Optional, Callable
 
 from spflow.meta.data import Scope
-from spflow.modules.leaf.leaf_module import LeafModule
+from spflow.modules.leaf.leaf_module import LeafModule, MLEBatch, MLEParameterEstimate
 from spflow.utils.leaf import parse_leaf_args, init_parameter
 from spflow.utils.cache import Cache
 
@@ -48,6 +48,7 @@ class Categorical(LeafModule):
     @p.setter
     def p(self, p):
         """Set the probabilities."""
+        # Keep manual setter since descriptor helpers cannot enforce simplex normalization.
         # project auxiliary parameter onto actual parameter range
         if not torch.isfinite(p).all():
             raise ValueError(f"Values for 'p' must be finite, but was: {p}")
@@ -70,63 +71,31 @@ class Categorical(LeafModule):
         """Returns the supported values of the distribution."""
         return 1
 
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Optional[Tensor] = None,
-        bias_correction: bool = True,
-        nan_strategy: Optional[str | Callable] = None,
-        check_support: bool = True,
-        cache: Cache | None = None,
-        preprocess_data: bool = True,
-    ) -> None:
-        """Maximum likelihood estimation for Categorical distribution parameters.
+    def _mle_compute_statistics(self, batch: MLEBatch) -> dict[str, MLEParameterEstimate]:
+        """Estimate categorical probabilities for each feature."""
+        data = batch.data
+        weights = batch.weights
 
-        Args:
-            data: The input data tensor.
-            weights: Optional weights tensor. If None, uniform weights are created.
-            bias_correction: Unused for Categorical, kept for API consistency.
-            nan_strategy: Optional string or callable specifying how to handle missing data.
-            check_support: Boolean value indicating whether to check data support.
-            cache: Optional cache dictionary.
-            preprocess_data: Boolean indicating whether to select relevant data for scope.
-        """
-        # Always select data relevant to this scope (same as log_likelihood does)
-        data = data[:, self.scope.query]
-        # Prepare weights using helper method
-        weights = self._prepare_mle_weights(data, weights)
+        weights_flat = weights.reshape(weights.shape[0], -1)[:, 0]
+        n_total = weights_flat.sum()
 
-        # total (weighted) number of instances
-        n_total = weights.sum()
+        if self.K is not None:
+            num_categories = self.K
+        else:
+            finite_values = data[~torch.isnan(data)]
+            num_categories = int(finite_values.max().item()) + 1 if finite_values.numel() else 1
 
-        # count (weighted) number of total successes
-        n_success = (weights * data).sum(dim=0)
-
-        p_est = []
+        p_entries: list[Tensor] = []
         for column in range(data.shape[1]):
-            p_k_est = []
-            for cat in range(len(torch.unique(data))):
-                cat_indices = data[:, column] == cat
-                cat_data = cat_indices.float()
-                cat_est = torch.sum(weights[0] * cat_data)
-                cat_est /= n_total
-                p_k_est.append(cat_est)
-            p_est.append(p_k_est)
+            cat_probs: list[Tensor] = []
+            for cat in range(num_categories):
+                cat_mask = (data[:, column] == cat).float()
+                cat_est = torch.sum(weights_flat * cat_mask) / n_total
+                cat_probs.append(cat_est)
+            p_entries.append(torch.stack(cat_probs))
 
-        p_est = torch.tensor(p_est)
-
-        # Handle edge cases using helper method
-        p_est = self._handle_mle_edge_cases(p_est)
-
-        # Broadcasting for channels and repetitions (special handling for Categorical)
-        if len(self.event_shape) == 2:
-            p_est = p_est.unsqueeze(1).repeat(1, self.out_channels, 1)
-
-        if len(self.event_shape) == 3:
-            p_est = p_est.unsqueeze(1).unsqueeze(2).repeat(1, self.out_channels, self.num_repetitions, 1)
-
-        # set parameters of leaf node and make sure they add up to 1
-        self.p = p_est.to(data.device)
+        p_est = torch.stack(p_entries, dim=0).to(data.device)
+        return {"p": MLEParameterEstimate(p_est, lb=0.0, ub=1.0)}
 
     def params(self) -> dict[str, Tensor]:
         """Returns the parameters of the distribution."""
