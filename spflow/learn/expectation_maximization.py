@@ -73,6 +73,5 @@ def expectation_maximization(
             break
 
         prev_avg_ll = avg_ll
-        # TODO: zero/None all gradients
 
     return torch.stack(ll_history)
