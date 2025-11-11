@@ -465,9 +465,6 @@ class ElementwiseSum(Module):
             # ----- maximization step -----
             self.log_weights = log_expectations
 
-            # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation', we do not need to zero/None parameter gradients
-            # TODO: Check if the above is still true after the whole reimplementation (don't we set param.data = ...?)
-
         for inp in self.inputs:
             inp.expectation_maximization(data, cache=cache)
 
