@@ -21,7 +21,7 @@ class NegativeBinomial(LeafModule):
             scope: Scope object specifying the scope of the distribution.
             out_channels: The number of output channels. If None, it is determined by the parameter tensors.
             num_repetitions: The number of repetitions for the leaf module.
-            n: Tensor representing the required number of successes (strictly greater than 0).
+            n: Tensor representing the required number of successes (non-negative).
             p: Tensor containing the success probability (:math:`p`) of each trial in :math:`[0,1]`.
         """
         event_shape = parse_leaf_args(
@@ -32,8 +32,8 @@ class NegativeBinomial(LeafModule):
 
         p = init_parameter(param=p, event_shape=event_shape, init=torch.rand)
 
-        if not torch.isfinite(n).all() or n.le(0.0).any():
-            raise ValueError(f"Values for 'n' must be finite and greater than 0, but was: {n}")
+        if not torch.isfinite(n).all() or n.lt(0.0).any():
+            raise ValueError(f"Values for 'n' must be finite and non-negative, but was: {n}")
 
         n = torch.broadcast_to(n, event_shape).clone()
         self.register_buffer("_n", n)
@@ -58,9 +58,9 @@ class NegativeBinomial(LeafModule):
             ValueError: Invalid arguments.
         """
 
-        if torch.any(n <= 0.0) or not torch.isfinite(n).all():
+        if torch.any(n < 0.0) or not torch.isfinite(n).all():
             raise ValueError(
-                f"Value of 'n' for 'NegativeBinomial' distribution must be greater than 0, but was: {n}"
+                f"Value of 'n' for 'NegativeBinomial' distribution must be non-negative and finite, but was: {n}"
             )
 
         self._n = n
