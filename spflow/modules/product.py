@@ -115,8 +115,7 @@ class Product(Module):
             data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
 
         # Initialize sampling context if not provided
-        if sampling_ctx is None:
-            sampling_ctx = SamplingContext(data.shape[0])
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
 
         # Expand mask and channels to match input module shape
         mask = sampling_ctx.mask.expand(data.shape[0], self.inputs.out_features)

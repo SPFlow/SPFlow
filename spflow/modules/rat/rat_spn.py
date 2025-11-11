@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from spflow.meta.dispatch import SamplingContext
+from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 
 import torch
 from spflow.modules import Product
@@ -267,9 +267,7 @@ class RatSPN(Module):
 
         # if no sampling context is provided, initialize a context by sampling from the root node
         if sampling_ctx is None and self.n_root_nodes > 1:
-            sampling_ctx = SamplingContext(data.shape[0])
-
-            sampling_ctx.device = data.device
+            sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
             logits = self.root_node.logits
             if logits.shape != (1, self.n_root_nodes, 1):
                 raise ValueError(f"Expected logits shape (1, {self.n_root_nodes}, 1), but got {logits.shape}")
@@ -282,8 +280,7 @@ class RatSPN(Module):
                 sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
 
         else:
-            if sampling_ctx is None:
-                sampling_ctx = SamplingContext(data.shape[0])
+            sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
 
         # if the model only has one root node, we can directly sample from the mixing layer
         if self.n_root_nodes > 1:
