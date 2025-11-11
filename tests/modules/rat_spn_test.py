@@ -423,7 +423,7 @@ from spflow.meta.dispatch import init_default_sampling_context
 #     n_samples = 4
 #     normal_layer = Normal(scope=Scope([0, 1, 2, 3, 4, 5, 6, 7]), out_channels=out_channels, num_repetitions=num_repetitions)
 #     data = torch.tensor([[1,2,3,4,5,6,7,8]])
-#     normal_layer.distribution.std = torch.sqrt(torch.sigmoid(torch.ones((8,3,5))))
+#     normal_layer.std = torch.sqrt(torch.sigmoid(torch.ones((8,3,5))))
 #     product_layer = OuterProduct(inputs=SplitAlternate(inputs=normal_layer, num_splits=2, dim=1))
 #     ll = log_likelihood(product_layer, data)
 #     data = torch.full((n_samples, num_features), torch.nan)
@@ -447,7 +447,7 @@ from spflow.meta.dispatch import init_default_sampling_context
 #     normal_layer = Normal(scope=Scope([0, 1, 2, 3, 4, 5, 6, 7]), out_channels=out_channels,
 #                           num_repetitions=num_repetitions)
 #     data = torch.tensor([[1, 2, 3, 4, 5, 6, 7, 8]])
-#     #normal_layer.distribution.std = torch.sqrt(torch.sigmoid(torch.ones((8, 3, 5))))
+#     #normal_layer.std = torch.sqrt(torch.sigmoid(torch.ones((8, 3, 5))))
 #     product_layer = OuterProduct(inputs=SplitAlternate(inputs=normal_layer, num_splits=2, dim=1))
 #     print(product_layer.unraveled_channel_indices)
 #     print(product_layer)

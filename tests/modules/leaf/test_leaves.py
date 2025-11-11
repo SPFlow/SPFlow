@@ -90,13 +90,13 @@ def test_maximum_likelihood_estimation(
     # Construct sampler
     scope = Scope(list(range(0, out_features)))
     sampler = make_leaf(cls=leaf_cls, scope=scope, out_channels=1)
-    data = sampler.distribution.distribution.sample((100000,)).squeeze(-1)
+    data = sampler.distribution.sample((100000,)).squeeze(-1)
 
     module.maximum_likelihood_estimation(data, bias_correction=bias_correction)
 
     # Check that module and sampler params are equal
-    for param_name, param_module in module.distribution.named_parameters():
-        param_sampler = getattr(sampler.distribution, param_name)
+    for param_name, param_module in module.named_parameters():
+        param_sampler = getattr(sampler, param_name)
         if num_reps:
             assert torch.allclose(param_module, param_sampler.unsqueeze(2), atol=3e-1)
         else:
@@ -110,7 +110,7 @@ def test_requires_grad(leaf_cls, out_features: int, out_channels: int, num_reps)
         leaf_cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps
     )
 
-    for param in module.distribution.parameters():
+    for param in module.parameters():
         assert param.requires_grad
 
 
@@ -133,12 +133,12 @@ def test_gradient_descent_optimization(
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
 
     # Clone module parameters before training
-    params_before = {k: v.clone() for (k, v) in module.distribution.params().items()}
+    params_before = {k: v.clone() for (k, v) in module.params().items()}
 
     train_gradient_descent(module, data_loader, epochs=2)
 
     # Check that the parameters have changed
-    for param_name, param in module.distribution.params().items():
+    for param_name, param in module.params().items():
         if param.requires_grad:
             assert not torch.allclose(param, params_before[param_name])
 
@@ -160,12 +160,12 @@ def test_expectation_maximization(
     data = make_data(cls=leaf_cls, out_features=out_features, n_samples=20)
 
     # Clone module parameters before training
-    params_before = {k: v.clone() for (k, v) in module.distribution.params().items()}
+    params_before = {k: v.clone() for (k, v) in module.params().items()}
 
     expectation_maximization(module, data, max_steps=1)
 
     # Check that the parameters have changed
-    for param_name, param in module.distribution.params().items():
+    for param_name, param in module.params().items():
         if param.requires_grad:
             assert not torch.allclose(param, params_before[param_name])
 
@@ -196,7 +196,7 @@ def test_marginalize(leaf_cls, out_channels: int, prune: bool, marg_rvs, num_rep
         return
 
     # Check, that the parameters have len(marg_rvs) fewer scopes
-    for param_name, param in marginalizeed_module.distribution.named_parameters():
+    for param_name, param in marginalizeed_module.named_parameters():
         assert param.shape[0] == out_features - len(marg_rvs)
 
     # Check, that the correct scopes were marginalized
@@ -217,13 +217,13 @@ def test_constructor_valid_params(leaf_cls, out_features: int, out_channels: int
     )
 
     # Get parameters of module A
-    module_a_param_dict = module_a.distribution.params()
+    module_a_param_dict = module_a.params()
 
     # Construct module B with parameters of module A is initialization
     module_b = leaf_cls(scope=module_a.scope, **module_a_param_dict)
 
     # Check that the parameters are the same
-    for name, param in module_b.distribution.params().items():
+    for name, param in module_b.params().items():
         assert torch.isfinite(param).all()
         assert torch.allclose(param, module_a_param_dict[name])
 
@@ -240,7 +240,7 @@ def test_constructor_nan_param(leaf_cls, out_features: int, out_channels: int, n
     )
 
     # Get parameters of module A
-    nan_params = module_a.distribution.params()
+    nan_params = module_a.params()
     for key, value in nan_params.items():
         nan_params[key] = torch.full_like(value, torch.nan)
 
@@ -261,7 +261,7 @@ def test_constructor_inf_param(leaf_cls, out_features: int, out_channels: int, n
     )
 
     # Get parameters of module A
-    nan_params = module_a.distribution.params()
+    nan_params = module_a.params()
     for key, value in nan_params.items():
         nan_params[key] = torch.full_like(value, torch.inf)
 
@@ -282,7 +282,7 @@ def test_constructor_neginf_param(leaf_cls, out_features: int, out_channels: int
     )
 
     # Get parameters of module A
-    nan_params = module_a.distribution.params()
+    nan_params = module_a.params()
     for key, value in nan_params.items():
         nan_params[key] = torch.full_like(value, -1 * torch.inf)
 
@@ -303,7 +303,7 @@ def test_constructor_missing_param_and_out_channels(leaf_cls, out_features: int,
     )
 
     # Get parameters of module A
-    none_params = module_a.distribution.params()
+    none_params = module_a.params()
     for key, value in none_params.items():
         none_params[key] = None
 

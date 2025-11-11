@@ -42,8 +42,8 @@ def test_constructor_valid_params(out_features: int, out_channels: int):
     """Test the constructor of a LogNormal distribution with valid parameters."""
     mean, std = make_params(out_features, out_channels)
     leaf = make_leaf(mean=mean, std=std)
-    assert torch.isclose(leaf.distribution.mean, mean).all()
-    assert torch.isclose(leaf.distribution.std, std).all()
+    assert torch.isclose(leaf.mean, mean).all()
+    assert torch.isclose(leaf.std, std).all()
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))

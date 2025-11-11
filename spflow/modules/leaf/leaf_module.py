@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Optional, Dict, Any
 
 import torch
 from torch import Tensor
 
-from spflow.distributions.distribution import Distribution
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.modules.module import Module
@@ -32,14 +31,137 @@ class LeafModule(Module, ABC):
 
         self.scope = scope.copy()
         self._out_channels = out_channels
+        self._event_shape = None  # Will be set by subclasses
 
     @property
-    def distribution(self) -> Distribution:
-        return self._distribution
+    @abstractmethod
+    def distribution(self) -> torch.distributions.Distribution:
+        """Returns the underlying torch distribution object."""
+        pass
 
-    @distribution.setter
-    def distribution(self, distribution: Distribution):
-        self._distribution = distribution
+    @property
+    @abstractmethod
+    def _supported_value(self):
+        """Returns the supported values of the distribution."""
+        pass
+
+    @abstractmethod
+    def params(self) -> Dict[str, Tensor]:
+        """Returns the parameters of the distribution."""
+        pass
+
+    def log_prob(self, x: Tensor) -> Tensor:
+        """Computes the log probability of the given samples."""
+        return self.distribution.log_prob(x)
+
+    def mode(self) -> Tensor:
+        """Returns the mode of the distribution."""
+        return self.distribution.mode
+
+    def marginalized_params(self, indices: list[int]) -> Dict[str, Tensor]:
+        """Returns the marginalized parameters of the distribution.
+
+        Args:
+            indices:
+                List of integers specifying the indices of the module to keep.
+
+        Returns:
+            Dictionary from parameter name to tensor containing the marginalized parameters.
+        """
+        return {k: v[indices] for k, v in self.params().items()}
+
+    def check_support(self, data: Tensor) -> Tensor:
+        r"""Checks if specified data is in support of the represented distribution.
+
+        Determines whether or note instances are part of the support of this distribution.
+
+        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
+
+        Args:
+            data:
+                Two-dimensional PyTorch tensor containing sample instances.
+                Each row is regarded as a sample.
+
+        Returns:
+            Two dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
+        """
+
+        # nan entries (regarded as valid)
+        nan_mask = torch.isnan(data)
+
+        valid = torch.ones_like(data, dtype=torch.bool)
+
+        # check only first entry of num_leaf node dim since all leaf node repetition have the same support
+
+        valid[~nan_mask] = self.distribution.support.check(data)[..., [0]][~nan_mask]
+
+        # check for infinite values
+        valid[~nan_mask & valid] &= ~data[~nan_mask & valid].isinf()
+
+        return valid
+
+    # MLE Helper Methods
+    def _prepare_mle_weights(self, data: Tensor, weights: Optional[Tensor] = None) -> Tensor:
+        """Prepare weights for MLE, ensuring proper shape and device.
+
+        Args:
+            data: The input data tensor.
+            weights: Optional weights tensor. If None, uniform weights are created.
+
+        Returns:
+            Weights tensor with proper shape for broadcasting.
+        """
+        if weights is None:
+            _shape = (data.shape[0], *([1] * (data.dim() - 1)))
+            weights = torch.ones(_shape, device=data.device)
+        elif weights.dim() == 1 and data.dim() > 1:
+            # Reshape 1D weights to broadcast properly with multi-dimensional data
+            # e.g., weights [batch_size] -> [batch_size, 1, 1, ...]
+            _shape = (weights.shape[0], *([1] * (data.dim() - 1)))
+            weights = weights.view(_shape)
+        return weights
+
+    def _handle_mle_edge_cases(self, param_est: Tensor) -> Tensor:
+        """Handle edge cases in parameter estimation (zeros and NaNs).
+
+        Replaces zero values and NaNs with 1e-8 to avoid numerical issues.
+
+        Args:
+            param_est: The estimated parameter tensor.
+
+        Returns:
+            Parameter tensor with edge cases handled.
+        """
+        if torch.any(zero_mask := torch.isclose(param_est, torch.tensor(0.0))):
+            param_est[zero_mask] = torch.tensor(1e-8)
+        if torch.any(nan_mask := torch.isnan(param_est)):
+            param_est[nan_mask] = torch.tensor(1e-8)
+        return param_est
+
+    def _broadcast_to_event_shape(self, param_est: Tensor) -> Tensor:
+        """Broadcast parameter estimate to match event_shape.
+
+        Handles broadcasting for 2D (features, channels) and 3D (features, channels, repetitions) event shapes.
+
+        Args:
+            param_est: The estimated parameter tensor with shape (features,).
+
+        Returns:
+            Parameter tensor broadcast to proper event_shape.
+        """
+        if len(self.event_shape) == 2:
+            param_est = param_est.unsqueeze(1).repeat(1, self.out_channels)
+        elif len(self.event_shape) == 3:
+            param_est = param_est.unsqueeze(1).unsqueeze(1).repeat(1, self.out_channels, self.num_repetitions)
+
+        return param_est
+
+    @property
+    def event_shape(self) -> tuple[int, ...]:
+        """Returns the event shape stored by the leaf module."""
+        if self._event_shape is None:
+            raise RuntimeError(f"{self.__class__.__name__} has not set _event_shape in __init__")
+        return self._event_shape
 
     @property
     def out_features(self) -> int:
@@ -47,11 +169,19 @@ class LeafModule(Module, ABC):
 
     @property
     def num_repetitions(self) -> int:
-        return self.distribution.num_repetitions
+        """Returns the number of repetitions of the distribution."""
+        if len(self.event_shape) == 3:
+            return self.event_shape[2]
+        else:
+            return None
 
     @property
     def out_channels(self) -> int:
-        return self.distribution.out_channels
+        """Returns the number of output channels of the distribution."""
+        if len(self.event_shape) == 1:
+            return 1
+        else:
+            return self.event_shape[1]
 
     # ToDo: Remove?
     def get_partial_module(self, indices: list[int]) -> Module:
@@ -146,26 +276,34 @@ class LeafModule(Module, ABC):
 
         # get information relevant for the scope
         data = data[:, self.scope.query]
+        if self.event_shape[0] != len(self.scope.query):
+            raise RuntimeError(
+                f"event_shape mismatch for {self.__class__.__name__}: event_shape={self.event_shape}, scope_len={len(self.scope.query)}"
+            )
 
         # ----- marginalization -----
         marg_mask = torch.isnan(data)
+        has_marginalizations = marg_mask.any()
 
-        # If there are any marg_ids, set them to 0.0 to ensure that distribution.log_prob call is succesfull
+        # If there are any marg_ids, set them to 0.0 to ensure that log_prob call is succesfull
         # and doesn't throw errors due to NaNs
-        if marg_mask.any():
-            data[marg_mask] = self.distribution._supported_value
+        if has_marginalizations:
+            data[marg_mask] = self._supported_value
 
         # ----- log probabilities -----
 
         # Unsqueeze scope_data to make space for num_nodes and repetition dimension
         data = data.unsqueeze(2)
 
-        if len(self.distribution.event_shape) > 2:
+        # Use self.event_shape (not self.distribution.event_shape which may be torch's event_shape)
+        if len(self.event_shape) > 2:
             data = data.unsqueeze(-1)
+
+        dist = self.distribution
 
         if check_support:
             # create mask based on distribution's support
-            valid_mask = self.distribution.check_support(data)
+            valid_mask = self.check_support(data)
 
             if not torch.all(valid_mask):
                 raise ValueError(
@@ -173,14 +311,39 @@ class LeafModule(Module, ABC):
                 )
 
         # compute probabilities for values inside distribution support
-        log_prob = self.distribution.log_prob(data.to(torch.get_default_dtype()))
+        expected_shape = dist.batch_shape + dist.event_shape
+        log_prob_input = data
+        if expected_shape:
+            target_shape = (data.shape[0],) + expected_shape
+            try:
+                log_prob_input = torch.broadcast_to(data, target_shape)
+            except RuntimeError as err:
+                raise RuntimeError(
+                    f"Could not broadcast data for {self.__class__.__name__} to match "
+                    f"distribution shape (batch_shape={dist.batch_shape}, event_shape={dist.event_shape}). "
+                    f"data_shape={tuple(data.shape)}"
+                ) from err
 
-        # Marginalize entries
-        log_prob[marg_mask] = 0.0
+        log_prob = dist.log_prob(log_prob_input.to(torch.get_default_dtype()))
+
+        # Marginalize entries - broadcast mask to log_prob shape
+        if has_marginalizations:
+            # Expand marg_mask to match log_prob shape by broadcasting
+            # marg_mask is [batch, features], unsqueeze(2) makes it [batch, features, 1]
+            marg_mask_for_log_prob = marg_mask.unsqueeze(2)  # [batch, features, 1]
+            # For higher-dimensional event shapes, add another dimension
+            if len(self.event_shape) > 2:
+                marg_mask_for_log_prob = marg_mask_for_log_prob.unsqueeze(-1)  # [batch, features, 1, 1]
+            # Broadcast to log_prob shape
+            marg_mask_for_log_prob = torch.broadcast_to(marg_mask_for_log_prob, log_prob.shape)
+            log_prob[marg_mask_for_log_prob] = 0.0
 
         # Set marginalized scope data back to NaNs
-        if marg_mask.any():
-            data[marg_mask] = torch.nan
+        if has_marginalizations:
+            marg_mask_for_data = marg_mask.unsqueeze(2)
+            if len(self.event_shape) > 2:
+                marg_mask_for_data = marg_mask_for_data.unsqueeze(-1)
+            data[marg_mask_for_data] = torch.nan
 
         # Cache the result for EM step
         if "log_likelihood" not in cache:
@@ -299,7 +462,7 @@ class LeafModule(Module, ABC):
 
         if is_mpe:
             # Get mode of distribution as MPE
-            samples = self.distribution.mode().unsqueeze(0)
+            samples = self.mode().unsqueeze(0)
             if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
                 samples = samples.repeat(n_samples, 1, 1, 1).detach()
                 # repetition_idx shape: (n_samples,)
@@ -325,7 +488,7 @@ class LeafModule(Module, ABC):
 
         else:
             # Sample from distribution
-            samples = self.distribution.sample(n_samples=n_samples)
+            samples = self.distribution.sample((n_samples,))
 
             if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
                 # repetition_idx shape: (n_samples,)
@@ -439,7 +602,7 @@ class LeafModule(Module, ABC):
             return None
 
         # Construct new leaf with marginalized scope and params
-        marg_params_dict = self.distribution.marginalized_params(idxs_marg)
+        marg_params_dict = self.marginalized_params(idxs_marg)
 
         # Make sure to detach the parameters first
         marg_params_dict = {k: v.detach() for k, v in marg_params_dict.items()}
