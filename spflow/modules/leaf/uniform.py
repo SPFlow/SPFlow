@@ -1,14 +1,13 @@
 import torch
 from torch import Tensor
-from typing import Optional, Callable
 
 from spflow.meta.data import Scope
-from spflow.modules.leaf.leaf_module import LeafModule
+from spflow.modules.leaf.leaf_module import LeafModule, MLEBatch
 from spflow.utils.leaf import parse_leaf_args
-from spflow.utils.cache import Cache
 
 
 class Uniform(LeafModule):
+    # Interval bounds remain fixed buffers; descriptors are unnecessary here.
     def __init__(
         self,
         scope: Scope,
@@ -67,79 +66,41 @@ class Uniform(LeafModule):
     def _supported_value(self):
         return self.start
 
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Optional[Tensor] = None,
-        bias_correction: bool = True,
-        nan_strategy: Optional[str | Callable] = None,
-        check_support: bool = True,
-        cache: Cache | None = None,
-        preprocess_data: bool = True,
-    ) -> None:
-        """
-        All parameters of the Uniform distribution are regarded as fixed and will not be estimated.
-        Therefore, this method does nothing, but check for the validity of the data.
+    def _mle_compute_statistics(self, batch: MLEBatch) -> dict[str, Tensor]:
+        """Uniform parameters are fixed buffers; nothing to update during MLE."""
+        return {}
 
-        Args:
-            data: The input data tensor.
-            weights: Optional weights tensor. If None, uniform weights are created.
-            bias_correction: Unused for Uniform, kept for API consistency.
-            nan_strategy: Optional string or callable specifying how to handle missing data.
-            check_support: Boolean value indicating whether to check data support.
-            cache: Optional cache dictionary.
-            preprocess_data: Boolean indicating whether to select relevant data for scope.
-        """
-        # Always select data relevant to this scope (same as log_likelihood does)
-        data = data[:, self.scope.query]
-        data = data.unsqueeze(2)
-        if torch.any(~self.check_support(data)):
-            raise ValueError("Encountered values outside of the support for uniform distribution.")
+    def _use_distribution_support(self) -> bool:
+        """Uniform uses a half-open support; skip torch's closed interval."""
+        return False
 
-        # do nothing since there are no learnable parameters
-        pass
+    def _custom_support_mask(self, data: Tensor) -> Tensor:
+        """Allow start <= x < end, unless support_outside enables all values."""
+        original_data_shape = data.shape
+        start = self.start
+        end = self.end
 
-    def check_support(
-        self,
-        data: torch.Tensor,
-    ) -> torch.Tensor:
-        r"""Checks if specified data is in support of the represented distributions."""
+        # Add batch dimension to parameters
+        start_expanded = start.unsqueeze(0)  # (1, features, channels) or (1, features, channels, repetitions)
+        end_expanded = end.unsqueeze(0)
 
-        # torch distribution support is an interval, despite representing a distribution over a half-open interval
-        # end is adjusted to the next largest number to make sure that desired end is part of the distribution interval
-        # may cause issues with the support check; easier to do a manual check instead
+        # If data has fewer dimensions than start, expand it for the comparison
+        # This handles the case where data is (batch, features) but start is (1, features, channels)
+        data_expanded = data
+        num_added_dims = 0
+        while data_expanded.dim() < start_expanded.dim():
+            data_expanded = data_expanded.unsqueeze(-1)  # Add trailing dimensions
+            num_added_dims += 1
 
-        if self.num_repetitions is not None and data.dim() < 4:
-            data = data.unsqueeze(-1)
+        interval_mask = (data_expanded >= start_expanded) & (data_expanded < end_expanded)
+        mask = interval_mask | self.support_outside
 
-        valid = torch.ones_like(data, dtype=torch.bool)
+        # Reduce the mask back to the original data shape
+        # After broadcasting, the mask includes extra dimensions, so we take the first element along those
+        for _ in range(num_added_dims):
+            mask = mask[..., 0]  # Select first element along last dimension
 
-        # check if values are within valid range
-        # check only first entry of num_leaf node dim since all leaf node repetition have the same support
-        if self.num_repetitions is not None:
-            valid &= ((data >= self.start) & (data < self.end))[..., [0], :1]
-        else:
-            valid &= ((data >= self.start) & (data < self.end))[..., [0]]
-        valid |= self.support_outside
+        return mask
 
-        # nan entries (regarded as valid)
-        nan_mask = torch.isnan(data)
-        valid[nan_mask] = True
-
-        # check for infinite values
-        valid[~nan_mask & valid] &= ~(data[~nan_mask & valid].isinf())
-
-        return valid
-
-    def params(self):
+    def params(self) -> dict[str, Tensor]:
         return {"start": self.start, "end": self.end}
-
-    @property
-    def device(self):
-        """
-        Get the device of the module. Necessary hack since this module has no parameters.
-
-        Returns:
-            torch.device: The device on which the module's buffers are located.
-        """
-        return next(iter(self.buffers())).device

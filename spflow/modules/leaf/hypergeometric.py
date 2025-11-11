@@ -3,12 +3,13 @@ from torch import Tensor
 from typing import Optional, Callable
 
 from spflow.meta.data import Scope
-from spflow.modules.leaf.leaf_module import LeafModule
+from spflow.modules.leaf.leaf_module import LeafModule, MLEBatch
 from spflow.utils.leaf import parse_leaf_args
 from spflow.utils.cache import Cache
 
 
 class Hypergeometric(LeafModule):
+    # Parameters are registered buffers (fixed), so descriptor refactor does not apply.
     def __init__(
         self,
         scope: Scope,
@@ -94,118 +95,50 @@ class Hypergeometric(LeafModule):
     def _supported_value(self):
         return self.n + self.K - self.N
 
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Optional[Tensor] = None,
-        bias_correction: bool = True,
-        nan_strategy: Optional[str | Callable] = None,
-        check_support: bool = True,
-        cache: Cache | None = None,
-        preprocess_data: bool = True,
-    ) -> None:
-        """
-        All parameters of the Hypergeometric distribution are regarded as fixed and will not be estimated.
-        Therefore, this method does nothing, but check for the validity of the data.
+    def _mle_compute_statistics(self, batch: MLEBatch) -> dict[str, Tensor]:
+        """Hypergeometric parameters are fixed buffers; nothing to estimate."""
+        return {}
 
-        Args:
-            data: The input data tensor.
-            weights: Optional weights tensor. If None, uniform weights are created.
-            bias_correction: Unused for Hypergeometric, kept for API consistency.
-            nan_strategy: Optional string or callable specifying how to handle missing data.
-            check_support: Boolean value indicating whether to check data support.
-            cache: Optional cache dictionary.
-            preprocess_data: Boolean indicating whether to select relevant data for scope.
-        """
-        # Always select data relevant to this scope (same as log_likelihood does)
-        data = data[:, self.scope.query]
-        data = data.unsqueeze(2)
-        if torch.any(~self.check_support(data)):
-            raise ValueError("Encountered values outside of the support for hypergeometric distribution.")
-
-        # do nothing since there are no learnable parameters
-        pass
-
-    def params(self):
+    def params(self) -> dict[str, Tensor]:
         return {"K": self.K, "N": self.N, "n": self.n}
 
-    def check_support(
-        self,
-        data: torch.Tensor,
-    ) -> torch.Tensor:
-        r"""Checks if specified data is in support of the represented distributions."""
+    def _custom_support_mask(self, data: Tensor) -> Tensor:
+        """Hypergeometric support requires integer counts within valid bounds."""
+        original_data_shape = data.shape
+        K = self.K.to(dtype=data.dtype, device=data.device)
+        N = self.N.to(dtype=data.dtype, device=data.device)
+        n_param = self.n.to(dtype=data.dtype, device=data.device)
 
-        if self.num_repetitions is not None:
-            data = data.unsqueeze(-1)
+        min_successes = torch.maximum(
+            torch.zeros_like(N),
+            n_param + K - N,
+        )
+        max_successes = torch.minimum(n_param, K)
 
-        valid = torch.ones(data.shape, dtype=torch.bool, device=data.device)
+        # Add batch dimension to parameters
+        min_successes_expanded = min_successes.unsqueeze(
+            0
+        )  # (1, features, channels) or (1, features, channels, repetitions)
+        max_successes_expanded = max_successes.unsqueeze(0)
 
-        # check for infinite values
-        valid &= ~torch.isinf(data)
+        # If data has fewer dimensions than min_successes, expand it for the comparison
+        # This handles the case where data is (batch, features) but min_successes is (1, features, channels)
+        data_expanded = data
+        num_added_dims = 0
+        while data_expanded.dim() < min_successes_expanded.dim():
+            data_expanded = data_expanded.unsqueeze(-1)  # Add trailing dimensions
+            num_added_dims += 1
 
-        # nan entries (regarded as valid)
-        nan_mask = torch.isnan(data)
+        integer_mask = torch.remainder(data_expanded, 1) == 0
+        range_mask = (data_expanded >= min_successes_expanded) & (data_expanded <= max_successes_expanded)
+        mask = integer_mask & range_mask
 
-        # check if all values are valid integers
-        valid[~nan_mask] &= torch.remainder(data[~nan_mask], 1) == 0
+        # Reduce the mask back to the original data shape
+        # After broadcasting, the mask includes extra dimensions, so we take the first element along those
+        for _ in range(num_added_dims):
+            mask = mask[..., 0]  # Select first element along last dimension
 
-        N_nodes = self.N
-        K_nodes = self.K
-        n_nodes = self.n
-
-        # Get event_shape from LeafModule (not distribution which may have different event_shape)
-        event_shape = self.event_shape
-
-        # check if values are in valid range
-        if self.num_repetitions is not None:
-            valid[~nan_mask & valid] &= (
-                (
-                    data
-                    >= torch.max(
-                        torch.vstack(
-                            [
-                                torch.zeros(event_shape, dtype=data.dtype, device=data.device),
-                                n_nodes + K_nodes - N_nodes,
-                            ]
-                        ),
-                        dim=0,
-                    )[0].unsqueeze(0)
-                )
-                & (  # type: ignore
-                    data <= torch.min(torch.vstack([n_nodes, K_nodes]), dim=0)[0].unsqueeze(0)  # type: ignore
-                )
-            )[..., :1, :1][~nan_mask & valid]
-
-        else:
-            valid[~nan_mask & valid] &= (
-                (
-                    data
-                    >= torch.max(
-                        torch.vstack(
-                            [
-                                torch.zeros(event_shape, dtype=data.dtype, device=data.device),
-                                n_nodes + K_nodes - N_nodes,
-                            ]
-                        ),
-                        dim=0,
-                    )[0].unsqueeze(0)
-                )
-                & (  # type: ignore
-                    data <= torch.min(torch.vstack([n_nodes, K_nodes]), dim=0)[0].unsqueeze(0)  # type: ignore
-                )
-            )[..., :1][~nan_mask & valid]
-
-        return valid
-
-    @property
-    def device(self):
-        """
-        Get the device of the module. Necessary hack since this module has no parameters.
-
-        Returns:
-            torch.device: The device on which the module's buffers are located.
-        """
-        return next(iter(self.buffers())).device
+        return mask
 
 
 class _HypergeometricDistribution:

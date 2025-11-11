@@ -40,9 +40,7 @@ class ImageWrapper(AbstractWrapper):
 
     def flatten(self, tensor: torch.Tensor):
         if tensor.dim() != 4:
-            raise ShapeError(
-                f"Input tensor must be 4-dimensional but got {tensor.dim()}-dimensional."
-            )
+            raise ShapeError(f"Input tensor must be 4-dimensional but got {tensor.dim()}-dimensional.")
         if tensor.shape[1] != self.num_channel:
             raise ShapeError(
                 f"Input tensor channel dimension must match num_channel {self.num_channel} but got "
@@ -54,15 +52,11 @@ class ImageWrapper(AbstractWrapper):
     def to_image_format(self, tensor: torch.Tensor, batch: bool = True):
         if batch:
             if tensor.dim() != 2:
-                raise ShapeError(
-                    f"Input tensor must be 2-dimensional but got {tensor.dim()}-dimensional."
-                )
+                raise ShapeError(f"Input tensor must be 2-dimensional but got {tensor.dim()}-dimensional.")
             return tensor.view(tensor.shape[0], self.num_channel, self.height, self.width)
         else:
             if tensor.dim() != 1:
-                raise ShapeError(
-                    f"Input tensor must be 1-dimensional but got {tensor.dim()}-dimensional."
-                )
+                raise ShapeError(f"Input tensor must be 1-dimensional but got {tensor.dim()}-dimensional.")
             return tensor.view(self.num_channel, self.height, self.width)
 
     def extra_repr(self):

@@ -83,8 +83,7 @@ class Module(nn.Module, ABC):
         if data is not None and num_samples is not None:
             if data.shape[0] != num_samples:
                 raise ValueError(
-                    f"num_samples ({num_samples}) must match data.shape[0] ({data.shape[0]}) "
-                    f"or be None"
+                    f"num_samples ({num_samples}) must match data.shape[0] ({data.shape[0]}) " f"or be None"
                 )
 
         # Create data tensor if needed

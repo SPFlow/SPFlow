@@ -3,9 +3,14 @@ from torch import Tensor, nn
 from typing import Optional, Callable
 
 from spflow.meta.data import Scope
-from spflow.modules.leaf.leaf_module import LeafModule
+from spflow.modules.leaf.leaf_module import (
+    LeafModule,
+    BoundedParameter,
+    MLEBatch,
+    MLEEstimates,
+    MLEParameterEstimate,
+)
 from spflow.utils.leaf import parse_leaf_args, init_parameter
-from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 from spflow.utils.cache import Cache
 
 
@@ -13,6 +18,8 @@ class Binomial(LeafModule):
     """
     Binomial distribution.
     """
+
+    p = BoundedParameter("p", lb=0.0, ub=1.0)
 
     def __init__(
         self, scope: Scope, n: Tensor, out_channels: int = None, num_repetitions: int = None, p: Tensor = None
@@ -43,33 +50,6 @@ class Binomial(LeafModule):
         self.n = n
         self.log_p = nn.Parameter(torch.empty_like(p))  # initialize empty, set with setter in next line
         self.p = p.clone().detach()
-
-    @property
-    def p(self) -> Tensor:
-        """Returns the success proability."""
-        # project auxiliary parameter onto actual parameter range
-        return proj_real_to_bounded(self.log_p, lb=0.0, ub=1.0)  # type: ignore
-
-    @p.setter
-    def p(self, p: Tensor):
-        r"""Sets the success probability.
-
-        Args:
-            p:
-                Floating point representing the success probability in :math:`[0,1]`.
-
-        Raises:
-            ValueError: Invalid arguments.
-        """
-        if isinstance(p, float):
-            p = Tensor(p)
-
-        if p.lt(0.0).any() or p.gt(1.0).any() or not torch.isfinite(p).all():
-            raise ValueError(
-                f"Value of 'p' for 'Binomial' distribution must to be between 0.0 and 1.0, but was: {p}"
-            )
-
-        self.log_p.data = proj_bounded_to_real(p, lb=0.0, ub=1.0)  # type: ignore
 
     @property
     def n(self) -> Tensor:
@@ -103,96 +83,49 @@ class Binomial(LeafModule):
     def _supported_value(self):
         return 0.0
 
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Optional[Tensor] = None,
-        bias_correction: bool = True,
-        nan_strategy: Optional[str | Callable] = None,
-        check_support: bool = True,
-        cache: Cache | None = None,
-        preprocess_data: bool = True,
-    ) -> None:
-        """
-        Maximum likelihood estimation for the Binomial distribution. bias_correction is ignored since p = x / n is unbiased.
+    def _use_distribution_support(self) -> bool:
+        """Skip torch's support check due to shape broadcast issues; use custom check instead."""
+        return False
 
-        Args:
-            data: The input data tensor.
-            weights: Optional weights tensor. If None, uniform weights are created.
-            bias_correction: Unused for Binomial, kept for API consistency.
-            nan_strategy: Optional string or callable specifying how to handle missing data.
-            check_support: Boolean value indicating whether to check data support.
-            cache: Optional cache dictionary.
-            preprocess_data: Boolean indicating whether to select relevant data for scope.
-        """
-        # Always select data relevant to this scope (same as log_likelihood does)
-        data = data[:, self.scope.query]
-        # Prepare weights using helper method
-        weights = self._prepare_mle_weights(data, weights)
+    def _custom_support_mask(self, data: Tensor) -> Tensor:
+        """Binomial support: {0, 1, 2, ..., n}."""
+        n = self.n
+        original_data_shape = data.shape
 
-        # normalize weights to sum to n_samples
-        weights /= weights.sum()
+        # Add batch dimension to n
+        n_expanded = n.unsqueeze(0)  # (1, features, channels) or (1, features, channels, repetitions)
 
-        # total (weighted) number of instances times number of trials per instance
-        n_total = weights.sum() * self.n
+        # If data has fewer dimensions than n, expand it for the comparison
+        # This handles the case where data is (batch, features) but n is (1, features, channels)
+        data_expanded = data
+        num_added_dims = 0
+        while data_expanded.dim() < n_expanded.dim():
+            data_expanded = data_expanded.unsqueeze(-1)  # Add trailing dimensions
+            num_added_dims += 1
 
-        # count (weighted) number of total successes
-        n_success = (weights * data).sum(0)
+        integer_mask = torch.remainder(data_expanded, 1) == 0
+        range_mask = (data_expanded >= 0) & (data_expanded <= n_expanded)
+        mask = integer_mask & range_mask
 
-        # estimate (weighted) success probability
-        # For Binomial, the MLE doesn't use the standard broadcast helper
-        # because of the specific shape handling needed
-        if len(self.event_shape) == 3:
-            p_est = n_success.unsqueeze(1).unsqueeze(2) / n_total
-        else:
-            p_est = n_success.unsqueeze(1) / n_total
+        # Reduce the mask back to the original data shape
+        # After broadcasting, the mask includes extra dimensions, so we take the first element along those
+        for _ in range(num_added_dims):
+            mask = mask[..., 0]  # Select first element along last dimension
 
-        # edge case (if all values are the same, not enough samples or very close to each other)
-        if torch.any(zero_mask := torch.isclose(p_est, torch.tensor(0.0))):
-            p_est[zero_mask] = torch.tensor(1e-8)
-        elif torch.any(one_mask := torch.isclose(p_est, torch.tensor(1.0))):
-            p_est[one_mask] = torch.tensor(1 - 1e-8)
+        return mask
 
-        # set parameters of leaf node
-        self.p = p_est
+    def _mle_compute_statistics(self, batch: MLEBatch) -> MLEEstimates:
+        """Estimate Binomial success probabilities (p) using shared template helpers."""
+        data = batch.data
+        weights = batch.weights
+
+        normalized_weights = weights / weights.sum()
+        n_total = normalized_weights.sum() * self.n
+        n_success = (normalized_weights * data).sum(0)
+        success_est = self._broadcast_to_event_shape(n_success)
+        p_est = success_est / n_total
+
+        return {"p": MLEParameterEstimate(p_est, lb=0.0, ub=1.0, broadcast=False)}
 
     def params(self) -> dict[str, Tensor]:
         return {"n": self.n, "p": self.p}
-
-    def check_support(self, data: Tensor) -> Tensor:
-        r"""Checks if specified data is in support of the represented distribution.
-
-        Determines whether or note instances are part of the support of this distribution.
-
-        Additionally, NaN values are regarded as being part of the support (they are marginalized over during inference).
-
-        Args:
-            data:
-                Two-dimensional PyTorch tensor containing sample instances.
-                Each row is regarded as a sample.
-
-        Returns:
-            Two dimensional PyTorch tensor indicating for each instance, whether they are part of the support (True) or not (False).
-        """
-
-        # nan entries (regarded as valid)
-        if data.ndim == 3 and self.num_repetitions is not None:
-            data = data.unsqueeze(-1)
-        elif data.ndim == 2 and self.num_repetitions is not None:
-            data = data.unsqueeze(-1).unsqueeze(-1)
-
-        nan_mask = torch.isnan(data)
-
-        valid = torch.ones_like(data, dtype=torch.bool)
-
-        # check only first entry of num_leaf node dim since all leaf node repetition have the same support
-        if self.num_repetitions is not None:
-            valid[~nan_mask] = self.distribution.support.check(data)[..., :1, :1][~nan_mask].squeeze(-1)
-        else:
-            valid[~nan_mask] = self.distribution.support.check(data)[..., [0]][~nan_mask]
-        # valid[~nan_mask] = self.distribution.support.check(data)[..., :1][~nan_mask]
-
-        # check for infinite values
-        valid[~nan_mask & valid] &= ~data[~nan_mask & valid].isinf()
-
-        return valid

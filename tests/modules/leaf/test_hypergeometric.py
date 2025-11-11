@@ -94,3 +94,21 @@ def test_constructor_K_greater_than_N(out_features: int, out_channels: int):
     K, N, n = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
         make_leaf(K=N + 1, N=N, n=n)
+
+
+def test_hypergeometric_support_enforces_integer_bounds():
+    scope = Scope([0])
+    K = torch.tensor([[4.0]])
+    N = torch.tensor([[10.0]])
+    n = torch.tensor([[5.0]])
+    leaf = Hypergeometric(scope=scope, K=K, N=N, n=n)
+
+    valid = torch.tensor([[[3.0]]])
+    invalid_fractional = torch.tensor([[[1.5]]])
+    invalid_low = torch.tensor([[[-1.0]]])
+    invalid_high = torch.tensor([[[6.0]]])
+
+    assert torch.all(leaf.check_support(valid))
+    assert not torch.all(leaf.check_support(invalid_fractional))
+    assert not torch.all(leaf.check_support(invalid_low))
+    assert not torch.all(leaf.check_support(invalid_high))
