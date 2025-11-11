@@ -229,8 +229,9 @@ def learn_spn(
             scope = leaf_modules.scope
             leaf_modules = [leaf_modules]
 
-    if len(scope.query) != data.shape[1]:
-        raise ValueError(f"Number of query variables in 'scope' does not match number of features in data.")
+    # Verify that all indices in scope are valid for the data
+    if len(scope.query) > 0 and max(scope.query) >= data.shape[1]:
+        raise ValueError(f"Scope indices {scope.query} exceed data features {data.shape[1]}.")
 
     # available off-the-shelf clustering methods provided by SPFlow
     if isinstance(clustering_method, str):
@@ -278,7 +279,6 @@ def learn_spn(
                 leaf_layer.maximum_likelihood_estimation(
                     data,
                     check_support=check_support,
-                    preprocess_data=False,
                 )
 
                 leaves.append(leaf_layer)
@@ -312,7 +312,7 @@ def learn_spn(
             product_inputs = []
             for partition in partitions:
                 sub_structure = learn_spn(
-                    data[:, partition[0]],
+                    data,
                     leaf_modules=leaf_modules,
                     scope=Scope([scope.query[rv] for rv in partition[0]]),
                     out_channels=out_channels,

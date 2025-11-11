@@ -180,13 +180,6 @@ def _get_module_children(module: Module) -> list[tuple[str, Module]]:
             else:
                 children.append(("inputs", inputs))
 
-    # Check for distribution attribute (leaf modules)
-    # Only add if it's a Module - distributions are not modules
-    if hasattr(module, "distribution"):
-        dist = module.distribution
-        if dist is not None and isinstance(dist, Module):
-            children.append(("distribution", dist))
-
     # Check for root_node attribute (RAT-SPN modules)
     if module.__class__.__name__ == "RatSPN":
         root_node = module.root_node

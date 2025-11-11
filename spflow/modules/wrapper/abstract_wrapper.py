@@ -1,7 +1,6 @@
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.leaf.leaf_module import LeafModule
-from spflow.distributions.distribution import Distribution
 from abc import abstractmethod
 
 

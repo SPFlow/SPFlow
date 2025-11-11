@@ -68,13 +68,13 @@ from spflow.meta.dispatch import init_default_sampling_context
 #     # Construct sampler
 #     scope = Scope(list(range(0, out_features)))
 #     sampler = make_cond_leaf(cls=cls, scope=scope, out_channels=1)
-#     data = sampler.distribution.distribution.sample((100000,)).squeeze(-1)
+#     data = sampler.distribution.sample((100000,)).squeeze(-1)
 #
 #     maximum_likelihood_estimation(module, data, bias_correction=bias_correction)
 #
 #     # Check that module and sampler params are equal
-#     for param_name, param_module in module.distribution.named_parameters():
-#         param_sampler = getattr(sampler.distribution, param_name)
+#     for param_name, param_module in module.named_parameters():
+#         param_sampler = getattr(sampler, param_name)
 #         assert torch.allclose(param_module, param_sampler, atol=1e-1)
 #
 #
@@ -83,7 +83,7 @@ from spflow.meta.dispatch import init_default_sampling_context
 #     """Test whether the mean and std of a normal distribution require gradients."""
 #     module = make_cond_leaf(cls, out_channels=out_channels, out_features=out_features)
 #
-#     for param in module.distribution.parameters():
+#     for param in module.parameters():
 #         assert param.requires_grad
 #
 #
@@ -103,12 +103,12 @@ from spflow.meta.dispatch import init_default_sampling_context
 #     data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
 #
 #     # Clone module parameters before training
-#     params_before = {k: v.clone() for (k, v) in module.distribution.params().items()}
+#     params_before = {k: v.clone() for (k, v) in module.params().items()}
 #
 #     train_gradient_descent(module, data_loader, epochs=1)
 #
 #     # Check that the parameters have changed
-#     for param_name, param in module.distribution.params().items():
+#     for param_name, param in module.params().items():
 #         if param.requires_grad:
 #             assert not torch.allclose(param, params_before[param_name])
 #
@@ -136,7 +136,7 @@ from spflow.meta.dispatch import init_default_sampling_context
 #         return
 #
 #     # Check, that the parameters have len(marg_rvs) fewer scopes
-#     for param_name, param in marginalizeed_module.distribution.named_parameters():
+#     for param_name, param in marginalizeed_module.named_parameters():
 #         assert param.shape[0] == out_features - len(marg_rvs)
 #
 #     # Check, that the correct scopes were marginalized
@@ -154,7 +154,7 @@ from spflow.meta.dispatch import init_default_sampling_context
 #     module_a = make_cond_leaf(cls, out_channels=out_channels, out_features=out_features)
 #
 #     # Get parameters of module A
-#     module_a_param_dict = module_a.distribution.params()
+#     module_a_param_dict = module_a.params()
 #
 #     cond_f = lambda data: module_a_param_dict
 #
@@ -162,7 +162,7 @@ from spflow.meta.dispatch import init_default_sampling_context
 #     module_b = cls(scope=module_a.scope, cond_f=cond_f)
 #
 #     # Check that the parameters are the same
-#     for name, param in module_b.distribution.params().items():
+#     for name, param in module_b.params().items():
 #         assert torch.isfinite(param).all()
 #         assert torch.allclose(param, module_a_param_dict[name])
 #
@@ -176,7 +176,7 @@ from spflow.meta.dispatch import init_default_sampling_context
 #     module_a = make_cond_leaf(cls, out_channels=out_channels, out_features=out_features)
 #
 #     # Get parameters of module A
-#     nan_params = module_a.distribution.params()
+#     nan_params = module_a.params()
 #     for key, value in nan_params.items():
 #         nan_params[key] = torch.full_like(value, torch.nan)
 #
@@ -195,7 +195,7 @@ from spflow.meta.dispatch import init_default_sampling_context
 #     module_a = make_cond_leaf(cls, out_channels=out_channels, out_features=out_features)
 #
 #     # Get parameters of module A
-#     nan_params = module_a.distribution.params()
+#     nan_params = module_a.params()
 #     for key, value in nan_params.items():
 #         nan_params[key] = torch.full_like(value, torch.inf)
 #
@@ -214,7 +214,7 @@ from spflow.meta.dispatch import init_default_sampling_context
 #     module_a = make_cond_leaf(cls, out_channels=out_channels, out_features=out_features)
 #
 #     # Get parameters of module A
-#     nan_params = module_a.distribution.params()
+#     nan_params = module_a.params()
 #     for key, value in nan_params.items():
 #         nan_params[key] = torch.full_like(value, -1 * torch.inf)
 #
@@ -233,7 +233,7 @@ from spflow.meta.dispatch import init_default_sampling_context
 #     module_a = make_cond_leaf(cls, out_channels=out_channels, out_features=out_features)
 #
 #     # Get parameters of module A
-#     none_params = module_a.distribution.params()
+#     none_params = module_a.params()
 #     for key, value in none_params.items():
 #         none_params[key] = None
 #

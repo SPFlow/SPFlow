@@ -19,7 +19,7 @@ def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support) -
     if check_support:
         # create dimension for check_support
         scope_data = scope_data.unsqueeze(2)
-        if torch.any(~leaf.distribution.check_support(scope_data)):
+        if torch.any(~leaf.check_support(scope_data)):
             raise ValueError("Encountered values outside of the support.")
         scope_data = scope_data.squeeze(2)
     # NaN entries (no information)
@@ -51,7 +51,7 @@ def apply_nan_strategy(nan_strategy, scope_data, leaf, weights, check_support) -
     return scope_data, weights
 
 
-def init_parameter(param: Tensor, event_shape: tuple[int, ...], init: Callable) -> Tensor:
+def init_parameter(param: Tensor | None, event_shape: tuple[int, ...], init: Callable) -> Tensor:
     """Initializes a parameter tensor of a leaf node."""
 
     if param is None:
