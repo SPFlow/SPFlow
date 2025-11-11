@@ -12,6 +12,7 @@ from pytest import raises
 
 from spflow.meta import Scope
 from spflow.modules.leaf import Gamma
+from spflow.exceptions import InvalidParameterCombinationError
 
 # Constants
 out_channels_values = [1, 5]
@@ -53,3 +54,29 @@ def test_constructor_zero_beta(out_features: int, out_channels: int):
     alpha, beta = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
         make_module(alpha=alpha, beta=torch.full_like(beta, 0.0))
+
+
+@pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
+def test_constructor_missing_alpha(out_features: int, out_channels: int):
+    """Test the constructor of a Gamma distribution with missing alpha (only beta provided)."""
+    alpha, beta = make_params(out_features, out_channels)
+    with pytest.raises(InvalidParameterCombinationError):
+        scope = Scope(list(range(out_features)))
+        Gamma(scope=scope, alpha=None, beta=beta)
+
+
+@pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
+def test_constructor_missing_beta(out_features: int, out_channels: int):
+    """Test the constructor of a Gamma distribution with missing beta (only alpha provided)."""
+    alpha, beta = make_params(out_features, out_channels)
+    with pytest.raises(InvalidParameterCombinationError):
+        scope = Scope(list(range(out_features)))
+        Gamma(scope=scope, alpha=alpha, beta=None)
+
+
+@pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
+def test_constructor_both_none(out_features: int, out_channels: int):
+    """Test the constructor of a Gamma distribution with both alpha and beta as None."""
+    with pytest.raises(InvalidParameterCombinationError):
+        scope = Scope(list(range(out_features)))
+        Gamma(scope=scope, alpha=None, beta=None)

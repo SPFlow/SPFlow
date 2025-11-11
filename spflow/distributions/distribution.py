@@ -14,7 +14,8 @@ class Distribution(nn.Module, ABC):
         super().__init__()
 
         # Check if event_shape is a tuple of positive integers
-        assert all(e > 0 for e in event_shape), "Event shape must be a tuple of positive integers."
+        if not all(e > 0 for e in event_shape):
+            raise ValueError("Event shape must be a tuple of positive integers.")
         self.event_shape = event_shape
 
     @property

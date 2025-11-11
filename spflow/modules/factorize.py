@@ -6,6 +6,7 @@ from typing import Optional, Dict, Any
 import torch
 from torch import Tensor
 
+from spflow.exceptions import StructureError
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.modules.base_product import BaseProduct
@@ -87,7 +88,11 @@ class Factorize(BaseProduct):
         scope = self.inputs[0].scope
         num_features = len(scope.query)
         num_features_out = 2**depth
-        assert num_features >= num_features_out
+        if num_features < num_features_out:
+            raise StructureError(
+                f"Number of input features ({num_features}) must be at least equal to the number of output "
+                f"features ({num_features_out}). Consider reducing the depth parameter."
+            )
         cardinality = int(np.floor(num_features / num_features_out))
         group_sizes = np.ones(num_features_out, dtype=int) * cardinality
         rest = num_features - cardinality * num_features_out

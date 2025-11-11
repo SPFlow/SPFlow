@@ -10,6 +10,7 @@ from spflow.modules.leaf import Normal, Bernoulli
 from spflow.learn import expectation_maximization
 from spflow.modules import Factorize
 from spflow.meta.data.scope import Scope
+from spflow.exceptions import StructureError
 import pytest
 import torch
 
@@ -143,3 +144,39 @@ def test_multidistribution_input():
     samples = module.sample(data=data_to_sample, sampling_ctx=sampling_ctx)
 
     assert samples.shape == (1, out_features_1 + out_features_2)
+
+
+def test_insufficient_features_for_depth():
+    """Test that StructureError is raised when depth requires more features than available."""
+    # Create a leaf with only 4 features
+    out_features = 4
+    num_reps = 5
+    leaf = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_reps)
+
+    # Try to create a Factorize with depth=3 (requires 2^3 = 8 features, but only have 4)
+    with pytest.raises(StructureError):
+        Factorize(inputs=[leaf], depth=3, num_repetitions=num_reps)
+
+
+def test_exact_feature_count_for_depth():
+    """Test that Factorize works when features exactly match required count for depth."""
+    # Create a leaf with exactly 8 features
+    out_features = 8
+    num_reps = 5
+    leaf = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_reps)
+
+    # This should work fine: depth=3 requires 2^3 = 8 features
+    factorize = Factorize(inputs=[leaf], depth=3, num_repetitions=num_reps)
+    assert factorize.out_features == 8
+
+
+def test_excess_features_for_depth():
+    """Test that Factorize works when features exceed required count for depth."""
+    # Create a leaf with 10 features
+    out_features = 10
+    num_reps = 5
+    leaf = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_reps)
+
+    # This should work fine: depth=2 requires 2^2 = 4 features, and we have 10
+    factorize = Factorize(inputs=[leaf], depth=2, num_repetitions=num_reps)
+    assert factorize.out_features == 4
