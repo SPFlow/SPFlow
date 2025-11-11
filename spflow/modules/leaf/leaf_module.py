@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
 import torch
@@ -21,26 +20,13 @@ from spflow.exceptions import InvalidParameterCombinationError
 class LogSpaceParameter:
     """Descriptor for parameters stored in log-space but exposed in real space.
 
-    This descriptor pattern eliminates repeated property boilerplate for log-space parameters
-    (e.g., std, rate, alpha, beta) across distributions. The actual parameter is stored internally
-    as `log_{name}` for numerical stability, while the descriptor exposes it in real space via
-    exponential transformation.
-
-    Example:
-        >>> class Normal(LeafModule):
-        ...     std = LogSpaceParameter('std')
-        ...     def __init__(self, scope, std=None):
-        ...         super().__init__(scope)
-        ...         self.log_std = nn.Parameter(std.log() if std is not None else ...)
-        ...
-        >>> normal = Normal(scope, std=torch.tensor(1.0))
-        >>> normal.std  # Returns exp(log_std)
-        >>> normal.std = torch.tensor(2.0)  # Validates and stores as log_std = ln(2.0)
+    Stores values as `log_{name}` for numerical stability, while transparently exposing
+    them in real space via exponential transformation. This replaces boilerplate @property
+    decorators with a single-line descriptor.
 
     Args:
-        name: Name of the parameter (e.g., 'std', 'rate'). The actual storage uses 'log_{name}'.
-        validator: Optional custom validator function. Defaults to _default_positive_validator
-                  which checks finiteness and positivity.
+        name: Parameter name (e.g., 'std', 'rate'). Storage uses 'log_{name}'.
+        validator: Optional validator function. Defaults to checking finiteness and positivity.
     """
 
     def __init__(self, name: str, validator: Callable[[Tensor], None] | None = None):
@@ -56,54 +42,34 @@ class LogSpaceParameter:
             raise ValueError(f"Value for '{self.name}' must be greater than 0.0, but was: {value}")
 
     def __get__(self, obj: Any, objtype: Any = None) -> Tensor:
-        """Get the parameter in real space (exponential of log-space storage)."""
+        """Return parameter value in real space (exp of log-space storage)."""
         if obj is None:
             return self
+        # Retrieve the underlying log-space parameter and exponentiate it
         return getattr(obj, self.log_name).exp()
 
     def __set__(self, obj: Any, value: Tensor) -> None:
-        """Set the parameter by storing its logarithm in log-space.
-
-        Args:
-            obj: The instance owning this descriptor.
-            value: The parameter value in real space to store.
-        """
+        """Validate and store parameter as log(value) for numerical stability."""
         param = getattr(obj, self.log_name)
         tensor_value = torch.as_tensor(value, dtype=param.dtype, device=param.device)
+        # Validate before storing (ensures only valid values are stored)
         self.validator(tensor_value)
+        # Store in log-space for numerical stability during optimization
         param.data = tensor_value.log()
 
 
 class BoundedParameter:
-    """Descriptor for parameters constrained to [lb, ub], stored via projections.
+    """Descriptor for parameters constrained to [lb, ub] using projection functions.
 
-    This descriptor pattern eliminates repeated property boilerplate for bounded parameters
-    (e.g., probability p in [0,1]). The actual parameter is stored in an auxiliary unbounded space
-    using projection functions, allowing unconstrained optimization while enforcing bounds when
-    accessed.
-
-    The descriptor uses `proj_real_to_bounded` and `proj_bounded_to_real` from spflow.utils.projections
-    to map between unbounded and bounded representations, providing numerical stability for parameters
-    that must stay within strict bounds.
-
-    Example:
-        >>> class Binomial(LeafModule):
-        ...     p = BoundedParameter('p', lb=0.0, ub=1.0)
-        ...     def __init__(self, scope, p=None):
-        ...         super().__init__(scope)
-        ...         if p is not None:
-        ...             self.log_p = nn.Parameter(proj_bounded_to_real(p, lb=0.0, ub=1.0))
-        ...
-        >>> binomial = Binomial(scope, p=torch.tensor(0.5))
-        >>> binomial.p  # Returns proj_real_to_bounded(log_p, lb=0.0, ub=1.0)
-        >>> binomial.p = torch.tensor(0.3)  # Validates and stores as log_p = proj_bounded_to_real(...)
+    Stores values in unbounded space for unconstrained optimization, then projects them
+    to [lb, ub] when accessed. This replaces boilerplate @property decorators with a
+    single-line descriptor.
 
     Args:
-        name: Name of the parameter (e.g., 'p'). Storage uses 'log_{name}'.
-        lb: Lower bound (inclusive). None means unbounded below. Default is None.
-        ub: Upper bound (inclusive). None means unbounded above. Default is None.
-        validator: Optional custom validator function. Defaults to _make_bounds_validator()
-                  which checks finiteness and bounds.
+        name: Parameter name (e.g., 'p'). Storage uses 'log_{name}'.
+        lb: Lower bound (inclusive). None means unbounded below.
+        ub: Upper bound (inclusive). None means unbounded above.
+        validator: Optional validator function. Defaults to checking bounds and finiteness.
     """
 
     def __init__(
@@ -142,24 +108,25 @@ class BoundedParameter:
         return lb, ub
 
     def __get__(self, obj: Any, objtype: Any = None) -> Tensor:
-        """Get the parameter in bounded space (via projection from unbounded storage)."""
+        """Return parameter value in bounded space via projection."""
         if obj is None:
             return self
+        # Retrieve the underlying unbounded parameter
         param = getattr(obj, self.log_name)
+        # Convert bounds to tensors on correct device/dtype
         lb, ub = self._project_bounds(param)
+        # Project from unbounded space to bounded space
         return proj_real_to_bounded(param, lb=lb, ub=ub)
 
     def __set__(self, obj: Any, value: Tensor) -> None:
-        """Set the parameter by projecting from bounded to unbounded space.
-
-        Args:
-            obj: The instance owning this descriptor.
-            value: The parameter value in bounded space to store.
-        """
+        """Validate and store parameter in unbounded space via projection."""
         param = getattr(obj, self.log_name)
         tensor_value = torch.as_tensor(value, dtype=param.dtype, device=param.device)
+        # Validate bounds before storing (ensures only valid values are stored)
         self.validator(tensor_value)
+        # Convert bounds to tensors on correct device/dtype
         lb, ub = self._project_bounds(param)
+        # Project to unbounded space for storage and optimization
         param.data = proj_bounded_to_real(tensor_value, lb=lb, ub=ub)
 
 
@@ -203,61 +170,6 @@ def validate_all_or_none(**params: Any) -> bool:
     return bool(provided)
 
 
-@dataclass
-class MLEBatch:
-    """Container with normalized data shared across MLE template hooks.
-
-    This dataclass encapsulates all the normalized inputs and metadata needed by the
-    MLE template pattern. It is created by _init_mle_batch and passed to _mle_compute_statistics.
-
-    Attributes:
-        data: Scope-filtered data tensor of shape (batch_size, num_scope_features).
-              Missing values have been handled according to nan_strategy.
-        weights: Normalized weight tensor of shape (batch_size, 1, ...) with proper
-                broadcasting shape for element-wise multiplication with data.
-        bias_correction: Boolean flag indicating whether bias correction was requested.
-        cache: Dictionary for storing intermediate computation results for reuse in EM steps.
-        diagnostics: Metadata dict tracking original/retained sample counts, nan_strategy used,
-                    and other debugging information.
-    """
-
-    data: Tensor
-    weights: Tensor
-    bias_correction: bool
-    cache: Cache
-    diagnostics: dict[str, Any]
-
-
-@dataclass
-class MLEParameterEstimate:
-    """Metadata wrapper for per-parameter MLE updates.
-
-    When returning from _mle_compute_statistics, individual parameter estimates can be
-    wrapped in this dataclass to provide additional metadata (bounds, broadcast requirements)
-    that _apply_mle_estimates will respect. Alternatively, plain tensors can be returned
-    and will be treated with default metadata.
-
-    Example:
-        >>> return {
-        ...     'std': LogSpaceParameter.estimate(tensor_value),
-        ...     'mean': tensor_value,  # Will use defaults: broadcast=True, no bounds
-        ... }
-
-    Attributes:
-        value: The estimated parameter tensor.
-        lb: Optional lower bound. If provided, _apply_mle_estimates will clamp the value.
-        ub: Optional upper bound. If provided, _apply_mle_estimates will clamp the value.
-        broadcast: Whether to broadcast this parameter to event_shape. Defaults to True.
-                  Set to False if the estimate already has the correct shape.
-    """
-
-    value: Tensor
-    lb: float | Tensor | None = None
-    ub: float | Tensor | None = None
-    broadcast: bool = True
-
-
-MLEEstimates = dict[str, Tensor | MLEParameterEstimate]
 
 
 class LeafModule(Module, ABC):
@@ -296,9 +208,24 @@ class LeafModule(Module, ABC):
         pass
 
     @abstractmethod
-    def _mle_compute_statistics(self, batch: MLEBatch) -> MLEEstimates:
-        """Compute distribution-specific statistics required for MLE updates."""
-        raise NotImplementedError
+    def _mle_compute_statistics(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> None:
+        """Compute distribution-specific statistics and assign parameters directly.
+
+        This hook method is called by maximum_likelihood_estimation() after data
+        preparation. The subclass must compute distribution-specific statistics
+        and assign parameters directly using self.param = value.
+
+        Descriptors (LogSpaceParameter, BoundedParameter) handle validation and
+        storage automatically.
+
+        Args:
+            data: Scope-filtered data of shape (batch_size, num_scope_features).
+            weights: Normalized weights of shape (batch_size, 1, ...).
+            bias_correction: Whether to apply bias correction in estimation.
+        """
+        pass
 
     def log_prob(self, x: Tensor) -> Tensor:
         """Computes the log probability of the given samples."""
@@ -720,124 +647,55 @@ class LeafModule(Module, ABC):
 
         return log_prob
 
-    def _init_mle_batch(
+    def _prepare_mle_data(
         self,
         data: Tensor,
         weights: Optional[Tensor] = None,
-        bias_correction: bool = True,
         nan_strategy: Optional[str | Callable] = None,
         check_support: bool = True,
         cache: Cache | None = None,
         preprocess_data: bool = True,
-    ) -> MLEBatch:
-        """Prepare normalized tensors and bookkeeping for the MLE template method.
+    ) -> tuple[Tensor, Tensor]:
+        """Prepare normalized data and weights for MLE computation.
 
-        This is the first step of the MLE template pattern. It handles:
-        - Selecting relevant features from the full data using the leaf's scope
-        - Applying NaN strategies (e.g., dropping or imputing missing values)
-        - Checking data support if requested
-        - Normalizing weights for numerical stability
-        - Creating diagnostics for debugging
+        This is the first step of the MLE template pattern. It centralizes all data
+        preparation logic, ensuring consistency across all distributions.
 
         Args:
             data: Input data tensor of shape (batch_size, num_features).
-            weights: Optional weight tensor for weighted MLE. Shape (batch_size,) or (batch_size, 1).
+            weights: Optional weight tensor. Shape (batch_size,) or (batch_size, 1).
                     If None, uniform weights are used.
-            bias_correction: Whether to apply bias correction in parameter estimation.
-            nan_strategy: How to handle missing values (NaN). Options: 'ignore' or callable.
-            check_support: Whether to validate that data falls in the distribution's support.
-            cache: Optional cache dictionary for intermediate results.
+            nan_strategy: How to handle missing values (NaN).
+                         - 'ignore': Drop rows containing any NaN
+                         - callable: Apply custom imputation function
+                         - None: No special handling
+            check_support: Whether to validate data falls in the distribution's support.
+            cache: Optional cache dictionary for intermediate results (useful for EM).
             preprocess_data: Whether to select scope-relevant features. Set False if data
-                           is already scope-filtered.
+                           is already scope-filtered (performance optimization).
 
         Returns:
-            MLEBatch: Container with normalized data, weights, and metadata for _mle_compute_statistics.
+            tuple[Tensor, Tensor]: (scope-filtered data, normalized weights for broadcasting)
         """
+        # Initialize cache (will be shared across MLE steps and EM iterations)
         cache = init_cache(cache)
+
+        # Step 1: Select scope-relevant features
         scoped_data = data[:, self.scope.query] if preprocess_data else data
-        # Apply NaN strategy + support check up-front to stay consistent across leaves.
+
+        # Step 2: Apply NaN strategy (drop/impute) + support check
         scoped_data, normalized_weights = apply_nan_strategy(
             nan_strategy, scoped_data, self, weights, check_support
         )
-        # Convert weights back to 1D before broadcast prep.
+
+        # Step 3: Prepare weights for broadcasting
+        # Convert from (batch, 1) to (batch, 1, 1, ...) for proper broadcasting
+        # with multi-dimensional data
         normalized_weights_flat = normalized_weights.squeeze(-1)
         mle_weights = self._prepare_mle_weights(scoped_data, normalized_weights_flat)
-        diagnostics = {
-            "original_samples": data.shape[0],
-            "retained_samples": scoped_data.shape[0],
-            "nan_strategy": nan_strategy,
-            "check_support": check_support,
-        }
-        return MLEBatch(
-            data=scoped_data,
-            weights=mle_weights,
-            bias_correction=bias_correction,
-            cache=cache,
-            diagnostics=diagnostics,
-        )
 
-    def _apply_mle_estimates(self, estimates: Optional[MLEEstimates]) -> dict[str, Tensor]:
-        """Apply template estimates by broadcasting, clamping, and assigning via descriptors.
+        return scoped_data, mle_weights
 
-        This is the final step of the MLE template pattern. It handles:
-        - Broadcasting parameter estimates to match the leaf's event_shape (for multi-channel/
-          multi-repetition distributions)
-        - Clamping values within optional bounds (lower/upper limits)
-        - Assigning through descriptors (LogSpaceParameter, BoundedParameter) which handle
-          projection and validation automatically
-        - Falling back to direct parameter or attribute assignment if no descriptor is present
-
-        The method respects descriptor-based storage patterns, allowing parameters to be
-        kept in auxiliary spaces (log-space, projection space) while appearing in real space.
-
-        Args:
-            estimates: Dictionary mapping parameter names to estimated values. Values can be
-                      either Tensor directly or MLEParameterEstimate instances that contain
-                      metadata (bounds, broadcast flags).
-
-        Returns:
-            dict[str, Tensor]: Mapping of parameter names to final applied values (in real space,
-                              after broadcasting and clamping).
-
-        Example:
-            >>> batch = leaf._init_mle_batch(data, weights)
-            >>> estimates = leaf._mle_compute_statistics(batch)
-            >>> applied = leaf._apply_mle_estimates(estimates)
-            >>> applied  # {'std': tensor(...), 'mean': tensor(...)}
-        """
-        applied: dict[str, Tensor] = {}
-        if not estimates:
-            return applied
-        for name, estimate in estimates.items():
-            if isinstance(estimate, MLEParameterEstimate):
-                value = estimate.value
-                lb = estimate.lb
-                ub = estimate.ub
-                broadcast = estimate.broadcast
-            else:
-                value = estimate
-                lb = None
-                ub = None
-                broadcast = True
-
-            param_value = value
-            if broadcast:
-                param_value = self._broadcast_to_event_shape(param_value)
-            if lb is not None or ub is not None:
-                param_value = self._handle_mle_edge_cases(param_value, lb=lb, ub=ub)
-            class_attr = getattr(type(self), name, None)
-            if hasattr(class_attr, "__set__"):
-                # Parameter is managed by a descriptor (e.g., LogSpaceParameter, BoundedParameter)
-                # The descriptor will handle projection and validation
-                class_attr.__set__(self, param_value)
-            else:
-                current_attr = getattr(self, name, None)
-                if isinstance(current_attr, nn.Parameter):
-                    current_attr.data = param_value
-                else:
-                    setattr(self, name, param_value)
-            applied[name] = param_value
-        return applied
 
     def maximum_likelihood_estimation(
         self,
@@ -850,6 +708,21 @@ class LeafModule(Module, ABC):
         preprocess_data: bool = True,
     ) -> None:
         r"""Maximum (weighted) likelihood estimation (MLE) of the leaf module.
+
+        TEMPLATE METHOD PATTERN:
+        This method implements the Template Method design pattern (Gang of Four).
+        It defines the overall skeleton of the MLE algorithm, with distribution-specific
+        logic delegated to the _mle_compute_statistics() hook method.
+
+        ALGORITHM STEPS:
+        1. _prepare_mle_data(): Prepare normalized data (scope selection, NaN handling, weights)
+        2. _mle_compute_statistics(): Compute distribution-specific statistics and assign parameters
+
+        This separation enables:
+        - Code reuse: Data preparation is implemented once for all distributions
+        - Consistency: All distributions handle NaN, scope, and weights identically
+        - Extensibility: New distributions only need to implement the statistics hook
+        - Pythonic simplicity: Direct tensor operations without unnecessary wrappers
 
         Weights are normalized to sum up to :math:`N`.
 
@@ -881,23 +754,19 @@ class LeafModule(Module, ABC):
         Raises:
             ValueError: Invalid arguments.
         """
-        batch = self._init_mle_batch(
+        # Step 1: Prepare normalized data and weights
+        data_prepared, weights_prepared = self._prepare_mle_data(
             data=data,
             weights=weights,
-            bias_correction=bias_correction,
             nan_strategy=nan_strategy,
             check_support=check_support,
             cache=cache,
             preprocess_data=preprocess_data,
         )
-        estimates = self._mle_compute_statistics(batch)
-        applied = self._apply_mle_estimates(estimates)
-        diagnostics = {
-            **batch.diagnostics,
-            "updated_parameters": tuple(applied.keys()),
-            "weights_sum": float(batch.weights.sum().item()),
-        }
-        return diagnostics
+
+        # Step 2: Compute distribution-specific statistics (implemented by subclass)
+        # Subclass is responsible for assigning parameters directly via descriptors
+        self._mle_compute_statistics(data_prepared, weights_prepared, bias_correction)
 
     def sample(
         self,
