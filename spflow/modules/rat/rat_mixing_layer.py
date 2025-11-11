@@ -7,7 +7,7 @@ from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.meta.data import Scope
-from spflow.meta.dispatch import SamplingContext
+from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.modules.module import Module
 from spflow.utils.cache import Cache, init_cache
 from spflow.utils.projections import (
@@ -141,8 +141,7 @@ class MixingLayer(Sum):
             data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
 
         # Initialize sampling context if not provided
-        if sampling_ctx is None:
-            sampling_ctx = SamplingContext(data.shape[0])
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
 
         logits = self.logits
 
