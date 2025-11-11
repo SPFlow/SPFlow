@@ -3,6 +3,7 @@ from typing import Optional, Union, Dict, Any, List
 import torch
 from torch import Tensor
 
+from spflow.exceptions import ShapeError, StructureError
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.modules.module import Module
 from spflow.modules.wrapper.abstract_wrapper import AbstractWrapper
@@ -31,28 +32,37 @@ class ImageWrapper(AbstractWrapper):
         self.num_channel = num_channel
         self.height = height
         self.width = width
-        assert (
-            len(module.scope.query) == height * width * num_channel
-        ), f"Module out_features {module.out_features} does not match the expected size {height * width * num_channel}."
+        if len(module.scope.query) != height * width * num_channel:
+            raise StructureError(
+                f"Module out_features {module.out_features} does not match the expected size "
+                f"{height * width * num_channel}."
+            )
 
     def flatten(self, tensor: torch.Tensor):
-        assert tensor.dim() == 4, f"Input tensor must be 4-dimensional but got {tensor.dim()}-dimensional."
-        assert (
-            tensor.shape[1] == self.num_channel
-        ), f"Input tensor channel dimension must; match num_channel {self.num_channel} but got {tensor.shape[1]}."
+        if tensor.dim() != 4:
+            raise ShapeError(
+                f"Input tensor must be 4-dimensional but got {tensor.dim()}-dimensional."
+            )
+        if tensor.shape[1] != self.num_channel:
+            raise ShapeError(
+                f"Input tensor channel dimension must match num_channel {self.num_channel} but got "
+                f"{tensor.shape[1]}."
+            )
 
         return tensor.view(tensor.shape[0], -1)
 
     def to_image_format(self, tensor: torch.Tensor, batch: bool = True):
         if batch:
-            assert (
-                tensor.dim() == 2
-            ), f"Input tensor must be 2-dimensional but got {tensor.dim()}-dimensional."
+            if tensor.dim() != 2:
+                raise ShapeError(
+                    f"Input tensor must be 2-dimensional but got {tensor.dim()}-dimensional."
+                )
             return tensor.view(tensor.shape[0], self.num_channel, self.height, self.width)
         else:
-            assert (
-                tensor.dim() == 1
-            ), f"Input tensor must be 1-dimensional but got {tensor.dim()}-dimensional."
+            if tensor.dim() != 1:
+                raise ShapeError(
+                    f"Input tensor must be 1-dimensional but got {tensor.dim()}-dimensional."
+                )
             return tensor.view(self.num_channel, self.height, self.width)
 
     def extra_repr(self):
@@ -78,12 +88,10 @@ class ImageWrapper(AbstractWrapper):
         """
         cache = init_cache(cache)
 
-        assert data.shape == (
-            data.shape[0],
-            self.num_channel,
-            self.height,
-            self.width,
-        ), f"Data shape must be (batch_size, num_channel, height, width) but got {data.shape}."
+        if data.shape != (data.shape[0], self.num_channel, self.height, self.width):
+            raise ShapeError(
+                f"Data shape must be (batch_size, num_channel, height, width) but got {data.shape}."
+            )
 
         data = self.flatten(data)
         self.module.expectation_maximization(data, check_support=check_support, cache=cache)
@@ -111,12 +119,10 @@ class ImageWrapper(AbstractWrapper):
         """
         cache = init_cache(cache)
 
-        assert data.shape == (
-            data.shape[0],
-            self.num_channel,
-            self.height,
-            self.width,
-        ), f"Data shape must be (batch_size, num_channel, height, width) but got {data.shape}."
+        if data.shape != (data.shape[0], self.num_channel, self.height, self.width):
+            raise ShapeError(
+                f"Data shape must be (batch_size, num_channel, height, width) but got {data.shape}."
+            )
 
         data = self.flatten(data)
         self.module.maximum_likelihood_estimation(
@@ -152,12 +158,10 @@ class ImageWrapper(AbstractWrapper):
         """
         cache = init_cache(cache)
 
-        assert data.shape == (
-            data.shape[0],
-            self.num_channel,
-            self.height,
-            self.width,
-        ), f"Data shape must be (batch_size, num_channel, height, width) but got {data.shape}."
+        if data.shape != (data.shape[0], self.num_channel, self.height, self.width):
+            raise ShapeError(
+                f"Data shape must be (batch_size, num_channel, height, width) but got {data.shape}."
+            )
         data = self.flatten(data)
 
         log_prob = self.module.log_likelihood(data, check_support, cache)

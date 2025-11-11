@@ -2,7 +2,7 @@ import torch
 from torch import Tensor, nn
 
 from spflow.distributions.distribution import Distribution
-
+from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data.meta_type import MetaType
 from spflow.utils.leaf import init_parameter
 
@@ -19,9 +19,10 @@ class Gamma(Distribution):
         if event_shape is None:
             event_shape = alpha.shape
         super().__init__(event_shape=event_shape)
-        assert (alpha is None and beta is None) ^ (
-            alpha is not None and beta is not None
-        ), "Either alpha and beta must be specified or neither."
+        if not ((alpha is None and beta is None) ^ (alpha is not None and beta is not None)):
+            raise InvalidParameterCombinationError(
+                "Either alpha and beta must be specified or neither."
+            )
 
         alpha = init_parameter(param=alpha, event_shape=event_shape, init=torch.rand)
         beta = init_parameter(param=beta, event_shape=event_shape, init=torch.rand)

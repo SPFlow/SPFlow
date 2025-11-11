@@ -2,7 +2,7 @@ import torch
 from torch import Tensor, nn
 
 from spflow.distributions.distribution import Distribution
-
+from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data.meta_type import MetaType
 from spflow.utils.leaf import init_parameter
 
@@ -19,9 +19,10 @@ class LogNormal(Distribution):
         if event_shape is None:
             event_shape = mean.shape
         super().__init__(event_shape=event_shape)
-        assert (mean is None and std is None) ^ (
-            mean is not None and std is not None
-        ), "Either mean and std must be specified or neither."
+        if not ((mean is None and std is None) ^ (mean is not None and std is not None)):
+            raise InvalidParameterCombinationError(
+                "Either mean and std must be specified or neither."
+            )
 
         mean = init_parameter(param=mean, event_shape=event_shape, init=torch.randn)
         std = init_parameter(param=std, event_shape=event_shape, init=torch.rand)

@@ -10,6 +10,18 @@ class ScopeError(Exception):
     pass
 
 
+class ShapeError(ValueError):
+    """Raised when tensor shape or dimensions don't meet expected requirements."""
+
+    pass
+
+
+class StructureError(ValueError):
+    """Raised when module structure or configuration is invalid."""
+
+    pass
+
+
 class GraphvizError(Exception):
     """Raised when Graphviz is not installed or fails to execute."""
 

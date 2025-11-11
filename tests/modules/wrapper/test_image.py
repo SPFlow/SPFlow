@@ -12,6 +12,7 @@ from tests.utils.leaves import make_leaf, make_data, make_leaf_args, make_normal
 from spflow.modules.wrapper.ImageWrapper import ImageWrapper, MarginalizationContext
 from spflow.modules import Product, Sum
 from spflow.learn.expectation_maximization import expectation_maximization
+from spflow.exceptions import ShapeError, StructureError
 
 num_channel = [1, 3]
 num_repetitions = [None, 3]
@@ -111,3 +112,97 @@ def test_marginalize(height_indices, width_indices, channel_indices):
         if channel_indices is not None
         else num_channel
     )
+
+
+# Exception tests for ImageWrapper
+class TestImageWrapperExceptions:
+    """Test suite for ImageWrapper exception handling."""
+
+    def test_constructor_shape_mismatch(self):
+        """Test that StructureError is raised when module out_features doesn't match height*width*num_channel."""
+        height = 4
+        width = 4
+        num_channel = 3
+        num_features = height * width * num_channel  # 48 features
+
+        # Create a module with different number of features (e.g., 50)
+        scope = Scope(list(range(50)))
+        leaf_module = make_normal_leaf(scope=scope, out_channels=2, num_repetitions=None)
+        product_layer = Product(inputs=leaf_module)
+        root = Sum(inputs=product_layer, out_channels=1, num_repetitions=None)
+
+        # This should raise StructureError because 50 != 4*4*3
+        with pytest.raises(StructureError):
+            ImageWrapper(module=root, height=height, width=width, num_channel=num_channel)
+
+    def test_flatten_wrong_dimensions(self):
+        """Test that ShapeError is raised when flatten() receives non-4D tensor."""
+        wrapper = make_wrapper(num_channel=3, num_reps=None)
+
+        # 3D tensor instead of 4D
+        wrong_tensor = torch.randn(10, 3, 16)
+        with pytest.raises(ShapeError):
+            wrapper.flatten(wrong_tensor)
+
+    def test_flatten_wrong_channel_dimension(self):
+        """Test that ShapeError is raised when flatten() receives wrong channel dimension."""
+        wrapper = make_wrapper(num_channel=3, num_reps=None)
+
+        # 4D tensor but with wrong channel dimension (2 instead of 3)
+        wrong_tensor = torch.randn(10, 2, 4, 4)
+        with pytest.raises(ShapeError):
+            wrapper.flatten(wrong_tensor)
+
+    def test_to_image_format_batch_wrong_dimensions(self):
+        """Test that ShapeError is raised when to_image_format() with batch=True receives non-2D tensor."""
+        wrapper = make_wrapper(num_channel=3, num_reps=None)
+
+        # 3D tensor instead of 2D for batch mode
+        wrong_tensor = torch.randn(10, 3, 16)
+        with pytest.raises(ShapeError):
+            wrapper.to_image_format(wrong_tensor, batch=True)
+
+    def test_to_image_format_non_batch_wrong_dimensions(self):
+        """Test that ShapeError is raised when to_image_format() with batch=False receives non-1D tensor."""
+        wrapper = make_wrapper(num_channel=3, num_reps=None)
+
+        # 2D tensor instead of 1D for non-batch mode
+        wrong_tensor = torch.randn(3, 16)
+        with pytest.raises(ShapeError):
+            wrapper.to_image_format(wrong_tensor, batch=False)
+
+    def test_log_likelihood_wrong_shape(self):
+        """Test that ShapeError is raised when log_likelihood() receives wrong shaped data."""
+        wrapper = make_wrapper(num_channel=3, num_reps=None)
+
+        # Wrong shape: (10, 3, 4, 5) instead of (10, 3, 4, 4)
+        wrong_data = torch.randn(10, 3, 4, 5)
+        with pytest.raises(ShapeError):
+            wrapper.log_likelihood(wrong_data)
+
+    def test_log_likelihood_wrong_channels(self):
+        """Test that ShapeError is raised when log_likelihood() receives wrong number of channels."""
+        wrapper = make_wrapper(num_channel=3, num_reps=None)
+
+        # Wrong channels: (10, 2, 4, 4) instead of (10, 3, 4, 4)
+        wrong_data = torch.randn(10, 2, 4, 4)
+        with pytest.raises(ShapeError):
+            wrapper.log_likelihood(wrong_data)
+
+    def test_expectation_maximization_wrong_shape(self):
+        """Test that ShapeError is raised when expectation_maximization() receives wrong shaped data."""
+        wrapper = make_wrapper(num_channel=3, num_reps=3)
+
+        # Wrong shape: (10, 3, 4, 5) instead of (10, 3, 4, 4)
+        wrong_data = torch.randn(10, 3, 4, 5)
+        with pytest.raises(ShapeError):
+            wrapper.expectation_maximization(wrong_data)
+
+    def test_maximum_likelihood_estimation_wrong_shape(self):
+        """Test that ShapeError is raised when maximum_likelihood_estimation() receives wrong shaped data."""
+        wrapper = make_wrapper(num_channel=3, num_reps=3)
+
+        # Wrong shape: (10, 3, 4, 5) instead of (10, 3, 4, 4)
+        wrong_data = torch.randn(10, 3, 4, 5)
+        with pytest.raises(ShapeError):
+            wrapper.maximum_likelihood_estimation(wrong_data)
