@@ -59,4 +59,5 @@ def test_constructor_n_negative(out_features: int, out_channels: int):
     """Test the constructor of a Bernoulli distribution with p smaller than 1.0."""
     n, p = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_module(n=torch.full_like(n, 0.0), p=p)
+        make_module(n=torch.full_like(n, -1.0), p=p)
+
