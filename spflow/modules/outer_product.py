@@ -7,7 +7,7 @@ from torch import Tensor
 
 from spflow.meta.data import Scope
 from spflow.modules.base_product import BaseProduct
-from spflow.modules.module import Module
+from spflow.modules.base import Module
 from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.ops.split_halves import SplitHalves

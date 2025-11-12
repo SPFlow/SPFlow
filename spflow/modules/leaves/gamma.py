@@ -2,7 +2,7 @@ import torch
 from torch import Tensor, nn
 
 from spflow.meta.data import Scope
-from spflow.modules.leaves.leaf_module import (
+from spflow.modules.leaves.base import (
     LeafModule,
     LogSpaceParameter,
     validate_all_or_none, init_parameter, parse_leaf_args,

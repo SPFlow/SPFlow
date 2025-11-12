@@ -3,7 +3,7 @@ import torch
 from spflow.meta import Scope
 from spflow.modules import leaves
 from spflow.modules.leaves import Normal
-from spflow.modules.leaves.leaf_module import LeafModule
+from spflow.modules.leaves.base import LeafModule
 
 
 def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):

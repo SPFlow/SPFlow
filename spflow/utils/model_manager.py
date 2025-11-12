@@ -1,7 +1,7 @@
 import os
 import pickle
 
-from spflow.modules.module import Module
+from spflow.modules.base import Module
 
 try:
     from typing import TypeAlias

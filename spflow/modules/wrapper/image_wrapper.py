@@ -5,7 +5,7 @@ from torch import Tensor
 
 from spflow.exceptions import ShapeError, StructureError
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
-from spflow.modules.module import Module
+from spflow.modules.base import Module
 from spflow.modules.wrapper.abstract_wrapper import AbstractWrapper
 from spflow.utils.cache import Cache, init_cache
 

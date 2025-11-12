@@ -6,7 +6,7 @@ import torch
 from torch import Tensor
 
 from spflow.meta.data import Scope
-from spflow.modules.module import Module
+from spflow.modules.base import Module
 from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache, init_cache
 

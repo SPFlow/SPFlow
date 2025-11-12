@@ -28,9 +28,9 @@ except ImportError as e:
     ) from e
 
 if TYPE_CHECKING:
-    from spflow.modules.module import Module
+    from spflow.modules.base import Module
 
-from spflow.modules.leaves.leaf_module import LeafModule
+from spflow.modules.leaves.base import LeafModule
 from spflow.modules.ops.cat import Cat
 from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_alternate import SplitAlternate

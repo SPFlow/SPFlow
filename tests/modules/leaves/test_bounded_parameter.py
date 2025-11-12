@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 from spflow.meta.data import Scope
-from spflow.modules.leaves.leaf_module import LeafModule, BoundedParameter
+from spflow.modules.leaves.base import LeafModule, BoundedParameter
 
 
 # ============================================================================

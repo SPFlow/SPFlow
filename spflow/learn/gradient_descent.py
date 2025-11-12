@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from spflow.modules.module import Module
+from spflow.modules.base import Module
 
 logger = logging.getLogger(__name__)
 

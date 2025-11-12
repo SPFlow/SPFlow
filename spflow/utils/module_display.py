@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Optional, Any
 
-from spflow.modules.module import Module
+from spflow.modules.base import Module
 
 # Tree view constants
 PREFIX_CHILD = "├─ "
