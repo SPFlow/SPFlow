@@ -12,7 +12,7 @@ from .modules import (
 )
 from .modules.ops import Cat, Split, SplitAlternate, SplitHalves
 from .modules.rat import MixingLayer, RatSPN
-from .modules.wrapper.ImageWrapper import ImageWrapper
+from .modules.wrapper.image_wrapper import ImageWrapper
 from .modules.wrapper.abstract_wrapper import AbstractWrapper
 from .modules import leaf
 

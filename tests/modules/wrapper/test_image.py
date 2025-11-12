@@ -8,7 +8,7 @@ from spflow.learn.expectation_maximization import expectation_maximization
 from spflow.meta.data import Scope
 from spflow.modules import Product, Sum
 from spflow.modules import leaf
-from spflow.modules.wrapper.ImageWrapper import ImageWrapper, MarginalizationContext
+from spflow.modules.wrapper.image_wrapper import ImageWrapper, MarginalizationContext
 from tests.utils.leaves import make_data, make_normal_leaf
 
 num_channel = [1, 3]
