@@ -5,9 +5,8 @@ from spflow.meta.data import Scope
 from spflow.modules.leaf.leaf_module import (
     LeafModule,
     LogSpaceParameter,
-    validate_all_or_none,
+    validate_all_or_none, init_parameter, parse_leaf_args,
 )
-from spflow.utils.leaf import parse_leaf_args, init_parameter
 
 
 class LogNormal(LeafModule):
