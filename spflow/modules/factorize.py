@@ -232,7 +232,7 @@ class Factorize(BaseProduct):
         if marg_child is None:
             return None
 
-        # ToDo: check if this is correct / prune if only one scope is left?
+        # Prune: if child has only one feature, factorization is redundant - return child directly
         elif prune and marg_child.out_features == 1:
             return marg_child
         else:
