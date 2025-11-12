@@ -210,8 +210,8 @@ class RatSPN(Module):
             raise ValueError("Posterior can only be computed for models with multiple classes.")
 
         cache = init_cache(cache)
-        class_prob = self.root_node.weights  # shape: (1, n_root_nodes, 1)
-        class_prob = class_prob.squeeze(-1)  # shape: (1, n_root_nodes)
+        ll_y = self.root_node.log_weights  # shape: (1, n_root_nodes, 1)
+        ll_y = ll_y.squeeze(-1)  # shape: (1, n_root_nodes)
         ll = self.root_node.inputs.log_likelihood(
             data,
             cache=cache,
@@ -223,7 +223,7 @@ class RatSPN(Module):
         #             = logp(x | y) + logp(y) - logp(x)
         #             = logp(x | y) + logp(y) - logsumexp(logp(x,y), dim=y)
 
-        ll_x_and_y = ll + class_prob
+        ll_x_and_y = ll + ll_y
         ll_x = torch.logsumexp(ll_x_and_y, dim=1, keepdim=True)
         ll_y_given_x = ll_x_and_y - ll_x
 
