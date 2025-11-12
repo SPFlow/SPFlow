@@ -10,7 +10,7 @@ from spflow.meta.dispatch import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.modules.module import Module
+from spflow.modules.base import Module
 
 
 class Split(Module, ABC):

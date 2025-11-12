@@ -1,5 +1,5 @@
 from spflow.meta.data import Scope
-from spflow.modules.module import Module
+from spflow.modules.base import Module
 
 
 class AbstractWrapper(Module):

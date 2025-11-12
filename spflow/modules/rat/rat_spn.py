@@ -10,8 +10,8 @@ from spflow.modules.elementwise_product import ElementwiseProduct
 from spflow.modules.outer_product import OuterProduct
 from spflow.modules.sum import Sum
 from spflow.modules.factorize import Factorize
-from spflow.modules.leaves.leaf_module import LeafModule
-from spflow.modules.module import Module
+from spflow.modules.leaves.base import LeafModule
+from spflow.modules.base import Module
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.rat.rat_mixing_layer import MixingLayer

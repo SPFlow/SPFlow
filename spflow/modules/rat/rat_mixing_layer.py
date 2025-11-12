@@ -7,7 +7,7 @@ from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.modules.sum import Sum
-from spflow.modules.module import Module
+from spflow.modules.base import Module
 from spflow.utils.cache import Cache, init_cache
 
 

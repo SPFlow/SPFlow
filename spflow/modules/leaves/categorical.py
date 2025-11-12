@@ -2,7 +2,7 @@ import torch
 from torch import Tensor, nn
 
 from spflow.meta.data import Scope
-from spflow.modules.leaves.leaf_module import LeafModule, init_parameter, parse_leaf_args
+from spflow.modules.leaves.base import LeafModule, init_parameter, parse_leaf_args
 
 
 class Categorical(LeafModule):
