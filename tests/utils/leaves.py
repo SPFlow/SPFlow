@@ -3,9 +3,7 @@ import torch
 from spflow.meta import Scope
 from spflow.modules import leaf
 from spflow.modules.leaf import Normal
-
 from spflow.modules.leaf.leaf_module import LeafModule
-from typing import Dict
 
 
 def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):

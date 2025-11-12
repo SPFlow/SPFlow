@@ -1,9 +1,8 @@
-import unittest
 from itertools import product
-from spflow import InvalidParameterCombinationError
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
+
 import pytest
 import torch
+
 from spflow.meta import Scope
 from spflow.modules.leaf.binomial import Binomial
 
@@ -60,4 +59,3 @@ def test_constructor_n_negative(out_features: int, out_channels: int):
     n, p = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
         make_module(n=torch.full_like(n, -1.0), p=p)
-

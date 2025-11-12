@@ -1,11 +1,9 @@
 import torch
 from torch import Tensor, nn
-from typing import Optional, Callable
 
 from spflow.meta.data import Scope
 from spflow.modules.leaf.leaf_module import LeafModule, BoundedParameter
 from spflow.utils.leaf import parse_leaf_args, init_parameter
-from spflow.utils.cache import Cache
 
 
 class Bernoulli(LeafModule):
@@ -43,9 +41,7 @@ class Bernoulli(LeafModule):
         """Returns the supported values of the distribution."""
         return 0.0
 
-    def _mle_compute_statistics(
-        self, data: Tensor, weights: Tensor, bias_correction: bool
-    ) -> None:
+    def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Compute Bernoulli probability estimate and assign parameter.
 
         Args:

@@ -1,6 +1,5 @@
 import torch
 from torch import Tensor, nn
-from typing import Optional, Callable
 
 from spflow.meta.data import Scope
 from spflow.modules.leaf.leaf_module import (
@@ -9,7 +8,6 @@ from spflow.modules.leaf.leaf_module import (
     validate_all_or_none,
 )
 from spflow.utils.leaf import parse_leaf_args, init_parameter
-from spflow.utils.cache import Cache
 
 
 class Gamma(LeafModule):
@@ -59,9 +57,7 @@ class Gamma(LeafModule):
     def _supported_value(self):
         return 1.0
 
-    def _mle_compute_statistics(
-        self, data: Tensor, weights: Tensor, bias_correction: bool
-    ) -> None:
+    def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Estimate Gamma alpha/beta parameters and assign.
 
         Args:

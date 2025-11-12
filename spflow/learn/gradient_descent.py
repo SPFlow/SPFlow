@@ -1,13 +1,11 @@
-import torch
-
+import logging
 from collections.abc import Callable
 
-from torch import Tensor
+import torch
 import torch.nn as nn
+from torch import Tensor
 
 from spflow.modules.module import Module
-
-import logging
 
 logger = logging.getLogger(__name__)
 

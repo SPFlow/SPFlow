@@ -1,11 +1,9 @@
 import torch
 from torch import Tensor, nn
-from typing import Optional, Callable
 
 from spflow.meta.data import Scope
 from spflow.modules.leaf.leaf_module import LeafModule, LogSpaceParameter
 from spflow.utils.leaf import parse_leaf_args, init_parameter
-from spflow.utils.cache import Cache
 
 
 class Exponential(LeafModule):
@@ -44,9 +42,7 @@ class Exponential(LeafModule):
     def _supported_value(self):
         return 0.0
 
-    def _mle_compute_statistics(
-        self, data: Tensor, weights: Tensor, bias_correction: bool
-    ) -> None:
+    def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Compute Exponential rate estimate and assign parameter.
 
         Args:

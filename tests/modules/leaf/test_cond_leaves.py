@@ -1,12 +1,10 @@
 # import unittest
 # from itertools import product
 #
-# from spflow import InvalidParameterCombinationError
+# from spflow.exceptions import InvalidParameterCombinationError
 # from spflow.learn import train_gradient_descent
 # from tests.fixtures import auto_set_test_seed, auto_set_test_device
 #
-from spflow.meta import SamplingContext
-from spflow.meta.dispatch import init_default_sampling_context
 
 # from tests.utils.leaves import evaluate_log_likelihood
 # import pytest

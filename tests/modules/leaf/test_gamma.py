@@ -1,18 +1,11 @@
 from itertools import product
 
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
-import unittest
-
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
-from spflow.meta.dispatch import init_default_sampling_context
-from tests.utils.leaves import evaluate_log_likelihood, evaluate_samples
 import pytest
 import torch
-from pytest import raises
 
+from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta import Scope
 from spflow.modules.leaf import Gamma
-from spflow.exceptions import InvalidParameterCombinationError
 
 # Constants
 out_channels_values = [1, 5]

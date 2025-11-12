@@ -1,19 +1,14 @@
 from __future__ import annotations
 
-from typing import Any
-
 import torch
-from torch import Tensor, nn
+from torch import Tensor
 
-from spflow.exceptions import InvalidParameterCombinationError, ScopeError
+from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
+from spflow.modules.sum import Sum
 from spflow.modules.module import Module
 from spflow.utils.cache import Cache, init_cache
-from spflow.utils.projections import (
-    proj_convex_to_real,
-)
-from spflow.modules import Sum
 
 
 class MixingLayer(Sum):

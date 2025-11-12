@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional
+from typing import Callable
 
 import torch
-from torch import Tensor, nn
+from torch import Tensor
 
 from spflow.meta.data import Scope
 from spflow.modules.module import Module

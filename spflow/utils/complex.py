@@ -1,6 +1,3 @@
-import torch
-
-
 def complex_min(tensor):
     """
     Calculates the min for complex numbers by comparing the real part first and then the imaginary part.

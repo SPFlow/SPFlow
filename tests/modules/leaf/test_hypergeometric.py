@@ -1,23 +1,8 @@
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
-import unittest
 from itertools import product
 
-from spflow.meta.dispatch import init_default_sampling_context
 import pytest
 import torch
-from pytest import raises
-from scipy.stats import hypergeom
 
-from spflow.meta import Scope
-from spflow.modules.leaf import Hypergeometric
-
-
-import unittest
-from itertools import product
-from spflow import InvalidParameterCombinationError
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
-import pytest
-import torch
 from spflow.meta import Scope
 from spflow.modules.leaf import Hypergeometric
 

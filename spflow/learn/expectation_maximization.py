@@ -5,7 +5,6 @@ from torch import Tensor
 
 from spflow.modules.module import Module
 
-
 logger = logging.getLogger(__name__)
 
 

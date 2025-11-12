@@ -1,19 +1,17 @@
-from spflow.modules.elementwise_sum import ElementwiseSum
-from spflow.modules.leaf import Normal
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
-import unittest
-
 from itertools import product
 
-from spflow import InvalidParameterCombinationError, ScopeError
-from spflow.meta import Scope
 import pytest
-from spflow.meta import SamplingContext
+import torch
+
+from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
+from spflow.meta import SamplingContext
+from spflow.meta import Scope
 from spflow.modules import ElementwiseProduct
+from spflow.modules.elementwise_sum import ElementwiseSum
+from spflow.modules.leaf import Normal
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf
-import torch
 
 in_channels_values = [1, 4]
 out_channels_values = [1, 5]

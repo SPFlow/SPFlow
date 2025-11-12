@@ -1,17 +1,12 @@
-from spflow.modules.ops import Split
-from spflow.modules.ops import SplitHalves
-from spflow.modules.ops import SplitAlternate
-from spflow.modules import ElementwiseProduct
 from itertools import product
-from spflow.meta import Scope
-import pytest
-from spflow.learn import expectation_maximization
-from spflow.learn import train_gradient_descent
-from spflow.modules import Sum
-from spflow.modules.leaf import Categorical, Binomial
-from spflow.modules.ops import Cat
-from tests.utils.leaves import make_normal_leaf, make_normal_data
+
 import torch
+
+from spflow.meta import Scope
+from spflow.modules import ElementwiseProduct
+from spflow.modules.ops import SplitAlternate
+from spflow.modules.ops import SplitHalves
+from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 out_channels_values = [1, 5]
 features_values_multiplier = [1, 6]

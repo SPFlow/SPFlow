@@ -6,7 +6,6 @@ Typical usage example:
 """
 import numpy as np
 import torch
-from torch import Tensor
 
 
 def nearest_sym_pd(A: torch.Tensor) -> torch.Tensor:

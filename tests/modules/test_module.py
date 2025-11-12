@@ -2,11 +2,9 @@
 
 import pytest
 import torch
-from torch import Tensor
 
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaf import Normal
-from spflow.utils.cache import Cache
 
 
 class ConcreteModule(Normal):

@@ -7,7 +7,6 @@ Categorical, Bernoulli, etc.), enabling automatic leaf module selection during
 structure and parameter learning.
 """
 from inspect import isclass
-from typing import Optional
 
 from spflow.meta.data.feature_types import FeatureType
 from spflow.meta.data.meta_type import MetaType

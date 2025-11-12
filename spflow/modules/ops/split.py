@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from abc import abstractmethod, ABC
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
-import torch
 from torch import Tensor, nn
 
 from spflow.meta.data import Scope

@@ -5,10 +5,9 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
+from spflow.learn.gradient_descent import negative_log_likelihood_loss, train_gradient_descent
 from spflow.meta import Scope
 from spflow.modules import Module
-from spflow.learn.gradient_descent import negative_log_likelihood_loss, train_gradient_descent
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
 
 
 # Define a DummyModel class for testing

@@ -1,13 +1,12 @@
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
-import unittest
 from itertools import product
 
-from spflow.meta import SamplingContext
-from tests.utils.leaves import make_normal_leaf, make_normal_data
-from spflow.learn import expectation_maximization
-from spflow.modules import Product
 import pytest
 import torch
+
+from spflow.learn import expectation_maximization
+from spflow.meta import SamplingContext
+from spflow.modules import Product
+from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 # Constants
 in_channels_values = [1, 3]

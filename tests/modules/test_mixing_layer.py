@@ -1,10 +1,11 @@
 from itertools import product
 
 import pytest
+import torch
+
 from spflow.meta import SamplingContext
 from spflow.modules.rat import MixingLayer
 from tests.utils.leaves import make_normal_leaf, make_normal_data
-import torch
 
 out_channels_values = [1, 5]
 out_features_values = [1]

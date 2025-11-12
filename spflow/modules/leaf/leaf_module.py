@@ -5,16 +5,15 @@ from collections.abc import Callable
 from typing import Optional, Dict, Any
 
 import torch
-from torch import Tensor, nn
-from spflow.utils.projections import proj_real_to_bounded, proj_bounded_to_real
+from torch import Tensor
 
+from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.modules.module import Module
 from spflow.utils.cache import Cache, init_cache
 from spflow.utils.leaf import apply_nan_strategy
-import time
-from spflow.exceptions import InvalidParameterCombinationError
+from spflow.utils.projections import proj_real_to_bounded, proj_bounded_to_real
 
 
 class LogSpaceParameter:
@@ -170,8 +169,6 @@ def validate_all_or_none(**params: Any) -> bool:
     return bool(provided)
 
 
-
-
 class LeafModule(Module, ABC):
     def __init__(self, scope: Scope | list[int], out_channels: int = None):
         r"""Base class for leaf modules in the SPFlow framework.
@@ -208,9 +205,7 @@ class LeafModule(Module, ABC):
         pass
 
     @abstractmethod
-    def _mle_compute_statistics(
-        self, data: Tensor, weights: Tensor, bias_correction: bool
-    ) -> None:
+    def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Compute distribution-specific statistics and assign parameters directly.
 
         This hook method is called by maximum_likelihood_estimation() after data
@@ -569,9 +564,7 @@ class LeafModule(Module, ABC):
         scoped_data = data[:, self.scope.query] if preprocess_data else data
 
         # Step 2: Apply NaN strategy (drop/impute)
-        scoped_data, normalized_weights = apply_nan_strategy(
-            nan_strategy, scoped_data, self.device, weights
-        )
+        scoped_data, normalized_weights = apply_nan_strategy(nan_strategy, scoped_data, self.device, weights)
 
         # Step 3: Prepare weights for broadcasting
         # Convert from (batch, 1) to (batch, 1, 1, ...) for proper broadcasting
@@ -580,7 +573,6 @@ class LeafModule(Module, ABC):
         mle_weights = self._prepare_mle_weights(scoped_data, normalized_weights_flat)
 
         return scoped_data, mle_weights
-
 
     def maximum_likelihood_estimation(
         self,

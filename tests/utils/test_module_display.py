@@ -1,12 +1,11 @@
 """Tests for the module display system (module_to_str function and Module.to_str() method)."""
 
 import pytest
-import torch
 
 from spflow.meta import Scope
 from spflow.modules.leaf import Normal
-from spflow.modules.sum import Sum
 from spflow.modules.product import Product
+from spflow.modules.sum import Sum
 from spflow.utils.module_display import module_to_str
 
 

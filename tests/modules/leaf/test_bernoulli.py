@@ -1,8 +1,4 @@
-import unittest
 from itertools import product
-
-from spflow import InvalidParameterCombinationError
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
 
 import pytest
 import torch

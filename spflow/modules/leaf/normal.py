@@ -1,5 +1,6 @@
 import torch
 from torch import Tensor, nn
+
 from spflow.meta.data import Scope
 from spflow.modules.leaf.leaf_module import (
     LeafModule,
@@ -61,9 +62,7 @@ class Normal(LeafModule):
         """Returns the underlying torch distribution object."""
         return torch.distributions.Normal(self.mean, self.std)
 
-    def _mle_compute_statistics(
-        self, data: Tensor, weights: Tensor, bias_correction: bool
-    ) -> None:
+    def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Compute Normal-specific sufficient statistics and assign parameters.
 
         Args:
