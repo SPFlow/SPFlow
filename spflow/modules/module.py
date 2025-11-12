@@ -259,8 +259,8 @@ class Module(nn.Module, ABC):
             String representation of the module.
 
         Examples:
-            >>> leaf = Normal(scope=Scope([0, 1]), out_channels=2)
-            >>> model = Sum(inputs=leaf, out_channels=3)
+            >>> leaves = Normal(scope=Scope([0, 1]), out_channels=2)
+            >>> model = Sum(inputs=leaves, out_channels=3)
             >>> print(model.to_str())  # Tree view (default)
             >>> print(model.to_str(format="pytorch"))  # PyTorch format
             >>> print(model.to_str(max_depth=2))  # Limit depth

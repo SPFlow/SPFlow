@@ -7,7 +7,7 @@ from spflow.exceptions import ShapeError, StructureError
 from spflow.learn.expectation_maximization import expectation_maximization
 from spflow.meta.data import Scope
 from spflow.modules import Product, Sum
-from spflow.modules import leaf
+from spflow.modules import leaves
 from spflow.modules.wrapper.image_wrapper import ImageWrapper, MarginalizationContext
 from tests.utils.leaves import make_data, make_normal_leaf
 
@@ -38,7 +38,7 @@ def test_log_likelihood(num_channel: int, num_reps):
     width = 4
     out_features = height * width * num_channel
 
-    data = make_data(cls=leaf.Normal, out_features=out_features, n_samples=5)
+    data = make_data(cls=leaves.Normal, out_features=out_features, n_samples=5)
     data = data.view(data.shape[0], num_channel, height, width)
     lls = module.log_likelihood(data)
     if num_reps is not None:
@@ -53,7 +53,7 @@ def test_log_likelihood(num_channel: int, num_reps):
     list(product(num_channel, [True, False])),
 )
 def test_sample(num_channel: int, is_mpe: bool):
-    # cls = leaf.Normal
+    # cls = leaves.Normal
     module = make_wrapper(num_channel, num_reps=None)
     # Setup sampling context
     n_samples = 10
@@ -78,7 +78,7 @@ def test_expectation_maximization(
     width = 4
 
     module = make_wrapper(num_channel, num_reps)
-    data = make_data(cls=leaf.Normal, out_features=height * width * num_channel, n_samples=20)
+    data = make_data(cls=leaves.Normal, out_features=height * width * num_channel, n_samples=20)
     data = data.reshape(20, num_channel, height, width)
 
     expectation_maximization(module, data, max_steps=10)

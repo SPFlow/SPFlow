@@ -3,7 +3,7 @@
 import pytest
 
 from spflow.meta import Scope
-from spflow.modules.leaf import Normal
+from spflow.modules.leaves import Normal
 from spflow.modules.product import Product
 from spflow.modules.sum import Sum
 from spflow.utils.module_display import module_to_str
@@ -14,7 +14,7 @@ class TestModuleToStrBasics:
 
     @pytest.fixture
     def simple_model(self):
-        """Create a simple model: Sum -> Normal leaf."""
+        """Create a simple model: Sum -> Normal leaves."""
         leaf = Normal(scope=Scope([0, 1]), out_channels=2)
         return Sum(inputs=leaf, out_channels=3)
 
@@ -208,7 +208,7 @@ class TestModuleToStrComplexStructures:
         assert len(output_limited) <= len(output_full)
 
     def test_multiple_leaves_same_module(self):
-        """Test Sum with multiple Normal leaf inputs (same scope)."""
+        """Test Sum with multiple Normal leaves inputs (same scope)."""
         # Sum requires same scope inputs
         scope = Scope([0, 1])
         leaves = [Normal(scope=scope, out_channels=2) for _ in range(3)]
@@ -220,7 +220,7 @@ class TestModuleToStrComplexStructures:
         assert output.count("Normal") == 3
 
     def test_sum_with_mixed_inputs(self):
-        """Test Sum with both Sum and leaf inputs (same scope)."""
+        """Test Sum with both Sum and leaves inputs (same scope)."""
         # Both inputs must have same scope for Sum
         scope = Scope([0, 1])
         leaf = Normal(scope=scope, out_channels=2)
@@ -238,7 +238,7 @@ class TestModuleToStrEdgeCases:
     """Test edge cases and special scenarios."""
 
     def test_single_leaf_module(self):
-        """Test with a single leaf module (no containers)."""
+        """Test with a single leaves module (no containers)."""
         leaf = Normal(scope=Scope([0, 1, 2]), out_channels=3)
 
         output = module_to_str(leaf, format="tree")

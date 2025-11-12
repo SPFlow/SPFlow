@@ -6,8 +6,8 @@ import torch
 from spflow.meta import SamplingContext
 from spflow.meta import Scope
 from spflow.meta.dispatch import init_default_sampling_context
-from spflow.modules import leaf
-from spflow.modules.leaf import Normal, Bernoulli
+from spflow.modules import leaves
+from spflow.modules.leaves import Normal, Bernoulli
 from spflow.modules.rat import RatSPN
 from tests.utils.leaves import make_leaf, make_data
 
@@ -19,18 +19,18 @@ n_root_nodes = [1, 4]
 outer_product = [True, False]
 split_halves = [True, False]
 leaf_cls_values = [
-    # leaf.Bernoulli,
-    # leaf.Binomial,
-    # leaf.Categorical,
-    # leaf.Exponential,
-    # leaf.Gamma,
-    # leaf.Geometric,
-    # leaf.Hypergeometric,
-    # leaf.LogNormal,
-    # leaf.NegativeBinomial,
-    leaf.Normal,
-    # leaf.Poisson,
-    # leaf.Uniform,
+    # leaves.Bernoulli,
+    # leaves.Binomial,
+    # leaves.Categorical,
+    # leaves.Exponential,
+    # leaves.Gamma,
+    # leaves.Geometric,
+    # leaves.Hypergeometric,
+    # leaves.LogNormal,
+    # leaves.NegativeBinomial,
+    leaves.Normal,
+    # leaves.Poisson,
+    # leaves.Uniform,
 ]
 params = list(
     product(

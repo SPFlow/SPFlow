@@ -1,9 +1,9 @@
 import torch
 
 from spflow.meta import Scope
-from spflow.modules import leaf
-from spflow.modules.leaf import Normal
-from spflow.modules.leaf.leaf_module import LeafModule
+from spflow.modules import leaves
+from spflow.modules.leaves import Normal
+from spflow.modules.leaves.leaf_module import LeafModule
 
 
 def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):
@@ -32,7 +32,7 @@ def make_normal_leaf(
     scope=None, out_features=None, out_channels=None, num_repetitions=None, mean=None, std=None
 ) -> Normal:
     """
-    Create a Normal leaf module.
+    Create a Normal leaves module.
 
     Args:
         mean: Mean of the distribution.
@@ -80,24 +80,24 @@ def make_leaf(
         scope = Scope(list(range(0, out_features)))
 
     # Check special cases
-    if cls == leaf.Binomial:
-        return leaf.Binomial(
+    if cls == leaves.Binomial:
+        return leaves.Binomial(
             scope=scope, out_channels=out_channels, n=torch.ones(1) * 3, num_repetitions=num_repetitions
         )
-    elif cls == leaf.NegativeBinomial:
-        return leaf.NegativeBinomial(
+    elif cls == leaves.NegativeBinomial:
+        return leaves.NegativeBinomial(
             scope=scope, out_channels=out_channels, n=torch.ones(1) * 3, num_repetitions=num_repetitions
         )
-    elif cls == leaf.Categorical:
-        return leaf.Categorical(
+    elif cls == leaves.Categorical:
+        return leaves.Categorical(
             scope=scope,
             out_channels=out_channels,
             K=3,
             num_repetitions=num_repetitions,
         )
-    elif cls == leaf.Hypergeometric:
+    elif cls == leaves.Hypergeometric:
         if num_repetitions is None:
-            return leaf.Hypergeometric(
+            return leaves.Hypergeometric(
                 scope=scope,
                 n=torch.ones((len(scope.query), out_channels)) * 3,
                 N=torch.ones((len(scope.query), out_channels)) * 10,
@@ -105,23 +105,23 @@ def make_leaf(
                 num_repetitions=num_repetitions,
             )
         else:
-            return leaf.Hypergeometric(
+            return leaves.Hypergeometric(
                 scope=scope,
                 n=torch.ones((len(scope.query), out_channels, num_repetitions)) * 3,
                 N=torch.ones((len(scope.query), out_channels, num_repetitions)) * 10,
                 K=torch.ones((len(scope.query), out_channels, num_repetitions)) * 5,
                 num_repetitions=num_repetitions,
             )
-    elif cls == leaf.Uniform:
+    elif cls == leaves.Uniform:
         if num_repetitions is None:
-            return leaf.Uniform(
+            return leaves.Uniform(
                 scope=scope,
                 start=torch.zeros((len(scope.query), out_channels)),
                 end=torch.ones((len(scope.query), out_channels)),
                 num_repetitions=num_repetitions,
             )
         else:
-            return leaf.Uniform(
+            return leaves.Uniform(
                 scope=scope,
                 start=torch.zeros((len(scope.query), out_channels, num_repetitions)),
                 end=torch.ones((len(scope.query), out_channels, num_repetitions)),
@@ -134,11 +134,11 @@ def make_leaf(
 
 def make_leaf_args(cls, out_channels: int = None, scope: Scope = None, num_repetitions=None) -> dict:
     # Check special cases
-    if cls == leaf.Binomial or cls == leaf.NegativeBinomial:
+    if cls == leaves.Binomial or cls == leaves.NegativeBinomial:
         return {"n": torch.ones(1) * 3}
-    elif cls == leaf.Categorical:
+    elif cls == leaves.Categorical:
         return {"K": 3}
-    elif cls == leaf.Hypergeometric:
+    elif cls == leaves.Hypergeometric:
         if num_repetitions is None:
             return {
                 "n": torch.ones((len(scope.query), out_channels)) * 3,
@@ -151,7 +151,7 @@ def make_leaf_args(cls, out_channels: int = None, scope: Scope = None, num_repet
                 "N": torch.ones((len(scope.query), out_channels, num_repetitions)) * 10,
                 "K": torch.ones((len(scope.query), out_channels, num_repetitions)) * 5,
             }
-    elif cls == leaf.Uniform:
+    elif cls == leaves.Uniform:
         if num_repetitions is None:
             return {
                 "start": torch.zeros((len(scope.query), out_channels)),
@@ -177,25 +177,25 @@ def make_cond_leaf(
     event_shape = (len(scope.query), out_channels)
     """
     # Check special cases
-    if cls == leaf.CondBinomial:
-        return leaf.CondBinomial(scope=scope, out_channels=out_channels, n=torch.ones(1) * 3)
-    elif cls == leaf.NegativeBinomial:
-        return leaf.NegativeBinomial(scope=scope, out_channels=out_channels, n=torch.ones(1) * 3)
-    elif cls == leaf.CondCategorical:
-        return leaf.CondCategorical(
+    if cls == leaves.CondBinomial:
+        return leaves.CondBinomial(scope=scope, out_channels=out_channels, n=torch.ones(1) * 3)
+    elif cls == leaves.NegativeBinomial:
+        return leaves.NegativeBinomial(scope=scope, out_channels=out_channels, n=torch.ones(1) * 3)
+    elif cls == leaves.CondCategorical:
+        return leaves.CondCategorical(
             scope=scope,
             out_channels=out_channels,
             K=3,
         )
-    elif cls == leaf.CondHypergeometric:
-        return leaf.CondHypergeometric(
+    elif cls == leaves.CondHypergeometric:
+        return leaves.CondHypergeometric(
             scope=scope,
             n=torch.ones((len(scope.query), out_channels)) * 3,
             N=torch.ones((len(scope.query), out_channels)) * 10,
             K=torch.ones((len(scope.query), out_channels)) * 5,
         )
-    elif cls == leaf.CondUniform:
-        return leaf.CondUniform(
+    elif cls == leaves.CondUniform:
+        return leaves.CondUniform(
             scope=scope,
             start=torch.zeros((len(scope.query), out_channels)),
             end=torch.ones((len(scope.query), out_channels)),

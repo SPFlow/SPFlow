@@ -61,8 +61,8 @@ def module_to_str(
         String representation of the module.
 
     Examples:
-        >>> leaf = Normal(scope=Scope([0, 1]), out_channels=2)
-        >>> sum_node = Sum(inputs=leaf, out_channels=3)
+        >>> leaves = Normal(scope=Scope([0, 1]), out_channels=2)
+        >>> sum_node = Sum(inputs=leaves, out_channels=3)
         >>> print(module_to_str(sum_node))  # Tree format (default)
         >>> print(module_to_str(sum_node, format="pytorch"))  # PyTorch format
         >>> print(module_to_str(sum_node, max_depth=2))  # Limit depth

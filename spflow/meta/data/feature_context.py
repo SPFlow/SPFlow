@@ -3,7 +3,7 @@
 This module provides the FeatureContext class, which tracks and manages the
 probability distribution types for different features/variables in a dataset.
 It maps feature indices to their corresponding distribution types (e.g., Gaussian,
-Categorical, Bernoulli, etc.), enabling automatic leaf module selection during
+Categorical, Bernoulli, etc.), enabling automatic leaves module selection during
 structure and parameter learning.
 """
 from inspect import isclass
@@ -18,7 +18,7 @@ class FeatureContext:
 
     A FeatureContext maintains a mapping from feature indices (variables) to their
     probability distribution types. This enables the system to:
-    - Automatically select appropriate leaf modules during structure learning
+    - Automatically select appropriate leaves modules during structure learning
     - Handle heterogeneous data types (continuous, categorical, count data, etc.)
     - Validate consistency during model construction and learning
 

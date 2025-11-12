@@ -13,7 +13,7 @@ from networkx import connected_components as ccnp, from_numpy_array
 from spflow.meta.data.scope import Scope
 from spflow.modules import Product
 from spflow.modules import Sum
-from spflow.modules.leaf.leaf_module import LeafModule
+from spflow.modules.leaves.leaf_module import LeafModule
 from spflow.modules.module import Module
 from spflow.modules.ops.cat import Cat
 from spflow.utils.rdc import rdc
@@ -56,7 +56,7 @@ def prune_sums(node):
             prune_sums(node)
 
         else:
-            # call prune on the inputs if the children are not leaf modules
+            # call prune on the inputs if the children are not leaves modules
             if not isinstance(node.inputs, LeafModule):
                 prune_sums(node.inputs)
     else:
@@ -66,7 +66,7 @@ def prune_sums(node):
         else:
             if isinstance(node.inputs, torch.nn.ModuleList):
                 for child in node.inputs:
-                    # prune only if the child is not a leaf module
+                    # prune only if the child is not a leaves module
                     if not isinstance(child, LeafModule):
                         prune_sums(child)
 
@@ -261,7 +261,7 @@ def learn_spn(
         )
 
     def create_partitioned_mv_leaf(scope: Scope, data: torch.Tensor):
-        # create leaf layer from given scope and data
+        # create leaves layer from given scope and data
         leaves = []
         s = set(scope.query)
         for leaf_module in leaf_modules:
@@ -271,7 +271,7 @@ def learn_spn(
                 leaf_layer = leaf_module.__class__(
                     scope=Scope(sorted(scope_inter)), out_channels=leaf_module.out_channels
                 )
-                # estimate leaf node parameters from data
+                # estimate leaves node parameters from data
                 leaf_layer.maximum_likelihood_estimation(
                     data,
                 )
@@ -321,7 +321,7 @@ def learn_spn(
             return Product(product_inputs)
 
         else:
-            # if not enough instances to cluster, create leaf layer (can be set to prevent overfitting too much or to reduce network size)
+            # if not enough instances to cluster, create leaves layer (can be set to prevent overfitting too much or to reduce network size)
             if data.shape[0] < min_instances_slice:
                 return create_partitioned_mv_leaf(scope, data)
             # cluster data

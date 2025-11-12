@@ -10,11 +10,11 @@ from .modules import (
     Product,
     Sum,
 )
-from .modules.ops import Cat, Split, SplitAlternate, SplitHalves
+from .modules import ops
 from .modules.rat import MixingLayer, RatSPN
 from .modules.wrapper.image_wrapper import ImageWrapper
 from .modules.wrapper.abstract_wrapper import AbstractWrapper
-from .modules import leaf
+from .modules import leaves
 
 __all__ = [
     "__version__",
@@ -26,13 +26,10 @@ __all__ = [
     "OuterProduct",
     "ElementwiseProduct",
     "ElementwiseSum",
-    "Cat",
-    "Split",
-    "SplitHalves",
-    "SplitAlternate",
+    "ops", # ops submodule, users can access ops via spflow.ops
     "RatSPN",
     "MixingLayer",
     "ImageWrapper",
     "AbstractWrapper",
-    "leaf"  # leaf module, users can access leaves via spflow.leaf
+    "leaves"  # leaves module, users can access leaves via spflow.leaves
 ]

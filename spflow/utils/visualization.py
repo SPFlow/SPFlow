@@ -30,7 +30,7 @@ except ImportError as e:
 if TYPE_CHECKING:
     from spflow.modules.module import Module
 
-from spflow.modules.leaf.leaf_module import LeafModule
+from spflow.modules.leaves.leaf_module import LeafModule
 from spflow.modules.ops.cat import Cat
 from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_alternate import SplitAlternate
@@ -89,17 +89,17 @@ def _format_param_count(count: int) -> str:
 def _count_parameters(module: Module) -> int:
     """Count parameters for a module.
 
-    For leaf modules, counts all parameters (including the distribution child module).
+    For leaves modules, counts all parameters (including the distribution child module).
     For other modules, counts only parameters directly owned by this module (excluding children).
 
     Args:
         module: The module to count parameters for.
 
     Returns:
-        Number of parameters. For leaf modules, includes child distribution parameters.
+        Number of parameters. For leaves modules, includes child distribution parameters.
         For other modules, only direct parameters.
     """
-    # For leaf modules, include all parameters (including distribution child)
+    # For leaves modules, include all parameters (including distribution child)
     if isinstance(module, LeafModule):
         return sum(p.numel() for p in module.parameters())
     # For other modules, only count direct parameters
@@ -155,8 +155,8 @@ def visualize_module(
     Example:
         >>> from spflow.modules import Sum, Normal
         >>> from spflow.meta.data.scope import Scope
-        >>> leaf = Normal(scope=Scope([0, 1]), out_channels=2)
-        >>> model = Sum(inputs=leaf, out_channels=3)
+        >>> leaves = Normal(scope=Scope([0, 1]), out_channels=2)
+        >>> model = Sum(inputs=leaves, out_channels=3)
         >>> # Save as PDF (default format)
         >>> visualize_module(model, "my_model", show_scope=True, show_shape=True)
         >>> # Use different layout engines
@@ -529,9 +529,9 @@ def _get_module_color(module: Module) -> str:
     """
     class_name = module.__class__.__name__
 
-    # Check if this is a leaf module (all leaf modules get the same color)
+    # Check if this is a leaves module (all leaves modules get the same color)
     try:
-        from spflow.modules.leaf import LeafModule
+        from spflow.modules.leaves import LeafModule
 
         if isinstance(module, LeafModule):
             return Color.GREEN
