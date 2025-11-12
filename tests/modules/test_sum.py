@@ -55,7 +55,6 @@ def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, 
         assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
 
 
-# ToDo: Look at this after elementwise product is tested
 @pytest.mark.parametrize(
     "in_channels,out_channels,out_features,num_reps",
     product(in_channels_values, out_channels_values, [2, 4], num_repetitions),
