@@ -570,7 +570,7 @@ class LeafModule(Module, ABC):
 
         # Step 2: Apply NaN strategy (drop/impute)
         scoped_data, normalized_weights = apply_nan_strategy(
-            nan_strategy, scoped_data, self, weights
+            nan_strategy, scoped_data, self.device, weights
         )
 
         # Step 3: Prepare weights for broadcasting
