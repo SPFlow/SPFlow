@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 from torch import Tensor
@@ -11,13 +11,12 @@ from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache, init_cache
 
 
-class SplitHalves(Split):  # ToDo: make abstract and implement concrete classes
+class SplitHalves(Split):
     def __init__(
         self,
         inputs: Module,
         dim: int = 1,
         num_splits: int | None = 2,
-        split_func: Callable[[torch.Tensor], list[torch.Tensor]] | None = None,
     ):
         """
         Split a single module along a given dimension. This implementation splits the features consecutively.
@@ -37,6 +36,7 @@ class SplitHalves(Split):  # ToDo: make abstract and implement concrete classes
             inputs:
             dim: Concatenation dimension. Note: dim=0: batch, dim=1: feature, dim=2: channel.
             num_splits: Number of splits along the given dimension.
+            split_func: Custom split function.
         """
         super().__init__(inputs=inputs, dim=dim, num_splits=num_splits)
 
