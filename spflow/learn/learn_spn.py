@@ -100,24 +100,29 @@ def partition_by_rdc(
     else:
         partitioning_data = data
 
-    # necessary for the correct precision fo thr rdc computation
-    torch.set_default_dtype(torch.float64)
+    # necessary for the correct precision for the rdc computation
+    # Save original dtype and reset after computation to avoid contaminating global state
+    original_dtype = torch.get_default_dtype()
+    try:
+        torch.set_default_dtype(torch.float64)
 
-    rdcs = torch.eye(data.shape[1], device=partitioning_data.device)
-    for i, j in combinations(range(partitioning_data.shape[1]), 2):
-        r = rdc(partitioning_data[:, i], partitioning_data[:, j])
-        rdcs[j][i] = rdcs[i][j] = r
+        rdcs = torch.eye(data.shape[1], device=partitioning_data.device)
+        for i, j in combinations(range(partitioning_data.shape[1]), 2):
+            r = rdc(partitioning_data[:, i], partitioning_data[:, j])
+            rdcs[j][i] = rdcs[i][j] = r
 
-    # create adjacency matrix of features from thresholded rdcs
-    rdcs[rdcs < threshold] = 0.0
-    adj_mat = rdcs
+        # create adjacency matrix of features from thresholded rdcs
+        rdcs[rdcs < threshold] = 0.0
+        adj_mat = rdcs
 
-    partition_ids = torch.zeros(data.shape[1], dtype=torch.int)
+        partition_ids = torch.zeros(data.shape[1], dtype=torch.int)
 
-    for i, c in enumerate((ccnp(from_numpy_array(np.array(adj_mat.cpu().tolist()))))):
-        partition_ids[list(c)] = i + 1
+        for i, c in enumerate((ccnp(from_numpy_array(np.array(adj_mat.cpu().tolist()))))):
+            partition_ids[list(c)] = i + 1
 
-    return partition_ids.to(data.device)
+        return partition_ids.to(data.device)
+    finally:
+        torch.set_default_dtype(original_dtype)
 
 
 def cluster_by_kmeans(
