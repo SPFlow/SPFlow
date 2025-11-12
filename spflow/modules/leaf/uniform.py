@@ -2,8 +2,7 @@ import torch
 from torch import Tensor
 
 from spflow.meta.data import Scope
-from spflow.modules.leaf.leaf_module import LeafModule
-from spflow.utils.leaf import parse_leaf_args
+from spflow.modules.leaf.leaf_module import LeafModule, parse_leaf_args
 
 
 class Uniform(LeafModule):
