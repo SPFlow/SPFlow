@@ -55,9 +55,6 @@ class BaseProduct(Module, ABC):
         if not Scope.all_pairwise_disjoint([inp.scope for inp in self.inputs]):
             raise ScopeError("Input scopes must be disjoint.")
 
-        # Derive output shape from inputs #ToDo: check if this is correct
-        self._out_features = self.inputs[0].out_features
-
         self._max_out_channels = max(inp.out_channels for inp in self.inputs)
 
         # Join all scopes
@@ -92,11 +89,6 @@ class BaseProduct(Module, ABC):
             Mapped input mask.
         """
         pass
-
-    @property
-    def out_features(self) -> int:
-        """Returns the number of output features for this module."""
-        return self._out_features
 
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}"
