@@ -64,7 +64,15 @@ dev = [
   "matplotlib>=3.9.2",
   "build",
   "twine",
-  "pip-audit"
+  "pip-audit",
+  # Documentation
+  "sphinx>=7.0",
+  "furo",
+  "sphinx-autodoc-typehints",
+  "nbsphinx",
+  "sphinx-copybutton",
+  "myst-parser",
+  "ipykernel",
 ]
 
 
