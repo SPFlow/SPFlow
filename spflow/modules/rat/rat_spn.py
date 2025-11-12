@@ -10,7 +10,7 @@ from spflow.modules.elementwise_product import ElementwiseProduct
 from spflow.modules.outer_product import OuterProduct
 from spflow.modules.sum import Sum
 from spflow.modules.factorize import Factorize
-from spflow.modules.leaf.leaf_module import LeafModule
+from spflow.modules.leaves.leaf_module import LeafModule
 from spflow.modules.module import Module
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.ops.split_halves import SplitHalves
@@ -39,7 +39,7 @@ class RatSPN(Module):
         r"""Initializer for ``RatSPN`` object.
 
         Args:
-            leaf_modules: List of leaf modules to be used in the RAT-SPN.
+            leaf_modules: List of leaves modules to be used in the RAT-SPN.
             n_root_nodes: Number of root nodes.
             n_region_nodes: Number of region nodes / sum nodes.
             num_repetitions: Number of repetitions.
@@ -90,7 +90,7 @@ class RatSPN(Module):
             product_layer = OuterProduct
         else:
             product_layer = ElementwiseProduct
-        # Factorize the leaf modules
+        # Factorize the leaves modules
         fac_layer = Factorize(
             inputs=self.leaf_modules, depth=self.depth, num_repetitions=self.num_repetitions
         )
@@ -102,7 +102,7 @@ class RatSPN(Module):
             Split = SplitAlternate
 
         for i in range(depth):
-            # Create the lowest layer with the factorized leaf modules as input
+            # Create the lowest layer with the factorized leaves modules as input
             # if i == 0 and depth > 1:
             if i == 0:
                 out_prod = product_layer(inputs=Split(inputs=fac_layer, dim=1, num_splits=self.num_splits))

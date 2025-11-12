@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from spflow.meta.data.scope import Scope
-from spflow.modules.leaf import Normal
+from spflow.modules.leaves import Normal
 
 
 class ConcreteModule(Normal):

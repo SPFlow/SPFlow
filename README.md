@@ -44,11 +44,11 @@ Here are three quick examples to get you started:
 ```python
 import torch
 from spflow.modules import Sum, Product
-from spflow.modules.leaf import Normal
+from spflow.modules.leaves import Normal
 from spflow.meta import Scope
 from spflow import log_likelihood
 
-# Create leaf layer for 2 features
+# Create leaves layer for 2 features
 scope = Scope([0, 1])
 leaf_layer = Normal(scope=scope, out_channels=4)
 
@@ -82,11 +82,11 @@ Log-likelihood sample: tensor([[-3.1183, -3.8367]], grad_fn=<SelectBackward0>)
 ```python
 import torch
 from spflow.modules.rat import RatSPN
-from spflow.modules.leaf import Normal
+from spflow.modules.leaves import Normal
 from spflow.meta import Scope
 from spflow import log_likelihood
 
-# Create leaf layer
+# Create leaves layer
 num_features = 64
 scope = Scope(list(range(num_features)))
 leaf_layer = Normal(scope=scope, out_channels=4, num_repetitions=2)
@@ -123,13 +123,13 @@ Log-likelihood sample: tensor([[[-873.5844]]], grad_fn=<SliceBackward0>)
 ```python
 import torch
 from spflow.learn import learn_spn
-from spflow.modules.leaf import Normal
+from spflow.modules.leaves import Normal
 from spflow.meta import Scope
 from spflow import log_likelihood
 
 torch.manual_seed(42)
 
-# Create leaf layer with Gaussian distributions
+# Create leaves layer with Gaussian distributions
 scope = Scope(list(range(5)))
 leaf_layer = Normal(scope=scope, out_channels=4)
 
@@ -192,7 +192,7 @@ Log-likelihood sample: tensor([[-7.4175]], grad_fn=<SelectBackward0>)
 ```python
 import torch
 from spflow.modules import Sum
-from spflow.modules.leaf import Normal
+from spflow.modules.leaves import Normal
 from spflow.meta import Scope, SamplingContext
 from spflow import log_likelihood, sample
 

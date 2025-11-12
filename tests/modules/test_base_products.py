@@ -8,7 +8,7 @@ from spflow.learn import expectation_maximization
 from spflow.meta import SamplingContext
 from spflow.meta import Scope
 from spflow.modules import ElementwiseProduct
-from spflow.modules.leaf import Normal
+from spflow.modules.leaves import Normal
 from spflow.modules.outer_product import OuterProduct
 from tests.utils.leaves import make_normal_leaf, make_data, make_leaf
 

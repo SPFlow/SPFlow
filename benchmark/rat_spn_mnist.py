@@ -1,6 +1,6 @@
 from torch.utils.data import DataLoader
 
-from spflow.modules.leaf import Normal, Binomial, Bernoulli
+from spflow.modules.leaves import Normal, Binomial, Bernoulli
 from spflow.modules.rat.rat_spn import RatSPN
 
 from spflow.meta.data import Scope

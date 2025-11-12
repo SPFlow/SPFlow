@@ -7,7 +7,7 @@ from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.meta import SamplingContext
 from spflow.meta import Scope
-from spflow.modules.leaf import Categorical, Binomial
+from spflow.modules.leaves import Categorical, Binomial
 from spflow.modules.ops import Cat
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 

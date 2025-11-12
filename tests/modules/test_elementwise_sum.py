@@ -10,7 +10,7 @@ from spflow.meta import SamplingContext
 from spflow.meta import Scope
 from spflow.modules import ElementwiseProduct
 from spflow.modules.elementwise_sum import ElementwiseSum
-from spflow.modules.leaf import Normal
+from spflow.modules.leaves import Normal
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf
 
 in_channels_values = [1, 4]

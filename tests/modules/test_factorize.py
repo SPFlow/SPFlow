@@ -9,7 +9,7 @@ from spflow.meta import SamplingContext
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch import init_default_sampling_context
 from spflow.modules import Factorize
-from spflow.modules.leaf import Normal, Bernoulli
+from spflow.modules.leaves import Normal, Bernoulli
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, make_data
 
 # Constants
@@ -146,7 +146,7 @@ def test_multidistribution_input():
 
 def test_insufficient_features_for_depth():
     """Test that StructureError is raised when depth requires more features than available."""
-    # Create a leaf with only 4 features
+    # Create a leaves with only 4 features
     out_features = 4
     num_reps = 5
     leaf = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_reps)
@@ -158,7 +158,7 @@ def test_insufficient_features_for_depth():
 
 def test_exact_feature_count_for_depth():
     """Test that Factorize works when features exactly match required count for depth."""
-    # Create a leaf with exactly 8 features
+    # Create a leaves with exactly 8 features
     out_features = 8
     num_reps = 5
     leaf = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_reps)
@@ -170,7 +170,7 @@ def test_exact_feature_count_for_depth():
 
 def test_excess_features_for_depth():
     """Test that Factorize works when features exceed required count for depth."""
-    # Create a leaf with 10 features
+    # Create a leaves with 10 features
     out_features = 10
     num_reps = 5
     leaf = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_reps)
