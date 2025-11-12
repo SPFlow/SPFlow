@@ -1,20 +1,18 @@
 from __future__ import annotations
 
-from itertools import product
-from typing import Optional, Dict, Any
+from typing import Optional
 
+import numpy as np
 import torch
 from torch import Tensor
 
 from spflow.exceptions import StructureError
 from spflow.meta.data import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
+from spflow.modules.product import Product
 from spflow.modules.base_product import BaseProduct
 from spflow.modules.module import Module
-from spflow.modules import Product
 from spflow.utils.cache import Cache, init_cache
-import numpy as np
-import time
 
 
 class Factorize(BaseProduct):

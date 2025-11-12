@@ -1,18 +1,15 @@
-import unittest
 from itertools import product
 
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
-
-from spflow.meta.dispatch import init_default_sampling_context, SamplingContext
 import pytest
 import torch
-from spflow.meta.data import Scope
-from spflow.modules import leaf
-from tests.utils.leaves import make_leaf, make_data, make_leaf_args, make_normal_leaf
-from spflow.modules.wrapper.ImageWrapper import ImageWrapper, MarginalizationContext
-from spflow.modules import Product, Sum
-from spflow.learn.expectation_maximization import expectation_maximization
+
 from spflow.exceptions import ShapeError, StructureError
+from spflow.learn.expectation_maximization import expectation_maximization
+from spflow.meta.data import Scope
+from spflow.modules import Product, Sum
+from spflow.modules import leaf
+from spflow.modules.wrapper.ImageWrapper import ImageWrapper, MarginalizationContext
+from tests.utils.leaves import make_data, make_normal_leaf
 
 num_channel = [1, 3]
 num_repetitions = [None, 3]

@@ -1,7 +1,5 @@
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
-from spflow.modules.leaf.leaf_module import LeafModule
-from abc import abstractmethod
 
 
 class AbstractWrapper(Module):

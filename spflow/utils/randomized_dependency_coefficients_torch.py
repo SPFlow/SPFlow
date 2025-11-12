@@ -4,14 +4,13 @@ npypical usage example:
 
     coeffs = randomized_dependency_coefficients(data, k, s, phi)
 """
-from itertools import combinations
-from typing import Callable
-import torch
-import numpy as np
-from sklearn.cross_decomposition import CCA
-from spflow.utils.cca_torch import pwcca_distance_batch, pwcca_distance, svcca_distance
-from spflow.utils.empirical_cdf_torch import empirical_cdf
 import time
+from typing import Callable
+
+import torch
+from spflow.utils.cca_torch import pwcca_distance_batch, pwcca_distance, svcca_distance
+
+from spflow.utils.empirical_cdf_torch import empirical_cdf
 
 
 def randomized_dependency_coefficients(data, k: int = 20, s: float = 1 / 6, phi: Callable = torch.sin):

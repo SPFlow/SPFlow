@@ -5,8 +5,6 @@ Typical usage example:
     ecdf_values = empirical_cdf(data)
 """
 
-from scipy.stats import rankdata
-import numpy as np
 import torch
 
 

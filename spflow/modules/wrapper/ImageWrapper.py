@@ -1,4 +1,4 @@
-from typing import Optional, Union, Dict, Any, List
+from typing import Optional, Union
 
 import torch
 from torch import Tensor
@@ -111,9 +111,7 @@ class ImageWrapper(AbstractWrapper):
             )
 
         data = self.flatten(data)
-        self.module.maximum_likelihood_estimation(
-            data, weights=weights, cache=cache
-        )
+        self.module.maximum_likelihood_estimation(data, weights=weights, cache=cache)
 
     def log_likelihood(
         self,

@@ -66,9 +66,7 @@ class Uniform(LeafModule):
     def _supported_value(self):
         return self.start
 
-    def _mle_compute_statistics(
-        self, data: Tensor, weights: Tensor, bias_correction: bool
-    ) -> None:
+    def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Uniform parameters are fixed buffers; nothing to update during MLE.
 
         Args:

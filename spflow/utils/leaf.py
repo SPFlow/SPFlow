@@ -1,4 +1,3 @@
-from typing import Tuple
 from collections.abc import Callable
 
 import torch
@@ -63,9 +62,7 @@ def apply_nan_strategy(
             scope_data = scope_data[valid_rows]
             weights = weights[valid_rows]
         else:
-            raise ValueError(
-                f"Unknown nan_strategy '{nan_strategy}'. Supported strategies: 'ignore'"
-            )
+            raise ValueError(f"Unknown nan_strategy '{nan_strategy}'. Supported strategies: 'ignore'")
 
     # Normalize weights to sum to the number of samples
     weights = weights * (scope_data.shape[0] / weights.sum())

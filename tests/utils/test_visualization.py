@@ -6,8 +6,8 @@ import shutil
 import tempfile
 from unittest.mock import patch
 
-import pytest
 import pydot
+import pytest
 
 from spflow.exceptions import GraphvizError
 from spflow.meta import Scope

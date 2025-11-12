@@ -1,13 +1,10 @@
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
-import unittest
-
+import torch
 from pytest import fixture
 
 from spflow.meta import Scope
 from spflow.modules import Product
 from spflow.modules.leaf import Normal
 from spflow.utils.model_manager import load_model, save_model
-import torch
 
 
 @fixture

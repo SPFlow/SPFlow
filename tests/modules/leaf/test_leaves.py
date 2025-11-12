@@ -1,19 +1,16 @@
-import unittest
 from itertools import product
 
-from spflow import InvalidParameterCombinationError
-from spflow.learn import train_gradient_descent
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
-
-from spflow.meta import SamplingContext
-from tests.utils.leaves import evaluate_log_likelihood
 import pytest
 import torch
 
+from spflow.exceptions import InvalidParameterCombinationError
+from spflow.learn import train_gradient_descent
+from spflow.learn.expectation_maximization import expectation_maximization
+from spflow.meta import SamplingContext
 from spflow.meta import Scope
 from spflow.modules import leaf
+from tests.utils.leaves import evaluate_log_likelihood
 from tests.utils.leaves import make_leaf, make_data
-from spflow.learn.expectation_maximization import expectation_maximization
 
 out_channels_values = [1, 3]
 out_features_values = [1, 4]

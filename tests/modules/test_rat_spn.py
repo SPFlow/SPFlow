@@ -1,20 +1,15 @@
-from spflow.modules.leaf import Normal, Bernoulli
-from tests.fixtures import auto_set_test_seed, auto_set_test_device, auto_set_test_device
-import unittest
-from spflow.modules.rat import RatSPN
 from itertools import product
 
-from spflow import InvalidParameterCombinationError, ScopeError
-from spflow.meta import Scope
 import pytest
-from spflow.meta import SamplingContext
-from spflow.meta.dispatch import init_default_sampling_context
-from spflow.learn import expectation_maximization
-from spflow.learn import train_gradient_descent
-from spflow.modules import Sum, ElementwiseProduct
-from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, make_data
 import torch
+
+from spflow.meta import SamplingContext
+from spflow.meta import Scope
+from spflow.meta.dispatch import init_default_sampling_context
 from spflow.modules import leaf
+from spflow.modules.leaf import Normal, Bernoulli
+from spflow.modules.rat import RatSPN
+from tests.utils.leaves import make_leaf, make_data
 
 depth = [1, 3]
 n_region_nodes = [1, 5]

@@ -1,11 +1,9 @@
 import torch
 from torch import Tensor
-from typing import Optional, Callable
 
 from spflow.meta.data import Scope
 from spflow.modules.leaf.leaf_module import LeafModule
 from spflow.utils.leaf import parse_leaf_args
-from spflow.utils.cache import Cache
 
 
 class Hypergeometric(LeafModule):
@@ -95,9 +93,7 @@ class Hypergeometric(LeafModule):
     def _supported_value(self):
         return self.n + self.K - self.N
 
-    def _mle_compute_statistics(
-        self, data: Tensor, weights: Tensor, bias_correction: bool
-    ) -> None:
+    def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Hypergeometric parameters are fixed buffers; nothing to estimate.
 
         Args:

@@ -1,7 +1,6 @@
 __version__ = "1.0.0"
 __author__ = "The SPFlow Authors"
 
-from .exceptions import GraphvizError, InvalidParameterCombinationError, ScopeError
 from .modules import (
     ElementwiseProduct,
     ElementwiseSum,
@@ -11,31 +10,15 @@ from .modules import (
     Product,
     Sum,
 )
-from .modules.leaf import (
-    Bernoulli,
-    Binomial,
-    Categorical,
-    Exponential,
-    Gamma,
-    Geometric,
-    Hypergeometric,
-    LogNormal,
-    NegativeBinomial,
-    Normal,
-    Poisson,
-    Uniform,
-)
 from .modules.ops import Cat, Split, SplitAlternate, SplitHalves
 from .modules.rat import MixingLayer, RatSPN
 from .modules.wrapper.ImageWrapper import ImageWrapper
 from .modules.wrapper.abstract_wrapper import AbstractWrapper
+from .modules import leaf
 
 __all__ = [
     "__version__",
     "__author__",
-    "InvalidParameterCombinationError",
-    "ScopeError",
-    "GraphvizError",
     "Module",
     "Sum",
     "Product",
@@ -43,18 +26,6 @@ __all__ = [
     "OuterProduct",
     "ElementwiseProduct",
     "ElementwiseSum",
-    "Bernoulli",
-    "Binomial",
-    "Categorical",
-    "Exponential",
-    "Gamma",
-    "Geometric",
-    "Hypergeometric",
-    "LogNormal",
-    "NegativeBinomial",
-    "Normal",
-    "Poisson",
-    "Uniform",
     "Cat",
     "Split",
     "SplitHalves",
@@ -63,4 +34,5 @@ __all__ = [
     "MixingLayer",
     "ImageWrapper",
     "AbstractWrapper",
+    "leaf"  # leaf module, users can access leaves via spflow.leaf
 ]

@@ -1,28 +1,21 @@
-from spflow.modules.leaf import Normal, Bernoulli, Poisson
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
-import unittest
-
-from itertools import product
-
-from spflow.meta import Scope
-import pytest
-from spflow.learn import train_gradient_descent
-from spflow.modules import Sum, Product
-from spflow.modules.ops import Cat
-from tests.utils.leaves import make_normal_data
-from spflow.learn import learn_spn
-from spflow.learn.learn_spn import cluster_by_kmeans, partition_by_rdc, prune_sums
-from scipy.stats import multivariate_normal
-import torch
 from collections import deque
-from sklearn.datasets import make_moons, make_blobs
-import matplotlib.pyplot as plt
-import matplotlib
-import numpy as np
-
-from spflow.utils.rdc import rdc
-from networkx import connected_components as ccnp, from_numpy_array
 from itertools import combinations
+
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from networkx import connected_components as ccnp, from_numpy_array
+from scipy.stats import multivariate_normal
+from sklearn.datasets import make_moons
+
+from spflow.learn import learn_spn
+from spflow.learn.learn_spn import cluster_by_kmeans, prune_sums
+from spflow.meta import Scope
+from spflow.modules import Sum, Product
+from spflow.modules.leaf import Normal
+from spflow.modules.ops import Cat
+from spflow.utils.rdc import rdc
 
 matplotlib.use("Agg")
 

@@ -1,15 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional
-
 import torch
-from torch import Tensor, nn
+from torch import Tensor
 
 from spflow.meta.data import Scope
-from spflow.meta.dispatch import (
-    SamplingContext,
-    init_default_sampling_context,
-)
 from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache, init_cache

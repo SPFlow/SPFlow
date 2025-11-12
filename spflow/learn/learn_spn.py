@@ -1,27 +1,22 @@
 """Contains the LearnSPN structure and parameter learner for SPFlow in the ``base`` backend.
 """
-import time
-from functools import partial
-from typing import Any, Optional
 from collections.abc import Callable
+from functools import partial
+from itertools import combinations
+from typing import Any
 
-from sklearn.cluster import KMeans
-import torch
-from spflow.modules import Product
-from spflow.modules import Sum
-from spflow.utils.kmeans import kmeans
-from fast_pytorch_kmeans import KMeans
-from spflow.modules.ops.cat import Cat
 import numpy as np
+import torch
+from fast_pytorch_kmeans import KMeans
+from networkx import connected_components as ccnp, from_numpy_array
 
 from spflow.meta.data.scope import Scope
-from spflow.modules.module import Module
-
+from spflow.modules import Product
+from spflow.modules import Sum
 from spflow.modules.leaf.leaf_module import LeafModule
-from networkx import connected_components as ccnp, from_numpy_array
-from spflow.utils.connected_components import connected_components
+from spflow.modules.module import Module
+from spflow.modules.ops.cat import Cat
 from spflow.utils.rdc import rdc
-from itertools import combinations
 
 
 def prune_sums(node):

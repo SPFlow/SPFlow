@@ -21,7 +21,6 @@ from typing import Optional, Any
 
 from spflow.modules.module import Module
 
-
 # Tree view constants
 PREFIX_CHILD = "├─ "
 PREFIX_LAST = "└─ "

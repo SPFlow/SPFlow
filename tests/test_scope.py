@@ -1,5 +1,6 @@
-from spflow.meta import Scope
 import pytest
+
+from spflow.meta import Scope
 
 
 def test_equal_query():

@@ -1,18 +1,16 @@
-import spflow.meta.data
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
-import unittest
 from itertools import product
 
-from spflow.meta import SamplingContext
-from spflow.meta.dispatch import init_default_sampling_context
-from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, make_data
-from spflow.modules.leaf import Normal, Bernoulli
-from spflow.learn import expectation_maximization
-from spflow.modules import Factorize
-from spflow.meta.data.scope import Scope
-from spflow.exceptions import StructureError
 import pytest
 import torch
+
+from spflow.exceptions import StructureError
+from spflow.learn import expectation_maximization
+from spflow.meta import SamplingContext
+from spflow.meta.data.scope import Scope
+from spflow.meta.dispatch import init_default_sampling_context
+from spflow.modules import Factorize
+from spflow.modules.leaf import Normal, Bernoulli
+from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, make_data
 
 # Constants
 in_channels_values = [1, 3]

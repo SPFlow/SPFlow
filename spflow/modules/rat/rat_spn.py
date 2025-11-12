@@ -2,24 +2,20 @@
 """
 from __future__ import annotations
 
-from typing import Any
-
-from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
-
 import torch
-from spflow.modules import Product
-from spflow.modules import Sum
-from spflow.modules import OuterProduct
-from spflow.modules import ElementwiseProduct
+
 from spflow.meta.data.scope import Scope
-from spflow.modules.module import Module
-from spflow.modules.ops.split_halves import SplitHalves
-from spflow.utils.cache import Cache, init_cache
-from spflow.modules.ops.split_alternate import SplitAlternate
-from spflow.modules.leaf.leaf_module import LeafModule
+from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
+from spflow.modules.elementwise_product import ElementwiseProduct
+from spflow.modules.outer_product import OuterProduct
+from spflow.modules.sum import Sum
 from spflow.modules.factorize import Factorize
+from spflow.modules.leaf.leaf_module import LeafModule
+from spflow.modules.module import Module
+from spflow.modules.ops.split_alternate import SplitAlternate
+from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.rat.rat_mixing_layer import MixingLayer
-from spflow.modules.ops.cat import Cat
+from spflow.utils.cache import Cache, init_cache
 
 
 class RatSPN(Module):

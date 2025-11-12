@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 
 
 class KMeans:
@@ -53,7 +52,6 @@ class KMeans:
 # Example usage:
 if __name__ == "__main__":
     from sklearn.datasets import make_blobs
-    import numpy as np
 
     # Generate a dataset
     X, _ = make_blobs(n_samples=300, centers=4, cluster_std=0.60, random_state=0)

@@ -1,16 +1,10 @@
-from tests.fixtures import auto_set_test_seed, auto_set_test_device
-import unittest
 from itertools import product
 
-from spflow.meta.dispatch import init_default_sampling_context
-from tests.utils.leaves import evaluate_log_likelihood, evaluate_samples
 import pytest
 import torch
-from pytest import raises
 
 from spflow.meta import Scope
 from spflow.modules.leaf.geometric import Geometric
-
 
 out_channels_values = [1, 5]
 out_features_values = [1, 6]
