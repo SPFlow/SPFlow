@@ -7,40 +7,68 @@ from torch import Tensor
 from spflow.exceptions import InvalidParameterCombinationError
 
 
-def apply_nan_strategy(nan_strategy, scope_data, leaf, weights) -> tuple[Tensor, Tensor]:
+def apply_nan_strategy(
+    nan_strategy: str | None, scope_data: Tensor, device: torch.device, weights: Tensor | None
+) -> tuple[Tensor, Tensor]:
+    """Apply a strategy for handling NaN values in data for maximum-likelihood estimation.
+
+    Args:
+        nan_strategy: Strategy for handling missing (NaN) values. Currently supports:
+            - None: Raise an error if NaN values are present (default, strict mode)
+            - "ignore": Remove all rows containing any NaN values
+        scope_data: Data tensor of shape (batch_size, num_features)
+        device: Device to use for tensor operations
+        weights: Optional sample weights of shape (batch_size,) or (batch_size, 1).
+                 If None, uniform weights are used.
+
+    Returns:
+        Tuple of (processed_data, normalized_weights) where:
+            - processed_data: Data with NaN strategy applied
+            - normalized_weights: Weights normalized to sum to the number of samples
+
+    Raises:
+        ValueError: If weights shape doesn't match data, if all data is NaN,
+                   if NaN values are present without a strategy, or if an unknown strategy is given.
+    """
+    # Initialize weights if not provided
     if weights is None:
-        weights = torch.ones(scope_data.shape[0], device=leaf.device)
+        weights = torch.ones(scope_data.shape[0], device=device)
+
+    # Validate weights shape
     if weights.ndim != 1 or weights.shape[0] != scope_data.shape[0]:
         raise ValueError(
-            "Number of specified weights for maximum-likelihood estimation does not match number of data points."
-        )
-    # reshape weights
-    weights = weights.reshape((-1, 1))
-    # NaN entries (no information)
-    nan_mask = torch.isnan(scope_data)
-    if torch.all(nan_mask):
-        raise ValueError("Cannot compute maximum-likelihood estimation on nan-only data.")
-    if nan_strategy is None and torch.any(nan_mask):
-        raise ValueError(
-            "Maximum-likelihood estimation cannot be performed on missing data by default. Set a strategy for handling missing values if this is intended."
-        )
-    if isinstance(nan_strategy, str):
-        if nan_strategy == "ignore":
-            # simply ignore missing data
-            scope_data = scope_data[~nan_mask.squeeze(1)]
-            weights = weights[~nan_mask.squeeze(1)]
-        else:
-            raise ValueError("Unknown strategy for handling missing (NaN) values.")
-    elif isinstance(nan_strategy, Callable):
-        scope_data = nan_strategy(scope_data)
-        # TODO: how to handle weights
-    elif nan_strategy is not None:
-        raise ValueError(
-            f"Expected 'nan_strategy' to be of type '{type(str)}, or '{Callable}' or '{None}', but was of type {type(nan_strategy)}."
+            f"Weights shape {weights.shape} does not match number of data points {scope_data.shape[0]}. "
+            f"Expected shape ({scope_data.shape[0]},) for maximum-likelihood estimation."
         )
 
-    # normalize weights to sum to n_samples
-    weights /= weights.sum() / scope_data.shape[0]
+    # Reshape weights to column vector for broadcasting
+    weights = weights.reshape((-1, 1))
+
+    # Check for NaN entries
+    nan_mask = torch.isnan(scope_data)
+
+    if torch.all(nan_mask):
+        raise ValueError("Cannot compute maximum-likelihood estimation: all data is NaN.")
+
+    if torch.any(nan_mask):
+        if nan_strategy is None:
+            raise ValueError(
+                "Cannot perform maximum-likelihood estimation on data with missing (NaN) values. "
+                "Set 'nan_strategy' parameter to specify how to handle missing values (e.g., 'ignore')."
+            )
+
+        if nan_strategy == "ignore":
+            # Remove all rows containing any NaN values
+            valid_rows = ~nan_mask.any(dim=1)
+            scope_data = scope_data[valid_rows]
+            weights = weights[valid_rows]
+        else:
+            raise ValueError(
+                f"Unknown nan_strategy '{nan_strategy}'. Supported strategies: 'ignore'"
+            )
+
+    # Normalize weights to sum to the number of samples
+    weights = weights * (scope_data.shape[0] / weights.sum())
 
     return scope_data, weights
 
