@@ -2,8 +2,8 @@ import torch
 from pytest import fixture
 
 from spflow.meta import Scope
-from spflow.modules import Product
 from spflow.modules.leaves import Normal
+from spflow.modules.products import Product
 from spflow.utils.model_manager import load_model, save_model
 
 

@@ -12,10 +12,10 @@ import pytest
 from spflow.exceptions import GraphvizError
 from spflow.meta import Scope
 from spflow.modules.leaves import Categorical, Normal
-from spflow.modules.product import Product
-from spflow.modules.sum import Sum
+from spflow.modules.products.product import Product
+from spflow.modules.sums.sum import Sum
 from spflow.utils.visualization import (
-    visualize_module,
+    visualize,
     _build_graph,
     _format_scope_string,
     _format_param_count,
@@ -216,7 +216,7 @@ class TestVisualizationBasics:
         """Test that visualize_module creates output file with correct extension."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = os.path.join(tmpdir, "test_model")
-            visualize_module(simple_model, output_path, format="png")
+            visualize(simple_model, output_path, format="png")
             assert os.path.exists(f"{output_path}.png")
 
     def test_invalid_format_raises_error(self, simple_model):
@@ -224,7 +224,7 @@ class TestVisualizationBasics:
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = os.path.join(tmpdir, "test_model")
             with pytest.raises(ValueError, match="Unsupported format"):
-                visualize_module(simple_model, output_path, format="invalid_format")
+                visualize(simple_model, output_path, format="invalid_format")
 
 
 class TestVisualizationOptions:
@@ -248,7 +248,7 @@ class TestVisualizationOptions:
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = os.path.join(tmpdir, "test_with_options")
             # Test that all options are accepted and don't raise errors
-            visualize_module(
+            visualize(
                 model_with_scope,
                 output_path,
                 show_scope=True,
@@ -405,7 +405,7 @@ class TestGraphvizErrorHandling:
             with tempfile.TemporaryDirectory() as tmpdir:
                 output_path = os.path.join(tmpdir, "test_model")
                 with pytest.raises(GraphvizError, match="Graphviz executable.*not found"):
-                    visualize_module(simple_model, output_path, format="png")
+                    visualize(simple_model, output_path, format="png")
 
     def test_graphviz_assertion_error_raises_graphviz_error(self, simple_model):
         """Test that AssertionError from graphviz failure is wrapped in GraphvizError."""
@@ -416,7 +416,7 @@ class TestGraphvizErrorHandling:
             with tempfile.TemporaryDirectory() as tmpdir:
                 output_path = os.path.join(tmpdir, "test_model")
                 with pytest.raises(GraphvizError, match="Error executing Graphviz"):
-                    visualize_module(simple_model, output_path, format="png")
+                    visualize(simple_model, output_path, format="png")
 
     def test_graphviz_oserror_raises_graphviz_error(self, simple_model):
         """Test that OSError from graphviz execution is wrapped in GraphvizError."""
@@ -427,4 +427,4 @@ class TestGraphvizErrorHandling:
             with tempfile.TemporaryDirectory() as tmpdir:
                 output_path = os.path.join(tmpdir, "test_model")
                 with pytest.raises(GraphvizError, match="Error executing Graphviz"):
-                    visualize_module(simple_model, output_path, format="pdf")
+                    visualize(simple_model, output_path, format="pdf")

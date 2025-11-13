@@ -6,15 +6,15 @@ import torch
 
 from spflow.meta.data.scope import Scope
 from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
-from spflow.modules.elementwise_product import ElementwiseProduct
-from spflow.modules.outer_product import OuterProduct
-from spflow.modules.sum import Sum
-from spflow.modules.factorize import Factorize
-from spflow.modules.leaves.base import LeafModule
 from spflow.modules.base import Module
+from spflow.modules.leaves.base import LeafModule
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.ops.split_halves import SplitHalves
+from spflow.modules.products.elementwise_product import ElementwiseProduct
+from spflow.modules.products.outer_product import OuterProduct
+from spflow.modules.rat.factorize import Factorize
 from spflow.modules.rat.rat_mixing_layer import MixingLayer
+from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, init_cache
 
 

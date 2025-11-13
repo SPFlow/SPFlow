@@ -5,7 +5,7 @@ import torch
 
 from spflow.learn import expectation_maximization
 from spflow.meta import SamplingContext
-from spflow.modules import Product
+from spflow.modules.products import Product
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 # Constants

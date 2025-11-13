@@ -3,8 +3,8 @@ import torch
 
 from spflow.meta import SamplingContext
 from spflow.meta import Scope
-from spflow.modules import ElementwiseProduct, OuterProduct
 from spflow.modules.ops import SplitHalves
+from spflow.modules.products import ElementwiseProduct, OuterProduct
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 cls = [ElementwiseProduct, OuterProduct]

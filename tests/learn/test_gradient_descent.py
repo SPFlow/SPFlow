@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from spflow.learn.gradient_descent import negative_log_likelihood_loss, train_gradient_descent
 from spflow.meta import Scope
-from spflow.modules import Module
+from spflow.modules.base import Module
 
 
 # Define a DummyModel class for testing

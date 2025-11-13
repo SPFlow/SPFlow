@@ -26,7 +26,7 @@ class Sum(Module):
         inputs: Module | list[Module],
         out_channels: int | None = None,
         num_repetitions: int | None = None,
-        weights: Tensor | None = None,
+            weights: Tensor | list[float] | None = None,
         sum_dim: int | None = 1,
     ) -> None:
         """
@@ -45,10 +45,39 @@ class Sum(Module):
             raise ValueError("'Sum' requires at least one input to be specified.")
 
         if weights is not None:
+
+            if isinstance(weights, list):
+                weights = torch.tensor(weights)
+
             if out_channels is not None:
                 raise InvalidParameterCombinationError(
                     f"Cannot specify both 'out_channels' and 'weights' for 'Sum' module."
                 )
+
+            match weights.dim():
+                case 1:
+                    weights = weights.view(1, -1, 1)  # shape: (1, in_channels, 1)
+                case 2:
+                    if sum_dim > 1:
+                        raise ValueError(
+                            f"When providing 2D weights, 'sum_dim' must be 0 or 1 but was {sum_dim}."
+                        )
+                    weights = weights.view(1, weights.shape[0], weights.shape[1])
+                case 3:
+                    if sum_dim > 3:
+                        raise ValueError(
+                            f"When providing 3D weights, 'sum_dim' must be 0, 1, or 2 but was {sum_dim}."
+                        )
+                case 4:
+                    if sum_dim > 4:
+                        raise ValueError(
+                            f"When providing 4D weights, 'sum_dim' must be 0, 1, 2, or 3 but was {sum_dim}."
+                        )
+                case _:
+                    raise ValueError(
+                        f"Weights for 'Sum' must be a 1D, 2D, 3D, or 4D tensor but was {weights.dim()}D."
+                    )
+
 
             out_channels = weights.shape[2]
 
@@ -145,7 +174,7 @@ class Sum(Module):
             values: PyTorch tensor containing weights for each input and node.
         """
         if values.shape != self.weights_shape:
-            raise ValueError(f"Invalid shape for weights: {values.shape}.")
+            raise ValueError(f"Invalid shape for weights: Was {values.shape} but expected {self.weights_shape}.")
         if not torch.all(values > 0):
             raise ValueError("Weights for 'Sum' must be all positive.")
         if not torch.allclose(torch.sum(values, dim=self.sum_dim), torch.tensor(1.0)):

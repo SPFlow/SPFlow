@@ -4,8 +4,8 @@ import pytest
 
 from spflow.meta import Scope
 from spflow.modules.leaves import Normal
-from spflow.modules.product import Product
-from spflow.modules.sum import Sum
+from spflow.modules.products.product import Product
+from spflow.modules.sums.sum import Sum
 from spflow.utils.module_display import module_to_str
 
 

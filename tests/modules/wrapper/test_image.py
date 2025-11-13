@@ -6,8 +6,9 @@ import torch
 from spflow.exceptions import ShapeError, StructureError
 from spflow.learn.expectation_maximization import expectation_maximization
 from spflow.meta.data import Scope
-from spflow.modules import Product, Sum
 from spflow.modules import leaves
+from spflow.modules.products import Product
+from spflow.modules.sums import Sum
 from spflow.modules.wrapper.image_wrapper import ImageWrapper, MarginalizationContext
 from tests.utils.leaves import make_data, make_normal_leaf
 

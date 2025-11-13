@@ -4,11 +4,11 @@ import torch
 from torch import Tensor
 
 from spflow.meta.data import Scope
-from spflow.modules.base_product import BaseProduct
 from spflow.modules.base import Module
 from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.ops.split_halves import SplitHalves
+from spflow.modules.products.base_product import BaseProduct
 from spflow.utils.cache import Cache, init_cache
 
 
@@ -59,13 +59,12 @@ class ElementwiseProduct(BaseProduct):
 
         self.check_shapes()
 
-    def check_shapes(self, inputs=None):
+    def check_shapes(self):
         """
         Checks if the list of two-dimensional shapes satisfies the given conditions.
 
         """
-        if inputs is None:
-            inputs = self.inputs
+        inputs = self.inputs
 
         if self.input_is_split:
             if self.num_splits != inputs[0].num_splits:
