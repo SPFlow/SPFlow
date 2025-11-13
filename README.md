@@ -43,10 +43,10 @@ Here are three quick examples to get you started:
 
 ```python
 import torch
-from spflow.modules import Sum, Product
+from spflow.modules.sums import Sum
+from spflow.modules.products import Product
 from spflow.modules.leaves import Normal
 from spflow.meta import Scope
-from spflow import log_likelihood
 
 # Create leaves layer for 2 features
 scope = Scope([0, 1])
@@ -58,7 +58,7 @@ model = Sum(inputs=product, out_channels=2)
 
 # Compute log-likelihood on some data
 data = torch.randn(32, 2)  # 32 samples, 2 features
-log_likelihood_output = log_likelihood(model, data)
+log_likelihood_output = model.log_likelihood(data)
 
 print(f"Model:\n{model.to_str()}")
 print(f"Data shape: {data.shape}")
@@ -84,7 +84,6 @@ import torch
 from spflow.modules.rat import RatSPN
 from spflow.modules.leaves import Normal
 from spflow.meta import Scope
-from spflow import log_likelihood
 
 # Create leaves layer
 num_features = 64
@@ -102,7 +101,7 @@ model = RatSPN(
     outer_product=False
 )
 
-log_likelihood_output = log_likelihood(model, data)
+log_likelihood_output = model.log_likelihood(data)
 
 print(f"Data shape: {data.shape}")
 print(f"Log-likelihood output shape: {log_likelihood_output.shape}")
@@ -125,7 +124,6 @@ import torch
 from spflow.learn import learn_spn
 from spflow.modules.leaves import Normal
 from spflow.meta import Scope
-from spflow import log_likelihood
 
 torch.manual_seed(42)
 
@@ -148,7 +146,7 @@ model = learn_spn(
 )
 
 # Use the learned model
-log_likelihood_output = log_likelihood(model, data)
+log_likelihood_output = model.log_likelihood(data)
 
 print(f"Learned model structure: {model.to_str()}")
 print(f"Data shape: {data.shape}")
@@ -191,10 +189,9 @@ Log-likelihood sample: tensor([[-7.4175]], grad_fn=<SelectBackward0>)
 
 ```python
 import torch
-from spflow.modules import Sum
+from spflow.modules.sums import Sum
 from spflow.modules.leaves import Normal
 from spflow.meta import Scope, SamplingContext
-from spflow import log_likelihood, sample
 
 torch.manual_seed(42)
 
@@ -211,10 +208,10 @@ channel_index = torch.full((n_samples, out_features), 0, dtype=torch.int64)  # S
 mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
 sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
 
-samples = sample(model, evidence, sampling_ctx=sampling_ctx)
+samples = model.sample(data=evidence, sampling_ctx=sampling_ctx)
 
 # Compute log-likelihood for the samples
-log_likelihood_output = log_likelihood(model, samples)
+log_likelihood_output = model.log_likelihood(samples)
 
 print(f"Model:\n{model.to_str()}")
 print(f"Generated samples shape: {samples.shape}")
@@ -291,11 +288,11 @@ prod_z2_sum_z1x = Product(inputs=[leaf_Z2_right, sum_z1_x])  # scope [0,1,2]
 # Combines the two main products
 root = Sum(inputs=[prod_z1_sum_xz2, prod_z2_sum_z1x], out_channels=1)
 
-from spflow.utils.visualization import visualize_module
+from spflow.utils.visualization import visualize
 
 # Create visualization with different layouts
 output_path = "/tmp/structure"
-visualize_module(root, output_path, show_scope=True, show_shape=True, show_params=True, format="vt")
+visualize(root, output_path, show_scope=True, show_shape=True, show_params=True, format="vt")
 ```
 
 Output:
