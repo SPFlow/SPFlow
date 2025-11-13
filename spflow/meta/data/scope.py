@@ -7,6 +7,7 @@ Typical usage example:
 from __future__ import annotations
 
 from collections.abc import Iterable
+from functools import reduce
 
 
 class Scope:
@@ -24,7 +25,7 @@ class Scope:
 
     def __init__(
         self,
-            query: int | list[int] | None = None,
+            query: int | list[int],
             evidence: int | list[int] | None = None,
     ) -> None:
         """Initializes ``Scope`` object.
@@ -33,7 +34,6 @@ class Scope:
             query:
                 List of non-negative integers representing query RVs (may not contain duplicates).
                 If a single integer is provided, it is converted to a list containing that integer.
-                Defaults to None, in which case it is initialized to an empty list.
             evidence:
                 Optional list of non-negative integers representing evidence variables (may not contain duplicates or RVs that are in the query).
                 If a single integer is provided, it is converted to a list containing that integer.
@@ -215,17 +215,12 @@ class Scope:
 
         Args:
             scopes:
-                Iterable of ``Scope`` objects to compute the union with.
+                List of `Scope` objects to compute the union with.
 
         Returns:
-            ``Scope`` object representing the union of all scopes.
+            `Scope` object representing the union of all scopes.
         """
-        joint_scope = Scope()
-
-        for scope in scopes:
-            joint_scope = joint_scope.join(scope)
-
-        return joint_scope
+        return reduce(lambda a, b: a.join(b), scopes)
 
     @staticmethod
     def all_pairwise_disjoint(scopes: Iterable["Scope"]) -> bool:
@@ -238,9 +233,13 @@ class Scope:
         Returns:
             Boolean indicating whether all scopes are pairwise disjoint (True) or not (False).
         """
-        overall_scope = Scope()
+        overall_scope = None
 
         for scope in scopes:
+            if overall_scope is None:
+                overall_scope = scope
+                continue
+
             if overall_scope.isdisjoint(scope):
                 overall_scope = overall_scope.join(scope)
             else:
