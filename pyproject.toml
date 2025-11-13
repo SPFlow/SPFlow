@@ -73,6 +73,7 @@ dev = [
   "sphinx-copybutton",
   "myst-parser",
   "ipykernel",
+    "scipy-stubs"
 ]
 
 
