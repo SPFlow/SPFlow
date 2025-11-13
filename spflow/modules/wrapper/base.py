@@ -2,7 +2,7 @@ from spflow.meta.data import Scope
 from spflow.modules.base import Module
 
 
-class AbstractWrapper(Module):
+class Wrapper(Module):
     def __init__(self, module: Module):
         super().__init__()
         self.module = module
