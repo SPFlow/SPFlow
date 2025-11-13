@@ -188,19 +188,19 @@ class RatSPN(Module):
         )
         return ll
 
-    def posterior(
+    def log_posterior(
         self,
         data: torch.Tensor,
         cache: Cache | None = None,
     ) -> torch.Tensor:
-        """Compute posterior probabilities for multi-class models.
+        """Compute log-posterior probabilities for multi-class models.
 
         Args:
             data: Input data tensor.
             cache: Optional cache dictionary for caching intermediate results.
 
         Returns:
-            Posterior probabilities.
+            Log-posterior probabilities.
         """
         if self.n_root_nodes <= 1:
             raise ValueError("Posterior can only be computed for models with multiple classes.")
