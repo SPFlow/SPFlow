@@ -5,10 +5,10 @@ from itertools import product
 import pytest
 import torch
 
-from spflow.meta import SamplingContext
 from spflow.meta import Scope
 from spflow.modules.ops import SplitAlternate
 from spflow.modules.ops import SplitHalves
+from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 out_channels_values = [1, 5]

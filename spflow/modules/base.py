@@ -11,8 +11,8 @@ import torch
 from torch import Tensor, nn
 
 from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch import SamplingContext
 from spflow.utils.cache import Cache, init_cache
+from spflow.utils.sampling_context import SamplingContext
 
 
 class Module(nn.Module, ABC):
@@ -142,7 +142,7 @@ class Module(nn.Module, ABC):
     ) -> Tensor:
         r"""Samples from modules backend with evidence.
 
-        This is effectively calling log_likelihood to populate the dispatch context cache and then sampling from the module.
+        This is effectively calling log_likelihood then sampling from the module with a populated cache.
 
         Args:
             evidence:

@@ -5,11 +5,11 @@ import torch
 
 from spflow.exceptions import ScopeError
 from spflow.learn import expectation_maximization
-from spflow.meta import SamplingContext
 from spflow.meta import Scope
 from spflow.modules.leaves import Normal
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.products.outer_product import OuterProduct
+from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_data, make_leaf
 
 cls_values = [ElementwiseProduct, OuterProduct]

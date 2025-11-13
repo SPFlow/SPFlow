@@ -4,10 +4,10 @@ import torch
 from torch import Tensor
 
 from spflow.exceptions import ShapeError, StructureError
-from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.modules.base import Module
 from spflow.modules.wrapper.base import Wrapper
 from spflow.utils.cache import Cache, init_cache
+from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
 class MarginalizationContext:

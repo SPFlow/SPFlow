@@ -3,12 +3,12 @@ from itertools import product
 import pytest
 import torch
 
-from spflow.meta import SamplingContext
 from spflow.meta import Scope
-from spflow.meta.dispatch import init_default_sampling_context
 from spflow.modules import leaves
 from spflow.modules.leaves import Normal, Bernoulli
 from spflow.modules.rat import RatSPN
+from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import init_default_sampling_context
 from tests.utils.leaves import make_leaf, make_data
 
 depth = [1, 3]
