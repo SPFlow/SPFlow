@@ -6,11 +6,11 @@ import torch
 from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
-from spflow.meta import SamplingContext
 from spflow.meta import Scope
 from spflow.modules.leaves import Normal
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.sums.elementwise_sum import ElementwiseSum
+from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf
 
 in_channels_values = [1, 4]

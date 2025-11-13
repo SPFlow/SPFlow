@@ -1,10 +1,10 @@
 import pytest
 import torch
 
-from spflow.meta import SamplingContext
 from spflow.meta import Scope
 from spflow.modules.ops import SplitHalves
 from spflow.modules.products import ElementwiseProduct, OuterProduct
+from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 cls = [ElementwiseProduct, OuterProduct]

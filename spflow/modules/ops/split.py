@@ -6,11 +6,11 @@ from typing import Any, Dict, Optional
 from torch import Tensor, nn
 
 from spflow.meta.data import Scope
-from spflow.meta.dispatch import (
+from spflow.modules.base import Module
+from spflow.utils.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.modules.base import Module
 
 
 class Split(Module, ABC):

@@ -7,12 +7,12 @@ from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.meta.data import Scope
-from spflow.meta.dispatch import SamplingContext, init_default_sampling_context
 from spflow.modules.base import Module
 from spflow.utils.cache import Cache, init_cache
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
+from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
 class ElementwiseSum(Module):

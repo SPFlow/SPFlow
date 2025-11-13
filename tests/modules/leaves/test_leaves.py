@@ -6,9 +6,9 @@ import torch
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.learn import train_gradient_descent
 from spflow.learn.expectation_maximization import expectation_maximization
-from spflow.meta import SamplingContext
 from spflow.meta import Scope
 from spflow.modules import leaves
+from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import evaluate_log_likelihood
 from tests.utils.leaves import make_leaf, make_data
 

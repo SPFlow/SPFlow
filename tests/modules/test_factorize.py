@@ -5,11 +5,11 @@ import torch
 
 from spflow.exceptions import StructureError
 from spflow.learn import expectation_maximization
-from spflow.meta import SamplingContext
 from spflow.meta.data.scope import Scope
-from spflow.meta.dispatch import init_default_sampling_context
 from spflow.modules.leaves import Normal, Bernoulli
 from spflow.modules.rat import Factorize
+from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import init_default_sampling_context
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, make_data
 
 # Constants

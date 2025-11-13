@@ -5,10 +5,10 @@ import torch
 
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
-from spflow.meta import SamplingContext
 from spflow.meta import Scope
 from spflow.modules.leaves import Categorical, Binomial
 from spflow.modules.ops import Cat
+from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 out_channels_values = [1, 5]

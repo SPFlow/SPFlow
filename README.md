@@ -191,7 +191,8 @@ Log-likelihood sample: tensor([[-7.4175]], grad_fn=<SelectBackward0>)
 import torch
 from spflow.modules.sums import Sum
 from spflow.modules.leaves import Normal
-from spflow.meta import Scope, SamplingContext
+from spflow.meta import Scope
+from spflow.utils.sampling_context import  SamplingContext
 
 torch.manual_seed(42)
 
