@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from typing import Optional, Dict, Any, Callable
 
 import torch
@@ -169,17 +168,17 @@ def validate_all_or_none(**params: Any) -> bool:
 
 
 class LeafModule(Module, ABC):
-    def __init__(self, scope: Scope | list[int], out_channels: int = None):
+    def __init__(self, scope: Scope | int | list[int], out_channels: int = None):
         r"""Base class for leaves modules in the SPFlow framework.
 
         Args:
-            scope: Scope object or list of ints specifying the scope of the distribution.
+            scope: Scope object or int or list of ints specifying the scope of the distribution.
             out_channels: Number of output channels.
         """
         super().__init__()
 
-        # Convert list to Scope object
-        if isinstance(scope, list):
+        # If not already a Scope, convert int or list[int] to Scope
+        if not isinstance(scope, Scope):
             scope = Scope(scope)
 
         self.scope = scope.copy()
@@ -915,18 +914,30 @@ def init_parameter(param: Tensor | None, event_shape: tuple[int, ...], init: Cal
         return param
 
 
-def parse_leaf_args(scope, out_channels, num_repetitions, params) -> tuple[int, int, int]:
+def parse_leaf_args(scope: int | list[int] | Scope, out_channels, num_repetitions, params) -> tuple[int, int, int]:
     """
     Parse the arguments of a leaves node and return the event_shape.
 
     Args:
-        scope: Leaf scope.
+        scope: Leaf scope. Can be a Scope object, an int, or a list of ints.
         out_channels: Number of output channels for the leaves module.
         params: List of parameters of the leaves distribution.
 
     Returns:
         event_shape: Shape of the event space.
     """
+
+    # We need to accept different types for scope here since parse_leaf_args is called before the LeafModule constructor
+    # which turns the scope variable (may be an int or list of ints for convenience) into a Scope object.
+    match scope:
+        case Scope():
+            query_length = len(scope.query)
+        case int():
+            query_length = 1
+        case list():
+            query_length = len(scope)
+        case _:
+            raise ValueError("scope must be of type Scope, int, or list of int.")
 
     # Either all params are None or no params are None
     if not (all(param is None for param in params) ^ all(param is not None for param in params)):
@@ -937,7 +948,7 @@ def parse_leaf_args(scope, out_channels, num_repetitions, params) -> tuple[int, 
             raise InvalidParameterCombinationError(
                 "Either out_channels or distribution parameters must be given."
             )
-        event_shape = (len(scope.query), out_channels)
+        event_shape = (query_length, out_channels)
     else:
         if out_channels is not None:
             if any(param.shape[1] != out_channels for param in params):
@@ -948,7 +959,7 @@ def parse_leaf_args(scope, out_channels, num_repetitions, params) -> tuple[int, 
         #     "Either out_channels or distribution parameters must be given."
         # )
 
-        if len(scope.query) != params[0].shape[0]:
+        if query_length != params[0].shape[0]:
             raise InvalidParameterCombinationError(
                 "The number of scope dimensions must match the number of parameters out_features (first dimension)."
             )
