@@ -226,7 +226,30 @@ uv run pytest tests/modules/test_sum.py::test_sum_log_likelihood
 
 ## Documentation
 
-TODO
+### Building the Documentation
+
+The project uses **Sphinx** for documentation generation. API documentation is automatically generated from source code
+docstrings.
+
+```bash
+# Build HTML documentation
+cd docs && make html
+
+# View the built documentation
+open build/index.html
+
+# Clean build artifacts
+cd docs && make clean
+```
+
+The generated HTML will be available in `docs/build/index.html`.
+
+### Documentation Standards
+
+- All public modules, classes, and functions must have docstrings
+- Use the [Google docstring style](https://numpydoc.readthedocs.io/en/latest/format.html) for consistency
+- Include examples in docstrings where appropriate
+- Update docs for any API changes or new features
 
 ## Versioning
 
