@@ -307,7 +307,8 @@ Output:
 
 ## Documentation
 
-- **[User Guide](guides/user_guide2.ipynb)**: Comprehensive notebook with examples covering model construction, training, inference, and advanced use cases
+- **[User Guide](docs/source/guides/user_guide.ipynb)**: Comprehensive notebook with examples covering model
+  construction, training, inference, and advanced use cases
 - **[Contributing Guide](CONTRIBUTING.md)**: Guidelines for contributing to SPFlow
 - **[Versioning Guide](VERSIONING.md)**: Semantic versioning and commit conventions
 - **[Release Guide](RELEASE.md)**: Release process documentation
