@@ -106,7 +106,7 @@ def _count_parameters(module: Module) -> int:
     return sum(p.numel() for p in module.parameters(recurse=False))
 
 
-def visualize_module(
+def visualize(
     module: Module,
     output_path: str,
     show_scope: bool = True,
@@ -153,17 +153,18 @@ def visualize_module(
             Defaults to True.
 
     Example:
-        >>> from spflow.modules import Sum, Normal
+        >>> from spflow.modules.sums import Sum
+        >>> from spflow.modules.leaves import Normal
         >>> from spflow.meta.data.scope import Scope
         >>> leaves = Normal(scope=Scope([0, 1]), out_channels=2)
         >>> model = Sum(inputs=leaves, out_channels=3)
         >>> # Save as PDF (default format)
-        >>> visualize_module(model, "my_model", show_scope=True, show_shape=True)
+        >>> visualize(model, "my_model", show_scope=True, show_shape=True)
         >>> # Use different layout engines
-        >>> visualize_module(model, "my_model_lr", engine="dot-lr")
-        >>> visualize_module(model, "my_model_circular", engine="circo")
-        >>> visualize_module(model, "my_model_text", format="dot")
-        >>> visualize_module(model, "my_model_plain", format="plain")
+        >>> visualize(model, "my_model_lr", engine="dot-lr")
+        >>> visualize(model, "my_model_circular", engine="circo")
+        >>> visualize(model, "my_model_text", format="dot")
+        >>> visualize(model, "my_model_plain", format="plain")
     """
     # Handle special engine variants
     if engine == "dot-lr":
@@ -464,14 +465,16 @@ def _get_module_label(
         if class_name == "Sum":
             c_in = module._in_channels_total
             c_out = module._out_channels_total
-            label = f"C-in: {c_in}, C-out: {c_out}"
+            d = module.out_features
+            label = f"D: {d}, C-in: {c_in}, C-out: {c_out}"
             if hasattr(module, "num_repetitions") and module.num_repetitions is not None:
                 label += f", R: {module.num_repetitions}"
             label_parts.append(label)
         elif class_name == "ElementwiseSum":
             c_per_in = module._in_channels_per_input
             c_out = module._num_sums
-            label = f"C-per-in: {c_per_in}, C-out: {c_out}"
+            d = module.out_features
+            label = f"D: {d}, C-per-in: {c_per_in}, C-out: {c_out}"
             if hasattr(module, "num_repetitions") and module.num_repetitions is not None:
                 label += f", R: {module.num_repetitions}"
             label_parts.append(label)
@@ -486,13 +489,11 @@ def _get_module_label(
         elif class_name == "ElementwiseProduct":
             f = module.out_features
             c = module.out_channels
-            label_parts.append(f"F: {f}, C: {c}")
+            label_parts.append(f"D: {f}, C: {c}")
         elif class_name == "OuterProduct":
             c_in = module._max_out_channels
             c_out = module.out_channels
-            # Calculate the exponent (number of inputs)
-            num_inputs = len(module.inputs) if hasattr(module, "inputs") else 2
-            label_parts.append(f"C-in: {c_in}, C-out: {c_out} ({c_in}^{num_inputs})")
+            label_parts.append(f"C-in: {c_in}, C-out: {c_out}")
         else:
             # For other modules, show out_features and out_channels
             out_features = module.out_features

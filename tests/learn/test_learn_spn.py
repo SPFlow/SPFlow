@@ -12,9 +12,10 @@ from sklearn.datasets import make_moons
 from spflow.learn import learn_spn
 from spflow.learn.learn_spn import cluster_by_kmeans, prune_sums
 from spflow.meta import Scope
-from spflow.modules import Sum, Product
 from spflow.modules.leaves import Normal
 from spflow.modules.ops import Cat
+from spflow.modules.products import Product
+from spflow.modules.sums import Sum
 from spflow.utils.rdc import rdc
 
 matplotlib.use("Agg")

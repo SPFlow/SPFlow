@@ -11,11 +11,11 @@ from fast_pytorch_kmeans import KMeans
 from networkx import connected_components as ccnp, from_numpy_array
 
 from spflow.meta.data.scope import Scope
-from spflow.modules import Product
-from spflow.modules import Sum
-from spflow.modules.leaves.base import LeafModule
 from spflow.modules.base import Module
+from spflow.modules.leaves.base import LeafModule
 from spflow.modules.ops.cat import Cat
+from spflow.modules.products import Product
+from spflow.modules.sums import Sum
 from spflow.utils.rdc import rdc
 
 

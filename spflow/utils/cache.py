@@ -6,7 +6,7 @@ from typing import TypedDict, TYPE_CHECKING
 import torch
 
 if TYPE_CHECKING:  # Avoid circular imports
-    from spflow import Module
+    from spflow.modules.base import Module
 
 
 class Cache(TypedDict, total=False):
