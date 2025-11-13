@@ -24,17 +24,19 @@ class Scope:
 
     def __init__(
         self,
-        query: list[int] | None = None,
-        evidence: list[int] | None = None,
+            query: int | list[int] | None = None,
+            evidence: int | list[int] | None = None,
     ) -> None:
         """Initializes ``Scope`` object.
 
         Args:
             query:
                 List of non-negative integers representing query RVs (may not contain duplicates).
+                If a single integer is provided, it is converted to a list containing that integer.
                 Defaults to None, in which case it is initialized to an empty list.
             evidence:
                 Optional list of non-negative integers representing evidence variables (may not contain duplicates or RVs that are in the query).
+                If a single integer is provided, it is converted to a list containing that integer.
                 Defaults to None, in which case it is initialized to an empty list.
 
         Raises:
@@ -45,6 +47,13 @@ class Scope:
 
         if evidence is None:
             evidence = []
+
+        if isinstance(query, int):
+            query = [query]
+
+        if isinstance(evidence, int):
+            evidence = [evidence]
+
 
         if len(query) == 0 and len(evidence) != 0:
             raise ValueError(
