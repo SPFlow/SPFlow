@@ -21,7 +21,6 @@ class Module(nn.Module, ABC):
     def __init__(self) -> None:
         """Initializes the module."""
         super().__init__()
-        self._scope = Scope()
         self.inputs: nn.ModuleList = nn.ModuleList()
 
     @property

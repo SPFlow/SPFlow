@@ -23,14 +23,6 @@ def test_equal_evidence():
     assert not scope1.equal_evidence(scope3)  # Should not be equal
 
 
-def test_isempty():
-    # Test for empty and non-empty scopes
-    empty_scope = Scope()  # No query or evidence
-    non_empty_scope = Scope([1, 2], [3])
-
-    assert empty_scope.isempty()  # Should be empty
-    assert not non_empty_scope.isempty()  # Should not be empty
-
 
 def test_is_conditional():
     # Test for conditional and non-conditional scopes
@@ -107,9 +99,6 @@ def test_scope_init_valid():
     assert scope2.query == [0, 1]
     assert scope2.evidence == []
 
-    scope3 = Scope()  # Empty scope
-    assert scope3.query == []
-    assert scope3.evidence == []
 
 
 def test_scope_init_invalid():

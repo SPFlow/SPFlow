@@ -38,8 +38,7 @@ class Cat(Module):
                 raise ValueError("All inputs must have disjoint scopes.")
 
             # Scope is the join of all input scopes
-            for inp in self.inputs:
-                self._scope = self._scope.join(inp.scope)
+            self._scope = Scope.join_all([inp.scope for inp in self.inputs])
 
         elif self.dim == 2:
             # Check if all inputs have the same number of features and scopes
