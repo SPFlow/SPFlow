@@ -428,6 +428,7 @@ class TestPyTorchIntegration:
 
         # Clone the module
         import copy
+
         cloned = copy.deepcopy(simple_leaf)
 
         # Verify cloned module has same parameter values
@@ -602,9 +603,7 @@ class TestMultipleParameters:
             multi_param_leaf.beta = torch.tensor([[-1.0, 2.0, 3.0]])
 
         # Alpha should still have its previous value
-        torch.testing.assert_close(
-            multi_param_leaf.alpha, torch.tensor([[1.0, 2.0, 3.0]])
-        )
+        torch.testing.assert_close(multi_param_leaf.alpha, torch.tensor([[1.0, 2.0, 3.0]]))
 
 
 # ============================================================================
@@ -645,9 +644,7 @@ class TestLeafModuleIntegration:
 
         leaf = TestLeaf(Scope([0]))
         # This should not raise an error
-        leaf.maximum_likelihood_estimation(
-            torch.tensor([[1.0], [2.0], [3.0]]), nan_strategy=None
-        )
+        leaf.maximum_likelihood_estimation(torch.tensor([[1.0], [2.0], [3.0]]), nan_strategy=None)
         # Verify scale was set
         assert leaf.scale is not None
 

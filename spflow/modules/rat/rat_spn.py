@@ -1,5 +1,14 @@
-"""Contains the SPFlow architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs) in the ``base`` backend.
+"""Random and Tensorized Sum-Product Networks (RAT-SPNs) implementation.
+
+RAT-SPNs provide a principled approach to building deep probabilistic models
+through randomized circuit construction, combining interpretability with
+expressiveness through tensorized operations.
+
+Reference:
+    Peharz, R., et al. (2020). "Random Sum-Product Networks: A Simple and
+    Effective Approach to Probabilistic Deep Learning." NeurIPS 2020.
 """
+
 from __future__ import annotations
 
 import torch
@@ -19,10 +28,24 @@ from spflow.utils.sampling_context import SamplingContext, init_default_sampling
 
 
 class RatSPN(Module):
-    r"""Module architecture for Random and Tensorized Sum-Product Networks (RAT-SPNs).
+    """Random and Tensorized Sum-Product Network (RAT-SPN).
 
-    For details see (Peharz et al., 2020): "Random Sum-Product Networks: A Simple and Effective Approach to Probabilistic Deep Learning".
+    Scalable deep probabilistic model with randomized circuit construction.
+    Consists of alternating sum (region) and product (partition) layers that
+    recursively partition input space. Random construction prevents overfitting
+    while maintaining tractable exact inference.
 
+    Attributes:
+        leaf_modules (list[LeafModule]): Leaf distribution modules.
+        n_root_nodes (int): Number of root sum nodes.
+        n_region_nodes (int): Number of sum nodes per region.
+        depth (int): Number of partition/region layers.
+        num_repetitions (int): Number of parallel circuit instances.
+        scope (Scope): Combined scope of all leaf modules.
+
+    Reference:
+        Peharz, R., et al. (2020). "Random Sum-Product Networks: A Simple and
+        Effective Approach to Probabilistic Deep Learning." NeurIPS 2020.
     """
 
     def __init__(
@@ -36,19 +59,26 @@ class RatSPN(Module):
         split_halves: bool | None = True,
         num_splits: int | None = 2,
     ) -> None:
-        r"""Initializer for ``RatSPN`` object.
+        """Initialize RAT-SPN with specified architecture parameters.
+
+        Creates a Random and Tensorized SPN by recursively constructing layers of
+        sum and product nodes. Circuit structure is fixed after initialization.
 
         Args:
-            leaf_modules: List of leaves modules to be used in the RAT-SPN.
-            n_root_nodes: Number of root nodes.
-            n_region_nodes: Number of region nodes / sum nodes.
-            num_repetitions: Number of repetitions.
-            depth: Depth of the RAT-SPN.
-            outer_product: If True use the outer product Module as Product layer. If False use the elementwise product Module.
-            split_halves: If True use the SplitHalves module for splitting the input of the Product layer, otherwise use the SplitAlternate module.
+            leaf_modules (list[LeafModule]): Leaf distributions forming the base layer.
+            n_root_nodes (int): Number of root sum nodes in final mixture.
+            n_region_nodes (int): Number of sum nodes in each region layer.
+            num_repetitions (int): Number of parallel circuit instances.
+            depth (int): Number of partition/region layers.
+            outer_product (bool | None, optional): Use outer product instead of
+                elementwise product for partitions. Defaults to False.
+            split_halves (bool | None, optional): Use SplitHalves instead of
+                SplitAlternate for splitting. Defaults to True.
+            num_splits (int | None, optional): Number of splits in each partition.
+                Must be at least 2. Defaults to 2.
 
         Raises:
-            ValueError: Invalid arguments.
+            ValueError: If architectural parameters are invalid.
         """
         super().__init__()
         self.n_root_nodes = n_root_nodes
@@ -81,11 +111,13 @@ class RatSPN(Module):
         self.create_spn()
 
     def create_spn(self):
-        r"""
-        Creates the RAT-SPN architecture based on the provided parameters
-        The architecture is build from bottom to top.
+        """Create the RAT-SPN architecture.
 
-        ."""
+        Builds the RAT-SPN circuit structure from bottom to top based on
+        the provided architectural parameters. Architecture is constructed recursively from
+        leaves to root using alternating layers of sum and product nodes, and the final
+        structure depends on depth and branching parameters.
+        """
         if self.outer_product:
             product_layer = OuterProduct
         else:
@@ -172,7 +204,7 @@ class RatSPN(Module):
         data: torch.Tensor,
         cache: Cache | None = None,
     ) -> torch.Tensor:
-        """Compute log P(data | module).
+        """Compute log likelihood for RAT-SPN.
 
         Args:
             data: Input data tensor.
@@ -201,6 +233,9 @@ class RatSPN(Module):
 
         Returns:
             Log-posterior probabilities.
+
+        Raises:
+            ValueError: If model has only one root node (single class).
         """
         if self.n_root_nodes <= 1:
             raise ValueError("Posterior can only be computed for models with multiple classes.")
@@ -233,7 +268,7 @@ class RatSPN(Module):
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> torch.Tensor:
-        """Generate samples from the module.
+        """Generate samples from the RAT-SPN.
 
         Args:
             num_samples: Number of samples to generate.
@@ -288,7 +323,7 @@ class RatSPN(Module):
         data: torch.Tensor,
         cache: Cache | None = None,
     ) -> None:
-        """Expectation-maximization step.
+        """Perform expectation-maximization step.
 
         Args:
             data: Input data tensor.

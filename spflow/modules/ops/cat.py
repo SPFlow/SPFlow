@@ -16,12 +16,11 @@ from spflow.utils.sampling_context import (
 
 class Cat(Module):
     def __init__(self, inputs: list[Module], dim: int = -1):
-        """
-        Concatenation of multiple modules along a given dimension.
+        """Initialize concatenation operation.
 
         Args:
-            inputs:
-            dim: Concatenation dimension. Note: dim=0: batch, dim=1: feature, dim=2: channel.
+            inputs: Modules to concatenate.
+            dim: Concatenation dimension (0=batch, 1=feature, 2=channel).
         """
         super().__init__()
         self.inputs = nn.ModuleList(inputs)
@@ -82,7 +81,7 @@ class Cat(Module):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log likelihood by concatenating input likelihoods."""
+        """Compute log likelihood by concatenating input log-likelihoods."""
         cache = init_cache(cache)
         log_cache = cache.setdefault("log_likelihood", {})
 
@@ -106,7 +105,7 @@ class Cat(Module):
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
-        """Sample from concatenated inputs, distributing sampling context appropriately."""
+        """Generate samples by delegating to concatenated inputs."""
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
@@ -164,7 +163,7 @@ class Cat(Module):
         prune: bool = True,
         cache: Cache | None = None,
     ) -> Optional["Module"]:
-        """Marginalize out specified random variables from the concatenated inputs."""
+        """Marginalize out specified random variables."""
         cache = init_cache(cache)
 
         # compute module scope (same for all outputs)

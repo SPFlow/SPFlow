@@ -1,6 +1,8 @@
-"""Contains the abstract ``Module`` class for SPFlow modules in the ``base`` backend.
+"""Base module architecture for SPFlow probabilistic circuits.
 
-All valid SPFlow modules in the ``base`` backend should inherit from this class or a subclass of it.
+Provides the foundational abstract base class for all SPFlow modules, defining
+core interfaces for log-likelihood computation, sampling, parameter learning,
+and scope management with PyTorch integration.
 """
 
 from __future__ import annotations
@@ -16,47 +18,85 @@ from spflow.utils.sampling_context import SamplingContext
 
 
 class Module(nn.Module, ABC):
-    """Abstract module class for building graph-based models."""
+    """Abstract base class for all SPFlow probabilistic circuit modules.
+
+    Extends PyTorch's nn.Module with probabilistic circuit functionality including
+    scope management, caching, and standardized interfaces for inference and learning.
+    All concrete subclasses must implement the abstract methods for log-likelihood,
+    sampling, and marginalization.
+
+    Attributes:
+        inputs (nn.ModuleList): List of child modules in the circuit graph.
+        scope (Scope): Variable scope defining which random variables this module operates on.
+    """
 
     def __init__(self) -> None:
-        """Initializes the module."""
+        """Initialize the SPFlow module with empty input list."""
         super().__init__()
         self.inputs: nn.ModuleList = nn.ModuleList()
 
     @property
     @abstractmethod
     def out_features(self) -> int:
-        """Returns the number of output features of the module."""
+        """Returns the number of output features of the module.
+
+        Returns:
+            int: Number of output features.
+        """
         pass
 
     @property
     @abstractmethod
     def out_channels(self) -> int:
-        """Returns the number of output channels of the module."""
+        """Number of output channels of the module.
+
+        Output channels represent parallel computations or multiple distributions
+        over the same scope.
+
+        Returns:
+            int: Number of output channels.
+        """
         pass
 
     @property
     def scope(self) -> Scope:
-        """Returns the scope of the module."""
+        """Variable scope defining which random variables this module operates on.
+
+        Returns:
+            Scope: The module's scope.
+        """
         return self._scope
 
     @scope.setter
     def scope(self, scope: Scope):
-        """Sets the scope of the module."""
+        """Set the variable scope for this module.
+
+        Args:
+            scope (Scope): New variable scope.
+
+        Raises:
+            ValueError: If the scope is incompatible with module structure.
+        """
         self._scope = scope
 
     @property
     @abstractmethod
     def feature_to_scope(self) -> list[Scope]:
-        """Returns the mapping from features to scopes."""
+        """Mapping from output features to their respective scopes.
+
+        Returns:
+            list[Scope]: List of scopes, one for each output feature.
+        """
         pass
 
     @property
     def device(self):
-        """
-        Returns the device of the model. If the model parameters are on different devices,
-        it returns the device of the first parameter. If the model has no parameters,
-        it returns 'cpu' as the default device.
+        """Device where the module's parameters are located.
+
+        Returns first parameter's device, or CPU if no parameters exist.
+
+        Returns:
+            torch.device: Device where parameters are located.
         """
         try:
             return next(iter(self.parameters())).device
@@ -82,7 +122,7 @@ class Module(nn.Module, ABC):
         if data is not None and num_samples is not None:
             if data.shape[0] != num_samples:
                 raise ValueError(
-                    f"num_samples ({num_samples}) must match data.shape[0] ({data.shape[0]}) " f"or be None"
+                    f"num_samples ({num_samples}) must match data.shape[0] ({data.shape[0]}) or be None"
                 )
 
         # Create data tensor if needed
@@ -99,14 +139,21 @@ class Module(nn.Module, ABC):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log P(data | module).
+        """Compute log likelihood P(data | module).
+
+        Computes log probability of input data under this module's distribution.
+        Uses log-space for numerical stability. Results should be cached for efficiency.
 
         Args:
-            data: Input data tensor.
-            cache: Optional cache dictionary for intermediate results.
+            data (Tensor): Input data of shape (batch_size, num_features).
+                NaN values indicate evidence for conditional computation.
+            cache (Cache | None, optional): Cache for intermediate computations. Defaults to None.
 
         Returns:
-            Log-likelihood values.
+            Tensor: Log-likelihood of shape (batch_size, out_features, out_channels).
+
+        Raises:
+            ValueError: If input data shape is incompatible with module scope.
         """
         pass
 
@@ -119,17 +166,26 @@ class Module(nn.Module, ABC):
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        """Generate samples from the module.
+        """Generate samples from the module's probability distribution.
+
+        Supports both random sampling and MAP inference (via is_mpe flag).
+        Handles conditional sampling through evidence in data tensor.
 
         Args:
-            num_samples: Number of samples to generate.
-            data: Optional data tensor for structured sampling.
-            is_mpe: Whether to perform maximum a posteriori estimation.
-            cache: Optional cache dictionary.
-            sampling_ctx: Optional sampling context.
+            num_samples (int | None, optional): Number of samples to generate. Defaults to 1.
+            data (Tensor | None, optional): Pre-allocated tensor with NaN values indicating
+                where to sample. If None, creates new tensor. Defaults to None.
+            is_mpe (bool, optional): If True, returns most probable values instead of
+                random samples. Defaults to False.
+            cache (Cache | None, optional): Cache for intermediate computations. Defaults to None.
+            sampling_ctx (SamplingContext | None, optional): Context for routing samples
+                through the circuit. Defaults to None.
 
         Returns:
-            Sampled values.
+            Tensor: Sampled values of shape (batch_size, num_features).
+
+        Raises:
+            ValueError: If sampling parameters are incompatible.
         """
         pass
 
@@ -140,24 +196,20 @@ class Module(nn.Module, ABC):
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        r"""Samples from modules backend with evidence.
+        """Samples from module with evidence.
 
         This is effectively calling log_likelihood then sampling from the module with a populated cache.
 
         Args:
-            evidence:
-                Evidence tensor.
-            is_mpe:
-                Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
+            evidence: Evidence tensor.
+            is_mpe: Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
                 Defaults to False.
-            cache:
-                Optional cache dictionary to reuse across calls.
-            sampling_ctx:
-                Optional sampling context containing the instances (i.e., rows) of ``data`` to fill with sampled values and the output indices of the node to sample from.
+            cache: Optional cache dictionary to reuse across calls.
+            sampling_ctx: Optional sampling context containing the instances (i.e., rows) of
+                ``data`` to fill with sampled values and the output indices of the node to sample from.
 
         Returns:
-            Two-dimensional NumPy array containing the sampled values.
-            Each row corresponds to a sample.
+            Tensor containing the sampled values. Each row corresponds to a sample.
         """
         cache = init_cache(cache)
 
@@ -215,15 +267,22 @@ class Module(nn.Module, ABC):
         prune: bool = True,
         cache: Cache | None = None,
     ) -> Module | None:
-        """Marginalize out specified random variables.
+        """Marginalize out specified random variables from the module.
+
+        Computes marginal distribution by integrating out the specified variables.
+        Essential for conditioning on evidence and computing marginal probabilities.
 
         Args:
-            marg_rvs: List of random variables to marginalize.
-            prune: Whether to prune the module.
-            cache: Optional cache dictionary.
+            marg_rvs (list[int]): Random variable indices to marginalize out.
+            prune (bool, optional): Whether to prune unnecessary modules during
+                marginalization. Defaults to True.
+            cache (Cache | None, optional): Cache for intermediate computations. Defaults to None.
 
         Returns:
-            Marginalized module or None.
+            Module | None: Marginalized module, or None if all variables are marginalized out.
+
+        Raises:
+            ValueError: If marginalization variables are not in the module's scope.
         """
         pass
 
@@ -241,8 +300,7 @@ class Module(nn.Module, ABC):
         show_params: bool = True,
         show_scope: bool = True,
     ) -> str:
-        """
-        Convert this module to a readable string representation.
+        """Convert this module to a readable string representation.
 
         This method provides visualization formats for understanding module structure.
 

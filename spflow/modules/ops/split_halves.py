@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-
-import torch
 from torch import Tensor
 
 from spflow.meta.data import Scope
@@ -18,25 +15,12 @@ class SplitHalves(Split):
         dim: int = 1,
         num_splits: int | None = 2,
     ):
-        """
-        Split a single module along a given dimension. This implementation splits the features consecutively.
-        Example:
-            If num_splits=2, the features are split as follows:
-            - Input features: [0, 1, 2, 3, 4, 5]
-            - Split 0: features [0, 1, 2]
-            - Split 1: features [3, 4, 5]
-            If num_splits=3, the features are split as follows:
-            - Input features: [0, 1, 2, 3, 4, 5]
-            - Split 0: features [0, 1]
-            - Split 1: features [2, 3]
-            - Split 2: features [4, 5]
-
+        """Initialize consecutive split operation.
 
         Args:
-            inputs:
-            dim: Concatenation dimension. Note: dim=0: batch, dim=1: feature, dim=2: channel.
+            inputs: Input module to split.
+            dim: Dimension along which to split (0=batch, 1=feature, 2=channel).
             num_splits: Number of splits along the given dimension.
-            split_func: Custom split function.
         """
         super().__init__(inputs=inputs, dim=dim, num_splits=num_splits)
 

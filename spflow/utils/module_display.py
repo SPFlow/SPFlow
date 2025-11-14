@@ -4,15 +4,6 @@ This module provides utilities for converting SPFlow modules to readable string
 representations with support for tree and PyTorch formats.
 
 The Module class includes a to_str() method that uses this utility internally.
-
-Example:
-    >>> # Using the module method (recommended)
-    >>> print(my_model.to_str())  # Tree view (default)
-    >>> print(my_model.to_str(format="pytorch"))  # PyTorch repr format
-
-    >>> # Or using the function directly
-    >>> from spflow.utils.module_display import module_to_str
-    >>> print(module_to_str(my_model))
 """
 
 from __future__ import annotations
@@ -38,8 +29,7 @@ def module_to_str(
     _is_last: bool = True,
     _prefix: str = "",
 ) -> str:
-    """
-    Convert an SPFlow module to a readable string representation.
+    """Convert an SPFlow module to a readable string representation.
 
     This function provides visualization formats for SPFlow modules,
     making it easier to inspect model architecture and understand hierarchical
@@ -84,7 +74,20 @@ def _tree_view(
     is_last: bool,
     prefix: str,
 ) -> str:
-    """Generate tree view representation."""
+    """Generate tree view representation of a module.
+
+    Args:
+        module: The SPFlow module to display.
+        max_depth: Maximum depth to display (None = unlimited).
+        show_params: Whether to show parameter shapes for Sum/Product nodes.
+        show_scope: Whether to show scope information.
+        depth: Current recursion depth.
+        is_last: Flag indicating if this is the last child at its level.
+        prefix: Prefix string for tree formatting.
+
+    Returns:
+        String representation of the module in tree format.
+    """
     # Check depth limit
     if max_depth is not None and depth > max_depth:
         return ""
@@ -129,7 +132,16 @@ def _tree_view(
 
 
 def _format_node(module: Module, show_params: bool = True, show_scope: bool = True) -> str:
-    """Format a single module node for tree view."""
+    """Format a single module node for tree view.
+
+    Args:
+        module: The SPFlow module to format.
+        show_params: Whether to show parameter shapes for Sum/Product nodes.
+        show_scope: Whether to show scope information.
+
+    Returns:
+        Formatted string representation of the module node.
+    """
     module_name = module.__class__.__name__
     properties = []
 
@@ -159,7 +171,14 @@ def _format_node(module: Module, show_params: bool = True, show_scope: bool = Tr
 
 
 def _get_module_children(module: Module) -> list[tuple[str, Module]]:
-    """Get child modules, skipping Cat/ModuleList wrappers and non-Module objects."""
+    """Get child modules, skipping Cat/ModuleList wrappers and non-Module objects.
+
+    Args:
+        module: The parent module to get children from.
+
+    Returns:
+        List of tuples containing (child_name, child_module) pairs.
+    """
     children = []
 
     # Check for direct inputs attribute
@@ -189,7 +208,14 @@ def _get_module_children(module: Module) -> list[tuple[str, Module]]:
 
 
 def _format_scope(scope: Any) -> str:
-    """Format scope information as readable string."""
+    """Format scope information as readable string.
+
+    Args:
+        scope: Scope object to format.
+
+    Returns:
+        Formatted string representation of the scope.
+    """
     if scope is None:
         return ""
 

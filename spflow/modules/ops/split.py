@@ -1,3 +1,10 @@
+"""Split operations for tensor partitioning in probabilistic circuits.
+
+Provides base classes and implementations for splitting tensors along
+dimensions. Essential for RAT-SPNs and other architectures requiring
+systematic tensor partitioning.
+"""
+
 from __future__ import annotations
 
 from abc import abstractmethod, ABC
@@ -14,14 +21,25 @@ from spflow.utils.sampling_context import (
 
 
 class Split(Module, ABC):
+    """Abstract base class for tensor splitting operations.
+
+    Splits input tensors along specified dimensions. Concrete implementations
+    must provide feature_to_scope property.
+
+    Attributes:
+        inputs (nn.ModuleList): Single input module to split.
+        dim (int): Dimension along which to split (0=batch, 1=feature, 2=channel).
+        num_splits (int): Number of splits to create.
+        scope (Scope): Variable scope inherited from input.
+    """
+
     def __init__(self, inputs: Module, dim: int = 1, num_splits: int | None = 2):
-        """
-        Base Split module to split a single module along a given dimension.
+        """Initialize split operation.
 
         Args:
-            inputs:
-            dim: Split dimension. Note: dim=0: batch, dim=1: feature, dim=2: channel.
-            num_splits: Number of splits along the given dimension.
+            inputs: Input module to split.
+            dim: Dimension along which to split (0=batch, 1=feature, 2=channel).
+            num_splits: Number of parts to split into.
         """
         super().__init__()
         self.inputs = nn.ModuleList([inputs])
@@ -40,9 +58,7 @@ class Split(Module, ABC):
         return self.inputs[0].out_channels
 
     def get_out_shapes(self, event_shape):
-        """
-        Get the output shapes of the split operation based on the input event shape.
-        """
+        """Get output shapes for each split based on input event shape."""
         split_size = event_shape[self.dim]
         quotient = split_size // self.num_splits
         remainder = split_size % self.num_splits
@@ -71,6 +87,7 @@ class Split(Module, ABC):
         cache: Optional[Dict[str, Any]] = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
+        """Generate samples by delegating to input module."""
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
@@ -96,6 +113,7 @@ class Split(Module, ABC):
         prune: bool = True,
         cache: Optional[Dict[str, Any]] = None,
     ) -> None | Module:
+        """Marginalize out specified random variables."""
         # compute module scope (same for all outputs)
         module_scope = self.scope
 

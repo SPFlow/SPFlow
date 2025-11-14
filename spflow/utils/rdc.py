@@ -4,21 +4,24 @@ from scipy.stats import rankdata
 
 
 def rdc(x, y, f=torch.sin, k=20, s=1 / 6.0, n=1):
-    """
+    """Computes the Randomized Dependence Coefficient.
 
     Source: https://github.com/garydoranjr/rdc/blob/master/rdc/rdc.py
 
-    Computes the Randomized Dependence Coefficient
-    x,y: numpy arrays 1-D or 2-D
-         If 1-D, size (samples,)
-         If 2-D, size (samples, variables)
-    f:   function to use for random projection
-    k:   number of random projections to use
-    s:   scale parameter
-    n:   number of times to compute the RDC and
-         return the median (for stability)
     According to the paper, the coefficient should be relatively insensitive to
     the settings of the f, k, and s parameters.
+
+    Args:
+        x: Input tensor of shape (samples,) or (samples, variables).
+        y: Input tensor of shape (samples,) or (samples, variables).
+        f: Function to use for random projection. Defaults to torch.sin.
+        k: Number of random projections to use. Defaults to 20.
+        s: Scale parameter. Defaults to 1/6.0.
+        n: Number of times to compute the RDC and return the median for stability.
+            Defaults to 1.
+
+    Returns:
+        Tensor: The Randomized Dependence Coefficient value.
     """
     if n > 1:
         values = []
@@ -113,6 +116,15 @@ def rdc(x, y, f=torch.sin, k=20, s=1 / 6.0, n=1):
 
 
 def cca_loop(k, C):
+    """Computes canonical correlations using binary search for numerical stability.
+
+    Args:
+        k: Number of random projections to use.
+        C: Covariance matrix of shape (2*k, 2*k).
+
+    Returns:
+        Tensor: Square root of the maximum eigenvalue (canonical correlation).
+    """
     k0 = k
     lb = 1
     ub = k
@@ -166,8 +178,13 @@ def cca_loop(k, C):
 
 
 def rankdata_ordinal(x):
-    """
-    PyTorch equivalent of scipy.stats.rankdata(method='ordinal')
+    """PyTorch equivalent of scipy.stats.rankdata(method='ordinal').
+
+    Args:
+        x: Input tensor to rank.
+
+    Returns:
+        Tensor: Ordinal ranks of the input values.
     """
     # Get the indices that would sort the array
     sorted_indices = torch.argsort(x)
@@ -180,21 +197,24 @@ def rankdata_ordinal(x):
 
 
 def rdc_np(x, y, f=np.sin, k=20, s=1 / 6.0, n=1):
-    """
+    """Computes the Randomized Dependence Coefficient using NumPy.
 
     Source: https://github.com/garydoranjr/rdc/blob/master/rdc/rdc.py
 
-    Computes the Randomized Dependence Coefficient
-    x,y: numpy arrays 1-D or 2-D
-         If 1-D, size (samples,)
-         If 2-D, size (samples, variables)
-    f:   function to use for random projection
-    k:   number of random projections to use
-    s:   scale parameter
-    n:   number of times to compute the RDC and
-         return the median (for stability)
     According to the paper, the coefficient should be relatively insensitive to
     the settings of the f, k, and s parameters.
+
+    Args:
+        x: Input array of shape (samples,) or (samples, variables).
+        y: Input array of shape (samples,) or (samples, variables).
+        f: Function to use for random projection. Defaults to np.sin.
+        k: Number of random projections to use. Defaults to 20.
+        s: Scale parameter. Defaults to 1/6.0.
+        n: Number of times to compute the RDC and return the median for stability.
+            Defaults to 1.
+
+    Returns:
+        numpy.ndarray: The Randomized Dependence Coefficient value.
     """
     if n > 1:
         values = []
@@ -265,6 +285,15 @@ def rdc_np(x, y, f=np.sin, k=20, s=1 / 6.0, n=1):
 
 
 def cca_loop_np(k, C):
+    """Computes canonical correlations using binary search for numerical stability (NumPy version).
+
+    Args:
+        k: Number of random projections to use.
+        C: Covariance matrix of shape (2*k, 2*k).
+
+    Returns:
+        numpy.ndarray: Square root of the maximum eigenvalue (canonical correlation).
+    """
     k0 = k
     lb = 1
     ub = k

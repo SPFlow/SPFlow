@@ -1,5 +1,5 @@
-"""Contains the LearnSPN structure and parameter learner for SPFlow in the ``base`` backend.
-"""
+"""Contains the LearnSPN structure and parameter learner for SPFlow in the ``base`` backend."""
+
 from collections.abc import Callable
 from functools import partial
 from itertools import combinations
@@ -20,8 +20,18 @@ from spflow.utils.rdc import rdc
 
 
 def prune_sums(node):
-    """
-    iterates through spn and prunes unnecessary sums.
+    """Prune unnecessary sum nodes from a probabilistic circuit.
+
+    Recursively traverses the circuit and removes redundant sum nodes by flattening
+    nested sum-cat structures and merging weights. Reduces circuit complexity while
+    preserving the probability distribution.
+
+    Args:
+        node (Module): Root node of the circuit to prune. Can be any module type,
+            but pruning only affects Sum nodes.
+
+    Returns:
+        None: Modifies the circuit in-place.
     """
     if isinstance(node, Sum):
         child = node.inputs
@@ -76,24 +86,21 @@ def partition_by_rdc(
     threshold: float = 0.3,
     preprocessing: Callable | None = None,
 ) -> torch.Tensor:
-    """Performs partitioning using randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the ``base`` backend.
+    """Performs partitioning using randomized dependence coefficients (RDCs).
 
     Args:
-        data:
-            torchwo-dimensional NumPy array containing the input data.
+        data: Two-dimensional Tensor containing the input data.
             Each row corresponds to a sample.
-        threshold:
-            Floating point value specifying the threshold for independence testing between two features.
-            Defaults to 0.3.
-        preprocessing:
-            Optional callable that is called with ``data`` and returns another NumPy array of the same shape.
-            Defaults to None.
+        threshold: Floating point value specifying the threshold for independence testing
+            between two features. Defaults to 0.3.
+        preprocessing: Optional callable that is called with ``data`` and returns another
+            Tensor of the same shape. Defaults to None.
 
     Returns:
-        One-dimensional NumPy array with the same number of entries as the number of features in ``data``.
-        Each integer value indicates the partition the corresponding feature is assigned to.
+        One-dimensional Tensor with the same number of entries as the number of features
+        in ``data``. Each integer value indicates the partition the corresponding feature
+        is assigned to.
     """
-
     # perform optional pre-processing of data
     if preprocessing is not None:
         partitioning_data = preprocessing(data)
@@ -130,22 +137,20 @@ def cluster_by_kmeans(
     n_clusters: int = 2,
     preprocessing: Callable | None = None,
 ) -> torch.Tensor:
-    """Performs clustering usig k-Means to be used with the LearnSPN algorithm in the ``base`` backend.
+    """Performs clustering using k-Means.
 
     Args:
-        data:
-            torchwo-dimensional NumPy array containing the input data.
+        data: Two-dimensional Tensor containing the input data.
             Each row corresponds to a sample.
-        n_clusters:
-            Integer value specifying the number of clusters to be used.
+        n_clusters: Integer value specifying the number of clusters to be used.
             Defaults to 2.
-        preprocessing:
-            Optional callable that is called with ``data`` and returns another NumPy array of the same shape.
-            Defaults to None.
+        preprocessing: Optional callable that is called with ``data`` and returns another
+            Tensor of the same shape. Defaults to None.
 
     Returns:
-        One-dimensional NumPy array with the same number of entries as the number of samples in ``data``.
-        Each integer value indicates the cluster the corresponding sample is assigned to.
+        One-dimensional Tensor with the same number of entries as the number of samples
+        in ``data``. Each integer value indicates the cluster the corresponding sample
+        is assigned to.
     """
     # perform optional pre-processing of data
     if preprocessing is not None:
@@ -172,44 +177,35 @@ def learn_spn(
     partitioning_args: dict[str, Any] | None = None,
     full_data: torch.Tensor | None = None,
 ) -> Module:
-    """LearnSPN structure and parameter learner for the ``base`` backend.
+    """LearnSPN structure and parameter learner.
 
     LearnSPN algorithm as described in (Gens & Domingos, 2013): "Learning the Structure of Sum-Product Networks".
 
     Args:
-        data:
-            torchwo-dimensional NumPy array containing the input data.
+        data: Two-dimensional Tensor containing the input data.
             Each row corresponds to a sample.
-        feature_ctx:
-            ``FeatureContext`` instance specifying the domains of the scopes.
-            Scope query RVs must match the data features.
-            Defaults to None, in which case a feature context is initialized from ``data``.
-        min_features_slice:
-            Integer value specifying the minimum number of features required to partition.
+        leaf_modules: List of leaf modules or single leaf module to use for learning.
+        out_channels: Number of output channels. Defaults to 1.
+        min_features_slice: Minimum number of features required to partition.
             Defaults to 2.
-        min_instances_slice:
-            Integer value specifying the minimum number of instances required to cluster.
+        min_instances_slice: Minimum number of instances required to cluster.
             Defaults to 100.
-        clustering_method:
-            String or callable specifying the clustering method to be used.
-            If 'kmeans' k-Means clustering is used.
-            If a callable, it is expected to accept ``data`` and return a one-dimensional NumPy array of integer values indicating the clusters the corresponding samples are assigned to.
-        partitioning_method:
-            String or callable specifying the partitioning method to be used.
-            If 'rdc' randomized dependence coefficients (RDCs) are used to determine independencies.
-            If a callable, it is expected to accept ``data`` and return a one-dimensional NumPy array with the same number of features as in ``data`` of integer values indicating the partitions the corresponding features are assigned to.
-        clustering_args:
-            Optional dictionary mapping keyword arguments to objects.
-            Passed to ``clustering_method`` each time it is called.
-        partitioning_args:
-            Optional dictionary mapping keyword arguments to objects.
-            Passed to ``partitioning_method`` each time it is called.
+        scope: Scope for the SPN. If None, inferred from leaf_modules.
+        clustering_method: String or callable specifying the clustering method.
+            If 'kmeans', k-Means clustering is used. If a callable, it should accept
+            data and return cluster assignments.
+        partitioning_method: String or callable specifying the partitioning method.
+            If 'rdc', randomized dependence coefficients are used. If a callable, it
+            should accept data and return partition assignments.
+        clustering_args: Optional dictionary of keyword arguments for clustering method.
+        partitioning_args: Optional dictionary of keyword arguments for partitioning method.
+        full_data: Optional full dataset for parameter estimation.
 
     Returns:
-        A node representing the learned SPN.
+        A Module representing the learned SPN.
 
     Raises:
-        ValueError: Invalid arguments.
+        ValueError: If arguments are invalid or scopes are not disjoint.
     """
     if scope is None:
         if isinstance(leaf_modules, list):
@@ -261,7 +257,19 @@ def learn_spn(
         )
 
     def create_partitioned_mv_leaf(scope: Scope, data: torch.Tensor):
-        # create leaves layer from given scope and data
+        """Create partitioned leaf nodes from scope and data.
+
+        Creates leaf distributions by matching scope with available leaf modules and
+        estimating parameters via maximum likelihood estimation.
+
+        Args:
+            scope (Scope): Variable scope defining which variables to create leaves for.
+            data (torch.Tensor): Training data for parameter estimation.
+
+        Returns:
+            Union[Product, LeafModule]: Product node for multiple variables,
+                or single leaf for univariate case.
+        """
         leaves = []
         s = set(scope.query)
         for leaf_module in leaf_modules:
@@ -382,6 +390,7 @@ def learn_spn(
 
                 # conditional clusters
                 else:
+                    raise NotImplementedError("Conditional clustering not yet implemented.")
                     pass
                     """
                     return CondSum(

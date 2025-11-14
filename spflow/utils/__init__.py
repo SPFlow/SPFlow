@@ -1,5 +1,8 @@
-# Avoid circular imports by not importing here
-# Import these directly from their modules:
-#   from spflow.utils.model_manager import save_model, load_model
-#   from spflow.utils.module_display import module_to_str
-# from spflow.utils.visualization import visualize
+"""Utility functions and helper classes for SPFlow.
+
+This module provides various utility functions and helper classes that support
+the main functionality of SPFlow. These include model management, visualization,
+sampling contexts, caching mechanisms, and other supporting utilities.
+These utilities are designed to work seamlessly with the main SPFlow modules
+while maintaining clean separation of concerns.
+"""

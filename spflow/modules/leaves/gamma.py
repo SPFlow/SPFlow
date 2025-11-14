@@ -5,11 +5,21 @@ from spflow.meta.data import Scope
 from spflow.modules.leaves.base import (
     LeafModule,
     LogSpaceParameter,
-    validate_all_or_none, init_parameter, parse_leaf_args,
+    validate_all_or_none,
+    init_parameter,
+    parse_leaf_args,
 )
 
 
 class Gamma(LeafModule):
+    """Gamma distribution leaf for modeling positive-valued continuous data.
+
+    Attributes:
+        alpha (LogSpaceParameter): Shape parameter α > 0.
+        beta (LogSpaceParameter): Rate parameter β > 0.
+        distribution: Underlying torch.distributions.Gamma object.
+    """
+
     alpha = LogSpaceParameter("alpha")
     beta = LogSpaceParameter("beta")
 
@@ -21,15 +31,14 @@ class Gamma(LeafModule):
         alpha: Tensor = None,
         beta: Tensor = None,
     ):
-        r"""
-        Initialize a Gamma distribution leaves module.
+        """Initialize Gamma distribution leaf.
 
         Args:
-            scope: Scope object specifying the scope of the distribution.
-            out_channels: The number of output channels. If None, it is determined by the parameter tensors.
-            num_repetitions: The number of repetitions for the leaves module.
-            alpha: Tensor representing the shape parameters (:math:`\alpha`) of the Gamma distributions, greater than 0.
-            beta: Tensor representing the rate parameters (:math:`\beta`) of the Gamma distributions, greater than 0.
+            scope: Variable scope for this distribution.
+            out_channels: Number of output channels.
+            num_repetitions: Number of repetitions.
+            alpha: Shape parameter α > 0.
+            beta: Rate parameter β > 0.
         """
         event_shape = parse_leaf_args(
             scope=scope, out_channels=out_channels, params=[alpha, beta], num_repetitions=num_repetitions
@@ -57,12 +66,12 @@ class Gamma(LeafModule):
         return 1.0
 
     def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Estimate Gamma alpha/beta parameters and assign.
+        """Compute MLE for shape α and rate β parameters.
 
         Args:
-            data: Scope-filtered data of shape (batch_size, num_scope_features).
-            weights: Normalized weights of shape (batch_size, 1, ...).
-            bias_correction: Whether to apply bias correction for alpha and beta.
+            data: Scope-filtered data.
+            weights: Normalized sample weights.
+            bias_correction: Whether to apply bias correction.
         """
         n_total = weights.sum()
 
@@ -88,4 +97,5 @@ class Gamma(LeafModule):
         self.beta = self._broadcast_to_event_shape(beta_est)
 
     def params(self) -> dict[str, Tensor]:
+        """Returns distribution parameters."""
         return {"alpha": self.alpha, "beta": self.beta}

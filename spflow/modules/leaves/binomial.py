@@ -4,13 +4,30 @@ from torch import Tensor, nn
 from spflow.meta.data import Scope
 from spflow.modules.leaves.base import (
     LeafModule,
-    BoundedParameter, init_parameter, parse_leaf_args,
+    BoundedParameter,
+    init_parameter,
+    parse_leaf_args,
 )
 
 
 class Binomial(LeafModule):
-    """
-    Binomial distribution.
+    """Binomial distribution leaf module for probabilistic circuits.
+
+    Implements univariate Binomial distributions as leaf nodes in probabilistic
+    circuits. Supports parameter learning through maximum likelihood estimation
+    and efficient inference through PyTorch's built-in distributions.
+
+    The Binomial distribution models the number of successes in a fixed number
+    of independent Bernoulli trials, with probability mass function:
+        P(X = k | n, p) = C(n, k) * p^k * (1-p)^(n-k)
+
+    where n is the number of trials, p is the success probability, and k is
+    the number of successes (0 ≤ k ≤ n).
+
+    Attributes:
+        p (BoundedParameter): Success probability parameter(s) in [0, 1].
+        n (Tensor): Number of trials parameter(s), non-negative integers.
+        distribution: Underlying torch.distributions.Binomial object.
     """
 
     p = BoundedParameter("p", lb=0.0, ub=1.0)
@@ -18,8 +35,7 @@ class Binomial(LeafModule):
     def __init__(
         self, scope: Scope, n: Tensor, out_channels: int = None, num_repetitions: int = None, p: Tensor = None
     ):
-        r"""
-        Initialize a Binomial distribution leaves module.
+        r"""Initialize a Binomial distribution leaves module.
 
         Args:
             scope: Scope object specifying the scope of the distribution.
@@ -61,7 +77,6 @@ class Binomial(LeafModule):
         Raises:
             ValueError: Invalid arguments.
         """
-
         if torch.any(n < 0.0) or not torch.isfinite(n).all():
             raise ValueError(
                 f"Value of 'n' for 'Binomial' distribution must be non-negative and finite, but was: {n}"
@@ -78,7 +93,10 @@ class Binomial(LeafModule):
         return 0.0
 
     def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Estimate Binomial success probability and assign.
+        """Compute Binomial-specific sufficient statistics and assign parameters.
+
+        Estimates the success probability parameter p using weighted maximum
+        likelihood estimation from the provided data.
 
         Args:
             data: Scope-filtered data of shape (batch_size, num_scope_features).
@@ -98,4 +116,10 @@ class Binomial(LeafModule):
         self.p = p_est
 
     def params(self) -> dict[str, Tensor]:
+        """Returns the parameters of the distribution.
+
+        Returns:
+            dict[str, Tensor]: Dictionary containing 'n' (number of trials) and
+                'p' (success probability) parameters.
+        """
         return {"n": self.n, "p": self.p}

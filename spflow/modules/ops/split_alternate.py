@@ -1,3 +1,10 @@
+"""Alternating splitting operation for tensor partitioning.
+
+Distributes features in an alternating pattern across splits using modulo
+arithmetic. Promotes feature diversity across branches. Used in RAT-SPN
+and similar architectures.
+"""
+
 from __future__ import annotations
 
 import torch
@@ -10,26 +17,22 @@ from spflow.utils.cache import Cache, init_cache
 
 
 class SplitAlternate(Split):
+    """Split operation using alternating feature distribution.
+
+    Distributes features using modulo arithmetic: feature i goes to split i % num_splits.
+    Optimized for common cases (2 and 3 splits).
+
+    Attributes:
+        split_masks (list[Tensor]): Boolean masks for each split.
+    """
+
     def __init__(self, inputs: Module, dim: int = 1, num_splits: int | None = 2):
-        """
-        Split a single module along a given dimension. This implementation splits the features in an alternating manner.
-        Example:
-            If num_splits=2, the features are split as follows:
-            - Input features: [0, 1, 2, 3, 4, 5, ...]
-            - Split 0: features 0, 2, 4, ...
-            - Split 1: features 1, 3, 5, ...
-
-            If num_splits=3, the features are split as follows:
-            - Input features: [0, 1, 2, 3, 4, 5, ...]
-            - Split 0: features 0, 3, 6, ...
-            - Split 1: features 1, 4, 7, ...
-            - Split 2: features 2, 5, 8, ...
-
+        """Initialize alternating split operation.
 
         Args:
-            inputs:
-            dim: Concatenation dimension. Note: dim=0: batch, dim=1: feature, dim=2: channel.
-            num_splits: Number of splits along the given dimension.
+            inputs: Input module to split.
+            dim: Dimension along which to split.
+            num_splits: Number of parts to split into.
         """
         super().__init__(inputs=inputs, dim=dim, num_splits=num_splits)
 

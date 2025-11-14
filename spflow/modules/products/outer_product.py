@@ -15,33 +15,25 @@ from spflow.utils.cache import Cache, init_cache
 
 
 class OuterProduct(BaseProduct):
+    """Outer product creating all pairwise channel combinations.
+
+    Computes Cartesian product of input channels. Output channels equal
+    product of input channels. All input scopes must be pairwise disjoint.
+
+    Attributes:
+        unraveled_channel_indices (Tensor): Mapping from output to input channel pairs.
+    """
+
     def __init__(
         self,
         inputs: list[Module],
         num_splits: int | None = 2,
     ) -> None:
-        r"""Initializes ``OuterProduct`` module.
+        """Initialize outer product.
 
         Args:
-            inputs:
-                Can be either a Module or a list of Modules.
-                The scopes for all child modules need to be pair-wise disjoint.
-
-                (1) If `inputs` is a list of Modules, they have to be of disjoint scopes and have equal number of features or a single feature wich will the be broadcast.
-
-                Example shapes:
-                    inputs = ((3, 4), (3, 5))
-                    output = (3, 4 * 5)
-
-                    inputs = ((3, 4), (3, 1))
-                    output = (3, 4 * 1)  # broadcasted
-
-                    inputs = ((3, 4), (1, 5))
-                    output = (3, 4 * 5)  # broadcasted
-
-
-        Raises:
-            ValueError: Invalid arguments.
+            inputs: Modules with pairwise disjoint scopes.
+            num_splits: Number of splits for input operations.
         """
         super().__init__(inputs=inputs)
 
@@ -67,9 +59,7 @@ class OuterProduct(BaseProduct):
         self.check_shapes()
 
     def check_shapes(self, inputs=None):
-        """
-        Checks if the list of two-dimensional shapes satisfies the given conditions.
-        """
+        """Check if input shapes are compatible for outer product."""
         if inputs is None:
             inputs = self.inputs
 
@@ -104,7 +94,7 @@ class OuterProduct(BaseProduct):
             return True
 
         # If none of the conditions are satisfied
-        raise ValueError(f"the shapes of the inputs { shapes } are not broadcastable")
+        raise ValueError(f"the shapes of the inputs {shapes} are not broadcastable")
 
     @property
     def out_channels(self) -> int:
@@ -175,15 +165,7 @@ class OuterProduct(BaseProduct):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log P(data | module) for outer product.
-
-        Args:
-            data: The data tensor.
-            cache: Optional cache dictionary.
-
-        Returns:
-            Log likelihood tensor.
-        """
+        """Compute log likelihood via outer sum of pairwise combinations."""
         # initialize cache
         cache = init_cache(cache)
 

@@ -11,8 +11,7 @@ out_features_values = [1, 6]
 
 
 def make_module(p) -> Geometric:
-    """
-    Create a Categorical leaves node.
+    """Create a Categorical leaves node.
 
     Args:
         p: Probability of the distribution.

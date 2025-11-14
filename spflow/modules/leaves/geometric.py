@@ -6,17 +6,23 @@ from spflow.modules.leaves.base import LeafModule, BoundedParameter, init_parame
 
 
 class Geometric(LeafModule):
+    """Geometric distribution leaf for modeling trials until first success.
+
+    Attributes:
+        p (BoundedParameter): Success probability in (0, 1].
+        distribution: Underlying torch.distributions.Geometric object.
+    """
+
     p = BoundedParameter("p", lb=0.0, ub=1.0)
 
     def __init__(self, scope: Scope, out_channels: int = None, num_repetitions: int = None, p: Tensor = None):
-        r"""
-        Initialize a Geometric distribution leaves module.
+        """Initialize Geometric distribution leaf.
 
         Args:
-            scope: Scope object specifying the scope of the distribution.
-            out_channels: The number of output channels. If None, it is determined by the parameter tensor.
-            num_repetitions: The number of repetitions for the leaves module.
-            p: PyTorch tensor representing the success probabilities in the range :math:`(0,1]`
+            scope: Variable scope for this distribution.
+            out_channels: Number of output channels.
+            num_repetitions: Number of repetitions.
+            p: Success probability in (0, 1].
         """
         event_shape = parse_leaf_args(
             scope=scope, out_channels=out_channels, params=[p], num_repetitions=num_repetitions
@@ -38,11 +44,11 @@ class Geometric(LeafModule):
         return 1
 
     def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Estimate success probability for Geometric distribution and assign.
+        """Compute MLE for success probability p.
 
         Args:
-            data: Scope-filtered data of shape (batch_size, num_scope_features).
-            weights: Normalized weights of shape (batch_size, 1, ...).
+            data: Scope-filtered data.
+            weights: Normalized sample weights.
             bias_correction: Whether to apply bias correction.
         """
         n_total = weights.sum()
@@ -56,4 +62,5 @@ class Geometric(LeafModule):
         self.p = self._broadcast_to_event_shape(p_est)
 
     def params(self) -> dict[str, Tensor]:
+        """Returns distribution parameters."""
         return {"p": self.p}

@@ -1,3 +1,9 @@
+"""Mixing layer for RAT-SPN region nodes.
+
+Specialized sum node for RAT-SPNs creating mixture distributions over
+input channels. Extends base Sum with RAT-SPN specific optimizations.
+"""
+
 from __future__ import annotations
 
 import torch
@@ -12,8 +18,10 @@ from spflow.utils.sampling_context import SamplingContext, init_default_sampling
 
 
 class MixingLayer(Sum):
-    """
-    A mixing layer that sums over the input channels, which is used for the RAT model.
+    """Mixing layer for RAT-SPN region nodes.
+
+    Specialized sum node for RAT-SPNs. Creates mixtures over input channels.
+    Extends Sum with RAT-SPN specific optimizations.
     """
 
     def __init__(
@@ -24,15 +32,15 @@ class MixingLayer(Sum):
         weights: Tensor | None = None,
         sum_dim: int | None = 1,
     ) -> None:
-        """
-        Args:
-            inputs: Single input module or list of modules. The sum is over the sum dimension of the input.
-            out_channels: Optional number of output nodes for each sum, if weights are not given.
-            num_repetitions: Optional number of repetitions for the sum module. If not provided, it will be inferred from the weights.
-            weights: Optional weights for the sum module. If not provided, weights will be initialized randomly.
-            sum_dim: The dimension over which to sum the inputs. Default is 1 (channel dimension).
-        """
+        """Initialize mixing layer for RAT-SPN.
 
+        Args:
+            inputs: Input module to mix over channels.
+            out_channels: Number of output mixture components.
+            num_repetitions: Number of parallel repetitions.
+            weights: Initial mixing weights (if None, randomly initialized).
+            sum_dim: Dimension over which to perform mixing.
+        """
         super().__init__(inputs, out_channels, num_repetitions, weights, sum_dim)
         if not inputs:
             raise ValueError("'Sum' requires at least one input to be specified.")
@@ -80,8 +88,7 @@ class MixingLayer(Sum):
         if weights is None:
             weights = (
                 # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                torch.rand(self.weights_shape)
-                + 1e-08
+                    torch.rand(self.weights_shape) + 1e-08
             )  # avoid zeros
 
             # Normalize
@@ -113,18 +120,7 @@ class MixingLayer(Sum):
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        """Generate samples from the module.
-
-        Args:
-            num_samples: Number of samples to generate.
-            data: Data tensor with NaN values to fill with samples.
-            is_mpe: Whether to perform maximum a posteriori estimation.
-            cache: Optional cache dictionary.
-            sampling_ctx: Optional sampling context.
-
-        Returns:
-            Sampled values.
-        """
+        """Generate samples by choosing mixture components."""
         cache = init_cache(cache)
 
         # Handle num_samples case (create empty data tensor)
@@ -180,15 +176,7 @@ class MixingLayer(Sum):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log P(data | module).
-
-        Args:
-            data: Input data tensor.
-            cache: Optional cache dictionary for caching intermediate results.
-
-        Returns:
-            Log-likelihood values.
-        """
+        """Compute log likelihood via weighted log-sum-exp."""
         cache = init_cache(cache)
 
         ll = self.inputs.log_likelihood(

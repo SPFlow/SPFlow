@@ -11,8 +11,7 @@ out_features_values = [1, 6]
 
 
 def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, torch.Tensor]:
-    """
-    Create parameters for a binomial distribution.
+    """Create parameters for a binomial distribution.
 
     Args:
         out_features: Number of features.
@@ -27,8 +26,8 @@ def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, tor
 
 
 def make_module(n, p) -> NegativeBinomial:
-    """
-    Create a NegativeBinomial leaves node.
+    """Create a NegativeBinomial leaves node.
+
     Args:
         n: Number of trials.
         p: Probability of success in each trial.

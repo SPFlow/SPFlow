@@ -33,7 +33,6 @@ def make_wrapper(num_channel, num_reps):
 @pytest.mark.parametrize("num_channel, num_reps", params)
 def test_log_likelihood(num_channel: int, num_reps):
     """Test the log likelihood of a normal distribution."""
-
     module = make_wrapper(num_channel, num_reps)
     height = 4
     width = 4

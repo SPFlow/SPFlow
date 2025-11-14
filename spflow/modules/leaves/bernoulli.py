@@ -6,18 +6,25 @@ from spflow.modules.leaves.base import LeafModule, BoundedParameter, init_parame
 
 
 class Bernoulli(LeafModule):
-    r"""
-    Create a Bernoulli leaves module.
+    """Bernoulli distribution leaf module.
+
+    Binary random variable with success probability p in [0, 1].
+
+    Attributes:
+        p: Success probability (BoundedParameter).
+        distribution: Underlying torch.distributions.Bernoulli.
     """
+
     p = BoundedParameter("p", lb=0.0, ub=1.0)
 
     def __init__(self, scope: Scope, out_channels: int = None, num_repetitions: int = None, p: Tensor = None):
-        r"""
+        """Initialize Bernoulli distribution leaf.
+
         Args:
-            scope (Scope): The scope of the leaves module.
-            out_channels (int, optional): The number of output channels. If None, it is inferred from the shape of the parameter tensor.
-            num_repetitions (int, optional): The number of repetitions for the leaves module.
-            p (Tensor): PyTorch tensor representing the success probabilities of the Bernoulli distributions.
+            scope: Variable scope.
+            out_channels: Number of output channels (inferred from params if None).
+            num_repetitions: Number of repetitions.
+            p: Success probability tensor in [0, 1] (random init if None).
         """
         event_shape = parse_leaf_args(
             scope=scope, out_channels=out_channels, params=[p], num_repetitions=num_repetitions
@@ -32,22 +39,16 @@ class Bernoulli(LeafModule):
 
     @property
     def distribution(self) -> torch.distributions.Distribution:
-        """Returns the underlying torch distribution object."""
+        """Return underlying torch.distributions.Bernoulli."""
         return torch.distributions.Bernoulli(self.p)
 
     @property
     def _supported_value(self):
-        """Returns the supported values of the distribution."""
+        """Return supported value for edge case handling."""
         return 0.0
 
     def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute Bernoulli probability estimate and assign parameter.
-
-        Args:
-            data: Scope-filtered data of shape (batch_size, num_scope_features).
-            weights: Normalized weights of shape (batch_size, 1, ...).
-            bias_correction: Not used for Bernoulli (included for template consistency).
-        """
+        """Compute weighted success probability."""
         n_total = weights.sum()
         n_success = (weights * data).sum(dim=0)
         p_est = n_success / n_total
@@ -57,5 +58,5 @@ class Bernoulli(LeafModule):
         self.p = self._broadcast_to_event_shape(p_est)
 
     def params(self) -> dict[str, Tensor]:
-        """Returns the parameters of the distribution."""
+        """Return distribution parameters."""
         return {"p": self.p}

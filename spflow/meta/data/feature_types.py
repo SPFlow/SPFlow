@@ -1,5 +1,5 @@
-"""Feature types indicating the distribution or meta type of data features.
-"""
+"""Feature types indicating the distribution or meta type of data features."""
+
 from abc import ABC
 from dataclasses import dataclass
 from typing import ClassVar
@@ -8,11 +8,10 @@ from spflow.meta.data.meta_type import MetaType
 
 
 class FeatureType(ABC):
-    """Abstract base class feature types.
+    """Abstract base class for feature types.
 
     Attributes:
-        meta_type:
-            ``MetaType`` underlying the feature type.
+        meta_type: MetaType underlying the feature type.
     """
 
     meta_type: MetaType
@@ -141,8 +140,7 @@ class CategoricalType(FeatureType):
     """Feature type for Categorical-distributed features.
 
     Attributes:
-        probs:
-            List of probabilities for each category.
+        probs: List of probabilities for each category.
     """
 
     meta_type: ClassVar[MetaType] = MetaType.Discrete
@@ -158,6 +156,7 @@ class GeometricType(FeatureType):
             Success probability in range :math:`(0,1]`.
             Defaults to 0.5.
     """
+
     meta_type: ClassVar[MetaType] = MetaType.Discrete
     p: float = 0.5
 
@@ -192,6 +191,7 @@ class NegativeBinomialType(FeatureType):
             Success probability in range :math:`(0,1]`.
             Defaults to 0.5.
     """
+
     meta_type: ClassVar[MetaType] = MetaType.Discrete
     n: int
     p: float = 0.5
@@ -212,59 +212,30 @@ class PoissonType(FeatureType):
 
 
 class FeatureTypes(ABC):
-    r"""Abstract class keeping track of all registered feature types.
+    """Abstract class keeping track of all registered feature types.
 
     Class is not meant to be instantiated and instead be interacted with directly.
-    Members are all convenient accessors/aliases for ``MetaType`` enum members or ``FeatureType`` (sub-)classes.
+    Members are all convenient accessors/aliases for MetaType enum members or
+    FeatureType (sub-)classes.
 
     Members:
-        Unknown:
-            Alias for ``MetaType.Unknown``.
-        Continuous:
-            Alias for ``MetaType.Continuous``.
-            Indicates continuous data, without any additional specification.
-        Discrete:
-            Alias for ``MetaType.Discrete``.
-            Indicates discrete data, without any additional specification.
-        Bernoulli:
-            Alias for ``BernoulliType``, indicating Bernoulli-distributed data.
-            Optional parameter ``p`` in :math:`[0,1]`, representing the success probability.
-        Binomial:
-            Alias for ``BinomialType``, indicating Binomial-distributed data.
-            Required parameter ``n`` greater than or equal to 0, representing the number of i.i.d. Bernoulli trials.
-            Optional parameter ``p`` in :math:`[0,1]`, representing the success probability.
-        Exponential:
-            Alias for ``ExponentialType``, indicating Exponential-distributed data.
-            Optional parameter ``l``, representing the rate parameter, greater than 0.0.
-        Gamma:
-            Alias for ``GammaType``, indicating Gamma-distributed data.
-            Optional parameters ``alpha`,``beta``, representing the shape and rate parameters, greater than 0.0.
-            ``GammaType``
-        Normal:
-            Alias for ``NormalType``, indicating Normal-distributed data.
-            Optional parameters ``mean``,``std``, representing the mean and standard deviation (the latter greater than 0.0).
-        Geometric:
-            Alias for ``GeometricType``, indicating Geometric-distributed data.
-            Optional parameter ``p` in :math:`(0,1], representing the success probability.
-        Hypergeometric:
-            Alias for ``HypergeometricType``, indicating Hypergeometric-distributed data.
-            Required parameters ``N``, ``M`` and ``n``.
-            ``N`` represents the number of entities in the population, greater than or equal to 0.
-            ``M`` represents the number of entities of interest in the population, greater than or equal to zero and less than or equal to ``N``.
-            ``n`` represents the number of draws, greater than or equal to zero and less than or equal to ``N``.
-        Log-Normal:
-            Alias for ``LogNormalType``, indicating Log-Normal-distributed data.
-            Optional parameters ``mean``,``std``, representing the mean and standard deviation (the latter greater than 0.0).
-        NegativeBinomial:
-            Required parameter ``n`` greater than or equal to 0, representing the number of total successes.
-            Optional parameter ``p`` in :math:`(0,1]`, representing the success probability.
-        Poisson:
-            Alias for ``PoissonType``, indicating Poisson-distributed data.
-            Optional parameter ``l``, representing the rate parameter, greater than or equal to 0.0.
-        Uniform:
-            Alias for ``UniformType``, indicating Uniform-distributed data.
-            Required parameters ``start``,``end``, representing the start (including) and end (including) of the interval, the latter greater than ``start``.
+        Unknown: Alias for MetaType.Unknown.
+        Continuous: Alias for MetaType.Continuous. Indicates continuous data.
+        Discrete: Alias for MetaType.Discrete. Indicates discrete data.
+        Bernoulli: Alias for BernoulliType, indicating Bernoulli-distributed data.
+        Binomial: Alias for BinomialType, indicating Binomial-distributed data.
+        Exponential: Alias for ExponentialType, indicating Exponential-distributed data.
+        Gamma: Alias for GammaType, indicating Gamma-distributed data.
+        Normal: Alias for NormalType, indicating Normal-distributed data.
+        Geometric: Alias for GeometricType, indicating Geometric-distributed data.
+        Hypergeometric: Alias for HypergeometricType, indicating Hypergeometric-distributed data.
+        LogNormal: Alias for LogNormalType, indicating Log-Normal-distributed data.
+        NegativeBinomial: Alias for NegativeBinomialType, indicating Negative-Binomial-distributed data.
+        Poisson: Alias for PoissonType, indicating Poisson-distributed data.
+        Uniform: Alias for UniformType, indicating Uniform-distributed data.
+        Categorical: Alias for CategoricalType, indicating Categorical-distributed data.
     """
+
     # ----- meta feature types -----
     Unknown = MetaType.Unknown
     Continuous = MetaType.Continuous
@@ -291,12 +262,9 @@ class FeatureTypes(ABC):
         """Registers a feature type.
 
         Args:
-            name:
-                String specifying the name the feature type should be registered under.
-            type:
-                ``FeatureType`` (sub-)class or instance thereof.
-            overwrite:
-                Boolean indicating whether or not to overwrite any potentially existing feature type registered under the same name.
+            name: String specifying the name the feature type should be registered under.
+            type: FeatureType (sub-)class or instance thereof.
+            overwrite: Boolean indicating whether to overwrite existing feature type.
                 Defaults to False.
         """
         if hasattr(cls, name) and not overwrite:

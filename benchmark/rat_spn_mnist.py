@@ -1,14 +1,12 @@
+import matplotlib
+import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 
-from spflow.modules.leaves import Normal, Binomial, Bernoulli
+from spflow import log_likelihood, sample
+from spflow.meta.data import Scope
+from spflow.modules.leaves import Normal
 from spflow.modules.rat.rat_spn import RatSPN
 
-from spflow.meta.data import Scope
-
-from spflow import log_likelihood, sample
-
-import matplotlib.pyplot as plt
-import matplotlib
 matplotlib.use('Agg')
 
 import os
@@ -28,8 +26,8 @@ def one_hot(vector):
 
 
 def time_delta_now(t_start: float) -> str:
-    """
-    Convert a timestamp into a human readable timestring.
+    """Convert a timestamp into a human readable timestring.
+
     Args:
         t_start (float): Timestamp.
 
@@ -48,8 +46,7 @@ def time_delta_now(t_start: float) -> str:
 
 
 def count_params(model: torch.nn.Module) -> int:
-    """
-    Count the number of parameters in a model.
+    """Count the number of parameters in a model.
 
     Args:
         model (torch.nn.Module): PyTorch model.
@@ -91,8 +88,7 @@ def count_params(model: torch.nn.Module) -> int:
 #     return train_loader, test_loader
 
 def get_mnist_loaders(use_cuda, batch_size):
-    """
-    Get the MNIST PyTorch data loaders, filtered to only include selected classes.
+    """Get the MNIST PyTorch data loaders, filtered to only include selected classes.
 
     Args:
         use_cuda (bool): Use CUDA if available.
@@ -134,7 +130,6 @@ def get_mnist_loaders(use_cuda, batch_size):
 
 def make_spn(device) -> RatSPN:
     """Construct the RatSpn"""
-
     depth = 5
     n_region_nodes = 16
     num_leaves = 16
@@ -238,8 +233,7 @@ def run_torch(n_epochs=100, batch_size=256):
 
 
 def set_seed(seed: int):
-    """
-    Set the seed globally for python, numpy and torch.
+    """Set the seed globally for python, numpy and torch.
 
     Args:
         seed (int): Seed.

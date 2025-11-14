@@ -15,10 +15,18 @@ from spflow.utils.sampling_context import SamplingContext, init_default_sampling
 
 
 class Sum(Module):
-    """
-    A sum module that represents the sum operation over inputs.
+    """Sum module representing mixture operations in probabilistic circuits.
 
-    The sum module can be used to sum over the channel dimension of a single input or over the stacked inputs.
+    Implements mixture modeling by computing weighted combinations of child distributions.
+    Weights are normalized to sum to one, maintaining valid probability distributions.
+    Supports both single input (mixture over channels) and multiple inputs (mixture
+    over concatenated inputs).
+
+    Attributes:
+        inputs (Module): Input module(s) to the sum node.
+        sum_dim (int): Dimension over which to sum the inputs.
+        weights (Tensor): Normalized weights for mixture components.
+        logits (Parameter): Unnormalized log-weights for gradient optimization.
     """
 
     def __init__(
@@ -29,15 +37,24 @@ class Sum(Module):
             weights: Tensor | list[float] | None = None,
         sum_dim: int | None = 1,
     ) -> None:
-        """
-        Create a Sum module.
+        """Create a Sum module for mixture modeling.
+
+        Weights are automatically normalized to sum to one using softmax.
+        Multiple inputs are concatenated along dimension 2 internally.
 
         Args:
-            inputs: Single input module or list of modules. The sum is over the sum dimension of the input.
-            out_channels: Optional number of output nodes for each sum, if weights are not given.
-            num_repetitions: Optional number of repetitions for the sum module. If not provided, it will be inferred from the weights.
-            weights: Optional weights for the sum module. If not provided, weights will be initialized randomly.
-            sum_dim: The dimension over which to sum the inputs. Default is 1 (channel dimension).
+            inputs (Module | list[Module]): Single module or list of modules to mix.
+            out_channels (int | None, optional): Number of output mixture components.
+                Required if weights not provided.
+            num_repetitions (int | None, optional): Number of repetitions for structured
+                representations. Inferred from weights if not provided.
+            weights (Tensor | list[float] | None, optional): Initial mixture weights.
+                Must have compatible shape with inputs and out_channels.
+            sum_dim (int | None, optional): Dimension over which to sum inputs. Default is 1.
+
+        Raises:
+            ValueError: If inputs empty, out_channels < 1, or weights have invalid shape/values.
+            InvalidParameterCombinationError: If both out_channels and weights are specified.
         """
         super().__init__()
 
@@ -45,7 +62,6 @@ class Sum(Module):
             raise ValueError("'Sum' requires at least one input to be specified.")
 
         if weights is not None:
-
             if isinstance(weights, list):
                 weights = torch.tensor(weights)
 
@@ -77,7 +93,6 @@ class Sum(Module):
                     raise ValueError(
                         f"Weights for 'Sum' must be a 1D, 2D, 3D, or 4D tensor but was {weights.dim()}D."
                     )
-
 
             out_channels = weights.shape[2]
 
@@ -125,8 +140,7 @@ class Sum(Module):
         if weights is None:
             weights = (
                 # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                torch.rand(self.weights_shape)
-                + 1e-08
+                    torch.rand(self.weights_shape) + 1e-08
             )  # avoid zeros
 
             # Normalize
@@ -152,13 +166,13 @@ class Sum(Module):
 
     @property
     def log_weights(self) -> Tensor:
-        """Returns the weights of all nodes as a two-dimensional PyTorch tensor."""
+        """Returns the log weights of all nodes as a tensor."""
         # project auxiliary weights onto weights that sum up to one
         return torch.nn.functional.log_softmax(self.logits, dim=self.sum_dim)
 
     @property
     def weights(self) -> Tensor:
-        """Returns the weights of all nodes as a two-dimensional PyTorch tensor."""
+        """Returns the weights of all nodes as a tensor."""
         # project auxiliary weights onto weights that sum up to one
         return torch.nn.functional.softmax(self.logits, dim=self.sum_dim)
 
@@ -167,14 +181,19 @@ class Sum(Module):
         self,
         values: Tensor,
     ) -> None:
-        """
-        Set weights of all nodes.
+        """Set weights of all nodes.
 
         Args:
-            values: PyTorch tensor containing weights for each input and node.
+            values: Tensor containing weights for each input and node.
+
+        Raises:
+            ValueError: If weights have invalid shape, contain non-positive values,
+                or do not sum to one.
         """
         if values.shape != self.weights_shape:
-            raise ValueError(f"Invalid shape for weights: Was {values.shape} but expected {self.weights_shape}.")
+            raise ValueError(
+                f"Invalid shape for weights: Was {values.shape} but expected {self.weights_shape}."
+            )
         if not torch.all(values > 0):
             raise ValueError("Weights for 'Sum' must be all positive.")
         if not torch.allclose(torch.sum(values, dim=self.sum_dim), torch.tensor(1.0)):
@@ -186,11 +205,13 @@ class Sum(Module):
         self,
         values: Tensor,
     ) -> None:
-        """
-        Set weights of all nodes.
+        """Set log weights of all nodes.
 
         Args:
-            values: PyTorch tensor containing weights for each input and node.
+            values: Tensor containing log weights for each input and node.
+
+        Raises:
+            ValueError: If log weights have invalid shape.
         """
         if values.shape != self.log_weights.shape:
             raise ValueError(f"Invalid shape for weights: {values.shape}.")
@@ -204,14 +225,19 @@ class Sum(Module):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log P(data | module).
+        """Compute log likelihood P(data | module).
+
+        Computes log likelihood using logsumexp for numerical stability.
+        Results are cached for parameter learning algorithms.
 
         Args:
-            data: Input data tensor.
-            cache: Optional cache dictionary for caching intermediate results.
+            data (Tensor): Input data of shape (batch_size, num_features).
+                NaN values indicate evidence for conditional computation.
+            cache (Cache | None, optional): Cache for intermediate computations. Defaults to None.
 
         Returns:
-            Log-likelihood values.
+            Tensor: Log-likelihood of shape (batch_size, num_features, out_channels)
+                or (batch_size, num_features, out_channels, num_repetitions).
         """
         cache = init_cache(cache)
 
@@ -251,7 +277,7 @@ class Sum(Module):
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        """Generate samples from the module.
+        """Generate samples from sum module.
 
         Args:
             num_samples: Number of samples to generate.
@@ -346,11 +372,14 @@ class Sum(Module):
         data: Tensor,
         cache: Cache | None = None,
     ) -> None:
-        """Expectation-maximization step.
+        """Perform expectation-maximization step.
 
         Args:
             data: Input data tensor.
             cache: Optional cache dictionary with log-likelihoods.
+
+        Raises:
+            ValueError: If required log-likelihoods are not found in cache.
         """
         cache = init_cache(cache)
 

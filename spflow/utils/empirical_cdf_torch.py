@@ -1,26 +1,32 @@
-"""Algorithm to compute the empirical cummulative distribution function (CDF) for input data.
+"""Algorithm to compute the empirical cumulative distribution function (CDF) for input data.
 
-Typical usage example:
-
-    ecdf_values = empirical_cdf(data)
+This module provides an efficient PyTorch-based implementation of the empirical
+cumulative distribution function (ECDF) for multi-dimensional data. The ECDF
+computes the proportion of data points less than or equal to each value,
+handling missing values (NaN) appropriately.
 """
 
 import torch
+from torch import Tensor
 
 
-def empirical_cdf(data):
-    """Computes the empirical cummulative distribution function (CDF) for specified input data.
+def empirical_cdf(data: Tensor) -> Tensor:
+    """Computes the empirical cumulative distribution function (CDF) for input data.
 
-    Returns the values of all input data according to the empirical cummulative distribution function (CDF) computed from said data.
+    Returns the empirical CDF values for each element in the input data,
+    computed independently for each feature column. Missing values (NaN) are
+    ignored and not counted towards the empirical CDF computation.
 
     Args:
-        data:
-            Two-dimensional NumPy array containing empirical input values. Each row is regarded as a sample and each column as a different feature.
-            All columns (i.e., features) are ranked independently. Missing entries (i.e., NaN) are ignored and are not counted towards the empirical
-            CDF of the corresponding feature.
+        data: Two-dimensional Tensor containing empirical input values. Each
+            row represents a sample and each column represents a different
+            feature. All columns are ranked independently. Missing entries
+            (NaN) are ignored and not counted towards the empirical CDF of
+            the corresponding feature.
 
     Returns:
-        Numpy array containing the empirical CDF values for the specified input.
+        Tensor containing the empirical CDF values for the input data,
+        with the same shape as the input tensor.
     """
     # empirical cumulative distribution function (step function that increases by 1/N at each unique data step in order)
     # here: done using scipy's 'rankdata' function (preferred over numpy's argsort due to tie-breaking)

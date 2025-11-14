@@ -15,15 +15,13 @@ from spflow.utils.sampling_context import SamplingContext, init_default_sampling
 
 
 class LogSpaceParameter:
-    """Descriptor for parameters stored in log-space but exposed in real space.
+    """Descriptor for parameters stored in log-space, exposed in real space.
 
-    Stores values as `log_{name}` for numerical stability, while transparently exposing
-    them in real space via exponential transformation. This replaces boilerplate @property
-    decorators with a single-line descriptor.
+    Transparently stores values as `log_{name}` for numerical stability during optimization.
 
     Args:
-        name: Parameter name (e.g., 'std', 'rate'). Storage uses 'log_{name}'.
-        validator: Optional validator function. Defaults to checking finiteness and positivity.
+        name: Parameter name. Storage uses 'log_{name}'.
+        validator: Validator function (defaults to positive + finite check).
     """
 
     def __init__(self, name: str, validator: Callable[[Tensor], None] | None = None):
@@ -56,17 +54,15 @@ class LogSpaceParameter:
 
 
 class BoundedParameter:
-    """Descriptor for parameters constrained to [lb, ub] using projection functions.
+    """Descriptor for parameters constrained to [lb, ub] via projection.
 
-    Stores values in unbounded space for unconstrained optimization, then projects them
-    to [lb, ub] when accessed. This replaces boilerplate @property decorators with a
-    single-line descriptor.
+    Stores values in unbounded space for unconstrained optimization.
 
     Args:
-        name: Parameter name (e.g., 'p'). Storage uses 'log_{name}'.
-        lb: Lower bound (inclusive). None means unbounded below.
-        ub: Upper bound (inclusive). None means unbounded above.
-        validator: Optional validator function. Defaults to checking bounds and finiteness.
+        name: Parameter name. Storage uses 'log_{name}'.
+        lb: Lower bound (inclusive, None = unbounded).
+        ub: Upper bound (inclusive, None = unbounded).
+        validator: Validator function (defaults to bound check).
     """
 
     def __init__(
@@ -130,30 +126,15 @@ class BoundedParameter:
 def validate_all_or_none(**params: Any) -> bool:
     """Ensure paired parameters are provided together (all or none).
 
-    This utility function eliminates repeated validation logic in distributions that require
-    pairs of parameters (e.g., mean+std in Normal, alpha+beta in Gamma).
-
-    Raises InvalidParameterCombinationError if some but not all parameters are provided.
-
     Args:
-        **params: Keyword arguments where names are parameter names and values are the
-                 actual parameter tensors (or None if not provided).
+        **params: Parameter tensors (or None).
 
     Returns:
-        bool: True if any parameters were provided (all of them), False if none were provided.
+        True if any parameters provided, False if none provided.
 
     Raises:
-        InvalidParameterCombinationError: If some parameters are provided but not all.
-
-    Example:
-        >>> validate_all_or_none(mean=mean_val, std=std_val)  # OK: both provided
-        True
-        >>> validate_all_or_none(mean=None, std=None)  # OK: neither provided
-        False
-        >>> validate_all_or_none(mean=mean_val, std=None)  # ERROR: only mean provided
-        InvalidParameterCombinationError
+        InvalidParameterCombinationError: If some but not all provided.
     """
-
     provided = [name for name, value in params.items() if value is not None]
     if provided and len(provided) != len(params):
         missing = [name for name in params if name not in provided]
@@ -169,10 +150,10 @@ def validate_all_or_none(**params: Any) -> bool:
 
 class LeafModule(Module, ABC):
     def __init__(self, scope: Scope | int | list[int], out_channels: int = None):
-        r"""Base class for leaves modules in the SPFlow framework.
+        """Base class for leaf distribution modules.
 
         Args:
-            scope: Scope object or int or list of ints specifying the scope of the distribution.
+            scope: Variable scope (Scope, int, or list[int]).
             out_channels: Number of output channels.
         """
         super().__init__()
@@ -204,53 +185,33 @@ class LeafModule(Module, ABC):
 
     @abstractmethod
     def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute distribution-specific statistics and assign parameters directly.
+        """Compute distribution-specific statistics and assign parameters.
 
-        This hook method is called by maximum_likelihood_estimation() after data
-        preparation. The subclass must compute distribution-specific statistics
-        and assign parameters directly using self.param = value.
-
-        Descriptors (LogSpaceParameter, BoundedParameter) handle validation and
-        storage automatically.
+        Hook method called by maximum_likelihood_estimation() after data preparation.
+        Descriptors handle validation and storage automatically.
 
         Args:
-            data: Scope-filtered data of shape (batch_size, num_scope_features).
-            weights: Normalized weights of shape (batch_size, 1, ...).
-            bias_correction: Whether to apply bias correction in estimation.
+            data: Scope-filtered data.
+            weights: Normalized weights.
+            bias_correction: Apply bias correction.
         """
         pass
 
     def log_prob(self, x: Tensor) -> Tensor:
-        """Computes the log probability of the given samples."""
+        """Compute log probability of samples."""
         return self.distribution.log_prob(x)
 
     def mode(self) -> Tensor:
-        """Returns the mode of the distribution."""
+        """Return distribution mode."""
         return self.distribution.mode
 
     def marginalized_params(self, indices: list[int]) -> Dict[str, Tensor]:
-        """Returns the marginalized parameters of the distribution.
-
-        Args:
-            indices:
-                List of integers specifying the indices of the module to keep.
-
-        Returns:
-            Dictionary from parameter name to tensor containing the marginalized parameters.
-        """
+        """Return parameters marginalized to specified indices."""
         return {k: v[indices] for k, v in self.params().items()}
 
     # MLE Helper Methods
     def _prepare_mle_weights(self, data: Tensor, weights: Optional[Tensor] = None) -> Tensor:
-        """Prepare weights for MLE, ensuring proper shape and device.
-
-        Args:
-            data: The input data tensor.
-            weights: Optional weights tensor. If None, uniform weights are created.
-
-        Returns:
-            Weights tensor with proper shape for broadcasting.
-        """
+        """Prepare weights for MLE with proper shape for broadcasting."""
         if weights is None:
             _shape = (data.shape[0], *([1] * (data.dim() - 1)))
             weights = torch.ones(_shape, device=data.device)
@@ -267,16 +228,7 @@ class LeafModule(Module, ABC):
         lb: float | Tensor | None = None,
         ub: float | Tensor | None = None,
     ) -> Tensor:
-        """Handle NaNs, zeros, and optional bounds in parameter estimation.
-
-        Args:
-            param_est: The estimated parameter tensor.
-            lb: Optional lower bound (inclusive). Values at/below this bound are nudged by `eps`.
-            ub: Optional upper bound (inclusive). Values at/above this bound are nudged by `eps`.
-
-        Returns:
-            Parameter tensor with edge cases handled.
-        """
+        """Handle NaNs, zeros, and bounds in parameter estimation."""
         eps = torch.tensor(1e-8, dtype=param_est.dtype, device=param_est.device)
 
         def _to_tensor(bound: float | Tensor | None) -> Tensor | None:
@@ -316,16 +268,7 @@ class LeafModule(Module, ABC):
         return param_est
 
     def _broadcast_to_event_shape(self, param_est: Tensor) -> Tensor:
-        """Broadcast parameter estimate to match event_shape.
-
-        Handles broadcasting for 2D (features, channels) and 3D (features, channels, repetitions) event shapes.
-
-        Args:
-            param_est: The estimated parameter tensor with shape (features,).
-
-        Returns:
-            Parameter tensor broadcast to proper event_shape.
-        """
+        """Broadcast parameter estimate to match event_shape."""
         if len(self.event_shape) == 2:
             param_est = param_est.unsqueeze(1).repeat(
                 1,
@@ -348,18 +291,19 @@ class LeafModule(Module, ABC):
 
     @property
     def event_shape(self) -> tuple[int, ...]:
-        """Returns the event shape stored by the leaves module."""
+        """Return event shape."""
         if self._event_shape is None:
             raise RuntimeError(f"{self.__class__.__name__} has not set _event_shape in __init__")
         return self._event_shape
 
     @property
     def out_features(self) -> int:
+        """Return number of output features."""
         return len(self.scope.query)
 
     @property
-    def num_repetitions(self) -> int:
-        """Returns the number of repetitions of the distribution."""
+    def num_repetitions(self) -> int | None:
+        """Return number of repetitions (3D event shape only)."""
         if len(self.event_shape) == 3:
             return self.event_shape[2]
         else:
@@ -367,7 +311,7 @@ class LeafModule(Module, ABC):
 
     @property
     def out_channels(self) -> int:
-        """Returns the number of output channels of the distribution."""
+        """Return number of output channels."""
         if len(self.event_shape) == 1:
             return 1
         else:
@@ -375,20 +319,12 @@ class LeafModule(Module, ABC):
 
     @property
     def feature_to_scope(self) -> list[Scope]:
-        """Returns a list of scopes corresponding to the features in the leaves module."""
+        """Return list of scopes per feature."""
         return [Scope([i]) for i in self.scope.query]
 
     @property
     def device(self) -> torch.device:
-        """Get the device of the module.
-
-        Returns the device of the first parameter if available, otherwise the first buffer.
-        This is necessary for modules that may have no learnable parameters (e.g., Uniform,
-        Hypergeometric).
-
-        Returns:
-            torch.device: The device (CPU, CUDA, etc.) where the module's parameters/buffers reside.
-        """
+        """Return device of first parameter or buffer."""
         try:
             return next(iter(self.parameters())).device
         except StopIteration:
@@ -399,14 +335,11 @@ class LeafModule(Module, ABC):
         data: torch.Tensor,
         cache: Cache | None = None,
     ) -> None:
-        """Performs a single expectation maximizaton (EM) step for the leaves module.
+        """Perform single EM step.
 
         Args:
-            data:
-                Two-dimensional PyTorch tensor containing the input data.
-                Each row corresponds to a sample.
-            cache:
-                Optional cache dictionary for intermediate results.
+            data: Input data tensor.
+            cache: Optional cache dictionary.
         """
         # initialize cache
         cache = init_cache(cache)
@@ -440,20 +373,14 @@ class LeafModule(Module, ABC):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        r"""Computes log-likelihoods for the leaves module given the data.
-
-        Missing values (i.e., NaN) are marginalized over.
+        """Compute log-likelihoods, marginalizing over NaN values.
 
         Args:
-            data:
-                Two-dimensional PyTorch tensor containing the input data.
-                Each row corresponds to a sample.
-            cache:
-                Optional cache dictionary.
+            data: Input data tensor.
+            cache: Optional cache dictionary.
 
         Returns:
-            Two-dimensional PyTorch tensor containing the log-likelihoods of the input data for the sum node.
-            Each row corresponds to an input sample.
+            Log-likelihood tensor.
         """
         # initialize cache
         cache = init_cache(cache)
@@ -537,23 +464,15 @@ class LeafModule(Module, ABC):
     ) -> tuple[Tensor, Tensor]:
         """Prepare normalized data and weights for MLE computation.
 
-        This is the first step of the MLE template pattern. It centralizes all data
-        preparation logic, ensuring consistency across all distributions.
-
         Args:
-            data: Input data tensor of shape (batch_size, num_features).
-            weights: Optional weight tensor. Shape (batch_size,) or (batch_size, 1).
-                    If None, uniform weights are used.
-            nan_strategy: How to handle missing values (NaN).
-                         - 'ignore': Drop rows containing any NaN
-                         - callable: Apply custom imputation function
-                         - None: No special handling
-            cache: Optional cache dictionary for intermediate results (useful for EM).
-            preprocess_data: Whether to select scope-relevant features. Set False if data
-                           is already scope-filtered (performance optimization).
+            data: Input data tensor.
+            weights: Optional sample weights.
+            nan_strategy: Handle NaN ('ignore', callable, or None).
+            cache: Optional cache dictionary.
+            preprocess_data: Select scope-relevant features.
 
         Returns:
-            tuple[Tensor, Tensor]: (scope-filtered data, normalized weights for broadcasting)
+            Scope-filtered data and normalized weights.
         """
         # Initialize cache (will be shared across MLE steps and EM iterations)
         cache = init_cache(cache)
@@ -581,49 +500,18 @@ class LeafModule(Module, ABC):
         cache: Cache | None = None,
         preprocess_data: bool = True,
     ) -> None:
-        r"""Maximum (weighted) likelihood estimation (MLE) of the leaves module.
+        """Maximum (weighted) likelihood estimation via template method pattern.
 
-        TEMPLATE METHOD PATTERN:
-        This method implements the Template Method design pattern (Gang of Four).
-        It defines the overall skeleton of the MLE algorithm, with distribution-specific
-        logic delegated to the _mle_compute_statistics() hook method.
-
-        ALGORITHM STEPS:
-        1. _prepare_mle_data(): Prepare normalized data (scope selection, NaN handling, weights)
-        2. _mle_compute_statistics(): Compute distribution-specific statistics and assign parameters
-
-        This separation enables:
-        - Code reuse: Data preparation is implemented once for all distributions
-        - Consistency: All distributions handle NaN, scope, and weights identically
-        - Extensibility: New distributions only need to implement the statistics hook
-        - Pythonic simplicity: Direct tensor operations without unnecessary wrappers
-
-        Weights are normalized to sum up to :math:`N`.
+        Delegates distribution-specific logic to _mle_compute_statistics() hook.
+        Weights normalized to sum to N.
 
         Args:
-            data:
-                Two-dimensional PyTorch tensor containing the input data.
-                Each row corresponds to a sample.
-            weights:
-                Optional one-dimensional PyTorch tensor containing non-negative weights for all data samples.
-                Must match number of samples in ``data``.
-                Defaults to None in which case all weights are initialized to ones.
-            bias_correction:
-                Boolean indicating whether or not to correct possible biases.
-                Defaults to True.
-            nan_strategy:
-                Optional string or callable specifying how to handle missing data.
-                If 'ignore', missing values (i.e., NaN entries) are ignored.
-                If a callable, it is called using ``data`` and should return another PyTorch tensor of same size.
-                Defaults to None.
-            cache:
-                Optional cache dictionary.
-            preprocess_data:
-                Boolean indicating whether to select relevant data for scope.
-                Defaults to True.
-
-        Raises:
-            ValueError: Invalid arguments.
+            data: Input data tensor.
+            weights: Optional sample weights.
+            bias_correction: Apply bias correction.
+            nan_strategy: Handle NaN ('ignore', callable, or None).
+            cache: Optional cache dictionary.
+            preprocess_data: Select scope-relevant features.
         """
         # Step 1: Prepare normalized data and weights
         data_prepared, weights_prepared = self._prepare_mle_data(
@@ -646,28 +534,17 @@ class LeafModule(Module, ABC):
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
-        r"""Samples from the leaves node given potential evidence.
-
-        Samples missing values proportionally to its probability distribution function (PDF).
+        """Sample from leaf distribution given potential evidence.
 
         Args:
-            num_samples:
-                Number of samples to generate.
-            data:
-                Two-dimensional PyTorch tensor containing potential evidence.
-                Each row corresponds to a sample.
-            is_mpe:
-                Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
-                Defaults to False.
-            cache:
-                Optional cache dictionary.
-            sampling_ctx:
-                Optional sampling context containing the instances (i.e., rows) of ``data`` to fill with sampled
-                values and the output indices of the node to sample from.
+            num_samples: Number of samples to generate.
+            data: Optional evidence tensor.
+            is_mpe: Perform MPE (mode) instead of sampling.
+            cache: Optional cache dictionary.
+            sampling_ctx: Optional sampling context.
 
         Returns:
-            Two-dimensional PyTorch tensor containing the sampled values together with the specified evidence.
-            Each row corresponds to a sample.
+            Sampled data tensor.
         """
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
@@ -769,11 +646,7 @@ class LeafModule(Module, ABC):
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
-        """Sample values conditioned on provided evidence.
-
-        Leaf modules already operate directly on the evidence tensor, so this simply
-        forwards to ``sample`` while ensuring cache initialization happens once.
-        """
+        """Sample conditioned on evidence (forwards to sample)."""
         cache = init_cache(cache)
 
         if evidence is None:
@@ -797,23 +670,15 @@ class LeafModule(Module, ABC):
         prune: bool = True,
         cache: Cache | None = None,
     ) -> Optional["LeafModule"]:
-        """Structural marginalization for leaves module.
-
-        Structurally marginalizes the specified leaves module.
-        If the leaves's scope contains none of the random variables to marginalize, then the leaves is returned unaltered.
-        If the leaves's scope is fully marginalized over, then None is returned.
+        """Structurally marginalize specified variables.
 
         Args:
-            marg_rvs:
-                Iterable of integers representing the indices of the random variables to marginalize.
-            prune:
-                Boolean indicating whether or not to prune nodes and modules where possible.
-                Has no effect here. Defaults to True.
-            cache:
-                Optional cache dictionary.
+            marg_rvs: Variable indices to marginalize.
+            prune: Unused (for interface consistency).
+            cache: Optional cache dictionary.
 
         Returns:
-            Unaltered leaves module or None if it is completely marginalized.
+            Marginalized leaf or None if fully marginalized.
         """
         # initialize cache
         cache = init_cache(cache)
@@ -842,25 +707,19 @@ class LeafModule(Module, ABC):
 def apply_nan_strategy(
     nan_strategy: str | None, scope_data: Tensor, device: torch.device, weights: Tensor | None
 ) -> tuple[Tensor, Tensor]:
-    """Apply a strategy for handling NaN values in data for maximum-likelihood estimation.
+    """Apply NaN handling strategy for MLE.
 
     Args:
-        nan_strategy: Strategy for handling missing (NaN) values. Currently supports:
-            - None: Raise an error if NaN values are present (default, strict mode)
-            - "ignore": Remove all rows containing any NaN values
-        scope_data: Data tensor of shape (batch_size, num_features)
-        device: Device to use for tensor operations
-        weights: Optional sample weights of shape (batch_size,) or (batch_size, 1).
-                 If None, uniform weights are used.
+        nan_strategy: None (strict), 'ignore' (drop rows), or callable.
+        scope_data: Data tensor.
+        device: Device for operations.
+        weights: Optional sample weights.
 
     Returns:
-        Tuple of (processed_data, normalized_weights) where:
-            - processed_data: Data with NaN strategy applied
-            - normalized_weights: Weights normalized to sum to the number of samples
+        Processed data and normalized weights.
 
     Raises:
-        ValueError: If weights shape doesn't match data, if all data is NaN,
-                   if NaN values are present without a strategy, or if an unknown strategy is given.
+        ValueError: Invalid inputs or NaN without strategy.
     """
     # Initialize weights if not provided
     if weights is None:
@@ -904,8 +763,7 @@ def apply_nan_strategy(
 
 
 def init_parameter(param: Tensor | None, event_shape: tuple[int, ...], init: Callable) -> Tensor:
-    """Initializes a parameter tensor of a leaves node."""
-
+    """Initialize parameter tensor (uses init function if None)."""
     if param is None:
         return init(event_shape)
     else:
@@ -914,19 +772,10 @@ def init_parameter(param: Tensor | None, event_shape: tuple[int, ...], init: Cal
         return param
 
 
-def parse_leaf_args(scope: int | list[int] | Scope, out_channels, num_repetitions, params) -> tuple[int, int, int]:
-    """
-    Parse the arguments of a leaves node and return the event_shape.
-
-    Args:
-        scope: Leaf scope. Can be a Scope object, an int, or a list of ints.
-        out_channels: Number of output channels for the leaves module.
-        params: List of parameters of the leaves distribution.
-
-    Returns:
-        event_shape: Shape of the event space.
-    """
-
+def parse_leaf_args(
+        scope: int | list[int] | Scope, out_channels, num_repetitions, params
+) -> tuple[int, int, int]:
+    """Parse leaf arguments and return event_shape."""
     # We need to accept different types for scope here since parse_leaf_args is called before the LeafModule constructor
     # which turns the scope variable (may be an int or list of ints for convenience) into a Scope object.
     match scope:

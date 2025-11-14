@@ -656,7 +656,9 @@ class TestMultipleParameters:
 
         # p1 and alpha should still have their values
         torch.testing.assert_close(multi_param_leaf.p1, torch.tensor([[0.3, 0.7, 0.5]]), rtol=1e-5, atol=1e-7)
-        torch.testing.assert_close(multi_param_leaf.alpha, torch.tensor([[1.0, 2.0, 3.0]]), rtol=1e-5, atol=1e-7)
+        torch.testing.assert_close(
+            multi_param_leaf.alpha, torch.tensor([[1.0, 2.0, 3.0]]), rtol=1e-5, atol=1e-7
+        )
 
 
 # ============================================================================
@@ -697,9 +699,7 @@ class TestLeafModuleIntegration:
 
         leaf = TestLeaf(Scope([0]))
         # This should not raise an error
-        leaf.maximum_likelihood_estimation(
-            torch.tensor([[1.0], [0.0], [1.0]]), nan_strategy=None
-        )
+        leaf.maximum_likelihood_estimation(torch.tensor([[1.0], [0.0], [1.0]]), nan_strategy=None)
         # Verify p was set
         assert leaf.p is not None
         # Verify p is in valid range

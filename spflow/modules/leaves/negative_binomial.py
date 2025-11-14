@@ -6,20 +6,29 @@ from spflow.modules.leaves.base import LeafModule, BoundedParameter, init_parame
 
 
 class NegativeBinomial(LeafModule):
+    """Negative Binomial distribution leaf for modeling failures before r-th success.
+
+    Note: Parameter n (number of successes) is fixed and cannot be learned.
+
+    Attributes:
+        n (Tensor): Fixed number of required successes (buffer).
+        p (BoundedParameter): Success probability in [0, 1].
+        distribution: Underlying torch.distributions.NegativeBinomial object.
+    """
+
     p = BoundedParameter("p", lb=0.0, ub=1.0)
 
     def __init__(
         self, scope: Scope, n: Tensor, out_channels: int = None, num_repetitions: int = None, p: Tensor = None
     ):
-        r"""
-        Initialize a NegativeBinomial distribution leaves module.
+        """Initialize Negative Binomial distribution leaf.
 
         Args:
-            scope: Scope object specifying the scope of the distribution.
-            out_channels: The number of output channels. If None, it is determined by the parameter tensors.
-            num_repetitions: The number of repetitions for the leaves module.
-            n: Tensor representing the required number of successes (non-negative).
-            p: Tensor containing the success probability (:math:`p`) of each trial in :math:`[0,1]`.
+            scope: Variable scope for this distribution.
+            n: Fixed number of required successes (must be non-negative).
+            out_channels: Number of output channels.
+            num_repetitions: Number of repetitions.
+            p: Success probability in [0, 1].
         """
         event_shape = parse_leaf_args(
             scope=scope, out_channels=out_channels, params=[p], num_repetitions=num_repetitions
@@ -40,21 +49,16 @@ class NegativeBinomial(LeafModule):
 
     @property
     def n(self) -> Tensor:
-        """Returns the number of trials."""
+        """Returns the fixed number of required successes."""
         return self._n
 
     @n.setter
     def n(self, n: Tensor):
-        r"""Sets the number of trials.
+        """Sets the number of required successes.
 
         Args:
-            n:
-                Floating point representing the number of trials.
-
-        Raises:
-            ValueError: Invalid arguments.
+            n: Non-negative number of required successes.
         """
-
         if torch.any(n < 0.0) or not torch.isfinite(n).all():
             raise ValueError(
                 f"Value of 'n' for 'NegativeBinomial' distribution must be non-negative and finite, but was: {n}"
@@ -71,11 +75,11 @@ class NegativeBinomial(LeafModule):
         return 0
 
     def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Estimate success probability for Negative Binomial and assign.
+        """Compute MLE for success probability p (given fixed n).
 
         Args:
-            data: Scope-filtered data of shape (batch_size, num_scope_features).
-            weights: Normalized weights of shape (batch_size, 1, ...).
+            data: Scope-filtered data (failure counts).
+            weights: Normalized sample weights.
             bias_correction: Whether to apply bias correction.
         """
         n_total = weights.sum() * self.n
@@ -92,4 +96,5 @@ class NegativeBinomial(LeafModule):
         self.p = p_est
 
     def params(self) -> dict[str, Tensor]:
+        """Returns distribution parameters."""
         return {"n": self.n, "p": self.p}

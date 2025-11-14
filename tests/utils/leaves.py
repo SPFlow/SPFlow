@@ -31,14 +31,12 @@ def evaluate_samples(node: LeafModule, data: torch.Tensor, is_mpe: bool, samplin
 def make_normal_leaf(
     scope=None, out_features=None, out_channels=None, num_repetitions=None, mean=None, std=None
 ) -> Normal:
-    """
-    Create a Normal leaves module.
+    """Create a Normal leaves module.
 
     Args:
         mean: Mean of the distribution.
         std: Standard deviation of the distribution.
     """
-
     if mean is not None:
         out_features = mean.shape[0]
     # assert (scope is None) ^ (out_features is None), "Either scope or out_features must be given"
