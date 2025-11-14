@@ -42,6 +42,15 @@ class SplitHalves(Split):
         data: Tensor,
         cache: Cache | None = None,
     ) -> list[Tensor]:
+        """Compute log likelihoods for split outputs.
+
+        Args:
+            data: Input data tensor.
+            cache: Optional cache for storing intermediate computations.
+
+        Returns:
+            List of log likelihood tensors, one for each split output.
+        """
         cache = init_cache(cache)
         log_cache = cache.setdefault("log_likelihood", {})
 

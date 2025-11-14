@@ -81,7 +81,15 @@ class Cat(Module):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log likelihood by concatenating input log-likelihoods."""
+        """Compute log likelihood by concatenating input log-likelihoods.
+
+        Args:
+            data: Input data tensor.
+            cache: Optional cache for storing intermediate results.
+
+        Returns:
+            Tensor: Concatenated log-likelihood tensor.
+        """
         cache = init_cache(cache)
         log_cache = cache.setdefault("log_likelihood", {})
 
@@ -105,7 +113,18 @@ class Cat(Module):
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
-        """Generate samples by delegating to concatenated inputs."""
+        """Generate samples by delegating to concatenated inputs.
+
+        Args:
+            num_samples: Number of samples to generate.
+            data: Optional data tensor to store samples.
+            is_mpe: Whether to perform most probable explanation sampling.
+            cache: Optional cache for storing intermediate results.
+            sampling_ctx: Sampling context for controlling sample generation.
+
+        Returns:
+            Tensor: Generated samples tensor.
+        """
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
@@ -163,7 +182,16 @@ class Cat(Module):
         prune: bool = True,
         cache: Cache | None = None,
     ) -> Optional["Module"]:
-        """Marginalize out specified random variables."""
+        """Marginalize out specified random variables.
+
+        Args:
+            marg_rvs: List of random variable indices to marginalize.
+            prune: Whether to prune unnecessary modules after marginalization.
+            cache: Optional cache for storing intermediate results.
+
+        Returns:
+            Optional[Module]: Marginalized module or None if fully marginalized.
+        """
         cache = init_cache(cache)
 
         # compute module scope (same for all outputs)

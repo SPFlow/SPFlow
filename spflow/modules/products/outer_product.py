@@ -59,7 +59,17 @@ class OuterProduct(BaseProduct):
         self.check_shapes()
 
     def check_shapes(self, inputs=None):
-        """Check if input shapes are compatible for outer product."""
+        """Check if input shapes are compatible for outer product.
+
+        Args:
+            inputs: Input modules to check shapes for. If None, uses self.inputs.
+
+        Returns:
+            bool: True if shapes are compatible, False if no shapes to check.
+
+        Raises:
+            ValueError: If input shapes are not broadcastable.
+        """
         if inputs is None:
             inputs = self.inputs
 
@@ -127,6 +137,17 @@ class OuterProduct(BaseProduct):
         return feature_to_scope
 
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
+        """Map output channel indices to input channel indices.
+
+        Args:
+            output_ids: Tensor of output channel indices to map.
+
+        Returns:
+            Tensor: Mapped input channel indices corresponding to the output channels.
+
+        Raises:
+            NotImplementedError: If split type is not supported.
+        """
         if self.input_is_split:
             if isinstance(self.inputs[0], SplitHalves):
                 return self.unraveled_channel_indices[output_ids].permute(0, 2, 1).flatten(1, 2).unsqueeze(-1)
@@ -142,6 +163,17 @@ class OuterProduct(BaseProduct):
             return self.unraveled_channel_indices[output_ids]
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
+        """Map output mask to input masks.
+
+        Args:
+            mask: Output mask tensor to map to input masks.
+
+        Returns:
+            Tensor: Mapped input masks corresponding to the output mask.
+
+        Raises:
+            NotImplementedError: If split type is not supported.
+        """
         num_inputs = len(self.inputs) if not self.input_is_split else self.num_splits
         if self.input_is_split:
             if isinstance(self.inputs[0], SplitHalves):
@@ -165,7 +197,18 @@ class OuterProduct(BaseProduct):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log likelihood via outer sum of pairwise combinations."""
+        """Compute log likelihood via outer sum of pairwise combinations.
+
+        Args:
+            data: Input data tensor for computing log likelihood.
+            cache: Optional cache for storing intermediate computations.
+
+        Returns:
+            Tensor: Log likelihood values with shape [batch_size, out_features, out_channels, num_repetitions].
+
+        Raises:
+            ValueError: If output tensor has invalid number of dimensions.
+        """
         # initialize cache
         cache = init_cache(cache)
 

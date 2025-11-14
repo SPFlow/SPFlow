@@ -58,7 +58,15 @@ class Product(Module):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log likelihood by summing child log-likelihoods across features."""
+        """Compute log likelihood by summing child log-likelihoods across features.
+
+        Args:
+            data: Input data tensor.
+            cache: Optional cache for storing intermediate results.
+
+        Returns:
+            Tensor: Log likelihood values.
+        """
         cache = init_cache(cache)
 
         # compute child log-likelihoods
@@ -85,7 +93,18 @@ class Product(Module):
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        """Generate samples by delegating to input module."""
+        """Generate samples by delegating to input module.
+
+        Args:
+            num_samples: Number of samples to generate.
+            data: Optional data tensor to fill with samples.
+            is_mpe: Whether to perform most probable explanation.
+            cache: Optional cache for storing intermediate results.
+            sampling_ctx: Optional sampling context.
+
+        Returns:
+            Tensor: Generated samples.
+        """
         cache = init_cache(cache)
 
         # Handle num_samples case (create empty data tensor)
@@ -116,7 +135,12 @@ class Product(Module):
         data: Tensor,
         cache: Cache | None = None,
     ) -> None:
-        """EM step (delegates to input, no learnable parameters)."""
+        """EM step (delegates to input, no learnable parameters).
+
+        Args:
+            data: Input data tensor for EM step.
+            cache: Optional cache for storing intermediate results.
+        """
         cache = init_cache(cache)
 
         # Product has no learnable parameters, delegate to input
@@ -128,7 +152,13 @@ class Product(Module):
         weights: Tensor | None = None,
         cache: Cache | None = None,
     ) -> None:
-        """MLE step (delegates to input, no learnable parameters)."""
+        """MLE step (delegates to input, no learnable parameters).
+
+        Args:
+            data: Input data tensor for MLE step.
+            weights: Optional weights for weighted MLE.
+            cache: Optional cache for storing intermediate results.
+        """
         cache = init_cache(cache)
 
         # Product has no learnable parameters, delegate to input
@@ -144,7 +174,16 @@ class Product(Module):
         prune: bool = True,
         cache: Cache | None = None,
     ) -> Product | Module | None:
-        """Marginalize out specified random variables."""
+        """Marginalize out specified random variables.
+
+        Args:
+            marg_rvs: List of random variable indices to marginalize.
+            prune: Whether to prune unnecessary nodes.
+            cache: Optional cache for storing intermediate results.
+
+        Returns:
+            Product | Module | None: Marginalized module or None if fully marginalized.
+        """
         cache = init_cache(cache)
 
         # compute layer scope (same for all outputs)

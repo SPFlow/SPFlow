@@ -134,6 +134,14 @@ class ElementwiseProduct(BaseProduct):
         return feature_to_scope
 
     def map_out_channels_to_in_channels(self, index: Tensor) -> Tensor:
+        """Map output channel indices to input channel indices.
+
+        Args:
+            index: Tensor of output channel indices to map.
+
+        Returns:
+            Tensor: Mapped input channel indices.
+        """
         if self.input_is_split:
             num_splits = self.num_splits
             if isinstance(self.inputs[0], SplitHalves):
@@ -147,6 +155,14 @@ class ElementwiseProduct(BaseProduct):
             return index.unsqueeze(-1).repeat(1, 1, num_splits)
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
+        """Map output mask to input mask.
+
+        Args:
+            mask: Output mask tensor to map.
+
+        Returns:
+            Tensor: Mapped input mask tensor.
+        """
         if self.input_is_split:
             num_splits = self.num_splits
             return mask.repeat((1, num_splits)).unsqueeze(-1)
@@ -159,7 +175,15 @@ class ElementwiseProduct(BaseProduct):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log likelihood by element-wise summing inputs."""
+        """Compute log likelihood by element-wise summing inputs.
+
+        Args:
+            data: Input data tensor.
+            cache: Optional cache for storing intermediate computations.
+
+        Returns:
+            Tensor: Computed log likelihood values.
+        """
         # initialize cache
         cache = init_cache(cache)
 

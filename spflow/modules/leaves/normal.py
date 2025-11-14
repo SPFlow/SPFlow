@@ -73,7 +73,13 @@ class Normal(LeafModule):
         return torch.distributions.Normal(self.mean, self.std)
 
     def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute weighted mean and standard deviation."""
+        """Compute weighted mean and standard deviation.
+
+        Args:
+            data: Input data tensor.
+            weights: Weight tensor for each data point.
+            bias_correction: Whether to apply bias correction to variance estimate.
+        """
         n_total = weights.sum()
         mean_est = (weights * data).sum(0) / n_total
 

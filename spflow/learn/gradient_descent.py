@@ -11,12 +11,28 @@ logger = logging.getLogger(__name__)
 
 
 def negative_log_likelihood_loss(model: Module, data: Tensor) -> torch.Tensor:
-    """Compute negative log-likelihood loss."""
+    """Compute negative log-likelihood loss.
+
+    Args:
+        model: Model to compute log-likelihood for.
+        data: Input data tensor.
+
+    Returns:
+        Negative log-likelihood loss tensor.
+    """
     return -1 * model.log_likelihood(data).sum()
 
 
 def nll_loss(ll: Tensor, target: Tensor) -> torch.Tensor:
-    """Compute NLL loss for classification."""
+    """Compute NLL loss for classification.
+
+    Args:
+        ll: Log-likelihood tensor.
+        target: Target class labels.
+
+    Returns:
+        Negative log-likelihood loss tensor.
+    """
     return nn.NLLLoss()(ll.squeeze(1), target)
 
 

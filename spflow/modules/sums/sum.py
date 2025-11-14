@@ -34,7 +34,7 @@ class Sum(Module):
         inputs: Module | list[Module],
         out_channels: int | None = None,
         num_repetitions: int | None = None,
-            weights: Tensor | list[float] | None = None,
+        weights: Tensor | list[float] | None = None,
         sum_dim: int | None = 1,
     ) -> None:
         """Create a Sum module for mixture modeling.
@@ -140,7 +140,7 @@ class Sum(Module):
         if weights is None:
             weights = (
                 # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                    torch.rand(self.weights_shape) + 1e-08
+                torch.rand(self.weights_shape) + 1e-08
             )  # avoid zeros
 
             # Normalize
@@ -166,13 +166,21 @@ class Sum(Module):
 
     @property
     def log_weights(self) -> Tensor:
-        """Returns the log weights of all nodes as a tensor."""
+        """Returns the log weights of all nodes as a tensor.
+
+        Returns:
+            Tensor: Log weights normalized to sum to one.
+        """
         # project auxiliary weights onto weights that sum up to one
         return torch.nn.functional.log_softmax(self.logits, dim=self.sum_dim)
 
     @property
     def weights(self) -> Tensor:
-        """Returns the weights of all nodes as a tensor."""
+        """Returns the weights of all nodes as a tensor.
+
+        Returns:
+            Tensor: Weights normalized to sum to one.
+        """
         # project auxiliary weights onto weights that sum up to one
         return torch.nn.functional.softmax(self.logits, dim=self.sum_dim)
 
@@ -231,9 +239,9 @@ class Sum(Module):
         Results are cached for parameter learning algorithms.
 
         Args:
-            data (Tensor): Input data of shape (batch_size, num_features).
+            data: Input data of shape (batch_size, num_features).
                 NaN values indicate evidence for conditional computation.
-            cache (Cache | None, optional): Cache for intermediate computations. Defaults to None.
+            cache: Cache for intermediate computations. Defaults to None.
 
         Returns:
             Tensor: Log-likelihood of shape (batch_size, num_features, out_channels)
@@ -287,7 +295,7 @@ class Sum(Module):
             sampling_ctx: Optional sampling context.
 
         Returns:
-            Sampled values.
+            Tensor: Sampled values.
         """
         cache = init_cache(cache)
 

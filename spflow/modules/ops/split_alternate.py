@@ -61,6 +61,15 @@ class SplitAlternate(Split):
         return self
 
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> list[Tensor]:
+        """Compute log likelihoods for each split.
+
+        Args:
+            data: Input data tensor.
+            cache: Optional cache for storing intermediate results.
+
+        Returns:
+            List of log likelihood tensors, one for each split.
+        """
         cache = init_cache(cache)
         log_cache = cache.setdefault("log_likelihood", {})
 

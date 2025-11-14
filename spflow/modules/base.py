@@ -287,7 +287,12 @@ class Module(nn.Module, ABC):
         pass
 
     def forward(self, data: Tensor, cache: Cache | None = None):
-        """Forward pass is simply the log-likelihood function."""
+        """Forward pass is simply the log-likelihood function.
+
+        Args:
+            data: Input data tensor.
+            cache: Optional cache dictionary.
+        """
         return self.log_likelihood(data, cache=cache)
 
     def extra_repr(self) -> str:

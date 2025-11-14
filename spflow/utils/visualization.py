@@ -144,6 +144,8 @@ def visualize(
             These are pass-through modules that are bypassed and their inputs connected directly to parent.
             Defaults to True.
 
+    Returns:
+        None. The visualization is saved to the specified output path.
 
     """
     # Handle special engine variants
