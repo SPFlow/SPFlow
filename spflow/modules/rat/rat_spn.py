@@ -187,10 +187,6 @@ class RatSPN(Module):
     def scopes_out(self) -> list[Scope]:
         return self.root_node.scopes_out
 
-    def to_dtype(self, dtype):
-        self.dtype = dtype
-        self.root_node.to_dtype(dtype)
-
     @property
     def out_features(self) -> int:
         return self.root_node.out_features
