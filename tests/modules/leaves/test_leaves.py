@@ -207,7 +207,6 @@ def test_marginalize(leaf_cls, out_channels: int, prune: bool, marg_rvs, num_rep
 )
 def test_constructor_valid_params(leaf_cls, out_features: int, out_channels: int, num_reps):
     """Test the constructor of the distribution with valid parameters."""
-
     # Construct module A
     module_a = make_leaf(
         leaf_cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps

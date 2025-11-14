@@ -262,8 +262,6 @@ class TestVisualizationOptions:
             assert os.path.exists(f"{output_path}.png")
 
 
-
-
 class TestVisualizationComplexStructures:
     """Test visualization with complex module structures."""
 

@@ -6,6 +6,17 @@ from spflow.modules.leaves.base import LeafModule, parse_leaf_args
 
 
 class Uniform(LeafModule):
+    """Uniform distribution leaf with fixed interval bounds.
+
+    Note: Interval bounds are fixed buffers and cannot be learned.
+
+    Attributes:
+        start (Tensor): Start of interval (buffer).
+        end (Tensor): End of interval (buffer).
+        support_outside (Tensor): Whether values outside [start, end] are supported.
+        distribution: Underlying torch.distributions.Uniform object.
+    """
+
     # Interval bounds remain fixed buffers; descriptors are unnecessary here.
     def __init__(
         self,
@@ -16,16 +27,15 @@ class Uniform(LeafModule):
         end: Tensor = None,
         support_outside: bool = True,
     ):
-        r"""Initializes ``Uniform`` leaves node.
+        """Initialize Uniform distribution leaf.
 
         Args:
-            scope: Scope object specifying the scope of the distribution.
-            out_channels: The number of output channels. If None, it is determined by the parameter tensors.
-            num_repetitions: The number of repetitions for the leaves module.
-            start: PyTorch tensor containing the start of the intervals (including).
-            end: PyTorch tensor containing the end of the intervals (including). Must be larger than 'start'.
-            support_outside:
-                PyTorch tensor containing booleans indicating whether or not values outside of the intervals are part of the support.
+            scope: Variable scope for this distribution.
+            out_channels: Number of output channels.
+            num_repetitions: Number of repetitions.
+            start: Start of interval (must be < end).
+            end: End of interval (must be > start).
+            support_outside: Whether values outside [start, end] are supported.
         """
         event_shape = parse_leaf_args(
             scope=scope, out_channels=out_channels, params=[start, end], num_repetitions=num_repetitions
@@ -58,7 +68,8 @@ class Uniform(LeafModule):
     def distribution(self) -> torch.distributions.Distribution:
         return torch.distributions.Uniform(self.start, self.end)
 
-    def mode(self):
+    def mode(self) -> Tensor:
+        """Returns the mode (midpoint) of the distribution."""
         return (self.start + self.end) / 2
 
     @property
@@ -66,14 +77,9 @@ class Uniform(LeafModule):
         return self.start
 
     def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Uniform parameters are fixed buffers; nothing to update during MLE.
-
-        Args:
-            data: Scope-filtered data of shape (batch_size, num_scope_features).
-            weights: Normalized weights of shape (batch_size, 1, ...).
-            bias_correction: Not used for Uniform (fixed parameters).
-        """
+        """No-op: Uniform parameters are fixed buffers."""
         pass
 
     def params(self) -> dict[str, Tensor]:
+        """Returns distribution parameters."""
         return {"start": self.start, "end": self.end}

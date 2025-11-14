@@ -16,10 +16,14 @@ from spflow.utils.sampling_context import SamplingContext, init_default_sampling
 
 
 class ElementwiseSum(Module):
-    """
-    A sum module that the elementwise sum over inputs.
+    """Elementwise sum operation for mixture modeling.
 
-    The sum module can be used to sum over the channel dimension of a single input or over the stacked inputs.
+    Computes weighted combinations of input tensors element-wise. Weights
+    are automatically normalized to sum to one. Uses log-domain computations.
+
+    Attributes:
+        logits (Parameter): Unnormalized log-weights for gradient optimization.
+        unraveled_channel_indices (Tensor): Mapping for flattened channel indices.
     """
 
     def __init__(
@@ -30,15 +34,14 @@ class ElementwiseSum(Module):
         num_repetitions: int | None = None,
         sum_dim: int = 3,
     ) -> None:
-        """
-        Create a Sum module.
+        """Initialize elementwise sum module.
 
         Args:
-            inputs: Single input module or list of modules. The sum is over the sum dimension of the input.
-            out_channels: Optional number of output nodes for each sum, if weights are not given.
-            num_repetitions: Optional number of repetitions for the sum module. If not provided, it will be inferred from the weights.
-            weights: Optional weights for the sum module. If not provided, weights will be initialized randomly.
-            sum_dim: The dimension over which to sum the inputs. Default is 1 (channel dimension).
+            inputs: Input modules (same features, compatible channels).
+            out_channels: Number of output nodes per sum.
+            weights: Initial weights (if None, randomly initialized).
+            num_repetitions: Number of repetitions.
+            sum_dim: Dimension over which to sum.
         """
         super().__init__()
 
@@ -168,12 +171,7 @@ class ElementwiseSum(Module):
         self,
         values: Tensor,
     ) -> None:
-        """
-        Set weights of all nodes.
-
-        Args:
-            values: PyTorch tensor containing weights for each input and node.
-        """
+        """Set weights of all nodes."""
         if values.shape != self.weights_shape:
             raise ValueError(f"Invalid shape for weights: {values.shape}.")
         if not torch.all(values > 0):
@@ -187,12 +185,7 @@ class ElementwiseSum(Module):
         self,
         values: Tensor,
     ) -> None:
-        """
-        Set weights of all nodes.
-
-        Args:
-            values: Three-dimensional PyTorch tensor containing weights for each input and node.
-        """
+        """Set log weights of all nodes."""
         if values.shape != self.log_weights.shape:
             raise ValueError(f"Invalid shape for weights: {values.shape}.")
         self.logits.data = values
@@ -206,16 +199,7 @@ class ElementwiseSum(Module):
         prune: bool = True,
         cache: Cache | None = None,
     ) -> Optional["ElementwiseSum"]:
-        """Marginalize out specified random variables.
-
-        Args:
-            marg_rvs: List of random variables to marginalize over.
-            prune: Whether to prune the structure.
-            cache: Optional cache dictionary.
-
-        Returns:
-            The marginalized module or None if fully marginalized.
-        """
+        """Marginalize out specified random variables."""
         # initialize cache
         cache = init_cache(cache)
 
@@ -263,18 +247,7 @@ class ElementwiseSum(Module):
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
-        """Generate samples from the elementwise sum.
-
-        Args:
-            num_samples: Number of samples to generate.
-            data: The data tensor to populate with samples.
-            is_mpe: Whether to use maximum probability estimation instead of sampling.
-            cache: Optional cache dictionary for intermediate results.
-            sampling_ctx: Optional sampling context.
-
-        Returns:
-            The data tensor populated with samples.
-        """
+        """Generate samples by choosing mixture components."""
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
@@ -371,15 +344,7 @@ class ElementwiseSum(Module):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log P(data | module) for elementwise sum.
-
-        Args:
-            data: The data tensor.
-            cache: Optional cache dictionary.
-
-        Returns:
-            Log likelihood tensor.
-        """
+        """Compute log likelihood via weighted log-sum-exp."""
         # initialize cache
         cache = init_cache(cache)
         log_cache = cache.setdefault("log_likelihood", {})
@@ -424,12 +389,7 @@ class ElementwiseSum(Module):
         data: Tensor,
         cache: Cache | None = None,
     ) -> None:
-        """Expectation-maximization step.
-
-        Args:
-            data: The data tensor.
-            cache: Optional cache dictionary.
-        """
+        """Perform EM step to update mixture weights."""
         # initialize cache
         cache = init_cache(cache)
 
@@ -474,13 +434,5 @@ class ElementwiseSum(Module):
         weights: Optional[Tensor] = None,
         cache: Cache | None = None,
     ) -> None:
-        """Update parameters via maximum likelihood estimation.
-
-        For ElementwiseSum modules, this is equivalent to EM.
-
-        Args:
-            data: Input data tensor.
-            weights: Optional sample weights (currently unused).
-            cache: Optional cache dictionary.
-        """
+        """MLE step (equivalent to EM for sum nodes)."""
         self.expectation_maximization(data, cache=cache)

@@ -14,23 +14,16 @@ def expectation_maximization(
     max_steps: int = -1,
     verbose: bool = False,
 ) -> Tensor:
-    """Performs partitioning usig randomized dependence coefficients (RDCs) to be used with the LearnSPN algorithm in the ``torch`` backend.
+    """Performs expectation-maximization optimization on a given module.
 
     Args:
-        module:
-            Module to perform EM optimization on.
-        data:
-            Two-dimensional PyTorch tensor containing the input data.
-            Each row corresponds to a sample.
-        max_steps:
-            Integer representing the maximum number of iterations.
-            Defaults to -1, in which case the optimization is performed until convergence.
-        verbose:
-            Boolean value indicating whether to print the log-likelihood for each iteration step.
-            Defaults to False.
+        module: Module to perform EM optimization on.
+        data: Two-dimensional tensor containing the input data. Each row corresponds to a sample.
+        max_steps: Maximum number of iterations. Defaults to -1, in which case optimization runs until convergence.
+        verbose: Whether to print the log-likelihood for each iteration step. Defaults to False.
 
     Returns:
-        One-dimensional PyTorch tensors, containing the average log-likelihood for each iteration step.
+        One-dimensional tensor containing the average log-likelihood for each iteration step.
     """
     prev_avg_ll = torch.tensor(-float("inf"))
     ll_history = []

@@ -5,11 +5,23 @@ from spflow.meta.data import Scope
 from spflow.modules.leaves.base import (
     LeafModule,
     LogSpaceParameter,
-    validate_all_or_none, init_parameter, parse_leaf_args,
+    validate_all_or_none,
+    init_parameter,
+    parse_leaf_args,
 )
 
 
 class LogNormal(LeafModule):
+    """Log-Normal distribution leaf for modeling positive-valued data.
+
+    Note: Parameters μ and σ apply to ln(x), not x itself.
+
+    Attributes:
+        mean (Parameter): Mean μ of log-space distribution.
+        std (LogSpaceParameter): Standard deviation σ > 0 of log-space distribution.
+        distribution: Underlying torch.distributions.LogNormal object.
+    """
+
     std = LogSpaceParameter("std")
 
     def __init__(
@@ -20,15 +32,14 @@ class LogNormal(LeafModule):
         mean: Tensor = None,
         std: Tensor = None,
     ):
-        r"""
-        Initialize a LogNormal distribution leaves module.
+        """Initialize Log-Normal distribution leaf.
 
         Args:
-            scope: Scope object specifying the scope of the distribution.
-            out_channels: The number of output channels. If None, it is determined by the parameter tensors.
-            num_repetitions: The number of repetitions for the leaves module.
-            mean: Tensor containing the mean (:math:`\mu`) of the distribution.
-            std: Tensor containing the standard deviation (:math:`\sigma`) of the distribution.
+            scope: Variable scope for this distribution.
+            out_channels: Number of output channels.
+            num_repetitions: Number of repetitions.
+            mean: Mean μ of log-space distribution.
+            std: Standard deviation σ > 0 of log-space distribution.
         """
         event_shape = parse_leaf_args(
             scope=scope, out_channels=out_channels, params=[mean, std], num_repetitions=num_repetitions
@@ -56,12 +67,12 @@ class LogNormal(LeafModule):
         return 1.0
 
     def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Estimate LogNormal mean and std and assign parameters.
+        """Compute MLE for mean μ and std σ by fitting ln(data).
 
         Args:
-            data: Scope-filtered data of shape (batch_size, num_scope_features).
-            weights: Normalized weights of shape (batch_size, 1, ...).
-            bias_correction: Whether to apply Bessel's correction (n-1 vs n).
+            data: Scope-filtered data (must be positive).
+            weights: Normalized sample weights.
+            bias_correction: Whether to apply bias correction.
         """
         n_total = weights.sum()
 
@@ -77,4 +88,5 @@ class LogNormal(LeafModule):
         self.std = self._broadcast_to_event_shape(std_est)
 
     def params(self) -> dict[str, Tensor]:
+        """Returns distribution parameters."""
         return {"mean": self.mean, "std": self.std}

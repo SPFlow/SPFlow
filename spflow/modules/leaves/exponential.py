@@ -6,19 +6,25 @@ from spflow.modules.leaves.base import LeafModule, LogSpaceParameter, init_param
 
 
 class Exponential(LeafModule):
+    """Exponential distribution leaf for modeling time-between-events.
+
+    Attributes:
+        rate (LogSpaceParameter): Rate parameter λ > 0.
+        distribution: Underlying torch.distributions.Exponential object.
+    """
+
     rate = LogSpaceParameter("rate")
 
     def __init__(
         self, scope: Scope, out_channels: int = None, num_repetitions: int = None, rate: Tensor = None
     ):
-        r"""
-        Initialize an Exponential distribution leaves module.
+        """Initialize Exponential distribution leaf.
 
         Args:
-            scope: Scope object specifying the scope of the distribution.
-            out_channels: The number of output channels. If None, it is determined by the parameter tensor.
-            num_repetitions: The number of repetitions for the leaves module.
-            rate: PyTorch tensor representing the rate parameters (:math:`\lambda`) of the Exponential distributions
+            scope: Variable scope for this distribution.
+            out_channels: Number of output channels.
+            num_repetitions: Number of repetitions.
+            rate: Rate parameter λ.
         """
         event_shape = parse_leaf_args(
             scope=scope, out_channels=out_channels, params=[rate], num_repetitions=num_repetitions
@@ -42,12 +48,12 @@ class Exponential(LeafModule):
         return 0.0
 
     def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute Exponential rate estimate and assign parameter.
+        """Compute MLE for rate parameter λ.
 
         Args:
-            data: Scope-filtered data of shape (batch_size, num_scope_features).
-            weights: Normalized weights of shape (batch_size, 1, ...).
-            bias_correction: Whether to apply correction (subtract 1 from n_total).
+            data: Scope-filtered data.
+            weights: Normalized sample weights.
+            bias_correction: Whether to apply bias correction.
         """
         n_total = weights.sum()
 
@@ -59,4 +65,5 @@ class Exponential(LeafModule):
         self.rate = self._broadcast_to_event_shape(rate_est)
 
     def params(self) -> dict[str, Tensor]:
+        """Returns distribution parameters."""
         return {"rate": self.rate}

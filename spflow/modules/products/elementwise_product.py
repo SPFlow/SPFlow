@@ -13,12 +13,18 @@ from spflow.utils.cache import Cache, init_cache
 
 
 class ElementwiseProduct(BaseProduct):
+    """Elementwise product with automatic broadcasting.
+
+    Multiplies inputs element-wise with broadcasting support. All input scopes
+    must be pairwise disjoint. Commonly used in RAT-SPN architectures.
+    """
+
     def __init__(
         self,
         inputs: Module | tuple[Module, Module] | list[Module],
         num_splits: int | None = 2,
     ) -> None:
-        r"""Initializes ``ElementwiseProduct`` object.
+        """Initialize elementwise product.
 
         Args:
             inputs:
@@ -60,10 +66,7 @@ class ElementwiseProduct(BaseProduct):
         self.check_shapes()
 
     def check_shapes(self):
-        """
-        Checks if the list of two-dimensional shapes satisfies the given conditions.
-
-        """
+        """Check if input shapes are compatible for broadcasting."""
         inputs = self.inputs
 
         if self.input_is_split:
@@ -100,7 +103,7 @@ class ElementwiseProduct(BaseProduct):
             return True
 
         # If none of the conditions are satisfied
-        raise ValueError(f"the shapes of the inputs { shapes } are not broadcastable")
+        raise ValueError(f"the shapes of the inputs {shapes} are not broadcastable")
 
     @property
     def out_channels(self) -> int:
@@ -156,15 +159,7 @@ class ElementwiseProduct(BaseProduct):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log P(data | module) for elementwise product.
-
-        Args:
-            data: The data tensor.
-            cache: Optional cache dictionary.
-
-        Returns:
-            Log likelihood tensor.
-        """
+        """Compute log likelihood by element-wise summing inputs."""
         # initialize cache
         cache = init_cache(cache)
 

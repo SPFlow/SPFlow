@@ -11,8 +11,7 @@ out_features_values = [1, 6]
 
 
 def make_module(p) -> Bernoulli:
-    """
-    Create a Bernoulli leaves node.
+    """Create a Bernoulli leaves node.
 
     Args:
         p: Probability of the distribution.

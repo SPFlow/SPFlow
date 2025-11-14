@@ -69,14 +69,6 @@ def _format_param_count(count: int) -> str:
 
     Returns:
         Formatted string (e.g., "1.2K", "3.5M", "42").
-
-    Example:
-        >>> _format_param_count(42)
-        '42'
-        >>> _format_param_count(1234)
-        '1.2K'
-        >>> _format_param_count(1234567)
-        '1.2M'
     """
     if count < 1000:
         return str(count)
@@ -152,19 +144,7 @@ def visualize(
             These are pass-through modules that are bypassed and their inputs connected directly to parent.
             Defaults to True.
 
-    Example:
-        >>> from spflow.modules.sums import Sum
-        >>> from spflow.modules.leaves import Normal
-        >>> from spflow.meta.data.scope import Scope
-        >>> leaves = Normal(scope=Scope([0, 1]), out_channels=2)
-        >>> model = Sum(inputs=leaves, out_channels=3)
-        >>> # Save as PDF (default format)
-        >>> visualize(model, "my_model", show_scope=True, show_shape=True)
-        >>> # Use different layout engines
-        >>> visualize(model, "my_model_lr", engine="dot-lr")
-        >>> visualize(model, "my_model_circular", engine="circo")
-        >>> visualize(model, "my_model_text", format="dot")
-        >>> visualize(model, "my_model_plain", format="plain")
+
     """
     # Handle special engine variants
     if engine == "dot-lr":
@@ -230,7 +210,7 @@ def visualize(
                 graph.write(output_file, format="canon", prog=engine)
             case _:
                 raise ValueError(
-                    f"Unsupported format: {format}. " "Supported formats: png, pdf, svg, dot, plain, canon"
+                    f"Unsupported format: {format}. Supported formats: png, pdf, svg, dot, plain, canon"
                 )
 
     except FileNotFoundError as e:
@@ -392,7 +372,7 @@ def _build_graph(
 def _format_scope_string(scopes: list[int]) -> str:
     """Format a list of scope indices, using ranges for consecutive sequences.
 
-    Consecutive sequences of 4 or more indices are represented as ranges (e.g., "0...4").
+    Consecutive sequences of 3 or more indices are represented as ranges (e.g., "0...4").
     Shorter consecutive sequences are listed individually.
 
     Args:
@@ -400,10 +380,6 @@ def _format_scope_string(scopes: list[int]) -> str:
 
     Returns:
         Formatted scope string with ranges for consecutive sequences.
-
-    Example:
-        >>> _format_scope_string([0,1,2,3,4,8,9,10,23,24,25,26,90])
-        '0...4, 8, 9, 10, 23...26, 90'
     """
     if not scopes:
         return ""

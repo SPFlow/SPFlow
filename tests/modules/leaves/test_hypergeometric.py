@@ -11,8 +11,7 @@ out_features_values = [1, 6]
 
 
 def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """
-    Create parameters for a hypergeometric distribution.
+    """Create parameters for a hypergeometric distribution.
 
     Args:
         out_features: Number of features.
@@ -30,8 +29,8 @@ def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, tor
 
 
 def make_leaf(K, N, n) -> Hypergeometric:
-    """
-    Create a Hypergeometric leaves node.
+    """Create a Hypergeometric leaves node.
+
     Args:
         K: Number of success states in the population.
         N: Population size.

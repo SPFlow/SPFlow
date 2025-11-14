@@ -11,30 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 def negative_log_likelihood_loss(model: Module, data: Tensor) -> torch.Tensor:
-    """
-    Compute the negative log-likelihood loss of a model given the data.
-
-    Args:
-        model: Model to evaluate.
-        data: Data to evaluate the model on.
-
-    Returns:
-        Negative log-likelihood loss.
-    """
+    """Compute negative log-likelihood loss."""
     return -1 * model.log_likelihood(data).sum()
 
 
 def nll_loss(ll: Tensor, target: Tensor) -> torch.Tensor:
-    """
-    Compute the cross entropy loss of a model given the data.
-
-    Args:
-        model: Model to evaluate.
-        data: Data to evaluate the model on.
-
-    Returns:
-        Cross entropy loss.
-    """
+    """Compute NLL loss for classification."""
     return nn.NLLLoss()(ll.squeeze(1), target)
 
 
@@ -52,17 +34,21 @@ def train_gradient_descent(
     callback_batch: Callable[[Tensor, int], None] | None = None,
     callback_epoch: Callable[[list[Tensor], int], None] | None = None,
 ):
-    """
-    Train a model using gradient descent.
+    """Train model using gradient descent.
 
     Args:
         model: Model to train.
-        dataloader: Dataloader providing the data.
-        epochs: Number of epochs to train.
-        verbose: Boolean value indicating whether to print the log-likelihood for each epoch.
-        optimizer: Optimizer to use for training. If None, an Adam optimizer is used.
-        lr: Learning rate for the optimizer if `optimizer` is not already set.
-        callback_batch: Callback function to call after each batch which takes the list of losses tensor and the global step.
+        dataloader: Training data loader.
+        epochs: Number of training epochs.
+        verbose: Print loss per epoch.
+        is_classification: Classification task flag.
+        optimizer: Optimizer instance (defaults to Adam).
+        scheduler: LR scheduler (defaults to MultiStepLR).
+        lr: Learning rate if optimizer not provided.
+        loss_fn: Loss function (defaults based on task type).
+        validation_dataloader: Validation data loader.
+        callback_batch: Callback after each batch.
+        callback_epoch: Callback after each epoch.
     """
     model.train()
 

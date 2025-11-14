@@ -12,8 +12,7 @@ out_features_values = [1, 6]
 
 
 def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, torch.Tensor]:
-    """
-    Create parameters for a normal distribution.
+    """Create parameters for a normal distribution.
 
     Args:
         out_features: Number of features.
@@ -27,8 +26,8 @@ def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, tor
 
 
 def make_leaf(mean, std) -> Normal:
-    """
-    Create a Normal leaves node.
+    """Create a Normal leaves node.
+
     Args:
         mean: Mean of the normal distribution.
         std: Standard deviation of the normal distribution.

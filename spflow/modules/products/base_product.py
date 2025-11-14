@@ -14,22 +14,30 @@ from spflow.utils.sampling_context import SamplingContext, init_default_sampling
 
 
 class BaseProduct(Module, ABC):
-    r"""
-    Base class for the modules OuterProduct and ElementwiseProduct.
+    """Base class for product operations in probabilistic circuits.
+
+    Computes joint distributions via factorization. Assumes conditional independence
+    between disjoint input scopes. Abstract class requiring mapping method implementations.
+
+    Attributes:
+        inputs: Input modules to multiply.
+        input_is_split: Whether input is a split operation.
+        num_splits: Number of splits if input is split.
+        scope: Combined scope of all inputs.
     """
 
     def __init__(
         self,
         inputs: list[Module] | Module,
     ) -> None:
-        r"""Initializes ``BaseProduct`` object.
+        """Initialize product module.
 
         Args:
-            inputs:
-                Single input module or list of modules.
+            inputs: Input module(s) with pairwise disjoint scopes.
 
         Raises:
-            ValueError: Invalid arguments.
+            ValueError: No inputs provided.
+            ScopeError: Input scopes not pairwise disjoint.
         """
         super().__init__()
 
@@ -67,26 +75,12 @@ class BaseProduct(Module, ABC):
 
     @abstractmethod
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
-        r"""Map output ids to input ids.
-
-        Args:
-            output_ids: Output ids.
-
-        Returns:
-            Mapped input ids.
-        """
+        """Map output channel indices to input channel indices."""
         pass
 
     @abstractmethod
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
-        r"""Map output mask to input mask.
-
-        Args:
-            mask: Output mask.
-
-        Returns:
-            Mapped input mask.
-        """
+        """Map output mask to input mask."""
         pass
 
     def extra_repr(self) -> str:
@@ -100,18 +94,7 @@ class BaseProduct(Module, ABC):
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
-        """Generate samples from the product module.
-
-        Args:
-            num_samples: Number of samples to generate.
-            data: The data tensor to populate with samples.
-            is_mpe: Whether to use maximum probability estimation instead of sampling.
-            cache: Optional cache dictionary for intermediate results.
-            sampling_ctx: Optional sampling context.
-
-        Returns:
-            The data tensor populated with samples.
-        """
+        """Generate samples from product module."""
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
@@ -153,16 +136,7 @@ class BaseProduct(Module, ABC):
         prune: bool = True,
         cache: Cache | None = None,
     ) -> Optional["BaseProduct | Module"]:
-        """Marginalize out specified random variables.
-
-        Args:
-            marg_rvs: List of random variables to marginalize over.
-            prune: Whether to prune the structure.
-            cache: Optional cache dictionary.
-
-        Returns:
-            The marginalized module or None if fully marginalized.
-        """
+        """Marginalize specified variables (must be implemented by subclasses)."""
         # This is not yet implemented for BaseProduct
         # Reasons: Marginalization over the element-product has a couple of challenges:
         # - If the input is a single module, we need to ensure the splits are still equally sized
@@ -178,15 +152,7 @@ class BaseProduct(Module, ABC):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log P(data | module).
-
-        Args:
-            data: The data tensor.
-            cache: Optional cache dictionary.
-
-        Returns:
-            Log likelihood tensor.
-        """
+        """Compute log likelihood."""
         pass
 
     def _get_input_log_likelihoods(
@@ -194,14 +160,7 @@ class BaseProduct(Module, ABC):
         data: Tensor,
         cache: Cache | None = None,
     ) -> list[Tensor]:
-        """
-        Prepare the input log-likelihoods for the product module.
-
-        Args:
-            data: The data tensor.
-            cache: The cache dictionary.
-        """
-
+        """Prepare input log-likelihoods."""
         log_cache = None
         if cache is not None:
             log_cache = cache.setdefault("log_likelihood", {})

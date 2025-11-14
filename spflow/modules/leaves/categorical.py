@@ -14,8 +14,7 @@ class Categorical(LeafModule):
         K: int = None,
         p: Tensor = None,
     ):
-        """
-        Initialize a Categorical distribution leaves module.
+        """Initialize a Categorical distribution leaves module.
 
         Args:
             scope (Scope): The scope of the distribution.

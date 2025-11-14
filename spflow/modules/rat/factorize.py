@@ -1,3 +1,9 @@
+"""Factorization module for RAT-SPN architecture.
+
+Creates randomized feature partitions for efficient tensorized computations
+in RAT-SPNs. Splits features into groups with multiple random repetitions.
+"""
+
 from __future__ import annotations
 
 from typing import Optional
@@ -16,10 +22,15 @@ from spflow.utils.sampling_context import SamplingContext, init_default_sampling
 
 
 class Factorize(BaseProduct):
-    r"""
-    Factorize module that applies a factorization to the input features. This module is used to create a factorized
-    representation of the input features by splitting them into multiple parts based on the specified depth and
-    number of repetitions.
+    """Factorization module for RAT-SPN feature partitioning.
+
+    Creates 2^depth output features by randomly grouping inputs. Multiple
+    repetitions provide different randomizations.
+
+    Attributes:
+        depth (int): Depth parameter (output features = 2^depth).
+        num_repetitions (int): Number of parallel random factorizations.
+        indices (Tensor): Factorization matrix (num_features, 2^depth, num_repetitions).
     """
 
     def __init__(
@@ -28,12 +39,12 @@ class Factorize(BaseProduct):
         depth: int,
         num_repetitions: int,
     ) -> None:
-        r"""Initializes ``Factorize`` module.
-        Args:
-            inputs: List of Leaf modules.
-            depth: The depth of the graph. Necessary to determine the number of features in the output.
-            num_repetitions: The number of repetitions.
+        """Initialize factorize module.
 
+        Args:
+            inputs: Leaf modules or single module to factorize.
+            depth: Depth parameter (output features = 2^depth).
+            num_repetitions: Number of parallel randomizations.
         """
         super().__init__(inputs=inputs)
 
@@ -64,25 +75,11 @@ class Factorize(BaseProduct):
 
     @property
     def device(self):
-        """
-        Get the device of the module. Necessary hack since this module has no parameters.
-
-        Returns:
-            torch.device: The device on which the module's buffers are located.
-        """
+        """Get the device of the module."""
         return next(iter(self.buffers())).device
 
     def _factorize(self, depth, num_repetitions):
-        r"""
-        Generates a factorization of the input features based on the specified depth and number of repetitions.
-        The input features are split into groups, and the groups are shuffled to create a randomized factorization.
-        Example:
-            input features: [1, 2, 3, 4, 5, 6, 7]
-            depth: 2
-            num_repetitions: 2
-            output features: [{1, 3}, {4, 7}, {2}, {5, 6}], [ {3, 5}, {7}, {1, 6}, {2, 4} ]
-
-        """
+        """Generate randomized factorization matrix."""
         scope = self.inputs[0].scope
         num_features = len(scope.query)
         num_features_out = 2**depth
@@ -117,15 +114,7 @@ class Factorize(BaseProduct):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log P(data | module) for factorize.
-
-        Args:
-            data: The data tensor.
-            cache: Optional cache dictionary.
-
-        Returns:
-            Log likelihood tensor.
-        """
+        """Compute log likelihood via tensor contraction."""
         # initialize cache
         cache = init_cache(cache)
 
@@ -145,18 +134,7 @@ class Factorize(BaseProduct):
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
-        """Generate samples from the factorize module.
-
-        Args:
-            num_samples: Number of samples to generate.
-            data: The data tensor to populate with samples.
-            is_mpe: Whether to use maximum probability estimation instead of sampling.
-            cache: Optional cache dictionary for intermediate results.
-            sampling_ctx: Optional sampling context.
-
-        Returns:
-            The data tensor populated with samples.
-        """
+        """Generate samples by delegating to input with mapped indices."""
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
@@ -196,16 +174,7 @@ class Factorize(BaseProduct):
         prune: bool = True,
         cache: Cache | None = None,
     ) -> Optional[Product | Module]:
-        """Marginalize out specified random variables.
-
-        Args:
-            marg_rvs: List of random variables to marginalize over.
-            prune: Whether to prune the structure.
-            cache: Optional cache dictionary.
-
-        Returns:
-            The marginalized module or None if fully marginalized.
-        """
+        """Marginalize out specified random variables."""
         # initialize cache
         cache = init_cache(cache)
         # compute layer scope (same for all outputs)

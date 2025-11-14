@@ -11,14 +11,20 @@ from spflow.utils.sampling_context import SamplingContext, init_default_sampling
 
 
 class Product(Module):
-    """
-    A product module that calculates the product over the feature dimension of its input modules.
+    """Product node implementing factorization via conditional independence.
+
+    Computes joint distribution as product of child distributions. Multiple
+    inputs are automatically concatenated along the feature dimension.
+
+    Attributes:
+        inputs (Module): Input module(s), concatenated if multiple.
     """
 
     def __init__(self, inputs: Module | list[Module]) -> None:
-        """
+        """Initialize product node.
+
         Args:
-            inputs: Single input module or list of modules. The product is over the feature dimension of the input.
+            inputs: Single module or list of modules (concatenated along features).
         """
         super().__init__()
 
@@ -52,15 +58,7 @@ class Product(Module):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log P(data | module).
-
-        Args:
-            data: Input data tensor.
-            cache: Optional cache dictionary.
-
-        Returns:
-            Log-likelihood values.
-        """
+        """Compute log likelihood by summing child log-likelihoods across features."""
         cache = init_cache(cache)
 
         # compute child log-likelihoods
@@ -87,18 +85,7 @@ class Product(Module):
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        """Generate samples from the module.
-
-        Args:
-            num_samples: Number of samples to generate.
-            data: Data tensor with NaN values to fill with samples.
-            is_mpe: Whether to perform maximum a posteriori estimation.
-            cache: Optional cache dictionary.
-            sampling_ctx: Optional sampling context.
-
-        Returns:
-            Sampled values.
-        """
+        """Generate samples by delegating to input module."""
         cache = init_cache(cache)
 
         # Handle num_samples case (create empty data tensor)
@@ -129,14 +116,7 @@ class Product(Module):
         data: Tensor,
         cache: Cache | None = None,
     ) -> None:
-        """Expectation-maximization step.
-
-        For Product modules (no learnable parameters), this delegates to the input.
-
-        Args:
-            data: Input data tensor.
-            cache: Optional cache dictionary.
-        """
+        """EM step (delegates to input, no learnable parameters)."""
         cache = init_cache(cache)
 
         # Product has no learnable parameters, delegate to input
@@ -148,15 +128,7 @@ class Product(Module):
         weights: Tensor | None = None,
         cache: Cache | None = None,
     ) -> None:
-        """Update parameters via maximum likelihood estimation.
-
-        For Product modules (no learnable parameters), this delegates to the input.
-
-        Args:
-            data: Input data tensor.
-            weights: Optional sample weights (currently unused).
-            cache: Optional cache dictionary.
-        """
+        """MLE step (delegates to input, no learnable parameters)."""
         cache = init_cache(cache)
 
         # Product has no learnable parameters, delegate to input
@@ -172,16 +144,7 @@ class Product(Module):
         prune: bool = True,
         cache: Cache | None = None,
     ) -> Product | Module | None:
-        """Marginalize out specified random variables.
-
-        Args:
-            marg_rvs: List of random variables to marginalize.
-            prune: Whether to prune the module.
-            cache: Optional cache dictionary.
-
-        Returns:
-            Marginalized module or None.
-        """
+        """Marginalize out specified random variables."""
         cache = init_cache(cache)
 
         # compute layer scope (same for all outputs)

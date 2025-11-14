@@ -12,8 +12,7 @@ out_features_values = [1, 6]
 
 
 def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, torch.Tensor]:
-    """
-    Create parameters for a uniform distribution.
+    """Create parameters for a uniform distribution.
 
     Args:
         out_features: Number of features.
@@ -29,8 +28,8 @@ def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, tor
 
 
 def make_leaf(start, end) -> Uniform:
-    """
-    Create a Uniform leaves node.
+    """Create a Uniform leaves node.
+
     Args:
         start: Lower bound of the uniform distribution.
         end: Upper bound of the uniform distribution.

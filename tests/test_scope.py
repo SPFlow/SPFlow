@@ -23,7 +23,6 @@ def test_equal_evidence():
     assert not scope1.equal_evidence(scope3)  # Should not be equal
 
 
-
 def test_is_conditional():
     # Test for conditional and non-conditional scopes
     conditional_scope = Scope([1, 2], [3, 4])  # Has evidence
@@ -98,7 +97,6 @@ def test_scope_init_valid():
     scope2 = Scope([0, 1])  # Only query, no evidence
     assert scope2.query == [0, 1]
     assert scope2.evidence == []
-
 
 
 def test_scope_init_invalid():

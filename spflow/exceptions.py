@@ -1,29 +1,39 @@
+"""Exception classes for SPFlow probabilistic circuits.
+
+Defines custom exceptions for parameter validation, scope errors, tensor
+shape mismatches, structure errors, and external dependency issues.
+"""
+
+
 class InvalidParameterCombinationError(Exception):
-    """Raised when an invalid combination of parameters is provided."""
+    """Raised when incompatible parameters are provided together."""
 
     pass
 
 
 class ScopeError(Exception):
-    """Raised when an invalid scope is provided."""
+    """Raised when variable scopes are invalid or incompatible."""
 
     pass
 
 
 class ShapeError(ValueError):
-    """Raised when tensor shape or dimensions don't meet expected requirements."""
+    """Raised when tensor shapes don't meet expected requirements."""
 
     pass
 
 
 class StructureError(ValueError):
-    """Raised when module structure or configuration is invalid."""
+    """Raised when circuit structure or configuration is invalid."""
 
     pass
 
 
 class GraphvizError(Exception):
-    """Raised when Graphviz is not installed or fails to execute."""
+    """Raised when Graphviz is not installed or fails to execute.
+
+    Includes detailed installation instructions in error message.
+    """
 
     INSTALL_INSTRUCTIONS = (
         "To fix this issue:\n"
@@ -37,6 +47,6 @@ class GraphvizError(Exception):
     )
 
     def __str__(self) -> str:
-        """Return the error message with installation instructions appended."""
+        """Return error message with installation instructions."""
         message = super().__str__()
         return f"{message}\n\n{self.INSTALL_INSTRUCTIONS}"

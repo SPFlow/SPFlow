@@ -1,9 +1,5 @@
-"""Contains the ``Scope`` class for representing scopes over random variables.
+"""Contains the Scope class for representing scopes over random variables."""
 
-Typical usage example:
-
-    scope = Scope(query_rvs, evidence_rvs)
-"""
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -13,14 +9,13 @@ from functools import reduce
 class Scope:
     """Scopes over random variables (RVs).
 
-    Represents scope over random variables (RVs).
-    Contains both RVs that are part of the query (i.e., RVs that are represented by the scope) as well as evidence of the scope (i.e., RVs that the scope is conditioned on).
+    Represents scope over random variables (RVs). Contains both RVs that are part
+    of the query (i.e., RVs that are represented by the scope) as well as evidence
+    of the scope (i.e., RVs that the scope is conditioned on).
 
     Attributes:
-        query:
-            List of non-negative integers representing query RVs.
-        evidence:
-            List of non-negative integers representing evidence variables.
+        query: List of non-negative integers representing query RVs.
+        evidence: List of non-negative integers representing evidence variables.
     """
 
     def __init__(
@@ -28,16 +23,15 @@ class Scope:
             query: int | list[int],
             evidence: int | list[int] | None = None,
     ) -> None:
-        """Initializes ``Scope`` object.
+        """Initializes Scope object.
 
         Args:
-            query:
-                List of non-negative integers representing query RVs (may not contain duplicates).
+            query: List of non-negative integers representing query RVs (may not contain duplicates).
                 If a single integer is provided, it is converted to a list containing that integer.
-            evidence:
-                Optional list of non-negative integers representing evidence variables (may not contain duplicates or RVs that are in the query).
-                If a single integer is provided, it is converted to a list containing that integer.
-                Defaults to None, in which case it is initialized to an empty list.
+            evidence: Optional list of non-negative integers representing evidence variables
+                (may not contain duplicates or RVs that are in the query). If a single integer
+                is provided, it is converted to a list containing that integer. Defaults to None,
+                in which case it is initialized to an empty list.
 
         Raises:
             ValueError: Invalid arguments.
@@ -53,7 +47,6 @@ class Scope:
 
         if isinstance(evidence, int):
             evidence = [evidence]
-
 
         if len(query) == 0 and len(evidence) != 0:
             raise ValueError(
@@ -79,10 +72,10 @@ class Scope:
         self.evidence = evidence
 
     def __repr__(self) -> str:
-        """Returns a string representation of the scope of form ``Scope(query|evidence)``.
+        """Returns a string representation of the scope of form Scope(query|evidence).
 
         Returns:
-            String containg the string representation of scope.
+            String containing the string representation of scope.
         """
         if len(self.evidence) == 0:
             if len(self.query) == 1:
@@ -96,13 +89,12 @@ class Scope:
                 return str(self.query) + "|" + str(self.evidence)
 
     def __eq__(self, other: "Scope") -> bool:
-        """Equality comparison between two ``Scope`` objects.
+        """Equality comparison between two Scope objects.
 
         Two scopes are considered equal if they represent the same query and evidence RVs.
 
         Args:
-            other:
-                ``Scope`` object to compare to.
+            other: Scope object to compare to.
 
         Returns:
             Boolean indicating whether both scopes are considered equal (True) or not (False).
@@ -121,8 +113,10 @@ class Scope:
         """Removes a random variable from the query of the scope.
 
         Args:
-            rv:
-                Non-negative integer representing the random variable to remove.
+            rv: Non-negative integer representing the random variable to remove.
+
+        Returns:
+            Scope object with the variable removed, or None if query becomes empty.
         """
         self.query.remove(rv)
         if len(self.query) == 0:
@@ -136,11 +130,10 @@ class Scope:
         The order of the query RVs is not important.
 
         Args:
-            other:
-                ``Scope` object to compare to.
+            other: Scope object to compare to.
 
         Returns:
-            Boolean indicating whether both query scopes are idential (True) or not (False).
+            Boolean indicating whether both query scopes are identical (True) or not (False).
         """
         return set(self.query) == set(other.query)
 
@@ -150,11 +143,10 @@ class Scope:
         The order of the evidence RVs is not important.
 
         Args:
-            other:
-                ``Scope`` object to compare to.
+            other: Scope object to compare to.
 
         Returns:
-            Boolean indicating whether both evidence scopes are idential (True) or not (False).
+            Boolean indicating whether both evidence scopes are identical (True) or not (False).
         """
         return set(self.evidence) == set(other.evidence)
 
@@ -171,7 +163,7 @@ class Scope:
     def is_conditional(self) -> bool:
         """Checks if the scope is conditional.
 
-        A scope is conditional, if it contains evidence RVs
+        A scope is conditional if it contains evidence RVs.
 
         Returns:
             Boolean indicating whether the scope is conditional (True) or not (False).
@@ -182,6 +174,9 @@ class Scope:
         """Checks if the scope is disjoint to another scope.
 
         Two scopes are considered disjoint if their queries are disjoint, i.e., they do not represent any common RVs.
+
+        Args:
+            other: Scope object to compare to.
 
         Returns:
             Boolean indicating whether the scopes are disjoint (True) or not (False).
@@ -194,11 +189,10 @@ class Scope:
         The union of two scopes results in the union of the queries and evidences, respectively.
 
         Args:
-            other:
-                ``Scope`` object to compute the union with.
+            other: Scope object to compute the union with.
 
         Returns:
-            ``Scope`` object representing the union of both scopes.
+            Scope object representing the union of both scopes.
         """
         # compute union of query RVs
         joint_query = list(set(self.query).union(other.query))
@@ -214,11 +208,10 @@ class Scope:
         The union of multiple scopes results in the union of the queries and evidences, respectively.
 
         Args:
-            scopes:
-                List of `Scope` objects to compute the union with.
+            scopes: Iterable of Scope objects to compute the union with.
 
         Returns:
-            `Scope` object representing the union of all scopes.
+            Scope object representing the union of all scopes.
         """
         return reduce(lambda a, b: a.join(b), scopes)
 
@@ -227,8 +220,7 @@ class Scope:
         """Checks if a sequence of scopes are pairwise disjoint.
 
         Args:
-            scopes:
-                Iterable of ``Scope`` objects to check pairwise disjointness.
+            scopes: Iterable of Scope objects to check pairwise disjointness.
 
         Returns:
             Boolean indicating whether all scopes are pairwise disjoint (True) or not (False).
@@ -252,8 +244,7 @@ class Scope:
         """Checks if a sequence of scopes are all equal.
 
         Args:
-            scopes:
-                Iterable of ``Scope`` objects to check for equality.
+            scopes: Iterable of Scope objects to check for equality.
 
         Returns:
             Boolean indicating whether all scopes are equal (True) or not (False).
@@ -273,6 +264,6 @@ class Scope:
         """Creates a copy of the scope.
 
         Returns:
-            ``Scope`` object representing the copy of the scope.
+            Scope object representing the copy of the scope.
         """
         return Scope(list(self.query), list(self.evidence))

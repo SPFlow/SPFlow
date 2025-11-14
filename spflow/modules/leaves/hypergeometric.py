@@ -16,8 +16,7 @@ class Hypergeometric(LeafModule):
         N: Tensor = None,
         n: Tensor = None,
     ):
-        r"""
-        Initialize a Hypergeometric distribution leaves module.
+        r"""Initialize a Hypergeometric distribution leaves module.
 
         Args:
             scope: Scope object specifying the scope of the distribution.
@@ -240,8 +239,8 @@ class _HypergeometricDistribution:
         return result
 
     def sample(self, n_samples):
-        """
-        Efficiently samples from the hypergeometric distribution in parallel for all scope_idx and leaf_idx.
+        """Efficiently samples from the hypergeometric distribution in parallel for all scope_idx and leaf_idx.
+
         Args:
             n_samples (tuple): Number of samples to generate.
 

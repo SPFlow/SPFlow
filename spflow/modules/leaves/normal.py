@@ -5,11 +5,23 @@ from spflow.meta.data import Scope
 from spflow.modules.leaves.base import (
     LeafModule,
     LogSpaceParameter,
-    validate_all_or_none, init_parameter, parse_leaf_args,
+    validate_all_or_none,
+    init_parameter,
+    parse_leaf_args,
 )
 
 
 class Normal(LeafModule):
+    """Normal (Gaussian) distribution leaf module.
+
+    Parameterized by mean μ and standard deviation σ (stored in log-space).
+
+    Attributes:
+        mean: Mean parameter.
+        std: Standard deviation (LogSpaceParameter).
+        distribution: Underlying torch.distributions.Normal.
+    """
+
     std = LogSpaceParameter("std")
 
     def __init__(
@@ -20,15 +32,14 @@ class Normal(LeafModule):
         mean: Tensor = None,
         std: Tensor = None,
     ):
-        """
-        Initialize a Normal distribution leaves module.
+        """Initialize Normal distribution leaf.
 
         Args:
-            scope (Scope): The scope of the distribution.
-            out_channels (int, optional): The number of output channels. If None, it is determined by the parameter tensors.
-            num_repetitions (int, optional): The number of repetitions for the leaves module.
-            mean (Tensor, optional): The mean parameter tensor.
-            std (Tensor, optional): The standard deviation parameter tensor.
+            scope: Variable scope.
+            out_channels: Number of output channels (inferred from params if None).
+            num_repetitions: Number of repetitions.
+            mean: Mean parameter tensor (random init if None).
+            std: Standard deviation tensor (must be positive, random init if None).
         """
         event_shape = parse_leaf_args(
             scope=scope, out_channels=out_channels, num_repetitions=num_repetitions, params=[mean, std]
@@ -48,27 +59,21 @@ class Normal(LeafModule):
         self.std = std.clone().detach()
 
     def mode(self) -> Tensor:
-        """Returns the mode of the distribution."""
+        """Return mode (equals mean for Normal distribution)."""
         return self.mean
 
     @property
     def _supported_value(self):
-        """Returns the supported values of the distribution."""
+        """Return supported value for edge case handling."""
         return 0.0
 
     @property
     def distribution(self) -> torch.distributions.Distribution:
-        """Returns the underlying torch distribution object."""
+        """Return underlying torch.distributions.Normal."""
         return torch.distributions.Normal(self.mean, self.std)
 
     def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute Normal-specific sufficient statistics and assign parameters.
-
-        Args:
-            data: Scope-filtered data of shape (batch_size, num_scope_features).
-            weights: Normalized weights of shape (batch_size, 1, ...).
-            bias_correction: Whether to apply Bessel's correction (n-1 vs n).
-        """
+        """Compute weighted mean and standard deviation."""
         n_total = weights.sum()
         mean_est = (weights * data).sum(0) / n_total
 
@@ -85,5 +90,5 @@ class Normal(LeafModule):
         self.std = self._broadcast_to_event_shape(std_est)
 
     def params(self) -> dict[str, Tensor]:
-        """Returns the parameters of the distribution."""
+        """Return distribution parameters."""
         return {"mean": self.mean, "std": self.std}
