@@ -79,7 +79,12 @@ class Factorize(BaseProduct):
         return next(iter(self.buffers())).device
 
     def _factorize(self, depth, num_repetitions):
-        """Generate randomized factorization matrix."""
+        """Generate randomized factorization matrix.
+
+        Args:
+            depth: Depth parameter for factorization.
+            num_repetitions: Number of parallel randomizations.
+        """
         scope = self.inputs[0].scope
         num_features = len(scope.query)
         num_features_out = 2**depth
@@ -114,7 +119,15 @@ class Factorize(BaseProduct):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log likelihood via tensor contraction."""
+        """Compute log likelihood via tensor contraction.
+
+        Args:
+            data: Input data tensor.
+            cache: Optional cache for storing intermediate results.
+
+        Returns:
+            Tensor: Computed log likelihood values.
+        """
         # initialize cache
         cache = init_cache(cache)
 
@@ -134,7 +147,18 @@ class Factorize(BaseProduct):
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
-        """Generate samples by delegating to input with mapped indices."""
+        """Generate samples by delegating to input with mapped indices.
+
+        Args:
+            num_samples: Number of samples to generate.
+            data: Optional data tensor to store samples.
+            is_mpe: Whether to perform most probable explanation.
+            cache: Optional cache for storing intermediate results.
+            sampling_ctx: Sampling context for controlling sampling behavior.
+
+        Returns:
+            Tensor: Generated samples.
+        """
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
@@ -174,7 +198,16 @@ class Factorize(BaseProduct):
         prune: bool = True,
         cache: Cache | None = None,
     ) -> Optional[Product | Module]:
-        """Marginalize out specified random variables."""
+        """Marginalize out specified random variables.
+
+        Args:
+            marg_rvs: List of random variable indices to marginalize.
+            prune: Whether to prune redundant factorizations.
+            cache: Optional cache for storing intermediate results.
+
+        Returns:
+            Optional[Product | Module]: Marginalized module or None if fully marginalized.
+        """
         # initialize cache
         cache = init_cache(cache)
         # compute layer scope (same for all outputs)

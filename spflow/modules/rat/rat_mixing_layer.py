@@ -88,7 +88,7 @@ class MixingLayer(Sum):
         if weights is None:
             weights = (
                 # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                    torch.rand(self.weights_shape) + 1e-08
+                torch.rand(self.weights_shape) + 1e-08
             )  # avoid zeros
 
             # Normalize
@@ -120,7 +120,18 @@ class MixingLayer(Sum):
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        """Generate samples by choosing mixture components."""
+        """Generate samples by choosing mixture components.
+
+        Args:
+            num_samples: Number of samples to generate.
+            data: Data tensor to fill with samples.
+            is_mpe: Whether to perform most probable explanation (MPE) sampling.
+            cache: Cache for storing intermediate computations.
+            sampling_ctx: Sampling context for managing sampling state.
+
+        Returns:
+            Tensor: Generated samples.
+        """
         cache = init_cache(cache)
 
         # Handle num_samples case (create empty data tensor)
@@ -176,7 +187,15 @@ class MixingLayer(Sum):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log likelihood via weighted log-sum-exp."""
+        """Compute log likelihood via weighted log-sum-exp.
+
+        Args:
+            data: Input data tensor.
+            cache: Cache for storing intermediate computations.
+
+        Returns:
+            Tensor: Computed log likelihood values.
+        """
         cache = init_cache(cache)
 
         ll = self.inputs.log_likelihood(

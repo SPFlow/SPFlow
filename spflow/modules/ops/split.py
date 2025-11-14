@@ -58,7 +58,14 @@ class Split(Module, ABC):
         return self.inputs[0].out_channels
 
     def get_out_shapes(self, event_shape):
-        """Get output shapes for each split based on input event shape."""
+        """Get output shapes for each split based on input event shape.
+
+        Args:
+            event_shape: Shape of the input event tensor.
+
+        Returns:
+            List of tuples representing output shapes for each split.
+        """
         split_size = event_shape[self.dim]
         quotient = split_size // self.num_splits
         remainder = split_size % self.num_splits
@@ -87,7 +94,18 @@ class Split(Module, ABC):
         cache: Optional[Dict[str, Any]] = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        """Generate samples by delegating to input module."""
+        """Generate samples by delegating to input module.
+
+        Args:
+            num_samples: Number of samples to generate.
+            data: Existing data tensor to modify.
+            is_mpe: Whether to perform most probable explanation.
+            cache: Cache dictionary for intermediate results.
+            sampling_ctx: Sampling context for controlling sample generation.
+
+        Returns:
+            Tensor containing the generated samples.
+        """
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
@@ -113,7 +131,16 @@ class Split(Module, ABC):
         prune: bool = True,
         cache: Optional[Dict[str, Any]] = None,
     ) -> None | Module:
-        """Marginalize out specified random variables."""
+        """Marginalize out specified random variables.
+
+        Args:
+            marg_rvs: List of random variable indices to marginalize.
+            prune: Whether to prune the resulting module.
+            cache: Cache dictionary for intermediate results.
+
+        Returns:
+            Marginalized module or None if fully marginalized.
+        """
         # compute module scope (same for all outputs)
         module_scope = self.scope
 

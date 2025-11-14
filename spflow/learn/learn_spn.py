@@ -27,7 +27,7 @@ def prune_sums(node):
     preserving the probability distribution.
 
     Args:
-        node (Module): Root node of the circuit to prune. Can be any module type,
+        node: Root node of the circuit to prune. Can be any module type,
             but pruning only affects Sum nodes.
 
     Returns:
@@ -263,8 +263,8 @@ def learn_spn(
         estimating parameters via maximum likelihood estimation.
 
         Args:
-            scope (Scope): Variable scope defining which variables to create leaves for.
-            data (torch.Tensor): Training data for parameter estimation.
+            scope: Variable scope defining which variables to create leaves for.
+            data: Training data for parameter estimation.
 
         Returns:
             Union[Product, LeafModule]: Product node for multiple variables,

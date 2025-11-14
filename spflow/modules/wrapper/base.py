@@ -96,4 +96,13 @@ class Wrapper(Module, ABC):
         return next(iter(self.module.parameters())).device
 
     def extra_repr(self) -> str:
+        """Return a string representation of the wrapper module.
+
+        Provides a concise representation showing the output features (D),
+        output channels (C), and number of repetitions (R) for debugging
+        and logging purposes.
+
+        Returns:
+            str: String representation in format "D={out_features}, C={out_channels}, R={num_repetitions}".
+        """
         return f"D={self.out_features}, C={self.out_channels}, R={self.num_repetitions}"

@@ -75,12 +75,26 @@ class BaseProduct(Module, ABC):
 
     @abstractmethod
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
-        """Map output channel indices to input channel indices."""
+        """Map output channel indices to input channel indices.
+
+        Args:
+            output_ids: Tensor containing output channel indices.
+
+        Returns:
+            Tensor: Mapped input channel indices.
+        """
         pass
 
     @abstractmethod
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
-        """Map output mask to input mask."""
+        """Map output mask to input mask.
+
+        Args:
+            mask: Output mask tensor.
+
+        Returns:
+            Tensor: Mapped input mask tensor.
+        """
         pass
 
     def extra_repr(self) -> str:
@@ -94,7 +108,18 @@ class BaseProduct(Module, ABC):
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
-        """Generate samples from product module."""
+        """Generate samples from product module.
+
+        Args:
+            num_samples: Number of samples to generate.
+            data: Optional data tensor to store samples.
+            is_mpe: Whether to perform most probable explanation.
+            cache: Optional cache for computation.
+            sampling_ctx: Optional sampling context.
+
+        Returns:
+            Tensor: Generated samples.
+        """
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
@@ -136,7 +161,16 @@ class BaseProduct(Module, ABC):
         prune: bool = True,
         cache: Cache | None = None,
     ) -> Optional["BaseProduct | Module"]:
-        """Marginalize specified variables (must be implemented by subclasses)."""
+        """Marginalize specified variables (must be implemented by subclasses).
+
+        Args:
+            marg_rvs: List of variable indices to marginalize.
+            prune: Whether to prune the resulting structure.
+            cache: Optional cache for computation.
+
+        Returns:
+            Optional[BaseProduct | Module]: Marginalized module or None.
+        """
         # This is not yet implemented for BaseProduct
         # Reasons: Marginalization over the element-product has a couple of challenges:
         # - If the input is a single module, we need to ensure the splits are still equally sized
@@ -152,7 +186,15 @@ class BaseProduct(Module, ABC):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log likelihood."""
+        """Compute log likelihood.
+
+        Args:
+            data: Input data tensor.
+            cache: Optional cache for computation.
+
+        Returns:
+            Tensor: Log likelihood values.
+        """
         pass
 
     def _get_input_log_likelihoods(
@@ -160,7 +202,15 @@ class BaseProduct(Module, ABC):
         data: Tensor,
         cache: Cache | None = None,
     ) -> list[Tensor]:
-        """Prepare input log-likelihoods."""
+        """Prepare input log-likelihoods.
+
+        Args:
+            data: Input data tensor.
+            cache: Optional cache for computation.
+
+        Returns:
+            list[Tensor]: List of log-likelihood tensors for each input.
+        """
         log_cache = None
         if cache is not None:
             log_cache = cache.setdefault("log_likelihood", {})

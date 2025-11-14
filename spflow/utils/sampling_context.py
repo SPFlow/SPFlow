@@ -135,10 +135,8 @@ class SamplingContext:
         """Updates the sampling context with new channel index and mask.
 
         Args:
-            channel_index:
-                Tensor containing the channel indices to sample from.
-            mask:
-                Tensor containing the mask to apply to the samples.
+            channel_index: Tensor containing the channel indices to sample from.
+            mask: Boolean tensor containing the mask to apply to the samples.
         """
         if not channel_index.shape == mask.shape:
             raise ValueError("channel_index and mask must have the same shape.")
@@ -177,8 +175,12 @@ class SamplingContext:
     def channel_index_masked(self):
         return self.channel_index[self.samples_mask]
 
-    def copy(self):
-        """Returns a copy of the sampling context."""
+    def copy(self) -> SamplingContext:
+        """Return a copy of the sampling context.
+
+        Returns:
+            SamplingContext: A new SamplingContext instance with copied tensors.
+        """
         return SamplingContext(
             channel_index=self.channel_index.clone(),
             mask=self.mask.clone(),

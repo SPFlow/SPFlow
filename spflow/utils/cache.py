@@ -25,7 +25,14 @@ class Cache(TypedDict, total=False):
 
 
 def init_cache(cache: Cache | None) -> Cache:
-    """Initialize cache dictionary if None."""
+    """Initialize cache dictionary if None.
+
+    Args:
+        cache: Existing cache dictionary to use, or None to create a new one.
+
+    Returns:
+        Cache: The initialized cache dictionary.
+    """
     if cache is None:
         cache = {}
     return cache

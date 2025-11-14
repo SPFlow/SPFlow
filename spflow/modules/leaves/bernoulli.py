@@ -48,7 +48,13 @@ class Bernoulli(LeafModule):
         return 0.0
 
     def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute weighted success probability."""
+        """Compute weighted success probability.
+
+        Args:
+            data: Input data tensor.
+            weights: Weight tensor for each data point.
+            bias_correction: Whether to apply bias correction.
+        """
         n_total = weights.sum()
         n_success = (weights * data).sum(dim=0)
         p_est = n_success / n_total

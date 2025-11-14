@@ -22,6 +22,11 @@ class FeatureType(ABC):
 class ExponentialType(FeatureType):
     """Feature type for Exponential-distributed features.
 
+    Args:
+        rate:
+            Floating point representing the rate parameter, greater than 0.0.
+            Defaults to 1.0.
+
     Attributes:
         rate:
             Floating point representing the rate parameter, greater than 0.0.
@@ -35,6 +40,14 @@ class ExponentialType(FeatureType):
 @dataclass
 class GammaType(FeatureType):
     """Feature type for Gamma-distributed features.
+
+    Args:
+        alpha:
+            Floating point representing the shape parameter, greater than 0.0.
+            Defaults to 1.0.
+        beta:
+            Floating point representing the rate parameter, greater than 0.0.
+            Defaults to 1.0.
 
     Attributes:
         alpha:
@@ -54,6 +67,14 @@ class GammaType(FeatureType):
 class NormalType(FeatureType):
     """Feature type for Normal-distributed features.
 
+    Args:
+        mean:
+            Floating point representing the mean.
+            Defaults to 0.0.
+        std:
+            Floating point representing the standard deviation, greater than 0.0.
+            Defaults to 1.0.
+
     Attributes:
         mean:
             Floating point representing the mean.
@@ -71,6 +92,14 @@ class NormalType(FeatureType):
 @dataclass
 class LogNormalType(FeatureType):
     """Feature type for Log-Normal-distributed features.
+
+    Args:
+        mean:
+            Floating point representing the mean.
+            Defaults to 0.0.
+        std:
+            Floating point representing the standard deviation, greater than 0.0.
+            Defaults to 1.0.
 
     Attributes:
         mean:
@@ -90,6 +119,13 @@ class LogNormalType(FeatureType):
 class UniformType(FeatureType):
     """Feature type for Uniform-distributed features.
 
+    Args:
+        start:
+            Floating point representing the start of the interval (including).
+        end:
+            Floating point representing the end of the interval (including).
+            Must be larger than ``start``.
+
     Attributes:
         start:
             Floating point representing the start of the interval (including).
@@ -108,6 +144,11 @@ class UniformType(FeatureType):
 class BernoulliType(FeatureType):
     """Feature type for Bernoulli-distributed features.
 
+    Args:
+        p:
+            Success probability between 0 and 1.
+            Defaults to 0.5.
+
     Attributes:
         p:
             Success probability between 0 and 1.
@@ -121,6 +162,13 @@ class BernoulliType(FeatureType):
 @dataclass
 class BinomialType(FeatureType):
     """Feature type for Binomial-distributed features.
+
+    Args:
+        n:
+            Number of i.i.d. Bernoulli trials.
+        p:
+            Success probability between 0 and 1.
+            Defaults to 0.5.
 
     Attributes:
         n:
@@ -139,6 +187,9 @@ class BinomialType(FeatureType):
 class CategoricalType(FeatureType):
     """Feature type for Categorical-distributed features.
 
+    Args:
+        probs: List of probabilities for each category.
+
     Attributes:
         probs: List of probabilities for each category.
     """
@@ -150,6 +201,11 @@ class CategoricalType(FeatureType):
 @dataclass
 class GeometricType(FeatureType):
     r"""Feature type for Geometric-distributed features.
+
+    Args:
+        p:
+            Success probability in range :math:`(0,1]`.
+            Defaults to 0.5.
 
     Attributes:
         p:
@@ -164,6 +220,14 @@ class GeometricType(FeatureType):
 @dataclass
 class HypergeometricType(FeatureType):
     """Feature type for Hypergeometric-distributed features.
+
+    Args:
+        N:
+            Number of total entities in the population, greater or equal to 0.
+        M:
+            Number of entities of entries in the population, greater or equal to 0 and less than or equal to ``N``.
+        n:
+            Number of draws from the population, greater or equal to 0 and less than or equal to ``N``+``M``.
 
     Attributes:
         N:
@@ -184,6 +248,13 @@ class HypergeometricType(FeatureType):
 class NegativeBinomialType(FeatureType):
     r"""Feature type for Negative-Binomial-distributed features.
 
+    Args:
+        n:
+            Number of total successes.
+        p:
+            Success probability in range :math:`(0,1]`.
+            Defaults to 0.5.
+
     Attributes:
         n:
             Number of total successes.
@@ -200,6 +271,11 @@ class NegativeBinomialType(FeatureType):
 @dataclass
 class PoissonType(FeatureType):
     """Feature type for Poisson-distributed features.
+
+    Args:
+        rate:
+            Floating point representing the rate parameter, greater than or equal to 0.0.
+            Defaults to 1.0.
 
     Attributes:
         rate:

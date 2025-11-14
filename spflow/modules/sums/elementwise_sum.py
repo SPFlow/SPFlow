@@ -131,8 +131,7 @@ class ElementwiseSum(Module):
         if weights is None:
             weights = (
                 # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                torch.rand(self.weights_shape)
-                + 1e-08
+                torch.rand(self.weights_shape) + 1e-08
             )  # avoid zeros
 
             # Normalize
@@ -171,7 +170,11 @@ class ElementwiseSum(Module):
         self,
         values: Tensor,
     ) -> None:
-        """Set weights of all nodes."""
+        """Set weights of all nodes.
+
+        Args:
+            values: Weight values to set.
+        """
         if values.shape != self.weights_shape:
             raise ValueError(f"Invalid shape for weights: {values.shape}.")
         if not torch.all(values > 0):
@@ -185,7 +188,11 @@ class ElementwiseSum(Module):
         self,
         values: Tensor,
     ) -> None:
-        """Set log weights of all nodes."""
+        """Set log weights of all nodes.
+
+        Args:
+            values: Log weight values to set.
+        """
         if values.shape != self.log_weights.shape:
             raise ValueError(f"Invalid shape for weights: {values.shape}.")
         self.logits.data = values
@@ -199,7 +206,16 @@ class ElementwiseSum(Module):
         prune: bool = True,
         cache: Cache | None = None,
     ) -> Optional["ElementwiseSum"]:
-        """Marginalize out specified random variables."""
+        """Marginalize out specified random variables.
+
+        Args:
+            marg_rvs: Random variables to marginalize out.
+            prune: Whether to prune the resulting module.
+            cache: Cache for memoization.
+
+        Returns:
+            Optional[ElementwiseSum]: Marginalized module or None if fully marginalized.
+        """
         # initialize cache
         cache = init_cache(cache)
 
@@ -247,7 +263,18 @@ class ElementwiseSum(Module):
         cache: Cache | None = None,
         sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
-        """Generate samples by choosing mixture components."""
+        """Generate samples by choosing mixture components.
+
+        Args:
+            num_samples: Number of samples to generate.
+            data: Existing data tensor to fill with samples.
+            is_mpe: Whether to perform most probable explanation.
+            cache: Cache for memoization.
+            sampling_ctx: Sampling context for conditional sampling.
+
+        Returns:
+            Tensor: Generated samples.
+        """
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
@@ -344,7 +371,15 @@ class ElementwiseSum(Module):
         data: Tensor,
         cache: Cache | None = None,
     ) -> Tensor:
-        """Compute log likelihood via weighted log-sum-exp."""
+        """Compute log likelihood via weighted log-sum-exp.
+
+        Args:
+            data: Input data tensor.
+            cache: Cache for memoization.
+
+        Returns:
+            Tensor: Computed log likelihood values.
+        """
         # initialize cache
         cache = init_cache(cache)
         log_cache = cache.setdefault("log_likelihood", {})
@@ -389,7 +424,12 @@ class ElementwiseSum(Module):
         data: Tensor,
         cache: Cache | None = None,
     ) -> None:
-        """Perform EM step to update mixture weights."""
+        """Perform EM step to update mixture weights.
+
+        Args:
+            data: Training data tensor.
+            cache: Cache for memoization.
+        """
         # initialize cache
         cache = init_cache(cache)
 
@@ -434,5 +474,11 @@ class ElementwiseSum(Module):
         weights: Optional[Tensor] = None,
         cache: Cache | None = None,
     ) -> None:
-        """MLE step (equivalent to EM for sum nodes)."""
+        """MLE step (equivalent to EM for sum nodes).
+
+        Args:
+            data: Training data tensor.
+            weights: Optional weights for data points.
+            cache: Cache for memoization.
+        """
         self.expectation_maximization(data, cache=cache)
