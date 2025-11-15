@@ -5,7 +5,11 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from spflow.learn.gradient_descent import negative_log_likelihood_loss, train_gradient_descent
+from spflow.learn.gradient_descent import (
+    TrainingMetrics,
+    negative_log_likelihood_loss,
+    train_gradient_descent,
+)
 from spflow.meta import Scope
 from spflow.modules.base import Module
 
@@ -135,3 +139,336 @@ def test_train_gradient_descent_multiple_epochs(model, dataloader, epochs):
     train_gradient_descent(model, dataloader, epochs=epochs)
     final_loss = negative_log_likelihood_loss(model, next(iter(dataloader))[0])
     assert final_loss < initial_loss  # loss should decrease after training
+
+
+@pytest.fixture
+def training_metrics():
+    """Create a fresh TrainingMetrics instance for each test."""
+    return TrainingMetrics()
+
+
+@pytest.fixture
+def sample_tensors():
+    """Provide sample tensors for testing."""
+    return {
+        "loss_small": torch.tensor(0.5),
+        "loss_medium": torch.tensor(1.5),
+        "loss_large": torch.tensor(2.5),
+        "predictions_4": torch.tensor([0, 1, 1, 0]),
+        "targets_4": torch.tensor([0, 0, 1, 0]),
+        "predictions_3": torch.tensor([1, 0, 1]),
+        "targets_3": torch.tensor([1, 1, 1]),
+        "predictions_5": torch.tensor([0, 1, 1, 0, 1]),
+        "targets_5": torch.tensor([0, 0, 1, 0, 1]),
+    }
+
+
+class TestTrainingMetrics:
+    """Comprehensive test suite for TrainingMetrics class.
+
+    Tests cover initialization, batch updates, accuracy calculations,
+    metric resets, and edge cases for both regression and classification tasks.
+    """
+
+    def test_initialization_with_default_values(self, training_metrics):
+        """Test TrainingMetrics initializes with correct default values."""
+        assert training_metrics.train_losses == []
+        assert training_metrics.val_losses == []
+        assert training_metrics.train_correct == 0
+        assert training_metrics.train_total == 0
+        assert training_metrics.val_correct == 0
+        assert training_metrics.val_total == 0
+        assert training_metrics.training_steps == 0
+        assert training_metrics.validation_steps == 0
+
+    @pytest.mark.parametrize("loss_value", [0.1, 1.0, 5.5, 10.0])
+    def test_update_train_batch_regression_only(self, training_metrics, loss_value):
+        """Test updating training batch metrics for regression tasks with various loss values."""
+        loss = torch.tensor(loss_value)
+
+        training_metrics.update_train_batch(loss)
+
+        assert len(training_metrics.train_losses) == 1
+        assert torch.equal(training_metrics.train_losses[0], loss)
+        assert training_metrics.training_steps == 1
+        assert training_metrics.train_total == 0
+        assert training_metrics.train_correct == 0
+
+    @pytest.mark.parametrize(
+        "predictions,targets,expected_correct,expected_total",
+        [
+            ([0, 1, 1, 0], [0, 0, 1, 0], 3, 4),  # 3/4 correct
+            ([1, 0, 1], [1, 1, 1], 2, 3),  # 2/3 correct
+            ([0, 1, 2], [0, 1, 2], 3, 3),  # 3/3 correct
+            ([0, 1, 2], [2, 1, 0], 1, 3),  # 1/3 correct
+            ([], [], 0, 0),  # Empty tensors
+        ],
+    )
+    def test_update_train_batch_classification_accuracy(
+        self, training_metrics, predictions, targets, expected_correct, expected_total
+    ):
+        """Test classification accuracy calculation with various prediction scenarios."""
+        loss = torch.tensor(1.0)
+        pred_tensor = torch.tensor(predictions) if predictions else torch.tensor([])
+        target_tensor = torch.tensor(targets) if targets else torch.tensor([])
+
+        training_metrics.update_train_batch(loss, pred_tensor, target_tensor)
+
+        assert len(training_metrics.train_losses) == 1
+        assert training_metrics.training_steps == 1
+        assert training_metrics.train_total == expected_total
+        assert training_metrics.train_correct == expected_correct
+
+    def test_update_train_batch_classification_with_partial_predictions(self, training_metrics):
+        """Test classification update when only one of predicted/targets is provided."""
+        loss = torch.tensor(1.0)
+        predictions = torch.tensor([0, 1, 0])
+
+        # Only predictions provided, no targets
+        training_metrics.update_train_batch(loss, predictions, None)
+
+        assert training_metrics.train_total == 0
+        assert training_metrics.train_correct == 0
+        assert training_metrics.training_steps == 1
+
+    @pytest.mark.parametrize("loss_value", [0.2, 2.0, 7.5])
+    def test_update_val_batch_regression_only(self, training_metrics, loss_value):
+        """Test updating validation batch metrics for regression tasks."""
+        loss = torch.tensor(loss_value)
+
+        training_metrics.update_val_batch(loss)
+
+        assert len(training_metrics.val_losses) == 1
+        assert torch.equal(training_metrics.val_losses[0], loss)
+        assert training_metrics.validation_steps == 1
+        assert training_metrics.val_total == 0
+        assert training_metrics.val_correct == 0
+
+    @pytest.mark.parametrize(
+        "predictions,targets,expected_correct,expected_total",
+        [
+            ([1, 0, 1], [1, 1, 1], 2, 3),  # 2/3 correct
+            ([0, 1, 0], [0, 1, 0], 3, 3),  # 3/3 correct
+            ([1, 1, 1], [0, 0, 0], 0, 3),  # 0/3 correct
+        ],
+    )
+    def test_update_val_batch_classification_accuracy(
+        self, training_metrics, predictions, targets, expected_correct, expected_total
+    ):
+        """Test validation classification accuracy calculation."""
+        loss = torch.tensor(0.8)
+        pred_tensor = torch.tensor(predictions)
+        target_tensor = torch.tensor(targets)
+
+        training_metrics.update_val_batch(loss, pred_tensor, target_tensor)
+
+        assert len(training_metrics.val_losses) == 1
+        assert training_metrics.validation_steps == 1
+        assert training_metrics.val_total == expected_total
+        assert training_metrics.val_correct == expected_correct
+
+    @pytest.mark.parametrize(
+        "correct,total,expected_accuracy",
+        [
+            (0, 0, 0.0),  # No samples
+            (0, 10, 0.0),  # All incorrect
+            (5, 10, 50.0),  # Half correct
+            (8, 10, 80.0),  # 80% correct
+            (10, 10, 100.0),  # All correct
+            (1, 3, 33.33333333333333),  # Repeating decimal
+        ],
+    )
+    def test_get_train_accuracy_various_scenarios(self, training_metrics, correct, total, expected_accuracy):
+        """Test training accuracy calculation with various correct/total combinations."""
+        training_metrics.train_correct = correct
+        training_metrics.train_total = total
+
+        accuracy = training_metrics.get_train_accuracy()
+        assert accuracy == pytest.approx(expected_accuracy)
+
+    @pytest.mark.parametrize(
+        "correct,total,expected_accuracy",
+        [
+            (0, 0, 0.0),  # No samples
+            (3, 10, 30.0),  # 30% correct
+            (7, 7, 100.0),  # All correct
+            (2, 8, 25.0),  # 25% correct
+        ],
+    )
+    def test_get_val_accuracy_various_scenarios(self, training_metrics, correct, total, expected_accuracy):
+        """Test validation accuracy calculation with various correct/total combinations."""
+        training_metrics.val_correct = correct
+        training_metrics.val_total = total
+
+        accuracy = training_metrics.get_val_accuracy()
+        assert accuracy == pytest.approx(expected_accuracy)
+
+    def test_reset_epoch_metrics_comprehensive_reset(self, training_metrics, sample_tensors):
+        """Test that reset_epoch_metrics properly resets all per-epoch metrics while preserving cumulative ones."""
+        # Populate all metrics with data
+        training_metrics.train_losses = [sample_tensors["loss_small"], sample_tensors["loss_medium"]]
+        training_metrics.val_losses = [sample_tensors["loss_large"]]
+        training_metrics.train_correct = 5
+        training_metrics.train_total = 10
+        training_metrics.val_correct = 3
+        training_metrics.val_total = 8
+        training_metrics.training_steps = 5
+        training_metrics.validation_steps = 2
+
+        # Reset epoch metrics
+        training_metrics.reset_epoch_metrics()
+
+        # Verify all per-epoch metrics are reset to initial state
+        assert training_metrics.train_losses == []
+        assert training_metrics.val_losses == []
+        assert training_metrics.train_correct == 0
+        assert training_metrics.train_total == 0
+        assert training_metrics.val_correct == 0
+        assert training_metrics.val_total == 0
+
+        # Verify cumulative metrics are preserved (critical bug fix verification)
+        assert training_metrics.training_steps == 5
+        assert training_metrics.validation_steps == 2
+
+    def test_multiple_batches_accuracy_accumulation_across_batches(self, training_metrics):
+        """Test accuracy calculation across multiple training batches."""
+        # First batch: 4/5 correct
+        training_metrics.update_train_batch(
+            torch.tensor(1.0), torch.tensor([0, 1, 1, 0, 1]), torch.tensor([0, 0, 1, 0, 1])
+        )
+
+        # Second batch: 2/4 correct
+        training_metrics.update_train_batch(
+            torch.tensor(1.5), torch.tensor([1, 0, 1, 0]), torch.tensor([1, 1, 0, 0])
+        )
+
+        # Third batch: 3/3 correct
+        training_metrics.update_train_batch(
+            torch.tensor(0.8), torch.tensor([2, 1, 0]), torch.tensor([2, 1, 0])
+        )
+
+        assert training_metrics.train_total == 12  # 5 + 4 + 3
+        assert training_metrics.train_correct == 9  # 4 + 2 + 3
+        assert training_metrics.get_train_accuracy() == 75.0  # 9/12 * 100
+        assert len(training_metrics.train_losses) == 3
+        assert training_metrics.training_steps == 3
+
+    def test_multiple_validation_batches_accuracy_accumulation(self, training_metrics):
+        """Test accuracy calculation across multiple validation batches."""
+        # First validation batch: 2/3 correct
+        training_metrics.update_val_batch(torch.tensor(0.5), torch.tensor([1, 0, 1]), torch.tensor([1, 1, 1]))
+
+        # Second validation batch: 1/2 correct
+        training_metrics.update_val_batch(torch.tensor(0.7), torch.tensor([0, 1]), torch.tensor([0, 0]))
+
+        assert training_metrics.val_total == 5  # 3 + 2
+        assert training_metrics.val_correct == 3  # 2 + 1
+        assert training_metrics.get_val_accuracy() == 60.0  # 3/5 * 100
+        assert len(training_metrics.val_losses) == 2
+        assert training_metrics.validation_steps == 2
+
+    def test_reset_between_epochs_with_different_performance(self, training_metrics):
+        """Test that metrics reset correctly between epochs with different performance characteristics."""
+        # Simulate first epoch with poor performance
+        training_metrics.update_train_batch(
+            torch.tensor(2.0), torch.tensor([0, 1, 1, 0]), torch.tensor([1, 0, 1, 0])
+        )
+        first_epoch_accuracy = training_metrics.get_train_accuracy()
+        first_epoch_losses = len(training_metrics.train_losses)
+
+        # Reset for next epoch
+        training_metrics.reset_epoch_metrics()
+
+        # Simulate second epoch with better performance
+        training_metrics.update_train_batch(
+            torch.tensor(0.5), torch.tensor([1, 1, 1, 1, 1]), torch.tensor([1, 1, 1, 1, 1])
+        )
+        second_epoch_accuracy = training_metrics.get_train_accuracy()
+        second_epoch_losses = len(training_metrics.train_losses)
+
+        # Verify epoch isolation
+        assert first_epoch_accuracy == 50.0  # 2/4 correct
+        assert second_epoch_accuracy == 100.0  # 5/5 correct
+        assert first_epoch_losses == 1
+        assert second_epoch_losses == 1
+        assert training_metrics.train_total == 5  # Only second epoch counts
+        assert training_metrics.train_correct == 5  # Only second epoch counts
+
+    def test_mixed_regression_classification_batches_in_single_epoch(self, training_metrics):
+        """Test handling of mixed regression and classification batches within the same epoch."""
+        # Regression batch (no predictions/targets)
+        training_metrics.update_train_batch(torch.tensor(2.0))
+
+        # Classification batch with partial accuracy
+        training_metrics.update_train_batch(
+            torch.tensor(1.0), torch.tensor([0, 1, 1]), torch.tensor([0, 0, 1])
+        )
+
+        # Another regression batch
+        training_metrics.update_train_batch(torch.tensor(1.5))
+
+        # Classification batch with perfect accuracy
+        training_metrics.update_train_batch(torch.tensor(0.8), torch.tensor([1, 0]), torch.tensor([1, 0]))
+
+        # Verify mixed batch handling
+        assert len(training_metrics.train_losses) == 4
+        assert training_metrics.train_total == 5  # 3 + 2 from classification batches
+        assert training_metrics.train_correct == 4  # 2 + 2 from classification batches
+        assert training_metrics.get_train_accuracy() == 80.0  # 4/5 * 100
+        assert training_metrics.training_steps == 4
+
+    def test_edge_case_empty_tensors_in_classification(self, training_metrics):
+        """Test behavior with empty tensors in classification updates."""
+        loss = torch.tensor(1.0)
+        empty_predictions = torch.tensor([])
+        empty_targets = torch.tensor([])
+
+        training_metrics.update_train_batch(loss, empty_predictions, empty_targets)
+
+        assert training_metrics.train_total == 0
+        assert training_metrics.train_correct == 0
+        assert training_metrics.get_train_accuracy() == 0.0
+        assert training_metrics.training_steps == 1
+
+    def test_edge_case_single_sample_classification(self, training_metrics):
+        """Test classification with single sample batches."""
+        loss = torch.tensor(0.5)
+        single_prediction = torch.tensor([1])
+        single_target = torch.tensor([1])
+
+        training_metrics.update_train_batch(loss, single_prediction, single_target)
+
+        assert training_metrics.train_total == 1
+        assert training_metrics.train_correct == 1
+        assert training_metrics.get_train_accuracy() == 100.0
+
+    def test_multiple_reset_calls_idempotency(self, training_metrics, sample_tensors):
+        """Test that multiple calls to reset_epoch_metrics are idempotent."""
+        # Add some data
+        training_metrics.train_losses = [sample_tensors["loss_small"]]
+        training_metrics.train_correct = 5
+        training_metrics.train_total = 10
+        training_metrics.training_steps = 3
+
+        # Reset multiple times
+        training_metrics.reset_epoch_metrics()
+        training_metrics.reset_epoch_metrics()
+        training_metrics.reset_epoch_metrics()
+
+        # Verify state remains consistent
+        assert training_metrics.train_losses == []
+        assert training_metrics.train_correct == 0
+        assert training_metrics.train_total == 0
+        assert training_metrics.training_steps == 3  # Preserved
+
+    def test_accuracy_calculation_precision(self, training_metrics):
+        """Test accuracy calculation precision with edge cases."""
+        # Test case that produces repeating decimal
+        training_metrics.train_correct = 1
+        training_metrics.train_total = 3
+
+        accuracy = training_metrics.get_train_accuracy()
+        expected = 100 * 1 / 3  # 33.33333333333333...
+
+        assert accuracy == expected
+        assert isinstance(accuracy, float)
