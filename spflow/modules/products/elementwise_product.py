@@ -9,7 +9,7 @@ from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.products.base_product import BaseProduct
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache, cached
 
 
 class ElementwiseProduct(BaseProduct):
@@ -170,6 +170,8 @@ class ElementwiseProduct(BaseProduct):
             num_splits = len(self.inputs)
             return mask.unsqueeze(-1).repeat(1, 1, num_splits)
 
+    @cached("log_likelihood")
+
     def log_likelihood(
         self,
         data: Tensor,
@@ -185,7 +187,6 @@ class ElementwiseProduct(BaseProduct):
             Tensor: Computed log likelihood values.
         """
         # initialize cache
-        cache = init_cache(cache)
 
         lls = self._get_input_log_likelihoods(data, cache)
 

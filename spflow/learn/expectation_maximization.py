@@ -4,6 +4,7 @@ import torch
 from torch import Tensor
 
 from spflow.modules.base import Module
+from spflow.utils.cache import Cache
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +34,10 @@ def expectation_maximization(
 
     for step in range(max_steps):
         # Shared cache for this EM iteration
-        cache = {"log_likelihood": {}}
+        cache = Cache()
 
         # compute log likelihoods and sum them together
         module_lls = module.log_likelihood(data, cache=cache)
-        cache["log_likelihood"][module] = module_lls
         acc_ll = module_lls.sum()
         avg_ll = acc_ll.detach().clone() / data.shape[0]
 

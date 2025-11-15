@@ -6,7 +6,7 @@ from torch import Tensor
 from spflow.exceptions import ShapeError, StructureError
 from spflow.modules.base import Module
 from spflow.modules.wrapper.base import Wrapper
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -139,7 +139,6 @@ class ImageWrapper(Wrapper):
             cache:
                 Optional cache dictionary for memoization.
         """
-        cache = init_cache(cache)
 
         if data.shape != (data.shape[0], self.num_channel, self.height, self.width):
             raise ShapeError(
@@ -166,7 +165,6 @@ class ImageWrapper(Wrapper):
             cache:
                 Optional cache dictionary for memoization.
         """
-        cache = init_cache(cache)
 
         if data.shape != (data.shape[0], self.num_channel, self.height, self.width):
             raise ShapeError(
@@ -175,6 +173,8 @@ class ImageWrapper(Wrapper):
 
         data = self.flatten(data)
         self.module.maximum_likelihood_estimation(data, weights=weights, cache=cache)
+
+    @cached("log_likelihood")
 
     def log_likelihood(
         self,
@@ -199,7 +199,6 @@ class ImageWrapper(Wrapper):
         Raises:
             ValueError: Data outside of support.
         """
-        cache = init_cache(cache)
 
         if data.shape != (data.shape[0], self.num_channel, self.height, self.width):
             raise ShapeError(
@@ -273,7 +272,6 @@ class ImageWrapper(Wrapper):
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
-        cache = init_cache(cache)
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
         # Flatten data to 2D for processing
@@ -304,7 +302,6 @@ class ImageWrapper(Wrapper):
             New ImageWrapper with marginalized module and adjusted dimensions,
                 or None if module is fully marginalized.
         """
-        cache = init_cache(cache)
 
         marg_rvs = []
         scope = torch.tensor(self.scope.query)

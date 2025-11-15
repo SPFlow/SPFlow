@@ -10,6 +10,7 @@ from spflow.meta import Scope
 from spflow.modules.leaves import Normal
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.sums.elementwise_sum import ElementwiseSum
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf
 
@@ -285,7 +286,7 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
 
-        cache = {}
+        cache = Cache()
         samples = module.sample_with_evidence(
             evidence=data,
             is_mpe=False,

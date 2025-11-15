@@ -7,7 +7,7 @@ from torch import Tensor, nn
 
 from spflow.meta.data import Scope
 from spflow.modules.base import Module
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
@@ -76,6 +76,8 @@ class Cat(Module):
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, dim={self.dim}"
 
+    @cached("log_likelihood")
+
     def log_likelihood(
         self,
         data: Tensor,
@@ -90,19 +92,15 @@ class Cat(Module):
         Returns:
             Tensor: Concatenated log-likelihood tensor.
         """
-        cache = init_cache(cache)
-        log_cache = cache.setdefault("log_likelihood", {})
 
         # get log likelihoods for all inputs
         lls = []
         for input_module in self.inputs:
             input_ll = input_module.log_likelihood(data, cache=cache)
-            log_cache[input_module] = input_ll
             lls.append(input_ll)
 
         # Concatenate log likelihoods
         output = torch.cat(lls, dim=self.dim)
-        log_cache[self] = output
         return output
 
     def sample(
@@ -128,7 +126,6 @@ class Cat(Module):
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
-        cache = init_cache(cache)
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
         if self.dim == 1:
@@ -192,7 +189,6 @@ class Cat(Module):
         Returns:
             Optional[Module]: Marginalized module or None if fully marginalized.
         """
-        cache = init_cache(cache)
 
         # compute module scope (same for all outputs)
         module_scope = self.scope

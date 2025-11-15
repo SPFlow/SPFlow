@@ -7,7 +7,7 @@ from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data import Scope
 from spflow.modules.base import Module
 from spflow.modules.ops.cat import Cat
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
@@ -248,7 +248,7 @@ class Sum(Module):
             Tensor: Log-likelihood of shape (batch_size, num_features, out_channels)
                 or (batch_size, num_features, out_channels, num_repetitions).
         """
-        cache = init_cache(cache)
+        if cache is None: cache = Cache()
 
         # Get input log-likelihoods
         ll = self.inputs.log_likelihood(
@@ -298,7 +298,7 @@ class Sum(Module):
         Returns:
             Tensor: Sampled values.
         """
-        cache = init_cache(cache)
+        if cache is None: cache = Cache()
 
         # Handle num_samples case (create empty data tensor)
         if data is None:
@@ -336,7 +336,7 @@ class Sum(Module):
         logits = logits.gather(dim=3, index=idxs).squeeze(3)
 
         # Check if evidence is given (cached log-likelihoods)
-        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
+        if cache is not None and "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
             # Get the log likelihoods from the cache
             input_lls = cache["log_likelihood"][self.inputs]
 
@@ -390,18 +390,18 @@ class Sum(Module):
         Raises:
             ValueError: If required log-likelihoods are not found in cache.
         """
-        cache = init_cache(cache)
+        if cache is None: cache = Cache()
 
         with torch.no_grad():
             # ----- expectation step -----
 
             # Get input LLs from cache
-            input_lls = cache.get("log_likelihood", {}).get(self.inputs)
+            input_lls = cache["log_likelihood"].get(self.inputs)
             if input_lls is None:
                 raise ValueError("Input log-likelihoods not found in cache. Call log_likelihood first.")
 
             # Get module lls from cache
-            module_lls = cache.get("log_likelihood", {}).get(self)
+            module_lls = cache["log_likelihood"].get(self)
             if module_lls is None:
                 raise ValueError("Module log-likelihoods not found in cache. Call log_likelihood first.")
 
@@ -453,7 +453,7 @@ class Sum(Module):
         Returns:
             Marginalized Sum module or None.
         """
-        cache = init_cache(cache)
+        if cache is None: cache = Cache()
 
         # compute module scope (same for all outputs)
         module_scope = self.scope

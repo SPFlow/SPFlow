@@ -13,7 +13,7 @@ from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data import Scope
 from spflow.modules.base import Module
 from spflow.modules.sums.sum import Sum
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -133,7 +133,6 @@ class MixingLayer(Sum):
         Returns:
             Tensor: Generated samples.
         """
-        cache = init_cache(cache)
 
         # Handle num_samples case (create empty data tensor)
         if data is None:
@@ -151,8 +150,7 @@ class MixingLayer(Sum):
         )  # shape [b , n_features , in_c, out_c]
 
         # Check if we have cached input log-likelihoods to compute posterior
-        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
-            input_lls = cache["log_likelihood"][self.inputs]
+        if cache is not None and "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
 
             # Compute log posterior by reweighing logits with input lls
             log_prior = logits
@@ -183,6 +181,8 @@ class MixingLayer(Sum):
 
         return data
 
+    @cached("log_likelihood")
+
     def log_likelihood(
         self,
         data: Tensor,
@@ -197,7 +197,6 @@ class MixingLayer(Sum):
         Returns:
             Tensor: Computed log likelihood values.
         """
-        cache = init_cache(cache)
 
         ll = self.inputs.log_likelihood(
             data,

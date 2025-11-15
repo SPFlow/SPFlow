@@ -5,7 +5,7 @@ from torch import Tensor
 from spflow.meta.data import Scope
 from spflow.modules.base import Module
 from spflow.modules.ops.split import Split
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache, cached
 
 
 class SplitHalves(Split):
@@ -37,6 +37,8 @@ class SplitHalves(Split):
             feature_to_scope.append(sub_scopes)
         return feature_to_scope
 
+    @cached("log_likelihood")
+
     def log_likelihood(
         self,
         data: Tensor,
@@ -51,12 +53,9 @@ class SplitHalves(Split):
         Returns:
             List of log likelihood tensors, one for each split output.
         """
-        cache = init_cache(cache)
-        log_cache = cache.setdefault("log_likelihood", {})
 
         # get log likelihoods for all inputs
         lls = self.inputs[0].log_likelihood(data, cache=cache)
-        log_cache[self.inputs[0]] = lls
 
         lls_split = lls.split(self.inputs[0].out_features // self.num_splits, dim=self.dim)
 

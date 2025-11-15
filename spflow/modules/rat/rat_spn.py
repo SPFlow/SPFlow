@@ -23,7 +23,7 @@ from spflow.modules.products.outer_product import OuterProduct
 from spflow.modules.rat.factorize import Factorize
 from spflow.modules.rat.rat_mixing_layer import MixingLayer
 from spflow.modules.sums.sum import Sum
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -195,6 +195,8 @@ class RatSPN(Module):
     def out_channels(self) -> int:
         return self.root_node.out_channels
 
+    @cached("log_likelihood")
+
     def log_likelihood(
         self,
         data: torch.Tensor,
@@ -209,7 +211,6 @@ class RatSPN(Module):
         Returns:
             Log-likelihood values.
         """
-        cache = init_cache(cache)
         ll = self.root_node.log_likelihood(
             data,
             cache=cache,
@@ -236,7 +237,6 @@ class RatSPN(Module):
         if self.n_root_nodes <= 1:
             raise ValueError("Posterior can only be computed for models with multiple classes.")
 
-        cache = init_cache(cache)
         ll_y = self.root_node.log_weights  # shape: (1, n_root_nodes, 1)
         ll_y = ll_y.squeeze(-1)  # shape: (1, n_root_nodes)
         ll = self.root_node.inputs.log_likelihood(
@@ -276,7 +276,6 @@ class RatSPN(Module):
         Returns:
             Sampled values.
         """
-        cache = init_cache(cache)
 
         # Handle num_samples case (create empty data tensor)
         if data is None:
@@ -325,7 +324,6 @@ class RatSPN(Module):
             data: Input data tensor.
             cache: Optional cache dictionary.
         """
-        cache = init_cache(cache)
         self.root_node.expectation_maximization(data, cache=cache)
 
     def maximum_likelihood_estimation(
@@ -341,7 +339,6 @@ class RatSPN(Module):
             weights: Optional sample weights.
             cache: Optional cache dictionary.
         """
-        cache = init_cache(cache)
         self.root_node.maximum_likelihood_estimation(
             data,
             weights=weights,
@@ -364,5 +361,4 @@ class RatSPN(Module):
         Returns:
             Marginalized module or None.
         """
-        cache = init_cache(cache)
         return self.root_node.marginalize(marg_rvs, prune=prune, cache=cache)

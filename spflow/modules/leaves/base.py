@@ -9,7 +9,7 @@ from torch import Tensor
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data.scope import Scope
 from spflow.modules.base import Module
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import proj_real_to_bounded, proj_bounded_to_real
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
@@ -466,7 +466,6 @@ class LeafModule(Module, ABC):
             cache: Optional cache dictionary.
         """
         # initialize cache
-        cache = init_cache(cache)
 
         with torch.no_grad():
             # ----- expectation step -----
@@ -492,6 +491,7 @@ class LeafModule(Module, ABC):
         # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation',
         # we do not need to zero/None parameter gradients
 
+    @cached("log_likelihood")
     def log_likelihood(
         self,
         data: Tensor,
@@ -506,9 +506,6 @@ class LeafModule(Module, ABC):
         Returns:
             Log-likelihood tensor.
         """
-        # initialize cache
-        cache = init_cache(cache)
-
         # get information relevant for the scope
         data = data[:, self.scope.query]
         if self.event_shape[0] != len(self.scope.query):
@@ -571,11 +568,6 @@ class LeafModule(Module, ABC):
                 marg_mask_for_data = marg_mask_for_data.unsqueeze(-1)
             data[marg_mask_for_data] = torch.nan
 
-        # Cache the result for EM step
-        if "log_likelihood" not in cache:
-            cache["log_likelihood"] = {}
-        cache["log_likelihood"][self] = log_prob
-
         return log_prob
 
     def _prepare_mle_data(
@@ -598,8 +590,6 @@ class LeafModule(Module, ABC):
         Returns:
             Scope-filtered data and normalized weights.
         """
-        # Initialize cache (will be shared across MLE steps and EM iterations)
-        cache = init_cache(cache)
 
         # Step 1: Select scope-relevant features
         scoped_data = data[:, self.scope.query] if preprocess_data else data
@@ -673,7 +663,6 @@ class LeafModule(Module, ABC):
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
-        cache = init_cache(cache)
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
         out_of_scope = list(filter(lambda x: x not in self.scope.query, range(data.shape[1])))
@@ -782,7 +771,6 @@ class LeafModule(Module, ABC):
         Returns:
             Sampled data tensor conditioned on evidence.
         """
-        cache = init_cache(cache)
 
         if evidence is None:
             raise ValueError("Evidence tensor must be provided for leaves sampling.")
@@ -816,7 +804,6 @@ class LeafModule(Module, ABC):
             Marginalized leaf or None if fully marginalized.
         """
         # initialize cache
-        cache = init_cache(cache)
 
         # Marginalized scope
         scope_marg = Scope([q for q in self.scope.query if q not in marg_rvs])
