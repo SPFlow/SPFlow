@@ -174,8 +174,7 @@ class ImageWrapper(Wrapper):
         data = self.flatten(data)
         self.module.maximum_likelihood_estimation(data, weights=weights, cache=cache)
 
-    @cached("log_likelihood")
-
+    @cached
     def log_likelihood(
         self,
         data: Tensor,

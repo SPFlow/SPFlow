@@ -88,8 +88,7 @@ class MixingLayer(Sum):
         if weights is None:
             weights = (
                 # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                torch.rand(self.weights_shape)
-                + 1e-08
+                    torch.rand(self.weights_shape) + 1e-08
             )  # avoid zeros
 
             # Normalize
@@ -150,8 +149,11 @@ class MixingLayer(Sum):
         )  # shape [b , n_features , in_c, out_c]
 
         # Check if we have cached input log-likelihoods to compute posterior
-        if cache is not None and "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
-
+        if (
+                cache is not None
+                and "log_likelihood" in cache
+                and cache["log_likelihood"].get(self.inputs) is not None
+        ):
             # Compute log posterior by reweighing logits with input lls
             log_prior = logits
             log_posterior = log_prior + input_lls.unsqueeze(3)
@@ -181,8 +183,7 @@ class MixingLayer(Sum):
 
         return data
 
-    @cached("log_likelihood")
-
+    @cached
     def log_likelihood(
         self,
         data: Tensor,

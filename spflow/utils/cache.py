@@ -85,50 +85,45 @@ class Cache:
         return method_name in self._cache and len(self._cache[method_name]) > 0
 
 
-def cached(method_name: str) -> Callable[[Callable], Callable]:
+def cached(func: Callable[..., T]) -> Callable[..., T]:
     """Decorator for automatically caching method results.
 
-    Caches the result of a method in a thread-safe manner using the module
-    instance as the cache key. The decorated method must have a `cache`
-    parameter (can be None).
+    Automatically uses the function's __name__ attribute as the cache key.
+    The decorated method must have a `cache` parameter (can be None).
 
     Example:
         ```python
-        @cached("log_likelihood")
+        @cached
         def log_likelihood(self, data, cache=None):
             # Computation here
             return result
         ```
 
     Args:
-        method_name: Name to use as cache type key (e.g., "log_likelihood").
+        func: The function to decorate.
 
     Returns:
-        Decorator function.
+        Decorated function with caching functionality.
     """
+    method_name = func.__name__
 
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        @functools.wraps(func)
-        def wrapper(
-                self: Module, *args, cache: Cache | None = None, **kwargs
-        ) -> T:
-            # Initialize cache if not provided
-            if cache is None:
-                cache = Cache()
+    @functools.wraps(func)
+    def wrapper(self: Module, *args, cache: Cache | None = None, **kwargs) -> T:
+        # Initialize cache if not provided
+        if cache is None:
+            cache = Cache()
 
-            # Check cache first
-            cached_value = cache.get(method_name, self)
-            if cached_value is not None:
-                return cached_value
+        # Check cache first
+        cached_value = cache.get(method_name, self)
+        if cached_value is not None:
+            return cached_value
 
-            # Compute result
-            result = func(self, *args, cache=cache, **kwargs)
+        # Compute result
+        result = func(self, *args, cache=cache, **kwargs)
 
-            # Store in cache
-            cache.set(method_name, self, result)
+        # Store in cache
+        cache.set(method_name, self, result)
 
-            return result
+        return result
 
-        return wrapper
-
-    return decorator
+    return wrapper

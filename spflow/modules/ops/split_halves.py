@@ -37,8 +37,7 @@ class SplitHalves(Split):
             feature_to_scope.append(sub_scopes)
         return feature_to_scope
 
-    @cached("log_likelihood")
-
+    @cached
     def log_likelihood(
         self,
         data: Tensor,

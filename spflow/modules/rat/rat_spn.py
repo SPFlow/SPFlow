@@ -195,8 +195,7 @@ class RatSPN(Module):
     def out_channels(self) -> int:
         return self.root_node.out_channels
 
-    @cached("log_likelihood")
-
+    @cached
     def log_likelihood(
         self,
         data: torch.Tensor,

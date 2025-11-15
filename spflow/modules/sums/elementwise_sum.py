@@ -131,8 +131,7 @@ class ElementwiseSum(Module):
         if weights is None:
             weights = (
                 # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                torch.rand(self.weights_shape)
-                + 1e-08
+                    torch.rand(self.weights_shape) + 1e-08
             )  # avoid zeros
 
             # Normalize
@@ -218,7 +217,8 @@ class ElementwiseSum(Module):
             Optional[ElementwiseSum]: Marginalized module or None if fully marginalized.
         """
         # initialize cache
-        if cache is None: cache = Cache()
+        if cache is None:
+            cache = Cache()
 
         # compute module scope (same for all outputs)
         module_scope = self.scope
@@ -280,7 +280,8 @@ class ElementwiseSum(Module):
         data = self._prepare_sample_data(num_samples, data)
 
         # initialize contexts
-        if cache is None: cache = Cache()
+        if cache is None:
+            cache = Cache()
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
         # Index into the correct weight channels given by parent module
@@ -317,8 +318,11 @@ class ElementwiseSum(Module):
             dim=2, index=cids_in_channels_per_input[..., None, None].expand(-1, -1, -1, logits.shape[-1])
         ).squeeze(2)
 
-        if cache is not None and "log_likelihood" in cache and all(
-                cache["log_likelihood"][inp] is not None for inp in self.inputs):
+        if (
+                cache is not None
+                and "log_likelihood" in cache
+                and all(cache["log_likelihood"][inp] is not None for inp in self.inputs)
+        ):
             input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
             input_lls = torch.stack(input_lls, dim=self.sum_dim)  # torch.stack(input_lls, dim=-1)
             if sampling_ctx.repetition_idx is not None:
@@ -368,7 +372,7 @@ class ElementwiseSum(Module):
 
         return data
 
-    @cached("log_likelihood")
+    @cached
     def log_likelihood(
         self,
         data: Tensor,
@@ -384,7 +388,8 @@ class ElementwiseSum(Module):
             Tensor: Computed log likelihood values.
         """
         # initialize cache
-        if cache is None: cache = Cache()
+        if cache is None:
+            cache = Cache()
 
         # Get input log-likelihoods
         lls = []
@@ -431,7 +436,8 @@ class ElementwiseSum(Module):
             cache: Cache for memoization.
         """
         # initialize cache
-        if cache is None: cache = Cache()
+        if cache is None:
+            cache = Cache()
 
         with torch.no_grad():
             # ----- expectation step -----
