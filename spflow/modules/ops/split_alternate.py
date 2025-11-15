@@ -60,8 +60,7 @@ class SplitAlternate(Split):
         self.split_masks = [fn(mask) for mask in self.split_masks]
         return self
 
-    @cached("log_likelihood")
-
+    @cached
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> list[Tensor]:
         """Compute log likelihoods for each split.
 

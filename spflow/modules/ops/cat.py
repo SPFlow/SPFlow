@@ -76,8 +76,7 @@ class Cat(Module):
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, dim={self.dim}"
 
-    @cached("log_likelihood")
-
+    @cached
     def log_likelihood(
         self,
         data: Tensor,

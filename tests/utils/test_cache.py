@@ -17,13 +17,13 @@ class MockModule:
     def __init__(self, name: str = "mock"):
         self.name = name
 
-    @cached("log_likelihood")
+    @cached
     def log_likelihood(self, data, cache: Optional[Cache] = None):
         """Mock log_likelihood method with caching."""
         # Simulate some computation
         return torch.tensor([1.0, 2.0, 3.0])
 
-    @cached("custom_method")
+    @cached
     def custom_method(self, value, cache: Optional[Cache] = None):
         """Mock method with custom cache type."""
         return value * 2

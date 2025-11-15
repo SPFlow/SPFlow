@@ -114,8 +114,7 @@ class Factorize(BaseProduct):
 
         return scopes  # .to(torch.int32)
 
-    @cached("log_likelihood")
-
+    @cached
     def log_likelihood(
         self,
         data: Tensor,

@@ -53,7 +53,7 @@ class Product(Module):
     def feature_to_scope(self) -> list[Scope]:
         return [Scope.join_all(self.inputs.feature_to_scope)]
 
-    @cached("log_likelihood")
+    @cached
     def log_likelihood(
         self,
         data: Tensor,

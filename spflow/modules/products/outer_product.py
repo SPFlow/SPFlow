@@ -192,8 +192,7 @@ class OuterProduct(BaseProduct):
         else:
             return mask.unsqueeze(-1).repeat(1, 1, num_inputs)
 
-    @cached("log_likelihood")
-
+    @cached
     def log_likelihood(
         self,
         data: Tensor,

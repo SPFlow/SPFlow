@@ -491,7 +491,7 @@ class LeafModule(Module, ABC):
         # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation',
         # we do not need to zero/None parameter gradients
 
-    @cached("log_likelihood")
+    @cached
     def log_likelihood(
         self,
         data: Tensor,
