@@ -20,8 +20,8 @@ class Scope:
 
     def __init__(
         self,
-            query: int | list[int],
-            evidence: int | list[int] | None = None,
+        query: int | list[int],
+        evidence: int | list[int] | None = None,
     ) -> None:
         """Initializes Scope object.
 
