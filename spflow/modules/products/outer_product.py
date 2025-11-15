@@ -11,7 +11,7 @@ from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.products.base_product import BaseProduct
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache, cached
 
 
 class OuterProduct(BaseProduct):
@@ -192,6 +192,8 @@ class OuterProduct(BaseProduct):
         else:
             return mask.unsqueeze(-1).repeat(1, 1, num_inputs)
 
+    @cached("log_likelihood")
+
     def log_likelihood(
         self,
         data: Tensor,
@@ -210,7 +212,6 @@ class OuterProduct(BaseProduct):
             ValueError: If output tensor has invalid number of dimensions.
         """
         # initialize cache
-        cache = init_cache(cache)
 
         lls = self._get_input_log_likelihoods(data, cache)
 

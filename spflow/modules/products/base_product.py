@@ -9,7 +9,7 @@ from spflow.exceptions import ScopeError
 from spflow.meta.data import Scope
 from spflow.modules.base import Module
 from spflow.modules.ops.split_halves import Split
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -124,7 +124,8 @@ class BaseProduct(Module, ABC):
         data = self._prepare_sample_data(num_samples, data)
 
         # initialize contexts
-        cache = init_cache(cache)
+        if cache is None:
+            cache = Cache()
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
         # Map to (i, j) to index left/right inputs
@@ -211,10 +212,6 @@ class BaseProduct(Module, ABC):
         Returns:
             list[Tensor]: List of log-likelihood tensors for each input.
         """
-        log_cache = None
-        if cache is not None:
-            log_cache = cache.setdefault("log_likelihood", {})
-
         if self.input_is_split:
             lls = self.inputs[0].log_likelihood(
                 data,
@@ -228,8 +225,6 @@ class BaseProduct(Module, ABC):
                     data,
                     cache=cache,
                 )
-                if log_cache is not None:
-                    log_cache[inp] = ll
                 lls.append(ll)
 
         return lls

@@ -8,7 +8,7 @@ from torch import Tensor, nn
 from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.meta.data import Scope
 from spflow.modules.base import Module
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
@@ -218,7 +218,7 @@ class ElementwiseSum(Module):
             Optional[ElementwiseSum]: Marginalized module or None if fully marginalized.
         """
         # initialize cache
-        cache = init_cache(cache)
+        if cache is None: cache = Cache()
 
         # compute module scope (same for all outputs)
         module_scope = self.scope
@@ -280,7 +280,7 @@ class ElementwiseSum(Module):
         data = self._prepare_sample_data(num_samples, data)
 
         # initialize contexts
-        cache = init_cache(cache)
+        if cache is None: cache = Cache()
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
         # Index into the correct weight channels given by parent module
@@ -317,7 +317,8 @@ class ElementwiseSum(Module):
             dim=2, index=cids_in_channels_per_input[..., None, None].expand(-1, -1, -1, logits.shape[-1])
         ).squeeze(2)
 
-        if "log_likelihood" in cache and all(cache["log_likelihood"][inp] is not None for inp in self.inputs):
+        if cache is not None and "log_likelihood" in cache and all(
+                cache["log_likelihood"][inp] is not None for inp in self.inputs):
             input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
             input_lls = torch.stack(input_lls, dim=self.sum_dim)  # torch.stack(input_lls, dim=-1)
             if sampling_ctx.repetition_idx is not None:
@@ -367,6 +368,7 @@ class ElementwiseSum(Module):
 
         return data
 
+    @cached("log_likelihood")
     def log_likelihood(
         self,
         data: Tensor,
@@ -382,8 +384,7 @@ class ElementwiseSum(Module):
             Tensor: Computed log likelihood values.
         """
         # initialize cache
-        cache = init_cache(cache)
-        log_cache = cache.setdefault("log_likelihood", {})
+        if cache is None: cache = Cache()
 
         # Get input log-likelihoods
         lls = []
@@ -397,7 +398,6 @@ class ElementwiseSum(Module):
             if inp.out_channels == 1 and self._in_channels_per_input > 1:
                 ll = ll.expand(data.shape[0], self.out_features, self._in_channels_per_input)
 
-            log_cache[inp] = ll
             lls.append(ll)
 
         # Stack input log-likelihoods
@@ -417,7 +417,6 @@ class ElementwiseSum(Module):
         else:
             output = output.view(data.shape[0], self.out_features, self.out_channels)
 
-        log_cache[self] = output
         return output
 
     def expectation_maximization(
@@ -432,7 +431,7 @@ class ElementwiseSum(Module):
             cache: Cache for memoization.
         """
         # initialize cache
-        cache = init_cache(cache)
+        if cache is None: cache = Cache()
 
         with torch.no_grad():
             # ----- expectation step -----

@@ -13,7 +13,7 @@ import torch
 from torch import Tensor, nn
 
 from spflow.meta.data.scope import Scope
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 
 
@@ -211,7 +211,8 @@ class Module(nn.Module, ABC):
         Returns:
             Tensor containing the sampled values. Each row corresponds to a sample.
         """
-        cache = init_cache(cache)
+        if cache is None:
+            cache = Cache()
 
         self.log_likelihood(evidence, cache=cache)
 
@@ -233,7 +234,8 @@ class Module(nn.Module, ABC):
             data: Input data tensor.
             cache: Optional cache dictionary.
         """
-        cache = init_cache(cache)
+        if cache is None:
+            cache = Cache()
 
         for input_module in self.inputs:
             input_module.expectation_maximization(data, cache=cache)
@@ -251,7 +253,8 @@ class Module(nn.Module, ABC):
             weights: Optional sample weights.
             cache: Optional cache dictionary.
         """
-        cache = init_cache(cache)
+        if cache is None:
+            cache = Cache()
 
         for input_module in self.inputs:
             input_module.maximum_likelihood_estimation(

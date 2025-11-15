@@ -17,7 +17,7 @@ from spflow.meta.data import Scope
 from spflow.modules.base import Module
 from spflow.modules.products.base_product import BaseProduct
 from spflow.modules.products.product import Product
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -114,6 +114,8 @@ class Factorize(BaseProduct):
 
         return scopes  # .to(torch.int32)
 
+    @cached("log_likelihood")
+
     def log_likelihood(
         self,
         data: Tensor,
@@ -129,7 +131,6 @@ class Factorize(BaseProduct):
             Tensor: Computed log likelihood values.
         """
         # initialize cache
-        cache = init_cache(cache)
 
         lls = self._get_input_log_likelihoods(
             data,
@@ -163,7 +164,6 @@ class Factorize(BaseProduct):
         data = self._prepare_sample_data(num_samples, data)
 
         # initialize contexts
-        cache = init_cache(cache)
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
         # gather indices for specific repetitions
@@ -209,7 +209,6 @@ class Factorize(BaseProduct):
             Optional[Product | Module]: Marginalized module or None if fully marginalized.
         """
         # initialize cache
-        cache = init_cache(cache)
         # compute layer scope (same for all outputs)
         layer_scope = self.scope
         marg_child = None

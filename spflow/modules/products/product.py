@@ -6,7 +6,7 @@ from torch import Tensor
 from spflow.meta.data import Scope
 from spflow.modules.base import Module
 from spflow.modules.ops.cat import Cat
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -53,6 +53,7 @@ class Product(Module):
     def feature_to_scope(self) -> list[Scope]:
         return [Scope.join_all(self.inputs.feature_to_scope)]
 
+    @cached("log_likelihood")
     def log_likelihood(
         self,
         data: Tensor,
@@ -67,8 +68,6 @@ class Product(Module):
         Returns:
             Tensor: Log likelihood values.
         """
-        cache = init_cache(cache)
-
         # compute child log-likelihoods
         ll = self.inputs.log_likelihood(
             data,
@@ -77,11 +76,6 @@ class Product(Module):
 
         # multiply children (sum in log-space)
         result = torch.sum(ll, dim=1, keepdim=True)
-
-        # Cache the result for EM step
-        if "log_likelihood" not in cache:
-            cache["log_likelihood"] = {}
-        cache["log_likelihood"][self] = result
 
         return result
 
@@ -105,7 +99,6 @@ class Product(Module):
         Returns:
             Tensor: Generated samples.
         """
-        cache = init_cache(cache)
 
         # Handle num_samples case (create empty data tensor)
         if data is None:
@@ -141,7 +134,6 @@ class Product(Module):
             data: Input data tensor for EM step.
             cache: Optional cache for storing intermediate results.
         """
-        cache = init_cache(cache)
 
         # Product has no learnable parameters, delegate to input
         self.inputs.expectation_maximization(data, cache=cache)
@@ -159,7 +151,6 @@ class Product(Module):
             weights: Optional weights for weighted MLE.
             cache: Optional cache for storing intermediate results.
         """
-        cache = init_cache(cache)
 
         # Product has no learnable parameters, delegate to input
         self.inputs.maximum_likelihood_estimation(
@@ -184,7 +175,6 @@ class Product(Module):
         Returns:
             Product | Module | None: Marginalized module or None if fully marginalized.
         """
-        cache = init_cache(cache)
 
         # compute layer scope (same for all outputs)
         layer_scope = self.scope

@@ -13,7 +13,7 @@ from torch import Tensor
 from spflow.meta.data import Scope
 from spflow.modules.base import Module
 from spflow.modules.ops.split import Split
-from spflow.utils.cache import Cache, init_cache
+from spflow.utils.cache import Cache, cached
 
 
 class SplitAlternate(Split):
@@ -60,6 +60,8 @@ class SplitAlternate(Split):
         self.split_masks = [fn(mask) for mask in self.split_masks]
         return self
 
+    @cached("log_likelihood")
+
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> list[Tensor]:
         """Compute log likelihoods for each split.
 
@@ -70,12 +72,9 @@ class SplitAlternate(Split):
         Returns:
             List of log likelihood tensors, one for each split.
         """
-        cache = init_cache(cache)
-        log_cache = cache.setdefault("log_likelihood", {})
 
         # get log likelihoods for all inputs
         lls = self.inputs[0].log_likelihood(data, cache=cache)
-        log_cache[self.inputs[0]] = lls
 
         # For computational speed up hard code the loglikelihoods for most common cases: Num splits = 2 and 3
         # For general cases, we use the split masks to get the log likelihoods for each split
