@@ -88,7 +88,8 @@ class MixingLayer(Sum):
         if weights is None:
             weights = (
                 # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                torch.rand(self.weights_shape) + 1e-08
+                torch.rand(self.weights_shape)
+                + 1e-08
             )  # avoid zeros
 
             # Normalize

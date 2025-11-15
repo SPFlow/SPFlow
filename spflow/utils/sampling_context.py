@@ -11,6 +11,7 @@ The sampling context is essential for:
 - Tracking channel indices for multi-output modules
 - Supporting repetition-based sampling structures
 """
+from __future__ import annotations
 
 import torch
 from torch import Tensor
