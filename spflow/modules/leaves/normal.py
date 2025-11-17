@@ -19,8 +19,6 @@ class Normal(LeafModule):
         distribution: Underlying torch.distributions.Normal.
     """
 
-    std = LogSpaceParameter("std")
-
     def __init__(
         self,
         scope: Scope,
