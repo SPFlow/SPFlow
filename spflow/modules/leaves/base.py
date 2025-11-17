@@ -35,7 +35,7 @@ class LeafModule(Module, ABC):
     @property
     def distribution(self) -> Distribution:
         """Returns the underlying distribution object."""
-        self._distribution
+        return self._distribution
 
     @property
     def _supported_value(self):
