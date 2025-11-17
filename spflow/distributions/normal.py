@@ -45,6 +45,11 @@ class Normal(Distribution):
     def params(self):
         return {"mean": self.mean, "std": self.std}
 
+    @property
+    def batch_shape(self):
+        """Return batch shape of the distribution."""
+        return self.distribution.batch_shape
+
     def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Compute weighted mean and standard deviation.
 
