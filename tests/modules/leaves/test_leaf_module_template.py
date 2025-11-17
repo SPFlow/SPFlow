@@ -2,7 +2,8 @@ import torch
 from torch import nn
 
 from spflow.meta import Scope
-from spflow.modules.leaves.base import LeafModule, LogSpaceParameter
+from spflow.modules.leaves.base import LeafModule
+from utils.leaves import LogSpaceParameter
 
 
 class DummyLeaf(LeafModule):
