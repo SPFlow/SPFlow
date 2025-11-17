@@ -10,7 +10,7 @@ from spflow.distributions.base import Distribution
 from spflow.meta.data.scope import Scope
 from spflow.modules.base import Module
 from spflow.utils.cache import Cache, cached
-from spflow.utils.leaves import apply_nan_strategy
+from spflow.utils.leaves import apply_nan_strategy, _prepare_mle_weights
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -46,6 +46,7 @@ class LeafModule(Module, ABC):
         """Returns the parameters of the distribution."""
         return self.distribution.params()
 
+    @property
     def mode(self) -> Tensor:
         """Return distribution mode.
 
@@ -130,7 +131,7 @@ class LeafModule(Module, ABC):
     def expectation_maximization(
         self,
         data: torch.Tensor,
-            bias_correction: bool = False,
+        bias_correction: bool = False,
         cache: Cache | None = None,
     ) -> None:
         """Perform single EM step.
@@ -247,8 +248,8 @@ class LeafModule(Module, ABC):
     def _prepare_mle_data(
         self,
         data: Tensor,
-            weights: Tensor | None = None,
-            nan_strategy: str | Callable | None = None,
+        weights: Tensor | None = None,
+        nan_strategy: str | Callable | None = None,
     ) -> tuple[Tensor, Tensor]:
         """Prepare normalized data and weights for MLE computation.
 
@@ -271,7 +272,7 @@ class LeafModule(Module, ABC):
         # Convert from (batch, 1) to (batch, 1, 1, ...) for proper broadcasting
         # with multi-dimensional data
         normalized_weights_flat = normalized_weights.squeeze(-1)
-        mle_weights = self._prepare_mle_weights(scoped_data, normalized_weights_flat)
+        mle_weights = _prepare_mle_weights(scoped_data, normalized_weights_flat)
 
         return scoped_data, mle_weights
 
@@ -280,7 +281,7 @@ class LeafModule(Module, ABC):
         data: Tensor,
         weights: Optional[Tensor] = None,
         bias_correction: bool = True,
-            nan_strategy: str | Callable | None = None,
+        nan_strategy: str | Callable | None = None,
         cache: Cache | None = None,
     ) -> None:
         """Maximum (weighted) likelihood estimation via template method pattern.
@@ -345,7 +346,7 @@ class LeafModule(Module, ABC):
 
         if is_mpe:
             # Get mode of distribution as MPE
-            samples = self.mode().unsqueeze(0)
+            samples = self.mode.unsqueeze(0)
             if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
                 samples = samples.repeat(n_samples, 1, 1, 1).detach()
                 # repetition_idx shape: (n_samples,)

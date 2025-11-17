@@ -8,9 +8,6 @@ from spflow.utils.leaves import validate_all_or_none, LogSpaceParameter, init_pa
 
 class Normal(Distribution):
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool):
-        pass
-
     std = LogSpaceParameter("std")
 
     def __init__(self, mean: Tensor = None, std: Tensor = None, event_shape: tuple[int, ...] = None):
@@ -50,7 +47,7 @@ class Normal(Distribution):
         """Return batch shape of the distribution."""
         return self.distribution.batch_shape
 
-    def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
+    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Compute weighted mean and standard deviation.
 
         Args:
