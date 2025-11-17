@@ -5,7 +5,7 @@ from spflow.meta.data import Scope
 from spflow.modules.leaves.base import (
     LeafModule,
 )
-from utils.leaves import BoundedParameter, init_parameter, parse_leaf_args
+from spflow.utils.leaves import BoundedParameter, init_parameter, parse_leaf_args
 
 
 class Binomial(LeafModule):

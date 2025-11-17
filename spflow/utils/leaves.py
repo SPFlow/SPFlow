@@ -5,9 +5,9 @@ from typing import Callable, Any
 import torch
 from torch import Tensor
 
-from exceptions import InvalidParameterCombinationError
-from meta import Scope
-from utils.projections import proj_real_to_bounded, proj_bounded_to_real
+from spflow.exceptions import InvalidParameterCombinationError
+from spflow.meta import Scope
+from spflow.utils.projections import proj_real_to_bounded, proj_bounded_to_real
 
 
 class LogSpaceParameter:
@@ -335,3 +335,86 @@ def parse_leaf_args(
         event_shape = torch.Size(list(event_shape) + [num_repetitions])
 
     return event_shape
+
+
+def _handle_mle_edge_cases(
+        param_est: Tensor,
+        lb: float | Tensor | None = None,
+        ub: float | Tensor | None = None,
+) -> Tensor:
+    """Handle NaNs, zeros, and bounds in parameter estimation.
+
+    Args:
+        param_est: Parameter estimate tensor.
+        lb: Lower bound (inclusive).
+        ub: Upper bound (inclusive).
+
+    Returns:
+        Processed parameter estimate with edge cases handled.
+    """
+    eps = torch.tensor(1e-8, dtype=param_est.dtype, device=param_est.device)
+
+    def _to_tensor(bound: float | Tensor | None) -> Tensor | None:
+        """Convert bound to tensor with proper device and dtype.
+
+        Args:
+            bound: Bound value as float, Tensor, or None.
+
+        Returns:
+            Bound as tensor with correct device and dtype, or None.
+        """
+        if bound is None:
+            return None
+        if isinstance(bound, Tensor):
+            return bound.to(device=param_est.device, dtype=param_est.dtype)
+        return torch.as_tensor(bound, device=param_est.device, dtype=param_est.dtype)
+
+    lb_tensor = _to_tensor(lb)
+    ub_tensor = _to_tensor(ub)
+
+    nan_mask = torch.isnan(param_est)
+    if nan_mask.any():
+        param_est = param_est.clone()
+        param_est[nan_mask] = eps
+
+    if lb_tensor is not None:
+        below_mask = param_est <= lb_tensor
+        if below_mask.any():
+            param_est = param_est.clone()
+            param_est[below_mask] = lb_tensor[below_mask] + eps if lb_tensor.ndim else lb_tensor + eps
+    else:
+        zero_mask = torch.isclose(
+            param_est, torch.tensor(0.0, device=param_est.device, dtype=param_est.dtype)
+        )
+        if zero_mask.any():
+            param_est = param_est.clone()
+            param_est[zero_mask] = eps
+
+    if ub_tensor is not None:
+        above_mask = param_est >= ub_tensor
+        if above_mask.any():
+            param_est = param_est.clone()
+            param_est[above_mask] = ub_tensor[above_mask] - eps if ub_tensor.ndim else ub_tensor - eps
+
+    return param_est
+
+
+def _prepare_mle_weights(data: Tensor, weights: Tensor | None = None) -> Tensor:
+    """Prepare weights for MLE with proper shape for broadcasting.
+
+    Args:
+        data: Input data tensor.
+        weights: Optional sample weights.
+
+    Returns:
+        Weights tensor with proper shape for broadcasting.
+    """
+    if weights is None:
+        _shape = (data.shape[0], *([1] * (data.dim() - 1)))
+        weights = torch.ones(_shape, device=data.device)
+    elif weights.dim() == 1 and data.dim() > 1:
+        # Reshape 1D weights to broadcast properly with multi-dimensional data
+        # e.g., weights [batch_size] -> [batch_size, 1, 1, ...]
+        _shape = (weights.shape[0], *([1] * (data.dim() - 1)))
+        weights = weights.view(_shape)
+    return weights

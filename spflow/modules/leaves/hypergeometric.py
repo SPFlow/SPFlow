@@ -3,7 +3,7 @@ from torch import Tensor
 
 from spflow.meta.data import Scope
 from spflow.modules.leaves.base import LeafModule
-from utils.leaves import parse_leaf_args
+from spflow.utils.leaves import parse_leaf_args
 
 
 class Hypergeometric(LeafModule):
