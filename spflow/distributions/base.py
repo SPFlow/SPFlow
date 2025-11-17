@@ -32,7 +32,7 @@ class Distribution(nn.Module, ABC):
 
     @property
     @abstractmethod
-    def _supported_value(self):
+    def _supported_value(self) -> float:
         """Returns the supported values of the distribution."""
         pass
 
