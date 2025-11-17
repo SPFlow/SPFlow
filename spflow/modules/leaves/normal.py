@@ -2,10 +2,8 @@ from torch import Tensor
 
 from spflow.distributions.normal import Normal as NormalDistribution
 from spflow.meta.data import Scope
-from spflow.modules.leaves.base import (
-    LeafModule,
-)
-from spflow.utils.leaves import LogSpaceParameter, parse_leaf_args
+from spflow.modules.leaves.base import LeafModule
+from spflow.utils.leaves import parse_leaf_args
 
 
 class Normal(LeafModule):

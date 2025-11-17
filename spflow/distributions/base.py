@@ -64,7 +64,10 @@ class Distribution(nn.Module, ABC):
 
     def sample(self, n_samples):
         """Generates samples of shape (n_samples, *event_shape)"""
-        return self.distribution.sample((n_samples,))
+        if isinstance(n_samples, tuple):
+            return self.distribution.sample(n_samples)
+        else:
+            return self.distribution.sample((n_samples,))
 
     @property
     def mode(self):
