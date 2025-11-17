@@ -209,9 +209,9 @@ def make_cond_leaf(
 
 def make_data(cls, out_features: int, n_samples: int = 5) -> torch.Tensor:
     scope = Scope(list(range(0, out_features)))
-    return make_leaf(cls=cls, scope=scope, out_channels=1).distribution.sample((n_samples,)).squeeze(-1)
+    return make_leaf(cls=cls, scope=scope, out_channels=1).distribution.sample(n_samples).squeeze(-1)
 
 
 def make_cond_data(cls, out_features: int, n_samples: int = 5) -> torch.Tensor:
     scope = Scope(list(range(0, out_features)))
-    return make_cond_leaf(cls=cls, scope=scope, out_channels=1).distribution.sample((n_samples,)).squeeze(-1)
+    return make_cond_leaf(cls=cls, scope=scope, out_channels=1).distribution.sample(n_samples).squeeze(-1)

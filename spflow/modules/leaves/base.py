@@ -205,7 +205,7 @@ class LeafModule(Module, ABC):
         if len(self.event_shape) > 2:
             data = data.unsqueeze(-1)
 
-        dist = self.distribution
+        dist = self.distribution.distribution
 
         # compute probabilities for values inside distribution support
         expected_shape = dist.batch_shape + dist.event_shape
