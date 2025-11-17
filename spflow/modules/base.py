@@ -226,6 +226,7 @@ class Module(nn.Module, ABC):
     def expectation_maximization(
         self,
         data: Tensor,
+            bias_correction: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Expectation-maximization step.
@@ -238,12 +239,14 @@ class Module(nn.Module, ABC):
             cache = Cache()
 
         for input_module in self.inputs:
-            input_module.expectation_maximization(data, cache=cache)
+            input_module.expectation_maximization(data, cache=cache, bias_correction=bias_correction)
 
     def maximum_likelihood_estimation(
         self,
         data: Tensor,
         weights: Tensor | None = None,
+            bias_correction: bool = True,
+            nan_strategy: str = "ignore",
         cache: Cache | None = None,
     ) -> None:
         """Update parameters via maximum likelihood estimation.
@@ -251,6 +254,8 @@ class Module(nn.Module, ABC):
         Args:
             data: Input data tensor.
             weights: Optional sample weights.
+            bias_correction: Whether to apply bias correction. Defaults to True.
+            nan_strategy: Strategy for handling NaN values in data. Defaults to "ignore".
             cache: Optional cache dictionary.
         """
         if cache is None:
@@ -260,6 +265,8 @@ class Module(nn.Module, ABC):
             input_module.maximum_likelihood_estimation(
                 data,
                 weights=weights,
+                bias_correction=bias_correction,
+                nan_strategy=nan_strategy,
                 cache=cache,
             )
 
