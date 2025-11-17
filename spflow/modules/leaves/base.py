@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Optional, Dict, Callable
 
 import torch
 from torch import Tensor
 
+from spflow.distributions.base import Distribution
 from spflow.meta.data.scope import Scope
 from spflow.modules.base import Module
 from spflow.utils.cache import Cache, cached
+from spflow.utils.leaves import apply_nan_strategy
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
-from utils.leaves import apply_nan_strategy
 
 
 class LeafModule(Module, ABC):
@@ -32,46 +33,18 @@ class LeafModule(Module, ABC):
         self._event_shape = None  # Will be set by subclasses
 
     @property
-    @abstractmethod
-    def distribution(self) -> torch.distributions.Distribution:
-        """Returns the underlying torch distribution object."""
-        pass
+    def distribution(self) -> Distribution:
+        """Returns the underlying distribution object."""
+        self._distribution
 
     @property
-    @abstractmethod
     def _supported_value(self):
         """Returns the supported values of the distribution."""
-        pass
+        return self.distribution._supported_value
 
-    @abstractmethod
     def params(self) -> Dict[str, Tensor]:
         """Returns the parameters of the distribution."""
-        pass
-
-    @abstractmethod
-    def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute distribution-specific statistics and assign parameters.
-
-        Hook method called by maximum_likelihood_estimation() after data preparation.
-        Descriptors handle validation and storage automatically.
-
-        Args:
-            data: Scope-filtered data.
-            weights: Normalized weights.
-            bias_correction: Apply bias correction.
-        """
-        pass
-
-    def log_prob(self, x: Tensor) -> Tensor:
-        """Compute log probability of samples.
-
-        Args:
-            x: Input tensor of samples.
-
-        Returns:
-            Log probability values.
-        """
-        return self.distribution.log_prob(x)
+        return self.distribution.params()
 
     def mode(self) -> Tensor:
         """Return distribution mode.
@@ -81,7 +54,7 @@ class LeafModule(Module, ABC):
         """
         return self.distribution.mode
 
-    def marginalized_params(self, indices: list[int]) -> Dict[str, Tensor]:
+    def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
         """Return parameters marginalized to specified indices.
 
         Args:
@@ -91,118 +64,6 @@ class LeafModule(Module, ABC):
             Dictionary of marginalized parameters.
         """
         return {k: v[indices] for k, v in self.params().items()}
-
-    # MLE Helper Methods
-    def _prepare_mle_weights(self, data: Tensor, weights: Optional[Tensor] = None) -> Tensor:
-        """Prepare weights for MLE with proper shape for broadcasting.
-
-        Args:
-            data: Input data tensor.
-            weights: Optional sample weights.
-
-        Returns:
-            Weights tensor with proper shape for broadcasting.
-        """
-        if weights is None:
-            _shape = (data.shape[0], *([1] * (data.dim() - 1)))
-            weights = torch.ones(_shape, device=data.device)
-        elif weights.dim() == 1 and data.dim() > 1:
-            # Reshape 1D weights to broadcast properly with multi-dimensional data
-            # e.g., weights [batch_size] -> [batch_size, 1, 1, ...]
-            _shape = (weights.shape[0], *([1] * (data.dim() - 1)))
-            weights = weights.view(_shape)
-        return weights
-
-    def _handle_mle_edge_cases(
-        self,
-        param_est: Tensor,
-        lb: float | Tensor | None = None,
-        ub: float | Tensor | None = None,
-    ) -> Tensor:
-        """Handle NaNs, zeros, and bounds in parameter estimation.
-
-        Args:
-            param_est: Parameter estimate tensor.
-            lb: Lower bound (inclusive).
-            ub: Upper bound (inclusive).
-
-        Returns:
-            Processed parameter estimate with edge cases handled.
-        """
-        eps = torch.tensor(1e-8, dtype=param_est.dtype, device=param_est.device)
-
-        def _to_tensor(bound: float | Tensor | None) -> Tensor | None:
-            """Convert bound to tensor with proper device and dtype.
-
-            Args:
-                bound: Bound value as float, Tensor, or None.
-
-            Returns:
-                Bound as tensor with correct device and dtype, or None.
-            """
-            if bound is None:
-                return None
-            if isinstance(bound, Tensor):
-                return bound.to(device=param_est.device, dtype=param_est.dtype)
-            return torch.as_tensor(bound, device=param_est.device, dtype=param_est.dtype)
-
-        lb_tensor = _to_tensor(lb)
-        ub_tensor = _to_tensor(ub)
-
-        nan_mask = torch.isnan(param_est)
-        if nan_mask.any():
-            param_est = param_est.clone()
-            param_est[nan_mask] = eps
-
-        if lb_tensor is not None:
-            below_mask = param_est <= lb_tensor
-            if below_mask.any():
-                param_est = param_est.clone()
-                param_est[below_mask] = lb_tensor[below_mask] + eps if lb_tensor.ndim else lb_tensor + eps
-        else:
-            zero_mask = torch.isclose(
-                param_est, torch.tensor(0.0, device=param_est.device, dtype=param_est.dtype)
-            )
-            if zero_mask.any():
-                param_est = param_est.clone()
-                param_est[zero_mask] = eps
-
-        if ub_tensor is not None:
-            above_mask = param_est >= ub_tensor
-            if above_mask.any():
-                param_est = param_est.clone()
-                param_est[above_mask] = ub_tensor[above_mask] - eps if ub_tensor.ndim else ub_tensor - eps
-
-        return param_est
-
-    def _broadcast_to_event_shape(self, param_est: Tensor) -> Tensor:
-        """Broadcast parameter estimate to match event_shape.
-
-        Args:
-            param_est: Parameter estimate tensor to broadcast.
-
-        Returns:
-            Parameter estimate broadcasted to match event_shape.
-        """
-        if len(self.event_shape) == 2:
-            param_est = param_est.unsqueeze(1).repeat(
-                1,
-                self.out_channels,
-                *([1] * (param_est.dim() - 1)),
-            )
-        elif len(self.event_shape) == 3:
-            param_est = (
-                param_est.unsqueeze(1)
-                .unsqueeze(1)
-                .repeat(
-                    1,
-                    self.out_channels,
-                    self.num_repetitions,
-                    *([1] * (param_est.dim() - 1)),
-                )
-            )
-
-        return param_est
 
     @property
     def event_shape(self) -> tuple[int, ...]:
@@ -264,14 +125,12 @@ class LeafModule(Module, ABC):
         Returns:
             Device of the module.
         """
-        try:
-            return next(iter(self.parameters())).device
-        except StopIteration:
-            return next(iter(self.buffers())).device
+        return self.distribution.device
 
     def expectation_maximization(
         self,
         data: torch.Tensor,
+            bias_correction: bool = False,
         cache: Cache | None = None,
     ) -> None:
         """Perform single EM step.
@@ -299,7 +158,7 @@ class LeafModule(Module, ABC):
             self.maximum_likelihood_estimation(
                 data,
                 weights=expectations,
-                bias_correction=False,
+                bias_correction=bias_correction,
                 cache=cache,
             )
 
@@ -388,10 +247,8 @@ class LeafModule(Module, ABC):
     def _prepare_mle_data(
         self,
         data: Tensor,
-        weights: Optional[Tensor] = None,
-        nan_strategy: Optional[str | Callable] = None,
-        cache: Cache | None = None,
-        preprocess_data: bool = True,
+            weights: Tensor | None = None,
+            nan_strategy: str | Callable | None = None,
     ) -> tuple[Tensor, Tensor]:
         """Prepare normalized data and weights for MLE computation.
 
@@ -399,15 +256,13 @@ class LeafModule(Module, ABC):
             data: Input data tensor.
             weights: Optional sample weights.
             nan_strategy: Handle NaN ('ignore', callable, or None).
-            cache: Optional cache dictionary.
-            preprocess_data: Select scope-relevant features.
 
         Returns:
             Scope-filtered data and normalized weights.
         """
 
         # Step 1: Select scope-relevant features
-        scoped_data = data[:, self.scope.query] if preprocess_data else data
+        scoped_data = data[:, self.scope.query] 
 
         # Step 2: Apply NaN strategy (drop/impute)
         scoped_data, normalized_weights = apply_nan_strategy(nan_strategy, scoped_data, self.device, weights)
@@ -425,9 +280,8 @@ class LeafModule(Module, ABC):
         data: Tensor,
         weights: Optional[Tensor] = None,
         bias_correction: bool = True,
-        nan_strategy: Optional[str | Callable] = None,
+            nan_strategy: str | Callable | None = None,
         cache: Cache | None = None,
-        preprocess_data: bool = True,
     ) -> None:
         """Maximum (weighted) likelihood estimation via template method pattern.
 
@@ -447,13 +301,10 @@ class LeafModule(Module, ABC):
             data=data,
             weights=weights,
             nan_strategy=nan_strategy,
-            cache=cache,
-            preprocess_data=preprocess_data,
         )
 
-        # Step 2: Compute distribution-specific statistics (implemented by subclass)
-        # Subclass is responsible for assigning parameters directly via descriptors
-        self._mle_compute_statistics(data_prepared, weights_prepared, bias_correction)
+        # Step 2: Update distribution-specific statistics (implemented by distribution)
+        self.distribution._mle_update_statistics(data_prepared, weights_prepared, bias_correction)
 
     def sample(
         self,
@@ -639,5 +490,3 @@ class LeafModule(Module, ABC):
             scope=scope_marg,
             **marg_params_dict,
         )
-
-
