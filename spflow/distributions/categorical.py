@@ -2,7 +2,7 @@ import torch
 from torch import Tensor, nn
 
 from spflow.distributions.base import Distribution
-from spflow.utils.leaves import init_parameter
+from spflow.utils.leaves import init_parameter, SimplexParameter
 
 
 class Categorical(Distribution):
@@ -14,6 +14,8 @@ class Categorical(Distribution):
         p: Categorical probabilities (normalized, shape includes extra dimension for K).
         K: Number of categories.
     """
+
+    p = SimplexParameter("p")
 
     def __init__(self, p: Tensor = None, K: int = None, event_shape: tuple[int, ...] = None):
         """Initialize Categorical distribution.
@@ -33,36 +35,22 @@ class Categorical(Distribution):
 
         self.K = K
 
+        # Normalize probabilities if provided to ensure they sum to 1 along last dimension
+        # Only normalize if probabilities are valid (non-negative, <= 1.0, and finite) but don't sum to 1
+        if p is not None:
+            if torch.all(p >= 0.0) and torch.all(p <= 1.0) and torch.isfinite(p).all():
+                # Check if probabilities already sum to 1 (within tolerance)
+                sums = p.sum(dim=-1, keepdim=True)
+                if not torch.allclose(sums, torch.ones_like(sums), atol=1e-6):
+                    p = p / sums
+
         # Initialize parameter with K categories
-        p = init_parameter(param=p, event_shape=(*event_shape, K), init=torch.rand)
+        p = init_parameter(
+            param=p, event_shape=(*event_shape, K), init=lambda shape: torch.rand(shape).softmax(dim=-1)
+        )
 
-        self.log_p = nn.Parameter(torch.empty_like(p))  # initialize empty, set with setter in next line
+        self.logits_p = nn.Parameter(torch.empty_like(p))  # initialize empty, set with setter in next line
         self.p = p.clone().detach()
-
-    @property
-    def p(self) -> Tensor:
-        """Returns the probabilities (exponential of log_p)."""
-        return self.log_p.exp()
-
-    @p.setter
-    def p(self, p: Tensor):
-        """Set the probabilities with simplex normalization.
-
-        Args:
-            p: Probability tensor that will be normalized to sum to 1 along last dimension.
-        """
-        # Keep manual setter since descriptor helpers cannot enforce simplex normalization.
-        # Project auxiliary parameter onto actual parameter range
-        if not torch.isfinite(p).all():
-            raise ValueError(f"Values for 'p' must be finite, but was: {p}")
-
-        if torch.any(p < 0.0) or torch.any(p > 1.0):
-            raise ValueError(f"Value for 'p' must be in [0.0, 1.0], but was: {p}")
-
-        # Ensure that p adds up to 1 along the category dimension (last dimension)
-        p = p / p.sum(-1, keepdim=True)
-
-        self.log_p.data = p.log()
 
     @property
     def _supported_value(self):
