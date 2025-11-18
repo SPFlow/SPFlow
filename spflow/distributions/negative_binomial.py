@@ -2,20 +2,16 @@ import torch
 from torch import Tensor, nn
 
 from spflow.distributions.base import Distribution
-from spflow.utils.leaves import BoundedParameter, init_parameter, _handle_mle_edge_cases
+from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases
+from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
 class NegativeBinomial(Distribution):
     """Negative Binomial distribution for modeling failures before r-th success.
 
     Note: Parameter n (number of successes) is fixed and cannot be learned.
-
-    Attributes:
-        n: Fixed number of required successes (buffer).
-        p: Success probability in [0, 1] (BoundedParameter).
+    Success probability p is stored in logit-space for numerical stability.
     """
-
-    p = BoundedParameter("p", lb=0.0, ub=1.0)
 
     def __init__(self, n: Tensor, p: Tensor = None, event_shape: tuple[int, ...] = None):
         """Initialize Negative Binomial distribution.
@@ -35,13 +31,18 @@ class NegativeBinomial(Distribution):
         if not torch.isfinite(n).all() or n.lt(0.0).any():
             raise ValueError(f"Values for 'n' must be finite and non-negative, but was: {n}")
 
+        # Validate p at initialization
+        if not ((p >= 0) & (p <= 1)).all():
+            raise ValueError("Success probability p must be in [0, 1]")
+        if not torch.isfinite(p).all():
+            raise ValueError("Success probability p must be finite")
+
         # Register n as a fixed buffer
         n = torch.broadcast_to(n, event_shape).clone()
         self.register_buffer("_n", n)
         self.n = n
 
-        self.log_p = nn.Parameter(torch.empty_like(p))  # initialize empty, set with setter in next line
-        self.p = p.clone().detach()
+        self.logit_p = nn.Parameter(proj_bounded_to_real(p, lb=0.0, ub=1.0))
 
     @property
     def n(self) -> Tensor:
@@ -63,6 +64,17 @@ class NegativeBinomial(Distribution):
                 f"Value of 'n' for 'NegativeBinomial' distribution must be non-negative and finite, but was: {n}"
             )
         self._n = n
+
+    @property
+    def p(self) -> Tensor:
+        """Success probability in natural space (read via inverse projection of logit_p)."""
+        return proj_real_to_bounded(self.logit_p, lb=0.0, ub=1.0)
+
+    @p.setter
+    def p(self, value: Tensor) -> None:
+        """Set success probability (stores as logit_p, no validation after init)."""
+        value_tensor = torch.as_tensor(value, dtype=self.logit_p.dtype, device=self.logit_p.device)
+        self.logit_p.data = proj_bounded_to_real(value_tensor, lb=0.0, ub=1.0)
 
     @property
     def _supported_value(self):

@@ -2,20 +2,15 @@ import torch
 from torch import Tensor, nn
 
 from spflow.distributions.base import Distribution
-from spflow.utils.leaves import init_parameter, SimplexParameter
+from spflow.utils.leaves import init_parameter
+from spflow.utils.projections import proj_convex_to_real, proj_real_to_convex
 
 
 class Categorical(Distribution):
     """Categorical distribution for discrete choice over K categories.
 
-    Parameterized by probabilities p over K categories (normalized to form a simplex).
-
-    Attributes:
-        p: Categorical probabilities (normalized, shape includes extra dimension for K).
-        K: Number of categories.
+    Parameterized by probabilities p over K categories (stored in log-space, normalized via softmax).
     """
-
-    p = SimplexParameter("p")
 
     def __init__(self, p: Tensor = None, K: int = None, event_shape: tuple[int, ...] = None):
         """Initialize Categorical distribution.
@@ -49,8 +44,28 @@ class Categorical(Distribution):
             param=p, event_shape=(*event_shape, K), init=lambda shape: torch.rand(shape).softmax(dim=-1)
         )
 
-        self.logits_p = nn.Parameter(torch.empty_like(p))  # initialize empty, set with setter in next line
-        self.p = p.clone().detach()
+        # Validate p at initialization
+        if not (p >= 0).all():
+            raise ValueError("Probabilities p must be non-negative")
+        if not torch.isfinite(p).all():
+            raise ValueError("Probabilities p must be finite")
+        # Check if p sums to 1 along last dimension
+        sums = p.sum(dim=-1)
+        if not torch.allclose(sums, torch.ones_like(sums), atol=1e-5):
+            raise ValueError(f"Probabilities p must sum to 1 along last dimension, but got sums: {sums}")
+
+        self.logits_p = nn.Parameter(proj_convex_to_real(p))
+
+    @property
+    def p(self) -> Tensor:
+        """Categorical probabilities in natural space (read via softmax of logits_p)."""
+        return proj_real_to_convex(self.logits_p)
+
+    @p.setter
+    def p(self, value: Tensor) -> None:
+        """Set categorical probabilities (stores as logits_p, no validation after init)."""
+        value_tensor = torch.as_tensor(value, dtype=self.logits_p.dtype, device=self.logits_p.device)
+        self.logits_p.data = proj_convex_to_real(value_tensor)
 
     @property
     def _supported_value(self):

@@ -2,20 +2,22 @@ import torch
 from torch import Tensor, nn
 
 from spflow.distributions.base import Distribution
-from spflow.utils.leaves import validate_all_or_none, LogSpaceParameter, init_parameter, \
+from spflow.utils.leaves import validate_all_or_none, init_parameter, \
     _handle_mle_edge_cases
 
 
 class Normal(Distribution):
+    """Normal (Gaussian) distribution with learnable mean and standard deviation.
 
-    std = LogSpaceParameter("std")
+    Parameters are stored in log-space for numerical stability during optimization.
+    """
 
     def __init__(self, mean: Tensor = None, std: Tensor = None, event_shape: tuple[int, ...] = None):
         r"""
-
         Args:
             mean: Tensor containing the mean (:math:`\mu`) of the distribution.
             std: Tensor containing the standard deviation (:math:`\sigma`) of the distribution.
+                 Must be positive. If None, initialized randomly.
             event_shape: The shape of the event. If None, it is inferred from the shape of the parameter tensor.
         """
         if event_shape is None:
@@ -27,9 +29,24 @@ class Normal(Distribution):
         mean = init_parameter(param=mean, event_shape=event_shape, init=torch.randn)
         std = init_parameter(param=std, event_shape=event_shape, init=torch.rand)
 
+        # Validate std at initialization
+        if not (std > 0).all():
+            raise ValueError("Standard deviation must be strictly positive")
+        if not torch.isfinite(std).all():
+            raise ValueError("Standard deviation must be finite")
+
         self.mean = nn.Parameter(mean)
-        self.log_std = nn.Parameter(torch.empty_like(std))  # initialize empty, set with setter in next line
-        self.std = std.clone().detach()
+        self.log_std = nn.Parameter(torch.log(std))
+
+    @property
+    def std(self) -> Tensor:
+        """Standard deviation in natural space (read via exp of log_std)."""
+        return torch.exp(self.log_std)
+
+    @std.setter
+    def std(self, value: Tensor) -> None:
+        """Set standard deviation (stores as log_std, no validation after init)."""
+        self.log_std.data = torch.log(torch.as_tensor(value, dtype=self.log_std.dtype, device=self.log_std.device))
 
     @property
     def _supported_value(self):
