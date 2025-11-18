@@ -2,7 +2,8 @@ import torch
 from torch import Tensor, nn
 
 from spflow.distributions.base import Distribution
-from spflow.utils.leaves import BoundedParameter, init_parameter, _handle_mle_edge_cases
+from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases
+from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
 class Binomial(Distribution):
@@ -13,15 +14,9 @@ class Binomial(Distribution):
     of independent Bernoulli trials, with probability mass function:
         P(X = k | n, p) = C(n, k) * p^k * (1-p)^(n-k)
 
-    where n is the number of trials (fixed), p is the success probability (learnable),
-    and k is the number of successes (0 ≤ k ≤ n).
-
-    Attributes:
-        p: Success probability parameter(s) in [0, 1] (BoundedParameter).
-        n: Number of trials parameter(s), non-negative integers (fixed buffer).
+    where n is the number of trials (fixed), p is the success probability (learnable,
+    stored in logit-space for numerical stability), and k is the number of successes (0 ≤ k ≤ n).
     """
-
-    p = BoundedParameter("p", lb=0.0, ub=1.0)
 
     def __init__(self, n: Tensor, p: Tensor = None, event_shape: tuple[int, ...] = None):
         """Initialize Binomial distribution.
@@ -41,13 +36,18 @@ class Binomial(Distribution):
         if not torch.isfinite(n).all() or n.lt(0.0).any():
             raise ValueError(f"Values for 'n' must be finite and non-negative, but was: {n}")
 
+        # Validate p at initialization
+        if not ((p >= 0) & (p <= 1)).all():
+            raise ValueError("Success probability p must be in [0, 1]")
+        if not torch.isfinite(p).all():
+            raise ValueError("Success probability p must be finite")
+
         # Register n as a fixed buffer
         n = torch.broadcast_to(n, event_shape).clone()
         self.register_buffer("_n", n)
         self.n = n
 
-        self.log_p = nn.Parameter(torch.empty_like(p))  # initialize empty, set with setter in next line
-        self.p = p.clone().detach()
+        self.logit_p = nn.Parameter(proj_bounded_to_real(p, lb=0.0, ub=1.0))
 
     @property
     def n(self) -> Tensor:
@@ -69,6 +69,17 @@ class Binomial(Distribution):
                 f"Value of 'n' for 'Binomial' distribution must be non-negative and finite, but was: {n}"
             )
         self._n = n
+
+    @property
+    def p(self) -> Tensor:
+        """Success probability in natural space (read via inverse projection of logit_p)."""
+        return proj_real_to_bounded(self.logit_p, lb=0.0, ub=1.0)
+
+    @p.setter
+    def p(self, value: Tensor) -> None:
+        """Set success probability (stores as logit_p, no validation after init)."""
+        value_tensor = torch.as_tensor(value, dtype=self.logit_p.dtype, device=self.logit_p.device)
+        self.logit_p.data = proj_bounded_to_real(value_tensor, lb=0.0, ub=1.0)
 
     @property
     def _supported_value(self):

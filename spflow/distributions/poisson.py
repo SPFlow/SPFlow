@@ -2,19 +2,14 @@ import torch
 from torch import Tensor, nn
 
 from spflow.distributions.base import Distribution
-from spflow.utils.leaves import LogSpaceParameter, init_parameter, _handle_mle_edge_cases
+from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases
 
 
 class Poisson(Distribution):
     """Poisson distribution for modeling event counts.
 
-    Parameterized by rate λ > 0 (stored in log-space).
-
-    Attributes:
-        rate: Rate parameter λ (LogSpaceParameter).
+    Parameterized by rate λ > 0 (stored in log-space for numerical stability).
     """
-
-    rate = LogSpaceParameter("rate")
 
     def __init__(self, rate: Tensor = None, event_shape: tuple[int, ...] = None):
         """Initialize Poisson distribution.
@@ -29,8 +24,23 @@ class Poisson(Distribution):
 
         rate = init_parameter(param=rate, event_shape=event_shape, init=torch.ones)
 
-        self.log_rate = nn.Parameter(torch.empty_like(rate))  # initialize empty, set with setter in next line
-        self.rate = rate.clone().detach()
+        # Validate rate at initialization
+        if not (rate > 0).all():
+            raise ValueError("Rate must be strictly positive")
+        if not torch.isfinite(rate).all():
+            raise ValueError("Rate must be finite")
+
+        self.log_rate = nn.Parameter(torch.log(rate))
+
+    @property
+    def rate(self) -> Tensor:
+        """Rate parameter in natural space (read via exp of log_rate)."""
+        return torch.exp(self.log_rate)
+
+    @rate.setter
+    def rate(self, value: Tensor) -> None:
+        """Set rate parameter (stores as log_rate, no validation after init)."""
+        self.log_rate.data = torch.log(torch.as_tensor(value, dtype=self.log_rate.dtype, device=self.log_rate.device))
 
     @property
     def _supported_value(self):

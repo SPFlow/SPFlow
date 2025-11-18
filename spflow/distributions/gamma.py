@@ -2,21 +2,14 @@ import torch
 from torch import Tensor, nn
 
 from spflow.distributions.base import Distribution
-from spflow.utils.leaves import LogSpaceParameter, validate_all_or_none, init_parameter, _handle_mle_edge_cases
+from spflow.utils.leaves import validate_all_or_none, init_parameter, _handle_mle_edge_cases
 
 
 class Gamma(Distribution):
     """Gamma distribution for modeling positive-valued continuous data.
 
-    Parameterized by shape α > 0 and rate β > 0 (both stored in log-space).
-
-    Attributes:
-        alpha: Shape parameter α (LogSpaceParameter).
-        beta: Rate parameter β (LogSpaceParameter).
+    Parameterized by shape α > 0 and rate β > 0 (both stored in log-space for numerical stability).
     """
-
-    alpha = LogSpaceParameter("alpha")
-    beta = LogSpaceParameter("beta")
 
     def __init__(self, alpha: Tensor = None, beta: Tensor = None, event_shape: tuple[int, ...] = None):
         """Initialize Gamma distribution.
@@ -35,11 +28,38 @@ class Gamma(Distribution):
         alpha = init_parameter(param=alpha, event_shape=event_shape, init=torch.rand)
         beta = init_parameter(param=beta, event_shape=event_shape, init=torch.rand)
 
-        self.log_alpha = nn.Parameter(torch.empty_like(alpha))
-        self.log_beta = nn.Parameter(torch.empty_like(beta))
+        # Validate alpha and beta at initialization
+        if not (alpha > 0).all():
+            raise ValueError("Alpha must be strictly positive")
+        if not torch.isfinite(alpha).all():
+            raise ValueError("Alpha must be finite")
+        if not (beta > 0).all():
+            raise ValueError("Beta must be strictly positive")
+        if not torch.isfinite(beta).all():
+            raise ValueError("Beta must be finite")
 
-        self.alpha = alpha.clone().detach()
-        self.beta = beta.clone().detach()
+        self.log_alpha = nn.Parameter(torch.log(alpha))
+        self.log_beta = nn.Parameter(torch.log(beta))
+
+    @property
+    def alpha(self) -> Tensor:
+        """Shape parameter in natural space (read via exp of log_alpha)."""
+        return torch.exp(self.log_alpha)
+
+    @alpha.setter
+    def alpha(self, value: Tensor) -> None:
+        """Set shape parameter (stores as log_alpha, no validation after init)."""
+        self.log_alpha.data = torch.log(torch.as_tensor(value, dtype=self.log_alpha.dtype, device=self.log_alpha.device))
+
+    @property
+    def beta(self) -> Tensor:
+        """Rate parameter in natural space (read via exp of log_beta)."""
+        return torch.exp(self.log_beta)
+
+    @beta.setter
+    def beta(self, value: Tensor) -> None:
+        """Set rate parameter (stores as log_beta, no validation after init)."""
+        self.log_beta.data = torch.log(torch.as_tensor(value, dtype=self.log_beta.dtype, device=self.log_beta.device))
 
     @property
     def _supported_value(self):

@@ -2,19 +2,15 @@ import torch
 from torch import Tensor, nn
 
 from spflow.distributions.base import Distribution
-from spflow.utils.leaves import BoundedParameter, init_parameter, _handle_mle_edge_cases
+from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases
+from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
 class Bernoulli(Distribution):
     """Bernoulli distribution for binary outcomes.
 
-    Parameterized by success probability p ∈ [0, 1].
-
-    Attributes:
-        p: Success probability (BoundedParameter).
+    Parameterized by success probability p ∈ [0, 1] (stored in logit-space for numerical stability).
     """
-
-    p = BoundedParameter("p", lb=0.0, ub=1.0)
 
     def __init__(self, p: Tensor = None, event_shape: tuple[int, ...] = None):
         """Initialize Bernoulli distribution.
@@ -29,8 +25,24 @@ class Bernoulli(Distribution):
 
         p = init_parameter(param=p, event_shape=event_shape, init=torch.rand)
 
-        self.log_p = nn.Parameter(torch.empty_like(p))  # initialize empty, set with setter in next line
-        self.p = p.clone().detach()
+        # Validate p at initialization
+        if not ((p >= 0) & (p <= 1)).all():
+            raise ValueError("Success probability p must be in [0, 1]")
+        if not torch.isfinite(p).all():
+            raise ValueError("Success probability p must be finite")
+
+        self.logit_p = nn.Parameter(proj_bounded_to_real(p, lb=0.0, ub=1.0))
+
+    @property
+    def p(self) -> Tensor:
+        """Success probability in natural space (read via inverse projection of logit_p)."""
+        return proj_real_to_bounded(self.logit_p, lb=0.0, ub=1.0)
+
+    @p.setter
+    def p(self, value: Tensor) -> None:
+        """Set success probability (stores as logit_p, no validation after init)."""
+        value_tensor = torch.as_tensor(value, dtype=self.logit_p.dtype, device=self.logit_p.device)
+        self.logit_p.data = proj_bounded_to_real(value_tensor, lb=0.0, ub=1.0)
 
     @property
     def _supported_value(self):

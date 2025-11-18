@@ -2,20 +2,15 @@ import torch
 from torch import Tensor, nn
 
 from spflow.distributions.base import Distribution
-from spflow.utils.leaves import LogSpaceParameter, validate_all_or_none, init_parameter, _handle_mle_edge_cases
+from spflow.utils.leaves import validate_all_or_none, init_parameter, _handle_mle_edge_cases
 
 
 class LogNormal(Distribution):
     """Log-Normal distribution for positive-valued data.
 
     Note: Parameters μ and σ apply to ln(x), not x itself.
-
-    Attributes:
-        mean: Mean μ of log-space distribution.
-        std: Standard deviation σ > 0 of log-space distribution (LogSpaceParameter).
+    Standard deviation σ is stored in log-space for numerical stability.
     """
-
-    std = LogSpaceParameter("std")
 
     def __init__(self, mean: Tensor = None, std: Tensor = None, event_shape: tuple[int, ...] = None):
         """Initialize Log-Normal distribution.
@@ -34,9 +29,24 @@ class LogNormal(Distribution):
         mean = init_parameter(param=mean, event_shape=event_shape, init=torch.randn)
         std = init_parameter(param=std, event_shape=event_shape, init=torch.rand)
 
+        # Validate std at initialization
+        if not (std > 0).all():
+            raise ValueError("Standard deviation must be strictly positive")
+        if not torch.isfinite(std).all():
+            raise ValueError("Standard deviation must be finite")
+
         self.mean = nn.Parameter(mean)
-        self.log_std = nn.Parameter(torch.empty_like(std))  # initialize empty, set with setter in next line
-        self.std = std.clone().detach()
+        self.log_std = nn.Parameter(torch.log(std))
+
+    @property
+    def std(self) -> Tensor:
+        """Standard deviation in natural space (read via exp of log_std)."""
+        return torch.exp(self.log_std)
+
+    @std.setter
+    def std(self, value: Tensor) -> None:
+        """Set standard deviation (stores as log_std, no validation after init)."""
+        self.log_std.data = torch.log(torch.as_tensor(value, dtype=self.log_std.dtype, device=self.log_std.device))
 
     @property
     def _supported_value(self):
