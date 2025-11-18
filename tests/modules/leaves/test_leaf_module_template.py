@@ -4,13 +4,15 @@ import torch
 
 from spflow.meta import Scope
 from spflow.modules.leaves.base import LeafModule
-from spflow.distributions.normal import Normal as NormalDistribution
+from spflow.modules.leaves.normal import NormalDistribution
 
 
 class _DummyNormalDistribution(NormalDistribution):
     """Helper distribution for testing that returns fixed std value."""
 
-    def _mle_update_statistics(self, data: torch.Tensor, weights: torch.Tensor, bias_correction: bool) -> None:
+    def _mle_update_statistics(
+        self, data: torch.Tensor, weights: torch.Tensor, bias_correction: bool
+    ) -> None:
         """Compute mean normally but set std to fixed test value."""
         # Compute mean
         n_total = weights.sum()

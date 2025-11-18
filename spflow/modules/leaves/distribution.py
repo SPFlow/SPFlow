@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 import torch
-from torch import Tensor, nn
+from torch import nn, Tensor
 
 
 class Distribution(nn.Module, ABC):
@@ -137,7 +139,7 @@ class Distribution(nn.Module, ABC):
 
         valid = torch.ones_like(data, dtype=torch.bool)
 
-        # check only first entry of num_leaf node dim since all leaf node repetition have the same support
+        # check only the first entry of num_leaf node dim since all leaf node repetitions have the same support
 
         valid[~nan_mask] = self.distribution.support.check(data)[..., [0]][~nan_mask]
 
