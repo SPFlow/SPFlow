@@ -100,7 +100,7 @@ class Distribution(nn.Module, ABC):
             return None
 
     @abstractmethod
-    def params(self):
+    def params(self) -> dict[str, Tensor]:
         """Returns the parameters of the distribution."""
         pass
 

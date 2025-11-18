@@ -71,6 +71,14 @@ def test_sample(leaf_cls, out_features: int, out_channels: int, num_reps, is_mpe
     assert torch.isfinite(samples).all()
 
 
+def _getattr_nested(obj, name):
+    """Get nested attribute using dot notation (e.g., '_distribution.log_p')."""
+    parts = name.split(".")
+    for part in parts:
+        obj = getattr(obj, part)
+    return obj
+
+
 @pytest.mark.parametrize(
     "leaf_cls, out_features, out_channels, bias_correction, num_reps",
     list(product(leaf_cls_values, out_features_values, out_channels_values, [True, False], num_repetitions)),
@@ -93,7 +101,7 @@ def test_maximum_likelihood_estimation(
 
     # Check that module and sampler params are equal
     for param_name, param_module in module.named_parameters():
-        param_sampler = getattr(sampler, param_name)
+        param_sampler = _getattr_nested(sampler, param_name)
         if num_reps:
             assert torch.allclose(param_module, param_sampler.unsqueeze(2), atol=3e-1)
         else:

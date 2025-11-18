@@ -6,6 +6,7 @@ from torch import nn
 
 from spflow.meta.data import Scope
 from spflow.modules.leaves.base import LeafModule
+from spflow.distributions.exponential import Exponential as ExponentialDistribution
 from spflow.utils.leaves import LogSpaceParameter
 
 
@@ -619,17 +620,19 @@ class TestLeafModuleIntegration:
         """Test that assignment works within MLE context."""
 
         class TestLeaf(LeafModule):
-            scale = LogSpaceParameter("scale")
-
             def __init__(self, scope):
                 super().__init__(scope, out_channels=1)
                 self._event_shape = (len(scope.query), 1)
-                self.log_scale = nn.Parameter(torch.empty(self._event_shape))
-                self.scale = torch.ones(self._event_shape)
+                self._distribution = ExponentialDistribution(rate=torch.ones(self._event_shape), event_shape=self._event_shape)
+
+            @property
+            def scale(self):
+                """Delegate to distribution's rate."""
+                return self._distribution.rate
 
             @property
             def distribution(self):
-                return torch.distributions.Exponential(self.scale)
+                return self._distribution
 
             @property
             def _supported_value(self):
@@ -637,11 +640,6 @@ class TestLeafModuleIntegration:
 
             def params(self):
                 return {"scale": self.scale}
-
-            def _mle_compute_statistics(self, data, weights, bias_correction):
-                # This mimics real MLE usage
-                scale_est = torch.ones_like(data[:1])
-                self.scale = scale_est
 
         leaf = TestLeaf(Scope([0]))
         # This should not raise an error
@@ -653,17 +651,24 @@ class TestLeafModuleIntegration:
         """Test assignment after broadcasting to event shape."""
 
         class BroadcastLeaf(LeafModule):
-            scale = LogSpaceParameter("scale")
-
             def __init__(self, scope, out_channels):
                 super().__init__(scope, out_channels=out_channels)
                 self._event_shape = (len(scope.query), out_channels)
-                self.log_scale = nn.Parameter(torch.empty(self._event_shape))
-                self.scale = torch.ones(self._event_shape)
+                self._distribution = ExponentialDistribution(rate=torch.ones(self._event_shape), event_shape=self._event_shape)
+
+            @property
+            def scale(self):
+                """Delegate to distribution's rate."""
+                return self._distribution.rate
+
+            @scale.setter
+            def scale(self, value):
+                """Set scale on the distribution."""
+                self._distribution.rate = value
 
             @property
             def distribution(self):
-                return torch.distributions.Exponential(self.scale)
+                return self._distribution
 
             @property
             def _supported_value(self):
@@ -671,9 +676,6 @@ class TestLeafModuleIntegration:
 
             def params(self):
                 return {"scale": self.scale}
-
-            def _mle_compute_statistics(self, data, weights, bias_correction):
-                pass
 
         leaf = BroadcastLeaf(Scope([0, 1]), out_channels=3)
         # Assign and broadcast
@@ -685,17 +687,19 @@ class TestLeafModuleIntegration:
         """Test that params() method returns real-space values."""
 
         class ParamsLeaf(LeafModule):
-            scale = LogSpaceParameter("scale")
-
             def __init__(self, scope):
                 super().__init__(scope, out_channels=1)
                 self._event_shape = (len(scope.query), 1)
-                self.log_scale = nn.Parameter(torch.empty(self._event_shape))
-                self.scale = torch.tensor([[2.0]])
+                self._distribution = ExponentialDistribution(rate=torch.tensor([[2.0]]), event_shape=self._event_shape)
+
+            @property
+            def scale(self):
+                """Delegate to distribution's rate."""
+                return self._distribution.rate
 
             @property
             def distribution(self):
-                return torch.distributions.Exponential(self.scale)
+                return self._distribution
 
             @property
             def _supported_value(self):
@@ -703,9 +707,6 @@ class TestLeafModuleIntegration:
 
             def params(self):
                 return {"scale": self.scale}
-
-            def _mle_compute_statistics(self, data, weights, bias_correction):
-                pass
 
         leaf = ParamsLeaf(Scope([0]))
         params = leaf.params()

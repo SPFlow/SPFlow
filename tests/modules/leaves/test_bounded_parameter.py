@@ -672,6 +672,7 @@ class TestLeafModuleIntegration:
 
     def test_assignment_in_mle(self):
         """Test that assignment works within MLE context."""
+        from spflow.distributions.bernoulli import Bernoulli as BernoulliDistribution
 
         class TestLeaf(LeafModule):
             p = BoundedParameter("p", lb=0.0, ub=1.0)
@@ -681,10 +682,12 @@ class TestLeafModuleIntegration:
                 self._event_shape = (len(scope.query), 1)
                 self.log_p = nn.Parameter(torch.empty(self._event_shape))
                 self.p = torch.ones(self._event_shape) * 0.5
+                # Initialize distribution properly
+                self._distribution = BernoulliDistribution(p=self.p, event_shape=self._event_shape)
 
             @property
             def distribution(self):
-                return torch.distributions.Bernoulli(self.p)
+                return self._distribution
 
             @property
             def _supported_value(self):
@@ -708,6 +711,7 @@ class TestLeafModuleIntegration:
 
     def test_descriptor_with_broadcast_to_event_shape(self):
         """Test assignment after broadcasting to event shape."""
+        from spflow.distributions.bernoulli import Bernoulli as BernoulliDistribution
 
         class BroadcastLeaf(LeafModule):
             p = BoundedParameter("p", lb=0.0, ub=1.0)
@@ -717,10 +721,12 @@ class TestLeafModuleIntegration:
                 self._event_shape = (len(scope.query), out_channels)
                 self.log_p = nn.Parameter(torch.empty(self._event_shape))
                 self.p = torch.ones(self._event_shape) * 0.5
+                # Initialize distribution properly
+                self._distribution = BernoulliDistribution(p=self.p, event_shape=self._event_shape)
 
             @property
             def distribution(self):
-                return torch.distributions.Bernoulli(self.p)
+                return self._distribution
 
             @property
             def _supported_value(self):

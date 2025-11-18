@@ -1,11 +1,9 @@
-import torch
-from torch import Tensor, nn
+from torch import Tensor
 
+from spflow.distributions.log_normal import LogNormal as LogNormalDistribution
 from spflow.meta.data import Scope
-from spflow.modules.leaves.base import (
-    LeafModule,
-)
-from spflow.utils.leaves import LogSpaceParameter, validate_all_or_none, init_parameter, parse_leaf_args
+from spflow.modules.leaves.base import LeafModule
+from spflow.utils.leaves import parse_leaf_args
 
 
 class LogNormal(LeafModule):
@@ -14,12 +12,10 @@ class LogNormal(LeafModule):
     Note: Parameters μ and σ apply to ln(x), not x itself.
 
     Attributes:
-        mean (Parameter): Mean μ of log-space distribution.
-        std (LogSpaceParameter): Standard deviation σ > 0 of log-space distribution.
-        distribution: Underlying torch.distributions.LogNormal object.
+        mean: Mean μ of log-space distribution.
+        std: Standard deviation σ > 0 of log-space distribution (LogSpaceParameter).
+        distribution: Underlying torch.distributions.LogNormal.
     """
-
-    std = LogSpaceParameter("std")
 
     def __init__(
         self,
@@ -32,8 +28,8 @@ class LogNormal(LeafModule):
         """Initialize Log-Normal distribution leaf.
 
         Args:
-            scope: Variable scope for this distribution.
-            out_channels: Number of output channels.
+            scope: Variable scope.
+            out_channels: Number of output channels (inferred from params if None).
             num_repetitions: Number of repetitions.
             mean: Mean μ of log-space distribution.
             std: Standard deviation σ > 0 of log-space distribution.
@@ -43,47 +39,14 @@ class LogNormal(LeafModule):
         )
         super().__init__(scope, out_channels=event_shape[1])
         self._event_shape = event_shape
-
-        validate_all_or_none(mean=mean, std=std)
-
-        mean = init_parameter(param=mean, event_shape=event_shape, init=torch.randn)
-        std = init_parameter(param=std, event_shape=event_shape, init=torch.rand)
-
-        self.mean = nn.Parameter(mean)
-        self.log_std = nn.Parameter(
-            torch.empty_like(std)
-        )  # initialize empty, set with descriptor in next line
-        self.std = std.clone().detach()
+        self._distribution = LogNormalDistribution(mean=mean, std=std, event_shape=event_shape)
 
     @property
-    def distribution(self) -> torch.distributions.Distribution:
-        return torch.distributions.LogNormal(self.mean, self.std)
+    def mean(self):
+        """Delegate to distribution's mean."""
+        return self._distribution.mean
 
     @property
-    def _supported_value(self):
-        return 1.0
-
-    def _mle_compute_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute MLE for mean μ and std σ by fitting ln(data).
-
-        Args:
-            data: Scope-filtered data (must be positive).
-            weights: Normalized sample weights.
-            bias_correction: Whether to apply bias correction.
-        """
-        n_total = weights.sum()
-
-        log_data = data.log()
-        mean_est = (weights * log_data).sum(0) / n_total
-
-        var_numerator = (weights * torch.pow(log_data - mean_est, 2)).sum(0)
-        denom = n_total - 1 if bias_correction else n_total
-        std_est = torch.sqrt(var_numerator / denom)
-
-        # Broadcast to event_shape and assign directly
-        self.mean.data = self._broadcast_to_event_shape(mean_est)
-        self.std = self._broadcast_to_event_shape(std_est)
-
-    def params(self) -> dict[str, Tensor]:
-        """Returns distribution parameters."""
-        return {"mean": self.mean, "std": self.std}
+    def std(self):
+        """Delegate to distribution's std."""
+        return self._distribution.std
