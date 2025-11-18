@@ -6,7 +6,7 @@ from typing import Optional, Dict, Callable
 import torch
 from torch import Tensor
 
-from spflow.distributions.base import Distribution
+from spflow.modules.leaves.distribution import Distribution
 from spflow.meta.data.scope import Scope
 from spflow.modules.base import Module
 from spflow.utils.cache import Cache, cached
@@ -263,7 +263,7 @@ class LeafModule(Module, ABC):
         """
 
         # Step 1: Select scope-relevant features
-        scoped_data = data[:, self.scope.query] 
+        scoped_data = data[:, self.scope.query]
 
         # Step 2: Apply NaN strategy (drop/impute)
         scoped_data, normalized_weights = apply_nan_strategy(nan_strategy, scoped_data, self.device, weights)
