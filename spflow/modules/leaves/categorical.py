@@ -1,3 +1,4 @@
+import torch
 from torch import Tensor
 
 from spflow.distributions.categorical import Categorical as CategoricalDistribution
@@ -37,4 +38,15 @@ class Categorical(LeafModule):
         )
         super().__init__(scope, out_channels=event_shape[1])
         self._event_shape = event_shape
+
+        # Normalize probabilities if provided to ensure they sum to 1 along last dimension
+        # Only normalize if probabilities are valid (non-negative, <= 1.0, and finite) but don't sum to 1
+        if p is not None:
+            if torch.all(p >= 0.0) and torch.all(p <= 1.0) and torch.isfinite(p).all():
+                # Check if probabilities already sum to 1 (within tolerance)
+                sums = p.sum(dim=-1, keepdim=True)
+                if not torch.allclose(sums, torch.ones_like(sums), atol=1e-6):
+                    p = p / sums
+            # If probabilities are invalid, let SimplexParameter handle validation
+
         self._distribution = CategoricalDistribution(p=p, K=K, event_shape=event_shape)

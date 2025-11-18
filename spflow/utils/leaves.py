@@ -7,7 +7,12 @@ from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta import Scope
-from spflow.utils.projections import proj_real_to_bounded, proj_bounded_to_real
+from spflow.utils.projections import (
+    proj_real_to_bounded,
+    proj_bounded_to_real,
+    proj_real_to_convex,
+    proj_convex_to_real,
+)
 
 
 class LogSpaceParameter:
@@ -62,6 +67,65 @@ class LogSpaceParameter:
         param.data = tensor_value.log()
 
 
+class SimplexParameter:
+    """Descriptor for parameters constrained to the probability simplex.
+
+    Transparently stores values as logits (unconstrained real numbers) for
+    numerical stability during optimization, exposes them as normalized
+    probabilities via softmax.
+
+    Args:
+        name: Parameter name. Storage uses 'logits_{name}'.
+        validator: Validator function (defaults to probability simplex check).
+    """
+
+    def __init__(self, name: str, validator: Callable[[Tensor], None] | None = None):
+        self.name = name
+        self.logits_name = f"logits_{name}"
+        self.validator = validator or self._default_simplex_validator
+
+    def _default_simplex_validator(self, value: Tensor) -> None:
+        """Validate that values are finite and form a valid probability distribution."""
+        if not torch.isfinite(value).all():
+            raise ValueError(f"Values for '{self.name}' must be finite, but was: {value}")
+        if torch.any(value < 0.0):
+            raise ValueError(f"Values for '{self.name}' must be non-negative, but was: {value}")
+        # Check that values sum to 1 (within numerical tolerance)
+        sums = value.sum(dim=-1, keepdim=True)
+        if not torch.allclose(sums, torch.ones_like(sums), atol=1e-6):
+            raise ValueError(f"Values for '{self.name}' must sum to 1, but sums were: {sums.squeeze(-1)}")
+
+    def __get__(self, obj: Any, objtype: Any = None) -> Tensor:
+        """Return parameter value as normalized probabilities via softmax.
+
+        Args:
+            obj: Object instance or None for class access.
+            objtype: Class type (unused).
+
+        Returns:
+            Parameter value as probabilities summing to 1 along the last dimension.
+        """
+        if obj is None:
+            return self
+        # Retrieve the underlying logits parameter and apply softmax
+        logits = getattr(obj, self.logits_name)
+        return proj_real_to_convex(logits)
+
+    def __set__(self, obj: Any, value: Tensor) -> None:
+        """Validate and store parameter as logits for numerical stability.
+
+        Args:
+            obj: Object instance to set parameter on.
+            value: Parameter value to store (probabilities, will be converted to logits).
+        """
+        param = getattr(obj, self.logits_name)
+        tensor_value = torch.as_tensor(value, dtype=param.dtype, device=param.device)
+        # Validate before storing (ensures only valid probabilities are stored)
+        self.validator(tensor_value)
+        # Store as logits (unconstrained space) for numerical stability during optimization
+        param.data = proj_convex_to_real(tensor_value)
+
+
 class BoundedParameter:
     """Descriptor for parameters constrained to [lb, ub] via projection.
 
@@ -75,11 +139,11 @@ class BoundedParameter:
     """
 
     def __init__(
-            self,
-            name: str,
-            lb: float | Tensor | None = None,
-            ub: float | Tensor | None = None,
-            validator: Callable[[Tensor], None] | None = None,
+        self,
+        name: str,
+        lb: float | Tensor | None = None,
+        ub: float | Tensor | None = None,
+        validator: Callable[[Tensor], None] | None = None,
     ):
         """Initialize a BoundedParameter descriptor.
 
@@ -195,7 +259,7 @@ def validate_all_or_none(**params: Any) -> bool:
 
 
 def apply_nan_strategy(
-        nan_strategy: str | None, scope_data: Tensor, device: torch.device, weights: Tensor | None
+    nan_strategy: str | None, scope_data: Tensor, device: torch.device, weights: Tensor | None
 ) -> tuple[Tensor, Tensor]:
     """Apply NaN handling strategy for MLE.
 
@@ -275,7 +339,7 @@ def init_parameter(param: Tensor | None, event_shape: tuple[int, ...], init: Cal
 
 
 def parse_leaf_args(
-        scope: int | list[int] | Scope, out_channels, num_repetitions, params
+    scope: int | list[int] | Scope, out_channels, num_repetitions, params
 ) -> tuple[int, int, int]:
     """Parse leaf arguments and return event_shape.
 
@@ -338,9 +402,9 @@ def parse_leaf_args(
 
 
 def _handle_mle_edge_cases(
-        param_est: Tensor,
-        lb: float | Tensor | None = None,
-        ub: float | Tensor | None = None,
+    param_est: Tensor,
+    lb: float | Tensor | None = None,
+    ub: float | Tensor | None = None,
 ) -> Tensor:
     """Handle NaNs, zeros, and bounds in parameter estimation.
 
