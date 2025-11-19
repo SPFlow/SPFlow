@@ -23,13 +23,13 @@ class Uniform(LeafModule):
 
     def __init__(
         self,
-            scope: Scope,
-            out_channels: int = None,
-            num_repetitions: int = None,
-            low: Tensor | None = None,
-            high: Tensor | None = None,
-            validate_args: bool | None = True,
-            support_outside: bool = True,
+        scope: Scope,
+        out_channels: int = None,
+        num_repetitions: int = None,
+        low: Tensor | None = None,
+        high: Tensor | None = None,
+        validate_args: bool | None = True,
+        support_outside: bool = True,
     ):
         """Initialize Uniform distribution leaf.
 
@@ -43,7 +43,9 @@ class Uniform(LeafModule):
             support_outside: Whether values outside [start, end] are supported.
         """
         if low is None or high is None:
-            raise InvalidParameterCombinationError("'low' and 'high' parameters are required for Uniform distribution")
+            raise InvalidParameterCombinationError(
+                "'low' and 'high' parameters are required for Uniform distribution"
+            )
 
         super().__init__(
             scope=scope,
@@ -73,7 +75,6 @@ class Uniform(LeafModule):
     def _torch_distribution_class(self) -> type[torch.distributions.Uniform]:
         return torch.distributions.Uniform
 
-    
     @property
     def mode(self) -> Tensor:
         """Returns the mode (midpoint) of the distribution."""

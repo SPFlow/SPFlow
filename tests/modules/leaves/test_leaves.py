@@ -334,7 +334,6 @@ conditional_leaf_cls_values = [
 
 
 class TestConditionalLeaves:
-
     @pytest.mark.parametrize("leaf_cls", conditional_leaf_cls_values)
     def test_conditional_leaf_is_conditional(self, leaf_cls):
         """Test that a leaf with parameter network is marked as conditional."""
@@ -355,8 +354,12 @@ class TestConditionalLeaves:
             evidence_size=len(evidence),
         )
         scope_cond = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope_cond, num_repetitions=None)
-        leaf_cond = leaf_cls(scope=scope_cond, out_channels=out_channels, parameter_network=param_net, **leaf_args)
+        leaf_args = make_leaf_args(
+            cls=leaf_cls, out_channels=out_channels, scope=scope_cond, num_repetitions=None
+        )
+        leaf_cond = leaf_cls(
+            scope=scope_cond, out_channels=out_channels, parameter_network=param_net, **leaf_args
+        )
         assert leaf_cond.is_conditional
 
     @pytest.mark.parametrize("leaf_cls,out_channels", product(conditional_leaf_cls_values, [1, 3]))

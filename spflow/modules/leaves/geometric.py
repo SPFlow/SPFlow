@@ -18,14 +18,14 @@ class Geometric(LeafModule):
     """
 
     def __init__(
-            self,
-            scope,
-            out_channels=None,
-            num_repetitions=None,
-            parameter_network=None,
-            validate_args: bool | None = True,
-            probs: Tensor | None = None,
-            logits: Tensor | None = None,
+        self,
+        scope,
+        out_channels=None,
+        num_repetitions=None,
+        parameter_network=None,
+        validate_args: bool | None = True,
+        probs: Tensor | None = None,
+        logits: Tensor | None = None,
     ):
         """Initialize Geometric distribution.
 
@@ -88,7 +88,6 @@ class Geometric(LeafModule):
     def _torch_distribution_class(self) -> type[torch.distributions.Geometric]:
         return torch.distributions.Geometric
 
-    
     def params(self) -> dict[str, Tensor]:
         """Returns distribution parameters."""
         return {"logits": self.logits}

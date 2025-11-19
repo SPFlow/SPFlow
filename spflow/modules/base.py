@@ -226,7 +226,7 @@ class Module(nn.Module, ABC):
     def expectation_maximization(
         self,
         data: Tensor,
-            bias_correction: bool = True,
+        bias_correction: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Expectation-maximization step.
@@ -245,8 +245,8 @@ class Module(nn.Module, ABC):
         self,
         data: Tensor,
         weights: Tensor | None = None,
-            bias_correction: bool = True,
-            nan_strategy: str = "ignore",
+        bias_correction: bool = True,
+        nan_strategy: str = "ignore",
         cache: Cache | None = None,
     ) -> None:
         """Update parameters via maximum likelihood estimation.

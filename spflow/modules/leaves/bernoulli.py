@@ -19,14 +19,14 @@ class Bernoulli(LeafModule):
     """
 
     def __init__(
-            self,
-            scope,
-            out_channels: int = None,
-            num_repetitions: int = None,
-            parameter_network: nn.Module = None,
-            validate_args: bool | None = True,
-            probs: Tensor | None = None,
-            logits: Tensor | None = None,
+        self,
+        scope,
+        out_channels: int = None,
+        num_repetitions: int = None,
+        parameter_network: nn.Module = None,
+        validate_args: bool | None = True,
+        probs: Tensor | None = None,
+        logits: Tensor | None = None,
     ):
         """Initialize Bernoulli distribution.
 

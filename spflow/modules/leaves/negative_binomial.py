@@ -21,15 +21,15 @@ class NegativeBinomial(LeafModule):
     """
 
     def __init__(
-            self,
-            scope: Scope,
-            out_channels: int = None,
-            num_repetitions: int = None,
-            total_count: Tensor | None = None,
-            probs: Tensor | None = None,
-            logits: Tensor | None = None,
-            parameter_network: nn.Module = None,
-            validate_args: bool | None = True,
+        self,
+        scope: Scope,
+        out_channels: int = None,
+        num_repetitions: int = None,
+        total_count: Tensor | None = None,
+        probs: Tensor | None = None,
+        logits: Tensor | None = None,
+        parameter_network: nn.Module = None,
+        validate_args: bool | None = True,
     ):
         """Initialize Negative Binomial distribution leaf module.
 
@@ -44,9 +44,13 @@ class NegativeBinomial(LeafModule):
             validate_args: Whether to enable torch.distributions argument validation.
         """
         if total_count is None:
-            raise InvalidParameterCombinationError("'n' parameter is required for NegativeBinomial distribution")
+            raise InvalidParameterCombinationError(
+                "'n' parameter is required for NegativeBinomial distribution"
+            )
         if probs is not None and logits is not None:
-            raise InvalidParameterCombinationError("NegativeBinomial accepts either probs or logits, not both.")
+            raise InvalidParameterCombinationError(
+                "NegativeBinomial accepts either probs or logits, not both."
+            )
 
         param_source = logits if logits is not None else probs
         super().__init__(
@@ -113,7 +117,6 @@ class NegativeBinomial(LeafModule):
     def _torch_distribution_class(self) -> type[torch.distributions.NegativeBinomial]:
         return torch.distributions.NegativeBinomial
 
-    
     def params(self) -> dict[str, Tensor]:
         """Returns distribution parameters."""
         return {"total_count": self.total_count, "logits": self.logits}

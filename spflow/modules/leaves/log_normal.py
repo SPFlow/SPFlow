@@ -18,14 +18,14 @@ class LogNormal(LeafModule):
     """
 
     def __init__(
-            self,
-            scope,
-            out_channels: int = None,
-            num_repetitions: int = None,
-            parameter_network: nn.Module = None,
-            validate_args: bool | None = True,
-            loc: Tensor = None,
-            scale: Tensor = None,
+        self,
+        scope,
+        out_channels: int = None,
+        num_repetitions: int = None,
+        parameter_network: nn.Module = None,
+        validate_args: bool | None = True,
+        loc: Tensor = None,
+        scale: Tensor = None,
     ):
         """Initialize Log-Normal distribution.
 

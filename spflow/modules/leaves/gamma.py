@@ -17,14 +17,14 @@ class Gamma(LeafModule):
     """
 
     def __init__(
-            self,
-            scope,
-            out_channels: int = None,
-            num_repetitions: int = None,
-            parameter_network: nn.Module = None,
-            validate_args: bool | None = True,
-            concentration: Tensor = None,
-            rate: Tensor = None,
+        self,
+        scope,
+        out_channels: int = None,
+        num_repetitions: int = None,
+        parameter_network: nn.Module = None,
+        validate_args: bool | None = True,
+        concentration: Tensor = None,
+        rate: Tensor = None,
     ):
         """Initialize Gamma distribution leaf.
 
@@ -87,7 +87,6 @@ class Gamma(LeafModule):
     def _torch_distribution_class(self) -> type[torch.distributions.Gamma]:
         return torch.distributions.Gamma
 
-  
     def conditional_distribution(self, evidence: Tensor) -> torch.distributions.Gamma:
         # Pass evidence to parameter network to get parameters
         params = self.parameter_network(evidence)
@@ -126,9 +125,9 @@ class Gamma(LeafModule):
 
         if bias_correction:
             concentration_est = concentration_est - 1 / n_total * (
-                    3 * concentration_est
-                    - 2 / 3 * (concentration_est / (1 + concentration_est))
-                    - 4 / 5 * (concentration_est / (1 + concentration_est) ** 2)
+                3 * concentration_est
+                - 2 / 3 * (concentration_est / (1 + concentration_est))
+                - 4 / 5 * (concentration_est / (1 + concentration_est) ** 2)
             )
             rate_est = rate_est * ((n_total - 1) / n_total)
 
