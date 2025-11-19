@@ -223,6 +223,52 @@ class Module(nn.Module, ABC):
             cache=cache,
         )
 
+    def log_posterior(
+            self,
+            data: torch.Tensor,
+            log_prior: torch.Tensor = None,
+            cache: Cache | None = None,
+    ) -> torch.Tensor:
+        """Compute log-posterior probabilities for multi-class models.
+
+        Args:
+            data: Input data tensor.
+            prior: Optional prior probabilities tensor.
+            cache: Optional cache dictionary for caching intermediate results.
+
+        Returns:
+            Log-posterior probabilities.
+        """
+        if self.out_channels <= 1:
+            raise ValueError("Posterior can only be computed for models with multiple classes.")
+
+        if cache is None:
+            cache = Cache()
+        shape = (1, self.out_features, self.out_channels, *(() if self.num_repetitions is None else (self.num_repetitions,)))
+        if log_prior is not None:
+            assert log_prior.shape == shape, f"Expected log_prior shape {shape}, got {log_prior.shape}"
+            ll_y = log_prior
+        else:
+            l_y = torch.ones(shape, device=self.device) / self.out_channels
+            ll_y = torch.log(l_y)
+
+        assert torch.allclose(ll_y.exp().sum(dim=2), torch.tensor(1.0)), "Prior probabilities must sum to 1 across classes."
+
+        ll = self.log_likelihood(
+            data,
+            cache=cache,
+        )  # shape: (batch_size, out_feature, out_channel, num_repetitions)
+
+        # logp(y | x) = logp(x, y) - logp(x)
+        #             = logp(x | y) + logp(y) - logp(x)
+        #             = logp(x | y) + logp(y) - logsumexp(logp(x,y), dim=y)
+
+        ll_x_and_y = ll + ll_y
+        ll_x = torch.logsumexp(ll_x_and_y, dim=2, keepdim=True)
+        ll_y_given_x = ll_x_and_y - ll_x
+
+        return ll_y_given_x
+
     def expectation_maximization(
         self,
         data: Tensor,
