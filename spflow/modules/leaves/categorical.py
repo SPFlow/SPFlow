@@ -18,15 +18,15 @@ class Categorical(LeafModule):
     """
 
     def __init__(
-            self,
-            scope: Scope,
-            out_channels: int = None,
-            num_repetitions: int = None,
-            K: int | Tensor | None = None,
-            probs: Tensor | None = None,
-            logits: Tensor | None = None,
-            parameter_network: nn.Module = None,
-            validate_args: bool | None = True,
+        self,
+        scope: Scope,
+        out_channels: int = None,
+        num_repetitions: int = None,
+        K: int | Tensor | None = None,
+        probs: Tensor | None = None,
+        logits: Tensor | None = None,
+        parameter_network: nn.Module = None,
+        validate_args: bool | None = True,
     ):
         """Initialize Categorical distribution leaf module.
 

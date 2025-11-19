@@ -15,13 +15,13 @@ from spflow.utils.sampling_context import SamplingContext, init_default_sampling
 
 class LeafModule(Module, ABC):
     def __init__(
-            self,
-            scope: Scope | int | list[int],
-            out_channels: int = None,
-            num_repetitions: int = None,
-            params: list[Tensor | None] | None = None,
-            parameter_network: nn.Module = None,
-            validate_args: bool | None = True,
+        self,
+        scope: Scope | int | list[int],
+        out_channels: int = None,
+        num_repetitions: int = None,
+        params: list[Tensor | None] | None = None,
+        parameter_network: nn.Module = None,
+        validate_args: bool | None = True,
     ):
         """Base class for leaf distribution modules.
 
@@ -79,7 +79,6 @@ class LeafModule(Module, ABC):
             torch.distributions.Distribution constructed from the parameters.
         """
         return self._torch_distribution_class(validate_args=self._validate_args, **params)  # type: ignore[call-arg]
-
 
     def conditional_distribution(self, evidence: Tensor) -> torch.distributions.Distribution:
         """Generates torch.distributions object conditionally based on evidence.
@@ -491,7 +490,6 @@ class LeafModule(Module, ABC):
                 samples = samples.repeat(n_samples, 1, 1).detach()
 
         else:
-
             if self.is_conditional:
                 # Get evidence
                 evidence = data[instance_mask][:, self.scope.evidence]
@@ -599,7 +597,9 @@ class LeafModule(Module, ABC):
             Marginalized leaf or None if fully marginalized.
         """
         if self.is_conditional:
-            raise RuntimeError(f"Marginalization not supported for conditional leaf {self.__class__.__name__}.")
+            raise RuntimeError(
+                f"Marginalization not supported for conditional leaf {self.__class__.__name__}."
+            )
 
         # Marginalized scope
         scope_marg = Scope([q for q in self.scope.query if q not in marg_rvs])

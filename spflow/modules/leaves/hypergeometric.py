@@ -206,10 +206,10 @@ class Hypergeometric(LeafModule):
         scope: Scope,
         out_channels: int = None,
         num_repetitions: int = None,
-            K: Tensor | None = None,
-            N: Tensor | None = None,
-            n: Tensor | None = None,
-            validate_args: bool | None = True,
+        K: Tensor | None = None,
+        N: Tensor | None = None,
+        n: Tensor | None = None,
+        validate_args: bool | None = True,
     ):
         """Initialize Hypergeometric distribution leaf module.
 
@@ -224,7 +224,8 @@ class Hypergeometric(LeafModule):
         """
         if K is None or N is None or n is None:
             raise InvalidParameterCombinationError(
-                "'K', 'N', and 'n' parameters are required for Hypergeometric distribution")
+                "'K', 'N', and 'n' parameters are required for Hypergeometric distribution"
+            )
 
         super().__init__(
             scope=scope,
@@ -296,7 +297,6 @@ class Hypergeometric(LeafModule):
     def _torch_distribution_class(self) -> type[_HypergeometricDistribution]:
         return _HypergeometricDistribution
 
-    
     def params(self) -> dict[str, Tensor]:
         """Returns distribution parameters."""
         return {"K": self.K, "N": self.N, "n": self.n}

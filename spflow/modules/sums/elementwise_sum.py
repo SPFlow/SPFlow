@@ -131,7 +131,8 @@ class ElementwiseSum(Module):
         if weights is None:
             weights = (
                 # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                    torch.rand(self.weights_shape) + 1e-08
+                torch.rand(self.weights_shape)
+                + 1e-08
             )  # avoid zeros
 
             # Normalize
@@ -319,9 +320,9 @@ class ElementwiseSum(Module):
         ).squeeze(2)
 
         if (
-                cache is not None
-                and "log_likelihood" in cache
-                and all(cache["log_likelihood"][inp] is not None for inp in self.inputs)
+            cache is not None
+            and "log_likelihood" in cache
+            and all(cache["log_likelihood"][inp] is not None for inp in self.inputs)
         ):
             input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
             input_lls = torch.stack(input_lls, dim=self.sum_dim)  # torch.stack(input_lls, dim=-1)

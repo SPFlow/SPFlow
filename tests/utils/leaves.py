@@ -281,7 +281,9 @@ class SimpleParameterNetwork(torch.nn.Module):
         # Generate trainable parameters
         if self.network is not None and len(self.param_constraints) > 0:
             params = self.network(evidence)
-            params = params.reshape(batch_size, self.num_features, self.output_size, len(self.param_constraints))
+            params = params.reshape(
+                batch_size, self.num_features, self.output_size, len(self.param_constraints)
+            )
 
             for i, (param_name, param_constraint) in enumerate(self.param_constraints.items()):
                 p = params[..., i]

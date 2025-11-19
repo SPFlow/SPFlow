@@ -248,7 +248,8 @@ class Sum(Module):
             Tensor: Log-likelihood of shape (batch_size, num_features, out_channels)
                 or (batch_size, num_features, out_channels, num_repetitions).
         """
-        if cache is None: cache = Cache()
+        if cache is None:
+            cache = Cache()
 
         # Get input log-likelihoods
         ll = self.inputs.log_likelihood(
@@ -298,7 +299,8 @@ class Sum(Module):
         Returns:
             Tensor: Sampled values.
         """
-        if cache is None: cache = Cache()
+        if cache is None:
+            cache = Cache()
 
         # Handle num_samples case (create empty data tensor)
         if data is None:
@@ -336,7 +338,11 @@ class Sum(Module):
         logits = logits.gather(dim=3, index=idxs).squeeze(3)
 
         # Check if evidence is given (cached log-likelihoods)
-        if cache is not None and "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
+        if (
+            cache is not None
+            and "log_likelihood" in cache
+            and cache["log_likelihood"].get(self.inputs) is not None
+        ):
             # Get the log likelihoods from the cache
             input_lls = cache["log_likelihood"][self.inputs]
 
@@ -390,7 +396,8 @@ class Sum(Module):
         Raises:
             ValueError: If required log-likelihoods are not found in cache.
         """
-        if cache is None: cache = Cache()
+        if cache is None:
+            cache = Cache()
 
         with torch.no_grad():
             # ----- expectation step -----
@@ -453,7 +460,8 @@ class Sum(Module):
         Returns:
             Marginalized Sum module or None.
         """
-        if cache is None: cache = Cache()
+        if cache is None:
+            cache = Cache()
 
         # compute module scope (same for all outputs)
         module_scope = self.scope

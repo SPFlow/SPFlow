@@ -88,7 +88,8 @@ class MixingLayer(Sum):
         if weights is None:
             weights = (
                 # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                    torch.rand(self.weights_shape) + 1e-08
+                torch.rand(self.weights_shape)
+                + 1e-08
             )  # avoid zeros
 
             # Normalize
@@ -150,9 +151,9 @@ class MixingLayer(Sum):
 
         # Check if we have cached input log-likelihoods to compute posterior
         if (
-                cache is not None
-                and "log_likelihood" in cache
-                and cache["log_likelihood"].get(self.inputs) is not None
+            cache is not None
+            and "log_likelihood" in cache
+            and cache["log_likelihood"].get(self.inputs) is not None
         ):
             # Compute log posterior by reweighing logits with input lls
             log_prior = logits

@@ -16,13 +16,13 @@ class Exponential(LeafModule):
     """
 
     def __init__(
-            self,
-            scope,
-            out_channels: int = None,
-            num_repetitions: int = None,
-            parameter_network: nn.Module = None,
-            validate_args: bool | None = True,
-            rate: Tensor = None,
+        self,
+        scope,
+        out_channels: int = None,
+        num_repetitions: int = None,
+        parameter_network: nn.Module = None,
+        validate_args: bool | None = True,
+        rate: Tensor = None,
     ):
         """Initialize Exponential distribution leaf.
 
@@ -68,7 +68,6 @@ class Exponential(LeafModule):
     def _torch_distribution_class(self) -> type[torch.distributions.Exponential]:
         return torch.distributions.Exponential
 
-    
     def params(self) -> dict[str, Tensor]:
         """Returns distribution parameters."""
         return {"rate": self.rate}

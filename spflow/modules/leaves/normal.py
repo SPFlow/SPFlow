@@ -16,14 +16,14 @@ class Normal(LeafModule):
     """
 
     def __init__(
-            self,
-            scope,
-            out_channels: int = None,
-            num_repetitions: int = None,
-            parameter_network: nn.Module = None,
-            validate_args: bool | None = True,
-            loc: Tensor = None,
-            scale: Tensor = None,
+        self,
+        scope,
+        out_channels: int = None,
+        num_repetitions: int = None,
+        parameter_network: nn.Module = None,
+        validate_args: bool | None = True,
+        loc: Tensor = None,
+        scale: Tensor = None,
     ):
         """Initialize Normal distribution.
 
@@ -70,7 +70,6 @@ class Normal(LeafModule):
     def _torch_distribution_class(self) -> type[torch.distributions.Normal]:
         return torch.distributions.Normal
 
-    
     def params(self):
         return {"loc": self.loc, "scale": self.scale}
 
