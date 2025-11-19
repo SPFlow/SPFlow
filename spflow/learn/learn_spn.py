@@ -309,7 +309,7 @@ def learn_spn(
     else:
         # select correct data
         if not data.shape[0] == 1:
-            partition_ids = partitioning_method(data)  # uc
+            partition_ids = partitioning_method(data[:, scope.query])  # uc
 
         # compute partitions of rvs from partition id labels
         partitions = []
