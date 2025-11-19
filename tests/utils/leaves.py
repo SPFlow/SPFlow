@@ -240,6 +240,7 @@ class SimpleParameterNetwork(torch.nn.Module):
             num_features: int,
             param_constraints: dict[str, str],
             fixed_params: dict[str, torch.Tensor] | None = None,
+            num_repetitions: int | None = None,
     ):
         """
         Args:
@@ -248,6 +249,7 @@ class SimpleParameterNetwork(torch.nn.Module):
             num_features: Number of features (query variables).
             param_constraints: Dictionary specifying constraints for trainable parameters.
             fixed_params: Optional dictionary of fixed (non-trainable) parameters.
+            num_repetitions: Number of repetitions (optional, for multi-repetition distributions).
         """
         super().__init__()
         self.input_size = input_size
@@ -255,13 +257,18 @@ class SimpleParameterNetwork(torch.nn.Module):
         self.num_features = num_features
         self.param_constraints = param_constraints
         self.fixed_params = fixed_params if fixed_params is not None else {}
+        self.num_repetitions = num_repetitions
 
         # Only create network for trainable parameters
         if len(param_constraints) > 0:
+            if num_repetitions is None:
+                output_features = num_features * output_size * len(param_constraints)
+            else:
+                output_features = num_features * output_size * num_repetitions * len(param_constraints)
             self.network = torch.nn.Sequential(
                 torch.nn.Linear(input_size, 64),
                 torch.nn.ReLU(),
-                torch.nn.Linear(64, num_features * output_size * len(param_constraints)),
+                torch.nn.Linear(64, output_features),
             )
         else:
             self.network = None
@@ -281,9 +288,14 @@ class SimpleParameterNetwork(torch.nn.Module):
         # Generate trainable parameters
         if self.network is not None and len(self.param_constraints) > 0:
             params = self.network(evidence)
-            params = params.reshape(
-                batch_size, self.num_features, self.output_size, len(self.param_constraints)
-            )
+            if self.num_repetitions is None:
+                params = params.reshape(
+                    batch_size, self.num_features, self.output_size, len(self.param_constraints)
+                )
+            else:
+                params = params.reshape(
+                    batch_size, self.num_features, self.output_size, self.num_repetitions, len(self.param_constraints)
+                )
 
             for i, (param_name, param_constraint) in enumerate(self.param_constraints.items()):
                 p = params[..., i]
@@ -302,13 +314,19 @@ class SimpleParameterNetwork(torch.nn.Module):
         for param_name, param_value in self.fixed_params.items():
             # Expand fixed parameter to match batch size
             # Fixed params are typically shaped (num_features, out_channels) or scalar
-            # Need to expand to (batch_size, num_features, out_channels)
+            # Need to expand to (batch_size, num_features, out_channels) or similar
             if param_value.ndim == 0:
                 # Scalar
-                expanded = param_value.expand(batch_size, self.num_features, self.output_size)
+                if self.num_repetitions is None:
+                    expanded = param_value.expand(batch_size, self.num_features, self.output_size)
+                else:
+                    expanded = param_value.expand(batch_size, self.num_features, self.output_size, self.num_repetitions)
             elif param_value.ndim == 2:
                 # (num_features, out_channels)
                 expanded = param_value.unsqueeze(0).expand(batch_size, -1, -1)
+            elif param_value.ndim == 3:
+                # (num_features, out_channels, num_repetitions)
+                expanded = param_value.unsqueeze(0).expand(batch_size, -1, -1, -1)
             else:
                 expanded = param_value
             param_dict[param_name] = expanded
@@ -361,7 +379,7 @@ def get_param_constraints(distribution_class) -> dict[str, str]:
 
 
 def create_conditional_parameter_network(
-        distribution_class, out_features: int, out_channels: int, evidence_size: int
+        distribution_class, out_features: int, out_channels: int, evidence_size: int, num_repetitions: int | None = None
 ):
     """Create a parameter network for conditional distribution testing.
 
@@ -370,6 +388,7 @@ def create_conditional_parameter_network(
         out_features: Number of features (query variables).
         out_channels: Number of output channels.
         evidence_size: Number of evidence variables.
+        num_repetitions: Number of repetitions (optional, for multi-repetition distributions).
 
     Returns:
         A parameter network configured for the distribution.
@@ -391,4 +410,5 @@ def create_conditional_parameter_network(
         num_features=out_features,
         param_constraints=param_constraints,
         fixed_params=fixed_params if fixed_params else None,
+        num_repetitions=num_repetitions,
     )

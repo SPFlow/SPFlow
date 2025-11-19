@@ -334,16 +334,15 @@ conditional_leaf_cls_values = [
 
 
 class TestConditionalLeaves:
-    @pytest.mark.parametrize("leaf_cls", conditional_leaf_cls_values)
-    def test_conditional_leaf_is_conditional(self, leaf_cls):
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    def test_conditional_leaf_is_conditional(self, leaf_cls, out_features, out_channels, num_reps):
         """Test that a leaf with parameter network is marked as conditional."""
-        out_features, out_channels = 2, 1
         query = list(range(out_features))
-        evidence = [2, 3]
+        evidence = [out_features, out_features + 1]
 
         # Non-conditional leaf
         scope = Scope(query)
-        leaf = make_leaf(cls=leaf_cls, scope=scope, out_channels=out_channels)
+        leaf = make_leaf(cls=leaf_cls, scope=scope, out_channels=out_channels, num_repetitions=num_reps)
         assert not leaf.is_conditional
 
         # Conditional leaf
@@ -352,31 +351,32 @@ class TestConditionalLeaves:
             out_features=out_features,
             out_channels=out_channels,
             evidence_size=len(evidence),
+            num_repetitions=num_reps,
         )
         scope_cond = Scope(query, evidence=evidence)
         leaf_args = make_leaf_args(
-            cls=leaf_cls, out_channels=out_channels, scope=scope_cond, num_repetitions=None
+            cls=leaf_cls, out_channels=out_channels, scope=scope_cond, num_repetitions=num_reps
         )
         leaf_cond = leaf_cls(
             scope=scope_cond, out_channels=out_channels, parameter_network=param_net, **leaf_args
         )
         assert leaf_cond.is_conditional
 
-    @pytest.mark.parametrize("leaf_cls,out_channels", product(conditional_leaf_cls_values, [1, 3]))
-    def test_conditional_leaf_distribution_with_evidence(self, leaf_cls, out_channels: int):
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    def test_conditional_leaf_distribution_with_evidence(self, leaf_cls, out_features, out_channels: int, num_reps):
         """Test that conditional leaf generates distribution from evidence."""
-        out_features = 2
         query = list(range(out_features))
-        evidence = [2, 3]
+        evidence = [out_features, out_features + 1]
 
         param_net = create_conditional_parameter_network(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
             evidence_size=len(evidence),
+            num_repetitions=num_reps,
         )
         scope = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=None)
+        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
 
         # Create evidence tensor
@@ -387,21 +387,21 @@ class TestConditionalLeaves:
         dist = leaf.conditional_distribution(evidence=evidence_tensor)
         assert dist is not None
 
-    @pytest.mark.parametrize("leaf_cls", conditional_leaf_cls_values)
-    def test_conditional_leaf_distribution_requires_evidence(self, leaf_cls):
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    def test_conditional_leaf_distribution_requires_evidence(self, leaf_cls, out_features, out_channels, num_reps):
         """Test that conditional leaf requires evidence when needed."""
-        out_features, out_channels = 2, 1
         query = list(range(out_features))
-        evidence = [2, 3]
+        evidence = [out_features, out_features + 1]
 
         param_net = create_conditional_parameter_network(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
             evidence_size=len(evidence),
+            num_repetitions=num_reps,
         )
         scope = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=None)
+        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
 
         # Should raise error if evidence is not provided
@@ -414,21 +414,21 @@ class TestConditionalLeaves:
             with pytest.raises(ValueError, match="Evidence tensor must be provided"):
                 leaf.conditional_distribution(evidence=None)
 
-    @pytest.mark.parametrize("leaf_cls", conditional_leaf_cls_values)
-    def test_conditional_leaf_likelihood(self, leaf_cls):
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    def test_conditional_leaf_likelihood(self, leaf_cls, out_features, out_channels, num_reps):
         """Test likelihood computation with conditional leaf."""
-        out_features, out_channels = 2, 1
         query = list(range(out_features))
-        evidence = [2, 3]
+        evidence = [out_features, out_features + 1]
 
         param_net = create_conditional_parameter_network(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
             evidence_size=len(evidence),
+            num_repetitions=num_reps,
         )
         scope = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=None)
+        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
 
         # Create random evidence data
@@ -437,29 +437,29 @@ class TestConditionalLeaves:
 
         # Create query data by sampling from the conditional distribution
         dist = leaf.conditional_distribution(evidence=evidence_data)
-        query_data = dist.sample()  # Shape: (batch_size, num_features, out_channels)
-        query_data = query_data.squeeze(-1)  # Remove the channel dimension: (batch_size, num_features)
+        query_data = dist.sample()
 
-        # Create combined data tensor with query and evidence
-        # For now, just test that the distribution can be sampled without errors
-        # Skip the full likelihood test due to complexity with data reshaping
-        assert query_data.shape == (batch_size, len(query))
+        # Verify the sample shape contains batch_size and number of features
+        # Different distributions may have different shapes with num_repetitions
+        assert query_data.shape[0] == batch_size
+        assert query_data.shape[1] == len(query)
+        assert torch.isfinite(query_data).all()
 
-    @pytest.mark.parametrize("leaf_cls", conditional_leaf_cls_values)
-    def test_conditional_leaf_sampling(self, leaf_cls):
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    def test_conditional_leaf_sampling(self, leaf_cls, out_features, out_channels, num_reps):
         """Test sampling from conditional leaf."""
-        out_features, out_channels = 2, 1
         query = list(range(out_features))
-        evidence = [2, 3]
+        evidence = [out_features, out_features + 1]
 
         param_net = create_conditional_parameter_network(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
             evidence_size=len(evidence),
+            num_repetitions=num_reps,
         )
         scope = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=None)
+        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
 
         # Create random evidence data
@@ -470,21 +470,21 @@ class TestConditionalLeaves:
         dist = leaf.conditional_distribution(evidence=evidence_data)
         assert dist is not None
 
-    @pytest.mark.parametrize("leaf_cls", conditional_leaf_cls_values)
-    def test_conditional_leaf_mle_not_supported(self, leaf_cls):
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    def test_conditional_leaf_mle_not_supported(self, leaf_cls, out_features, out_channels, num_reps):
         """Test that MLE raises error for conditional leaf."""
-        out_features, out_channels = 2, 1
         query = list(range(out_features))
-        evidence = [2, 3]
+        evidence = [out_features, out_features + 1]
 
         param_net = create_conditional_parameter_network(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
             evidence_size=len(evidence),
+            num_repetitions=num_reps,
         )
         scope = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=None)
+        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
 
         batch_size = 4
@@ -494,21 +494,21 @@ class TestConditionalLeaves:
         with pytest.raises(RuntimeError, match="MLE not supported for conditional"):
             leaf.maximum_likelihood_estimation(data=data)
 
-    @pytest.mark.parametrize("leaf_cls", conditional_leaf_cls_values)
-    def test_conditional_leaf_marginalization_not_supported(self, leaf_cls):
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    def test_conditional_leaf_marginalization_not_supported(self, leaf_cls, out_features, out_channels, num_reps):
         """Test that marginalization raises error for conditional leaf."""
-        out_features, out_channels = 2, 1
         query = list(range(out_features))
-        evidence = [2, 3]
+        evidence = [out_features, out_features + 1]
 
         param_net = create_conditional_parameter_network(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
             evidence_size=len(evidence),
+            num_repetitions=num_reps,
         )
         scope = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=None)
+        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
 
         with pytest.raises(RuntimeError, match="Marginalization not supported for conditional"):
