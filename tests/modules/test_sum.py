@@ -54,6 +54,33 @@ def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, 
     else:
         assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
 
+@pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps, prior", product(in_channels_values, out_channels_values, out_features_values, num_repetitions, [True,False]))
+def test_log_posterior(in_channels: int, out_channels: int, out_features: int, num_reps, prior: bool):
+
+    module = make_sum(
+        in_channels=in_channels,
+        out_channels=out_channels,
+        out_features=out_features,
+        num_repetitions=num_reps,
+    )
+    data = make_normal_data(out_features=out_features)
+    shape = (1, out_features, out_channels, *(() if num_reps is None else (num_reps,)))
+    if prior:
+        prior_tensor = torch.rand(shape)
+        prior_tensor = prior_tensor / prior_tensor.sum(dim=2, keepdim=True)
+        log_prior_tensor = torch.log(prior_tensor)
+    else:
+        log_prior_tensor = None
+    if out_channels == 1:
+        with pytest.raises(ValueError):
+            module.log_posterior(data, log_prior=log_prior_tensor)
+        return
+    else:
+        lls = module.log_posterior(data, log_prior=log_prior_tensor)
+    if num_reps is not None:
+        assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
+    else:
+        assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
 
 @pytest.mark.parametrize(
     "in_channels,out_channels,out_features,num_reps",

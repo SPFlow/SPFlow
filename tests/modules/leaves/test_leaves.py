@@ -41,6 +41,30 @@ def test_log_likelihood(leaf_cls, out_features: int, out_channels: int, num_reps
     data = make_data(cls=leaf_cls, out_features=out_features, n_samples=5)
     evaluate_log_likelihood(module, data)
 
+@pytest.mark.parametrize("leaf_cls, out_features, out_channels, num_reps, prior", product(leaf_cls_values, out_features_values, out_channels_values, num_repetitions, [True,False]))
+def test_log_posterior(leaf_cls, out_features: int, out_channels: int, num_reps, prior: bool):
+    module = make_leaf(
+        cls=leaf_cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps
+    )
+    data = make_data(cls=leaf_cls, out_features=out_features, n_samples=5)
+    shape = (1, out_features, out_channels, *(() if num_reps is None else (num_reps,)))
+    if prior:
+        prior_tensor = torch.rand(shape)
+        prior_tensor = prior_tensor / prior_tensor.sum(dim=2, keepdim=True)
+        log_prior_tensor = torch.log(prior_tensor)
+    else:
+        log_prior_tensor = None
+    if out_channels == 1:
+        with pytest.raises(ValueError):
+            module.log_posterior(data, log_prior=log_prior_tensor)
+        return
+    else:
+        lls = module.log_posterior(data, log_prior=log_prior_tensor)
+    if num_reps is not None:
+        assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
+    else:
+        assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
+
 
 @pytest.mark.parametrize(
     "leaf_cls, out_features, out_channels, num_reps, is_mpe",
