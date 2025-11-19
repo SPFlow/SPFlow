@@ -1,5 +1,6 @@
 import logging
 
+from spflow.utils.cache import cached
 import pytest
 import torch
 from torch import nn
@@ -35,6 +36,7 @@ class DummyModel(Module):
     def forward(self, x):
         return self.linear(x)
 
+    @cached
     def log_likelihood(self, data, cache=None):
         return self(data)
 

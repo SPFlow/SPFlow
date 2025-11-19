@@ -292,7 +292,6 @@ def learn_spn(
                 # estimate leaves node parameters from data
                 leaf_layer.maximum_likelihood_estimation(
                     data,
-                    preprocess_data=False
                 )
 
                 leaves.append(leaf_layer)
