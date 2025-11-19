@@ -10,19 +10,23 @@ out_channels_values = [1, 5]
 out_features_values = [1, 6]
 
 
-def make_module(p) -> Bernoulli:
-    """Create a Bernoulli leaves node.
-
-    Args:
-        p: Probability of the distribution.
-    """
-    scope = Scope(list(range(p.shape[0])))
-    return Bernoulli(scope=scope, p=p)
+def make_module(*, probs: torch.Tensor | None = None, logits: torch.Tensor | None = None) -> Bernoulli:
+    """Create a Bernoulli leaves node."""
+    tensor = probs if probs is not None else logits
+    scope = Scope(list(range(tensor.shape[0])))
+    return Bernoulli(scope=scope, probs=probs, logits=logits)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_p_greater_than_one(out_features: int, out_channels: int):
-    """Test the constructor of a Bernoulli distribution with p greater than 1.0."""
-    p = torch.rand(out_features, out_channels)
-    with pytest.raises(ValueError):
-        make_module(p=1.0 + p)
+def test_constructor_accepts_probs(out_features: int, out_channels: int):
+    probs = torch.rand(out_features, out_channels)
+    node = make_module(probs=probs)
+    assert node.probs.shape == probs.shape
+    assert torch.allclose(node.params()["logits"], node.logits)
+
+
+@pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
+def test_constructor_accepts_logits(out_features: int, out_channels: int):
+    logits = torch.randn(out_features, out_channels)
+    node = make_module(logits=logits)
+    assert torch.allclose(node.params()["logits"], logits)

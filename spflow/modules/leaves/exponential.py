@@ -1,36 +1,49 @@
 import torch
 from torch import Tensor, nn
 
-from .distribution import Distribution
-from spflow.meta.data import Scope
 from spflow.modules.leaves.base import LeafModule
-from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases, parse_leaf_args
+from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases
 
 
-class ExponentialDistribution(Distribution):
-    """Exponential distribution for modeling time-between-events.
+class Exponential(LeafModule):
+    """Exponential distribution leaf for modeling time-between-events.
 
     Parameterized by rate λ > 0 (stored in log-space for numerical stability).
+
+    Attributes:
+        rate: Rate parameter λ (accessed via property, stored as log_rate).
+        distribution: Underlying torch.distributions.Exponential.
     """
 
-    def __init__(self, rate: Tensor = None, event_shape: tuple[int, ...] = None):
-        """Initialize Exponential distribution.
+    def __init__(
+            self,
+            scope,
+            out_channels: int = None,
+            num_repetitions: int = None,
+            parameter_network: nn.Module = None,
+            validate_args: bool | None = True,
+            rate: Tensor = None,
+    ):
+        """Initialize Exponential distribution leaf.
 
         Args:
+            scope: Variable scope (Scope, int, or list[int]).
+            out_channels: Number of output channels (inferred from params if None).
+            num_repetitions: Number of repetitions (for 3D event shapes).
+            parameter_network: Optional neural network for parameter generation.
+            validate_args: Whether to enable torch.distributions argument validation.
             rate: Rate parameter λ > 0.
-            event_shape: The shape of the event. If None, it is inferred from rate shape.
         """
-        if event_shape is None:
-            event_shape = rate.shape
-        super().__init__(event_shape=event_shape)
+        super().__init__(
+            scope=scope,
+            out_channels=out_channels,
+            num_repetitions=num_repetitions,
+            params=[rate],
+            parameter_network=parameter_network,
+            validate_args=validate_args,
+        )
 
-        rate = init_parameter(param=rate, event_shape=event_shape, init=torch.rand)
-
-        # Validate rate at initialization
-        if not (rate > 0).all():
-            raise ValueError("Rate must be strictly positive")
-        if not torch.isfinite(rate).all():
-            raise ValueError("Rate must be finite")
+        rate = init_parameter(param=rate, event_shape=self._event_shape, init=torch.rand)
 
         self.log_rate = nn.Parameter(torch.log(rate))
 
@@ -52,10 +65,10 @@ class ExponentialDistribution(Distribution):
         return 0.0
 
     @property
-    def distribution(self) -> torch.distributions.Distribution:
-        """Returns the underlying Exponential distribution."""
-        return torch.distributions.Exponential(self.rate)
+    def _torch_distribution_class(self) -> type[torch.distributions.Exponential]:
+        return torch.distributions.Exponential
 
+    
     def params(self) -> dict[str, Tensor]:
         """Returns distribution parameters."""
         return {"rate": self.rate}
@@ -82,32 +95,3 @@ class ExponentialDistribution(Distribution):
 
         # Broadcast to event_shape and assign - LogSpaceParameter ensures positivity
         self.rate = self._broadcast_to_event_shape(rate_est)
-
-
-class Exponential(LeafModule):
-    """Exponential distribution leaf for modeling time-between-events.
-
-    Parameterized by rate λ > 0 (stored in log-space).
-
-    Attributes:
-        rate: Rate parameter λ (LogSpaceParameter).
-        distribution: Underlying torch.distributions.Exponential.
-    """
-
-    def __init__(
-        self, scope: Scope, out_channels: int = None, num_repetitions: int = None, rate: Tensor = None
-    ):
-        """Initialize Exponential distribution leaf.
-
-        Args:
-            scope: Variable scope.
-            out_channels: Number of output channels (inferred from params if None).
-            num_repetitions: Number of repetitions.
-            rate: Rate parameter λ > 0.
-        """
-        event_shape = parse_leaf_args(
-            scope=scope, out_channels=out_channels, params=[rate], num_repetitions=num_repetitions
-        )
-        super().__init__(scope, out_channels=event_shape[1])
-        self._event_shape = event_shape
-        self._distribution = ExponentialDistribution(rate=rate, event_shape=event_shape)

@@ -228,12 +228,16 @@ def test_marginalize(prune, out_channels: int, dim: int, marg_rvs: list[int], nu
 def test_marginalize_one_of_two_inputs(device):
     out_channels = 3
     num_repetitions = 3
-    inputs_cat = Categorical(scope=Scope([0, 1]), p=torch.rand(2, out_channels, num_repetitions)).to(device)
+    inputs_cat = Categorical(
+        scope=Scope([0, 1]),
+        probs=torch.rand(2, out_channels, num_repetitions),
+        num_repetitions=num_repetitions,
+    ).to(device)
     inputs_bin = Binomial(
         scope=Scope([2, 3, 4]),
-        n=torch.ones((3, out_channels, num_repetitions)) * 3,
-        p=torch.rand(3, out_channels, num_repetitions),
         num_repetitions=num_repetitions,
+        total_count=torch.ones((3, out_channels, num_repetitions)) * 3,
+        probs=torch.rand(3, out_channels, num_repetitions),
     ).to(device)
 
     module = Cat(inputs=[inputs_cat, inputs_bin], dim=1).to(device)

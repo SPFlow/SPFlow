@@ -1,122 +1,9 @@
 import torch
 from torch import Tensor
 
-from .distribution import Distribution
+from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data import Scope
 from spflow.modules.leaves.base import LeafModule
-from spflow.utils.leaves import parse_leaf_args
-
-
-class HypergeometricDistribution(Distribution):
-    """Hypergeometric distribution for sampling without replacement.
-
-    All parameters (K, N, n) are fixed buffers and cannot be learned.
-
-    Attributes:
-        K: Number of success states in population (fixed buffer).
-        N: Population size (fixed buffer).
-        n: Number of draws (fixed buffer).
-    """
-
-    def __init__(self, K: Tensor, N: Tensor, n: Tensor, event_shape: tuple[int, ...] = None):
-        """Initialize Hypergeometric distribution.
-
-        Args:
-            K: Number of success states in population.
-            N: Population size.
-            n: Number of draws.
-            event_shape: The shape of the event. If None, it is inferred from K shape.
-        """
-        if event_shape is None:
-            event_shape = K.shape
-        super().__init__(event_shape=event_shape)
-
-        self.register_buffer("K", torch.empty(size=[]))
-        self.register_buffer("N", torch.empty(size=[]))
-        self.register_buffer("n", torch.empty(size=[]))
-
-        self.check_inputs(K, N, n, event_shape)
-
-        self.K = K
-        self.N = N
-        self.n = n
-
-    def check_inputs(self, K: Tensor, N: Tensor, n: Tensor, event_shape: tuple[int, ...]):
-        """Validate hypergeometric parameters."""
-        if torch.any(N < 0) or not torch.all(torch.isfinite(N)):
-            raise ValueError(f"Value of 'N' for 'Hypergeometric' must be greater of equal to 0, but was: {N}")
-        if not torch.all(torch.remainder(N, 1.0) == torch.tensor(0.0)):
-            raise ValueError(
-                f"Value of 'N' for 'Hypergeometric' must be (equal to) an integer value, but was: {N}"
-            )
-
-        if torch.any(K < 0) or torch.any(K > N) or not torch.all(torch.isfinite(K)):
-            raise ValueError(
-                f"Values of 'K' for 'Hypergeometric' must be greater of equal to 0 and less or equal to 'N', but was: {K}"
-            )
-        if not torch.all(torch.remainder(K, 1.0) == torch.tensor(0.0)):
-            raise ValueError(
-                f"Values of 'K' for 'Hypergeometric' must be (equal to) an integer value, but was: {K}"
-            )
-
-        if torch.any(n < 0) or torch.any(n > N) or not torch.all(torch.isfinite(n)):
-            raise ValueError(
-                f"Value of 'n' for 'Hypergeometric' must be greater of equal to 0 and less or equal to 'N', but was: {n}"
-            )
-        if not torch.all(torch.remainder(n, 1.0) == torch.tensor(0.0)):
-            raise ValueError(
-                f"Value of 'n' for 'Hypergeometric' must be (equal to) an integer value, but was: {n}"
-            )
-        if len(event_shape) > 1:
-            if not (N == N[0]).all(dim=0).all():
-                raise ValueError(
-                    "All values of 'N' for 'Hypergeometric' over the same scope must be identical."
-                )
-            if not (K == K[0]).all(dim=0).all():
-                raise ValueError(
-                    "All values of 'K' for 'Hypergeometric' over the same scope must be identical."
-                )
-            if not (n == n[0]).all(dim=0).all():
-                raise ValueError(
-                    "All values of 'n' for 'Hypergeometric' over the same scope must be identical."
-                )
-
-    @property
-    def _supported_value(self):
-        """Fallback value for unsupported data."""
-        return self.n + self.K - self.N
-
-    @property
-    def distribution(self):
-        """Returns the underlying Hypergeometric distribution."""
-        return _HypergeometricDistribution(self.K, self.N, self.n, self.K.shape)
-
-    def params(self) -> dict[str, Tensor]:
-        """Returns distribution parameters."""
-        return {"K": self.K, "N": self.N, "n": self.n}
-
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Hypergeometric parameters are fixed buffers; nothing to estimate.
-
-        Args:
-            data: Scope-filtered data.
-            weights: Normalized weights.
-            bias_correction: Not used for Hypergeometric (fixed parameters).
-        """
-        pass
-
-    def check_support(self, data: Tensor) -> Tensor:
-        """Check if data is in support of the Hypergeometric distribution.
-
-        Delegates to the _HypergeometricDistribution's check_support method.
-
-        Args:
-            data: Input data tensor.
-
-        Returns:
-            Boolean tensor indicating which values are in support.
-        """
-        return self.distribution.check_support(data)
 
 
 class _HypergeometricDistribution:
@@ -126,12 +13,13 @@ class _HypergeometricDistribution:
     this class implements the necessary methods for inference and sampling.
     """
 
-    def __init__(self, K: torch.Tensor, N: torch.Tensor, n: torch.Tensor, event_shape: tuple[int, ...]):
+    def __init__(self, K: torch.Tensor, N: torch.Tensor, n: torch.Tensor, validate_args: bool = True):
         self.N = N
         self.K = K
         self.n = n
-        self.event_shape = event_shape
+        self.event_shape = n.shape
         self.batch_shape = ()  # No batch shape for hypergeometric, event_shape contains all the structure
+        self.validate_args = validate_args
 
     def _align_support_mask(self, mask: Tensor, data: Tensor) -> Tensor:
         """Align a support mask with the shape of ``data`` for boolean indexing."""
@@ -222,7 +110,8 @@ class _HypergeometricDistribution:
         N = self.N
         K = self.K
         n = self.n
-        support_mask = self.check_support(k)
+        if self.validate_args:
+            support_mask = self.check_support(k)
 
         N_minus_K = N - K  # type: ignore
         n_minus_k = n - k  # type: ignore
@@ -317,9 +206,10 @@ class Hypergeometric(LeafModule):
         scope: Scope,
         out_channels: int = None,
         num_repetitions: int = None,
-        K: Tensor = None,
-        N: Tensor = None,
-        n: Tensor = None,
+            K: Tensor | None = None,
+            N: Tensor | None = None,
+            n: Tensor | None = None,
+            validate_args: bool | None = True,
     ):
         """Initialize Hypergeometric distribution leaf module.
 
@@ -327,13 +217,109 @@ class Hypergeometric(LeafModule):
             scope: Scope object specifying the scope of the distribution.
             out_channels: Number of output channels (inferred from params if None).
             num_repetitions: Number of repetitions for the distribution.
-            K: Number of success states in population (fixed, non-negative).
-            N: Population size (fixed, non-negative integer).
-            n: Number of draws (fixed, non-negative integer).
+            K: Number of success states tensor.
+            N: Population size tensor.
+            n: Number of draws tensor.
+            validate_args: Whether to enable argument validation.
         """
-        event_shape = parse_leaf_args(
-            scope=scope, out_channels=out_channels, params=[K, N, n], num_repetitions=num_repetitions
+        if K is None or N is None or n is None:
+            raise InvalidParameterCombinationError(
+                "'K', 'N', and 'n' parameters are required for Hypergeometric distribution")
+
+        super().__init__(
+            scope=scope,
+            out_channels=out_channels,
+            num_repetitions=num_repetitions,
+            params=[K, N, n],
+            validate_args=validate_args,
         )
-        super().__init__(scope, out_channels=event_shape[1])
-        self._event_shape = event_shape
-        self._distribution = HypergeometricDistribution(K=K, N=N, n=n, event_shape=event_shape)
+
+        # Register fixed buffers
+        self.register_buffer("K", torch.empty(size=[]))
+        self.register_buffer("N", torch.empty(size=[]))
+        self.register_buffer("n", torch.empty(size=[]))
+
+        # Validate inputs before assignment
+        self.check_inputs(K, N, n, self.event_shape)
+
+        # Assign parameters
+        self.K = K
+        self.N = N
+        self.n = n
+
+    def check_inputs(self, K: Tensor, N: Tensor, n: Tensor, event_shape: tuple[int, ...]):
+        """Validate hypergeometric parameters."""
+        if torch.any(N < 0) or not torch.all(torch.isfinite(N)):
+            raise ValueError(f"Value of 'N' for 'Hypergeometric' must be greater of equal to 0, but was: {N}")
+        if not torch.all(torch.remainder(N, 1.0) == torch.tensor(0.0)):
+            raise ValueError(
+                f"Value of 'N' for 'Hypergeometric' must be (equal to) an integer value, but was: {N}"
+            )
+
+        if torch.any(K < 0) or torch.any(K > N) or not torch.all(torch.isfinite(K)):
+            raise ValueError(
+                f"Values of 'K' for 'Hypergeometric' must be greater of equal to 0 and less or equal to 'N', but was: {K}"
+            )
+        if not torch.all(torch.remainder(K, 1.0) == torch.tensor(0.0)):
+            raise ValueError(
+                f"Values of 'K' for 'Hypergeometric' must be (equal to) an integer value, but was: {K}"
+            )
+
+        if torch.any(n < 0) or torch.any(n > N) or not torch.all(torch.isfinite(n)):
+            raise ValueError(
+                f"Value of 'n' for 'Hypergeometric' must be greater of equal to 0 and less or equal to 'N', but was: {n}"
+            )
+        if not torch.all(torch.remainder(n, 1.0) == torch.tensor(0.0)):
+            raise ValueError(
+                f"Value of 'n' for 'Hypergeometric' must be (equal to) an integer value, but was: {n}"
+            )
+        if len(event_shape) > 1:
+            if not (N == N[0]).all(dim=0).all():
+                raise ValueError(
+                    "All values of 'N' for 'Hypergeometric' over the same scope must be identical."
+                )
+            if not (K == K[0]).all(dim=0).all():
+                raise ValueError(
+                    "All values of 'K' for 'Hypergeometric' over the same scope must be identical."
+                )
+            if not (n == n[0]).all(dim=0).all():
+                raise ValueError(
+                    "All values of 'n' for 'Hypergeometric' over the same scope must be identical."
+                )
+
+    @property
+    def _supported_value(self):
+        """Fallback value for unsupported data."""
+        return self.n + self.K - self.N
+
+    @property
+    def _torch_distribution_class(self) -> type[_HypergeometricDistribution]:
+        return _HypergeometricDistribution
+
+    
+    def params(self) -> dict[str, Tensor]:
+        """Returns distribution parameters."""
+        return {"K": self.K, "N": self.N, "n": self.n}
+
+    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
+        """Hypergeometric parameters are fixed buffers; nothing to estimate.
+
+        Args:
+            data: Scope-filtered data.
+            weights: Normalized weights.
+            bias_correction: Not used for Hypergeometric (fixed parameters).
+        """
+        pass
+
+    def check_support(self, data: Tensor) -> Tensor:
+        """Check if data is in support of the Hypergeometric distribution.
+
+        Delegates to the _HypergeometricDistribution's check_support method.
+
+        Args:
+            data: Input data tensor.
+
+        Returns:
+            Boolean tensor indicating which values are in support.
+        """
+        return self.distribution.check_support(data)

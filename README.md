@@ -105,7 +105,7 @@ log_likelihood_output = model.log_likelihood(data)
 
 print(f"Data shape: {data.shape}")
 print(f"Log-likelihood output shape: {log_likelihood_output.shape}")
-print(f"Log-likelihood - Mean: {log_likelihood_output.mean():.4f}, Std: {log_likelihood_output.std():.4f}")
+print(f"Log-likelihood - Mean: {log_likelihood_output.loc():.4f}, Std: {log_likelihood_output.scale():.4f}")
 print(f"Log-likelihood sample: {log_likelihood_output[0]}")
 ```
 

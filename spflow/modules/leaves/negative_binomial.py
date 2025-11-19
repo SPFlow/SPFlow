@@ -1,82 +1,108 @@
 import torch
 from torch import Tensor, nn
 
-from .distribution import Distribution
+from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data import Scope
 from spflow.modules.leaves.base import LeafModule
-from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases, parse_leaf_args
+from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases
 from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
-class NegativeBinomialDistribution(Distribution):
-    """Negative Binomial distribution for modeling failures before r-th success.
+class NegativeBinomial(LeafModule):
+    """Negative Binomial distribution leaf for modeling failures before r-th success.
 
     Note: Parameter n (number of successes) is fixed and cannot be learned.
     Success probability p is stored in logit-space for numerical stability.
+
+    Attributes:
+        n: Fixed number of required successes (buffer).
+        p: Success probability in [0, 1] (stored in logit-space).
+        distribution: Underlying torch.distributions.NegativeBinomial.
     """
 
-    def __init__(self, n: Tensor, p: Tensor = None, event_shape: tuple[int, ...] = None):
-        """Initialize Negative Binomial distribution.
+    def __init__(
+            self,
+            scope: Scope,
+            out_channels: int = None,
+            num_repetitions: int = None,
+            total_count: Tensor | None = None,
+            probs: Tensor | None = None,
+            logits: Tensor | None = None,
+            parameter_network: nn.Module = None,
+            validate_args: bool | None = True,
+    ):
+        """Initialize Negative Binomial distribution leaf module.
 
         Args:
-            n: Fixed number of required successes (must be non-negative).
-            p: Success probability tensor in [0, 1].
-            event_shape: The shape of the event. If None, it is inferred from p shape.
+            scope: Scope object specifying the scope of the distribution.
+            out_channels: Number of output channels (inferred from params if None).
+            num_repetitions: Number of repetitions for the distribution.
+            total_count: Number of required successes tensor (required).
+            probs: Success probability tensor (optional).
+            logits: Logits of the success probability.
+            parameter_network: Optional neural network for parameter generation.
+            validate_args: Whether to enable torch.distributions argument validation.
         """
-        if event_shape is None:
-            event_shape = p.shape
-        super().__init__(event_shape=event_shape)
+        if total_count is None:
+            raise InvalidParameterCombinationError("'n' parameter is required for NegativeBinomial distribution")
+        if probs is not None and logits is not None:
+            raise InvalidParameterCombinationError("NegativeBinomial accepts either probs or logits, not both.")
 
-        p = init_parameter(param=p, event_shape=event_shape, init=torch.rand)
+        param_source = logits if logits is not None else probs
+        super().__init__(
+            scope=scope,
+            out_channels=out_channels,
+            num_repetitions=num_repetitions,
+            params=[param_source],
+            parameter_network=parameter_network,
+            validate_args=validate_args,
+        )
 
-        # Validate n parameter
-        if not torch.isfinite(n).all() or n.lt(0.0).any():
-            raise ValueError(f"Values for 'n' must be finite and non-negative, but was: {n}")
-
-        # Validate p at initialization
-        if not ((p >= 0) & (p <= 1)).all():
-            raise ValueError("Success probability p must be in [0, 1]")
-        if not torch.isfinite(p).all():
-            raise ValueError("Success probability p must be finite")
+        init_fn = torch.randn if logits is not None else torch.rand
+        init_value = init_parameter(param=param_source, event_shape=self.event_shape, init=init_fn)
 
         # Register n as a fixed buffer
-        n = torch.broadcast_to(n, event_shape).clone()
-        self.register_buffer("_n", n)
-        self.n = n
+        total_count = torch.broadcast_to(total_count, self.event_shape).clone()
+        self.register_buffer("_total_count", total_count)
 
-        self.logit_p = nn.Parameter(proj_bounded_to_real(p, lb=0.0, ub=1.0))
+        logits_tensor = init_value if logits is not None else proj_bounded_to_real(init_value, lb=0.0, ub=1.0)
+
+        self._logits = nn.Parameter(logits_tensor)
 
     @property
-    def n(self) -> Tensor:
+    def total_count(self) -> Tensor:
         """Returns the fixed number of required successes."""
-        return self._n
+        return self._total_count
 
-    @n.setter
-    def n(self, n: Tensor):
+    @total_count.setter
+    def total_count(self, total_count: Tensor):
         """Sets the number of required successes.
 
         Args:
-            n: Non-negative number of required successes.
-
-        Raises:
-            ValueError: If n is not non-negative and finite.
+            total_count: Non-negative number of required successes.
         """
-        if torch.any(n < 0.0) or not torch.isfinite(n).all():
-            raise ValueError(
-                f"Value of 'n' for 'NegativeBinomial' distribution must be non-negative and finite, but was: {n}"
-            )
-        self._n = n
+        self._total_count = total_count
 
     @property
-    def p(self) -> Tensor:
+    def probs(self) -> Tensor:
         """Success probability in natural space (read via inverse projection of logit_p)."""
-        return proj_real_to_bounded(self.logit_p, lb=0.0, ub=1.0)
+        return proj_real_to_bounded(self._logits, lb=0.0, ub=1.0)
 
-    @p.setter
-    def p(self, value: Tensor) -> None:
+    @probs.setter
+    def probs(self, value: Tensor) -> None:
         """Set success probability (stores as logit_p, no validation after init)."""
-        value_tensor = torch.as_tensor(value, dtype=self.logit_p.dtype, device=self.logit_p.device)
-        self.logit_p.data = proj_bounded_to_real(value_tensor, lb=0.0, ub=1.0)
+        value_tensor = torch.as_tensor(value, dtype=self._logits.dtype, device=self._logits.device)
+        self._logits.data = proj_bounded_to_real(value_tensor, lb=0.0, ub=1.0)
+
+    @property
+    def logits(self) -> Tensor:
+        """Logits for success probability."""
+        return self._logits
+
+    @logits.setter
+    def logits(self, value: Tensor) -> None:
+        value_tensor = torch.as_tensor(value, dtype=self._logits.dtype, device=self._logits.device)
+        self._logits.data = value_tensor
 
     @property
     def _supported_value(self):
@@ -84,13 +110,13 @@ class NegativeBinomialDistribution(Distribution):
         return 0
 
     @property
-    def distribution(self) -> torch.distributions.Distribution:
-        """Returns the underlying Negative Binomial distribution."""
-        return torch.distributions.NegativeBinomial(total_count=self.n, probs=self.p)
+    def _torch_distribution_class(self) -> type[torch.distributions.NegativeBinomial]:
+        return torch.distributions.NegativeBinomial
 
+    
     def params(self) -> dict[str, Tensor]:
         """Returns distribution parameters."""
-        return {"n": self.n, "p": self.p}
+        return {"total_count": self.total_count, "logits": self.logits}
 
     def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Compute MLE for success probability p (given fixed n).
@@ -100,7 +126,7 @@ class NegativeBinomialDistribution(Distribution):
             weights: Normalized sample weights.
             bias_correction: Whether to apply bias correction.
         """
-        n_total = weights.sum() * self.n
+        n_total = weights.sum() * self.total_count
         if bias_correction:
             n_total = n_total - 1
 
@@ -111,36 +137,7 @@ class NegativeBinomialDistribution(Distribution):
         # Handle edge cases before assigning
         p_est = _handle_mle_edge_cases(p_est, lb=0.0, ub=1.0)
 
-        # Assign directly - BoundedParameter ensures [0, 1]
-        self.p = p_est
-
-
-class NegativeBinomial(LeafModule):
-    """Negative Binomial distribution leaf for modeling failures before r-th success.
-
-    Note: Parameter n (number of successes) is fixed and cannot be learned.
-
-    Attributes:
-        n: Fixed number of required successes (buffer).
-        p: Success probability in [0, 1] (BoundedParameter).
-        distribution: Underlying torch.distributions.NegativeBinomial.
-    """
-
-    def __init__(
-        self, scope: Scope, n: Tensor, out_channels: int = None, num_repetitions: int = None, p: Tensor = None
-    ):
-        """Initialize Negative Binomial distribution leaf.
-
-        Args:
-            scope: Variable scope.
-            n: Fixed number of required successes (must be non-negative).
-            out_channels: Number of output channels (inferred from p if None).
-            num_repetitions: Number of repetitions.
-            p: Success probability in [0, 1].
-        """
-        event_shape = parse_leaf_args(
-            scope=scope, out_channels=out_channels, params=[p], num_repetitions=num_repetitions
-        )
-        super().__init__(scope, out_channels=event_shape[1])
-        self._event_shape = event_shape
-        self._distribution = NegativeBinomialDistribution(n=n, p=p, event_shape=event_shape)
+        # Assign using logits
+        p_est = self._broadcast_to_event_shape(p_est)
+        logits = proj_bounded_to_real(p_est, lb=0.0, ub=1.0)
+        self.logits = logits
