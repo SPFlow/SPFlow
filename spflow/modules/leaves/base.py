@@ -292,52 +292,38 @@ class LeafModule(Module, ABC):
             Log-likelihood tensor.
         """
         # get information relevant for the scope
-        data = data[:, self.scope.query]
+        data_q = data[:, self.scope.query]
         if self.event_shape[0] != len(self.scope.query):
             raise RuntimeError(
                 f"event_shape mismatch for {self.__class__.__name__}: event_shape={self.event_shape}, scope_len={len(self.scope.query)}"
             )
 
         # ----- marginalization -----
-        marg_mask = torch.isnan(data)
+        marg_mask = torch.isnan(data_q)
         has_marginalizations = marg_mask.any()
 
         # If there are any marg_ids, set them to 0.0 to ensure that log_prob call is successful
         # and doesn't throw errors due to NaNs
         if has_marginalizations:
-            data[marg_mask] = self._supported_value
+            data_q[marg_mask] = self._supported_value
 
         # ----- log probabilities -----
 
         # Unsqueeze scope_data to make space for num_nodes and repetition dimension
-        data = data.unsqueeze(2)
+        data_q = data_q.unsqueeze(2)
 
         # Use self.event_shape (not self.distribution.event_shape which may be torch's event_shape)
         if len(self.event_shape) > 2:
-            data = data.unsqueeze(-1)
+            data_q = data_q.unsqueeze(-1)
 
         if self.is_conditional:
             # Get evidence
-            evidence = data[:, self.scope.evidence]
-            dist = self.conditional_distribution(evidence)
+            data_e = data[:, self.scope.evidence]
+            dist = self.conditional_distribution(data_e)
         else:
             dist = self.distribution
 
-        # compute probabilities for values inside distribution support
-        expected_shape = dist.batch_shape + dist.event_shape
-        log_prob_input = data
-        if expected_shape:
-            target_shape = (data.shape[0],) + expected_shape
-            try:
-                log_prob_input = torch.broadcast_to(data, target_shape)
-            except RuntimeError as err:
-                raise RuntimeError(
-                    f"Could not broadcast data for {self.__class__.__name__} to match "
-                    f"distribution shape (batch_shape={dist.batch_shape}, event_shape={dist.event_shape}). "
-                    f"data_shape={tuple(data.shape)}"
-                ) from err
-
-        log_prob = dist.log_prob(log_prob_input.to(torch.get_default_dtype()))
+        log_prob = dist.log_prob(data_q)
 
         # Marginalize entries - broadcast mask to log_prob shape
         if has_marginalizations:
@@ -356,7 +342,7 @@ class LeafModule(Module, ABC):
             marg_mask_for_data = marg_mask.unsqueeze(2)
             if len(self.event_shape) > 2:
                 marg_mask_for_data = marg_mask_for_data.unsqueeze(-1)
-            data[marg_mask_for_data] = torch.nan
+            data_q[marg_mask_for_data] = torch.nan
 
         return log_prob
 
