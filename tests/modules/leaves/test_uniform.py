@@ -19,54 +19,54 @@ def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, tor
         out_channels: Number of channels.
 
     Returns:
-        start: Lower bound of the uniform distribution.
-        end: Upper bound of the uniform distribution.
+        low: Lower bound of the uniform distribution.
+        high: Upper bound of the uniform distribution.
     """
-    start = torch.rand(out_features, out_channels)
-    end = start + torch.rand(out_features, out_channels)
-    return start, end
+    low = torch.rand(out_features, out_channels)
+    high = low + torch.rand(out_features, out_channels)
+    return low, high
 
 
-def make_leaf(start, end) -> Uniform:
+def make_leaf(low, high) -> Uniform:
     """Create a Uniform leaves node.
 
     Args:
-        start: Lower bound of the uniform distribution.
-        end: Upper bound of the uniform distribution.
+        low: Lower bound of the uniform distribution.
+        high: Upper bound of the uniform distribution.
     """
-    scope = Scope(list(range(start.shape[0])))
-    return Uniform(scope=scope, start=start, end=end)
+    scope = Scope(list(range(low.shape[0])))
+    return Uniform(scope=scope, low=low, high=high)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_uniform_constructor_missing_start(out_features: int, out_channels: int):
-    """Test the constructor of a Uniform distribution with missing start."""
-    start, end = make_params(out_features, out_channels)
+def test_uniform_constructor_missing_low(out_features: int, out_channels: int):
+    """Test the constructor of a Uniform distribution with missing low bound."""
+    low, high = make_params(out_features, out_channels)
     with pytest.raises(InvalidParameterCombinationError):
         scope = Scope(list(range(out_features)))
-        Uniform(scope=scope, start=None, end=end)
+        Uniform(scope=scope, low=None, high=high)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_uniform_constructor_missing_end(out_features: int, out_channels: int):
-    """Test the constructor of a Uniform distribution with missing end."""
-    start, end = make_params(out_features, out_channels)
+def test_uniform_constructor_missing_high(out_features: int, out_channels: int):
+    """Test the constructor of a Uniform distribution with missing high bound."""
+    low, high = make_params(out_features, out_channels)
     with pytest.raises(InvalidParameterCombinationError):
         scope = Scope(list(range(out_features)))
-        Uniform(scope=scope, start=start, end=None)
+        Uniform(scope=scope, low=low, high=None)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_uniform_constructor_start_equals_end(out_features: int, out_channels: int):
-    """Test the constructor of a Uniform distribution with start equal to end."""
-    start, _ = make_params(out_features, out_channels)
+def test_uniform_constructor_equal_bounds(out_features: int, out_channels: int):
+    """Test the constructor of a Uniform distribution with identical bounds."""
+    low, _ = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(start=start, end=start)
+        make_leaf(low=low, high=low).distribution
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_uniform_constructor_start_greater_than_end(out_features: int, out_channels: int):
-    """Test the constructor of a Uniform distribution with start greater than end."""
-    start, end = make_params(out_features, out_channels)
+def test_uniform_constructor_low_greater_than_high(out_features: int, out_channels: int):
+    """Test the constructor of a Uniform distribution with low greater than high."""
+    low, high = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(start=end, end=start)
+        make_leaf(low=high, high=low).distribution

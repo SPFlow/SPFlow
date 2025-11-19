@@ -9,7 +9,7 @@ from spflow.utils.model_manager import load_model, save_model
 
 @fixture
 def example_model() -> Product:
-    return Product(inputs=Normal(Scope([0]), mean=torch.randn(1, 1), std=torch.rand(1, 1)))
+    return Product(inputs=Normal(Scope([0]), loc=torch.randn(1, 1), scale=torch.rand(1, 1)))
 
 
 @fixture

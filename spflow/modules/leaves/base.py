@@ -1,50 +1,122 @@
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Optional, Dict, Callable
 
 import torch
-from torch import Tensor
+from torch import Tensor, nn
 
-from spflow.modules.leaves.distribution import Distribution
 from spflow.meta.data.scope import Scope
 from spflow.modules.base import Module
 from spflow.utils.cache import Cache, cached
-from spflow.utils.leaves import apply_nan_strategy, _prepare_mle_weights
+from spflow.utils.leaves import apply_nan_strategy, _prepare_mle_weights, parse_leaf_args
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
 class LeafModule(Module, ABC):
-    def __init__(self, scope: Scope | int | list[int], out_channels: int = None):
+    def __init__(
+            self,
+            scope: Scope | int | list[int],
+            out_channels: int = None,
+            num_repetitions: int = None,
+            params: list[Tensor | None] | None = None,
+            parameter_network: nn.Module = None,
+            validate_args: bool | None = True,
+    ):
         """Base class for leaf distribution modules.
 
         Args:
             scope: Variable scope (Scope, int, or list[int]).
-            out_channels: Number of output channels.
+            out_channels: Number of output channels (inferred from params if None).
+            num_repetitions: Number of repetitions (for 3D event shapes).
+            params: List of parameter tensors (can include None to trigger random init).
+            parameter_network: Optional neural network for parameter generation.
+            validate_args: Whether to enable torch.distributions argument validation.
         """
         super().__init__()
+
+        event_shape = parse_leaf_args(
+            scope=scope,
+            out_channels=out_channels,
+            num_repetitions=num_repetitions,
+            params=params,
+        )
 
         # If not already a Scope, convert int or list[int] to Scope
         if not isinstance(scope, Scope):
             scope = Scope(scope)
 
         self.scope = scope.copy()
-        self._out_channels = out_channels
-        self._event_shape = None  # Will be set by subclasses
+        self._event_shape = event_shape
+        self.parameter_network = parameter_network
+        self._validate_args = validate_args
 
     @property
-    def distribution(self) -> Distribution:
-        """Returns the underlying distribution object."""
-        return self._distribution
+    def is_conditional(self):
+        """Indicates if the leaf uses a parameter network for conditional parameters."""
+        return self.parameter_network is not None
 
     @property
-    def _supported_value(self):
-        """Returns the supported values of the distribution."""
-        return self.distribution._supported_value
+    def distribution(self) -> torch.distributions.Distribution:
+        """Returns the underlying torch.distributions.Distribution object."""
+        return self.__make_distribution(self.params())
 
+    @property
+    @abstractmethod
+    def _torch_distribution_class(self) -> type[torch.distributions.Distribution]:
+        pass
+
+    def __make_distribution(self, params: Dict[str, Tensor]) -> torch.distributions.Distribution:
+        """Helper method to create distribution from given parameters.
+
+        Subclasses should implement this method to construct the distribution
+        from the provided parameters.
+
+        Args:
+            params: Dictionary of distribution parameters.
+
+        Returns:
+            torch.distributions.Distribution constructed from the parameters.
+        """
+        return self._torch_distribution_class(validate_args=self._validate_args, **params)  # type: ignore[call-arg]
+
+
+    def conditional_distribution(self, evidence: Tensor) -> torch.distributions.Distribution:
+        """Generates torch.distributions object conditionally based on evidence.
+
+        Subclasses should override this method to construct distribution from parameter network output.
+
+        Args:
+            evidence: Evidence tensor for conditioning.
+
+        Returns:
+            torch.distributions.Distribution constructed from conditional parameters.
+        """
+        if evidence is None:
+            raise ValueError("Evidence tensor must be provided for conditional distribution.")
+        return self.__make_distribution(self.parameter_network(evidence))
+
+    @property
+    @abstractmethod
+    def _supported_value(self) -> float:
+        """Returns a value in the support of the distribution (for NaN imputation)."""
+        pass
+
+    @abstractmethod
     def params(self) -> Dict[str, Tensor]:
         """Returns the parameters of the distribution."""
-        return self.distribution.params()
+        pass
+
+    @abstractmethod
+    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
+        """Compute distribution-specific statistics and update parameters.
+
+        Args:
+            data: Scope-filtered data.
+            weights: Normalized weights.
+            bias_correction: Apply bias correction.
+        """
+        pass
 
     @property
     def mode(self) -> Tensor:
@@ -126,7 +198,46 @@ class LeafModule(Module, ABC):
         Returns:
             Device of the module.
         """
-        return self.distribution.device
+        try:
+            return next(iter(self.parameters())).device
+        except StopIteration:
+            return next(iter(self.buffers())).device
+
+    def _broadcast_to_event_shape(self, param_est: Tensor) -> Tensor:
+        """Broadcast parameter estimate to match event_shape.
+
+        Args:
+            param_est: Parameter estimate tensor to broadcast.
+
+        Returns:
+            Parameter estimate broadcasted to match event_shape.
+        """
+        target_shape = tuple(self.event_shape)
+
+        # If the parameter already matches the event shape (possibly with extra trailing dims),
+        # there is nothing to broadcast. This prevents unsqueezing again during chained calls.
+        if tuple(param_est.shape[: len(target_shape)]) == target_shape:
+            return param_est
+
+        if len(target_shape) == 2:
+            param_est = param_est.unsqueeze(1).repeat(
+                1,
+                self.out_channels,
+                *([1] * (param_est.dim() - 1)),
+            )
+        elif len(target_shape) == 3:
+            param_est = (
+                param_est.unsqueeze(1)
+                .unsqueeze(1)
+                .repeat(
+                    1,
+                    self.out_channels,
+                    self.num_repetitions,
+                    *([1] * (param_est.dim() - 1)),
+                )
+            )
+
+        return param_est
 
     def expectation_maximization(
         self,
@@ -206,7 +317,12 @@ class LeafModule(Module, ABC):
         if len(self.event_shape) > 2:
             data = data.unsqueeze(-1)
 
-        dist = self.distribution.distribution
+        if self.is_conditional:
+            # Get evidence
+            evidence = data[:, self.scope.evidence]
+            dist = self.conditional_distribution(evidence)
+        else:
+            dist = self.distribution
 
         # compute probabilities for values inside distribution support
         expected_shape = dist.batch_shape + dist.event_shape
@@ -297,6 +413,10 @@ class LeafModule(Module, ABC):
             cache: Optional cache dictionary.
             preprocess_data: Select scope-relevant features.
         """
+
+        if self.is_conditional:
+            raise RuntimeError(f"MLE not supported for conditional leaf {self.__class__.__name__}.")
+
         # Step 1: Prepare normalized data and weights
         data_prepared, weights_prepared = self._prepare_mle_data(
             data=data,
@@ -304,8 +424,8 @@ class LeafModule(Module, ABC):
             nan_strategy=nan_strategy,
         )
 
-        # Step 2: Update distribution-specific statistics (implemented by distribution)
-        self.distribution._mle_update_statistics(data_prepared, weights_prepared, bias_correction)
+        # Step 2: Update distribution-specific statistics (implemented by subclass)
+        self._mle_update_statistics(data_prepared, weights_prepared, bias_correction)
 
     def sample(
         self,
@@ -371,8 +491,16 @@ class LeafModule(Module, ABC):
                 samples = samples.repeat(n_samples, 1, 1).detach()
 
         else:
+
+            if self.is_conditional:
+                # Get evidence
+                evidence = data[instance_mask][:, self.scope.evidence]
+                dist = self.conditional_distribution(evidence)
+            else:
+                dist = self.distribution
+
             # Sample from distribution
-            samples = self.distribution.sample((n_samples,))
+            samples = dist.sample((n_samples,))
 
             if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
                 # repetition_idx shape: (n_samples,)
@@ -470,7 +598,8 @@ class LeafModule(Module, ABC):
         Returns:
             Marginalized leaf or None if fully marginalized.
         """
-        # initialize cache
+        if self.is_conditional:
+            raise RuntimeError(f"Marginalization not supported for conditional leaf {self.__class__.__name__}.")
 
         # Marginalized scope
         scope_marg = Scope([q for q in self.scope.query if q not in marg_rvs])

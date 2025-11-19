@@ -7,12 +7,6 @@ from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta import Scope
-from spflow.utils.projections import (
-    proj_real_to_bounded,
-    proj_bounded_to_real,
-    proj_real_to_convex,
-    proj_convex_to_real,
-)
 
 
 def validate_all_or_none(**params: Any) -> bool:
@@ -151,10 +145,10 @@ def parse_leaf_args(
             raise ValueError("scope must be of type Scope, int, or list of int.")
 
     # Either all params are None or no params are None
-    if not (all(param is None for param in params) ^ all(param is not None for param in params)):
+    if params and not (all(param is None for param in params) ^ all(param is not None for param in params)):
         raise InvalidParameterCombinationError("Either all parameters or none of them must be given.")
 
-    if all(param is None for param in params):
+    if not params or all(param is None for param in params):
         if out_channels is None:
             raise InvalidParameterCombinationError(
                 "Either out_channels or distribution parameters must be given."

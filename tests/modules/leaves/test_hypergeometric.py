@@ -45,7 +45,7 @@ def test_constructor_negative_N(out_features: int, out_channels: int):
     """Test the constructor of a Hypergeometric distribution with negative N."""
     K, N, n = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(K=K, N=-1.0 * N, n=n)
+        make_leaf(K=K, N=-1.0 * N, n=n).distribution
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
@@ -53,7 +53,7 @@ def test_constructor_negative_n(out_features: int, out_channels: int):
     """Test the constructor of a Hypergeometric distribution with negative n."""
     K, N, n = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(K=K, N=N, n=-1.0 * n)
+        make_leaf(K=K, N=N, n=-1.0 * n).distribution
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
@@ -61,7 +61,7 @@ def test_constructor_negative_K(out_features: int, out_channels: int):
     """Test the constructor of a Hypergeometric distribution with negative K."""
     K, N, n = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(K=-1.0 * K, N=N, n=n)
+        make_leaf(K=-1.0 * K, N=N, n=n).distribution
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
@@ -69,7 +69,7 @@ def test_constructor_n_greater_than_N(out_features: int, out_channels: int):
     """Test the constructor of a Hypergeometric distribution with n > N."""
     K, N, n = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(K=K, N=N, n=N + 1)
+        make_leaf(K=K, N=N, n=N + 1).distribution
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
@@ -77,7 +77,7 @@ def test_constructor_K_greater_than_N(out_features: int, out_channels: int):
     """Test the constructor of a Hypergeometric distribution with K > N."""
     K, N, n = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_leaf(K=N + 1, N=N, n=n)
+        make_leaf(K=N + 1, N=N, n=n).distribution
 
 
 def test_hypergeometric_support_enforces_integer_bounds():

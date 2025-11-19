@@ -1,17 +1,57 @@
 from typing import Callable, Optional
 
 import torch
+from torch import nn
 
 from spflow.meta import Scope
 from spflow.modules.leaves.base import LeafModule
-from spflow.modules.leaves.normal import NormalDistribution
 
 
-class _DummyNormalDistribution(NormalDistribution):
-    """Helper distribution for testing that returns fixed std value."""
+class DummyLeaf(LeafModule):
+    """Minimal leaves to exercise the MLE template plumbing."""
+
+    @property
+    def _torch_distribution_class(self) -> type[torch.distributions.Distribution]:
+        return torch.distributions.Normal
+
+    def __init__(self, scope: Scope, out_channels: int = 1):
+        event_shape = torch.Size([len(scope.query), out_channels])
+        super().__init__(scope, out_channels=event_shape[1])
+        self._event_shape = event_shape
+
+        mean = torch.zeros(event_shape)
+        std = torch.ones(event_shape)
+
+        self.mean = nn.Parameter(mean)
+        self.log_std = nn.Parameter(torch.log(std))
+        self.last_data: Optional[torch.Tensor] = None
+        self.last_weights: Optional[torch.Tensor] = None
+
+    @property
+    def std(self) -> torch.Tensor:
+        """Standard deviation in natural space (read via exp of log_std)."""
+        return torch.exp(self.log_std)
+
+    @std.setter
+    def std(self, value: torch.Tensor) -> None:
+        """Set standard deviation (stores as log_std, no validation after init)."""
+        self.log_std.data = torch.log(
+            torch.as_tensor(value, dtype=self.log_std.dtype, device=self.log_std.device)
+        )
+
+    @property
+    def _supported_value(self):
+        return 0.0
+
+    @property
+    def distribution(self) -> torch.distributions.Distribution:
+        return torch.distributions.Normal(self.mean, self.std)
+
+    def params(self) -> dict[str, torch.Tensor]:
+        return {"mean": self.mean, "std": self.std}
 
     def _mle_update_statistics(
-        self, data: torch.Tensor, weights: torch.Tensor, bias_correction: bool
+            self, data: torch.Tensor, weights: torch.Tensor, bias_correction: bool
     ) -> None:
         """Compute mean normally but set std to fixed test value."""
         # Compute mean
@@ -22,43 +62,6 @@ class _DummyNormalDistribution(NormalDistribution):
         # Set std to fixed test value
         std_est = torch.full_like(mean_est, 0.5)
         self.std = self._broadcast_to_event_shape(std_est)
-
-
-class DummyLeaf(LeafModule):
-    """Minimal leaves to exercise the MLE template plumbing."""
-
-    def __init__(self, scope: Scope, out_channels: int = 1):
-        event_shape = torch.Size([len(scope.query), out_channels])
-        super().__init__(scope, out_channels=event_shape[1])
-        self._event_shape = event_shape
-
-        mean = torch.zeros(event_shape)
-        std = torch.ones(event_shape)
-
-        self._distribution = _DummyNormalDistribution(mean=mean, std=std, event_shape=event_shape)
-        self.last_data: Optional[torch.Tensor] = None
-        self.last_weights: Optional[torch.Tensor] = None
-
-    @property
-    def mean(self):
-        """Delegate to distribution's mean."""
-        return self._distribution.mean
-
-    @property
-    def std(self):
-        """Delegate to distribution's std."""
-        return self._distribution.std
-
-    @property
-    def distribution(self) -> _DummyNormalDistribution:
-        return self._distribution
-
-    @property
-    def _supported_value(self):
-        return 0.0
-
-    def params(self) -> dict[str, torch.Tensor]:
-        return {"mean": self.mean, "std": self.std}
 
     def maximum_likelihood_estimation(
         self,

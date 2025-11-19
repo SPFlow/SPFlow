@@ -16,60 +16,60 @@ def make_params(out_features: int, out_channels: int) -> tuple[torch.Tensor, tor
     return torch.rand(out_features, out_channels), torch.rand(out_features, out_channels)
 
 
-def make_module(alpha, beta) -> Gamma:
-    scope = Scope(list(range(alpha.shape[0])))
-    return Gamma(scope=scope, alpha=alpha, beta=beta)
+def make_module(concentration, rate) -> Gamma:
+    scope = Scope(list(range(concentration.shape[0])))
+    return Gamma(scope=scope, concentration=concentration, rate=rate)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_negative_alpha(out_features: int, out_channels: int):
-    alpha, beta = make_params(out_features, out_channels)
+def test_constructor_negative_concentration(out_features: int, out_channels: int):
+    concentration, rate = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_module(alpha=torch.full_like(alpha, -1.0), beta=beta)
+        make_module(concentration=torch.full_like(concentration, -1.0), rate=rate).distribution
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_negative_beta(out_features: int, out_channels: int):
-    alpha, beta = make_params(out_features, out_channels)
+def test_constructor_negative_rate(out_features: int, out_channels: int):
+    concentration, rate = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_module(alpha=alpha, beta=torch.full_like(beta, -1.0))
+        make_module(concentration=concentration, rate=torch.full_like(rate, -1.0)).distribution
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_zero_alpha(out_features: int, out_channels: int):
-    alpha, beta = make_params(out_features, out_channels)
+def test_constructor_zero_concentration(out_features: int, out_channels: int):
+    concentration, rate = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_module(alpha=torch.full_like(alpha, 0.0), beta=beta)
+        make_module(concentration=torch.full_like(concentration, 0.0), rate=rate).distribution
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_zero_beta(out_features: int, out_channels: int):
-    alpha, beta = make_params(out_features, out_channels)
+def test_constructor_zero_rate(out_features: int, out_channels: int):
+    concentration, rate = make_params(out_features, out_channels)
     with pytest.raises(ValueError):
-        make_module(alpha=alpha, beta=torch.full_like(beta, 0.0))
+        make_module(concentration=concentration, rate=torch.full_like(rate, 0.0)).distribution
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_missing_alpha(out_features: int, out_channels: int):
-    """Test the constructor of a Gamma distribution with missing alpha (only beta provided)."""
-    alpha, beta = make_params(out_features, out_channels)
+def test_constructor_missing_concentration(out_features: int, out_channels: int):
+    """Test the constructor of a Gamma distribution with missing concentration (only rate provided)."""
+    concentration, rate = make_params(out_features, out_channels)
     with pytest.raises(InvalidParameterCombinationError):
         scope = Scope(list(range(out_features)))
-        Gamma(scope=scope, alpha=None, beta=beta)
+        Gamma(scope=scope, concentration=None, rate=rate)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
-def test_constructor_missing_beta(out_features: int, out_channels: int):
-    """Test the constructor of a Gamma distribution with missing beta (only alpha provided)."""
-    alpha, beta = make_params(out_features, out_channels)
+def test_constructor_missing_rate(out_features: int, out_channels: int):
+    """Test the constructor of a Gamma distribution with missing rate (only concentration provided)."""
+    concentration, rate = make_params(out_features, out_channels)
     with pytest.raises(InvalidParameterCombinationError):
         scope = Scope(list(range(out_features)))
-        Gamma(scope=scope, alpha=alpha, beta=None)
+        Gamma(scope=scope, concentration=concentration, rate=None)
 
 
 @pytest.mark.parametrize("out_features,out_channels", product(out_features_values, out_channels_values))
 def test_constructor_both_none(out_features: int, out_channels: int):
-    """Test the constructor of a Gamma distribution with both alpha and beta as None."""
+    """Test the constructor of a Gamma distribution with both concentration and rate as None."""
     with pytest.raises(InvalidParameterCombinationError):
         scope = Scope(list(range(out_features)))
-        Gamma(scope=scope, alpha=None, beta=None)
+        Gamma(scope=scope, concentration=None, rate=None)

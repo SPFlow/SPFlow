@@ -8,18 +8,18 @@ consistent interfaces for likelihood computation, sampling, and parameter
 learning.
 """
 
-from .bernoulli import Bernoulli, BernoulliDistribution
-from .binomial import Binomial, BinomialDistribution
-from .categorical import Categorical, CategoricalDistribution
-from .exponential import Exponential, ExponentialDistribution
-from .gamma import Gamma, GammaDistribution
-from .geometric import Geometric, GeometricDistribution
-from .hypergeometric import Hypergeometric, HypergeometricDistribution
-from .log_normal import LogNormal, LogNormalDistribution
-from .negative_binomial import NegativeBinomial, NegativeBinomialDistribution
-from .normal import Normal, NormalDistribution
-from .poisson import Poisson, PoissonDistribution
-from .uniform import Uniform, UniformDistribution
+from .bernoulli import Bernoulli
+from .binomial import Binomial
+from .categorical import Categorical
+from .exponential import Exponential
+from .gamma import Gamma
+from .geometric import Geometric
+from .hypergeometric import Hypergeometric
+from .log_normal import LogNormal
+from .negative_binomial import NegativeBinomial
+from .normal import Normal
+from .poisson import Poisson
+from .uniform import Uniform
 
 # TODO: Conditional leaves modules to be reimplemented later
 # from .cond_normal import CondNormal
