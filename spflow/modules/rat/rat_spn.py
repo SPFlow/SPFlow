@@ -284,6 +284,7 @@ class RatSPN(Module):
 
         # if no sampling context is provided, initialize a context by sampling from the root node
         if sampling_ctx is None and self.n_root_nodes > 1:
+
             sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
             logits = self.root_node.logits
             if logits.shape != (1, self.n_root_nodes, 1):

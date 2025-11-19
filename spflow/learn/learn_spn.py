@@ -80,6 +80,16 @@ def prune_sums(node):
                     if not isinstance(child, LeafModule):
                         prune_sums(child)
 
+def adapt_product_inputs(inputs: list[Module],leaf_oc, sum_oc) -> list[Module]:
+    ref_oc = leaf_oc if leaf_oc > sum_oc else sum_oc
+    output_modules = []
+    for m in inputs:
+        if m.out_channels < ref_oc:
+            sum_module = Sum(inputs=m, out_channels=ref_oc)
+            output_modules.append(sum_module)
+        else:
+            output_modules.append(m)
+    return output_modules
 
 def partition_by_rdc(
     data: torch.Tensor,
@@ -222,8 +232,8 @@ def learn_spn(
             leaf_modules = [leaf_modules]
 
     # Verify that all indices in scope are valid for the data
-    if len(scope.query) > 0 and max(scope.query) >= data.shape[1]:
-        raise ValueError(f"Scope indices {scope.query} exceed data features {data.shape[1]}.")
+    #if len(scope.query) > 0 and max(scope.query) >= data.shape[1]:
+    #    raise ValueError(f"Scope indices {scope.query} exceed data features {data.shape[1]}.")
 
     # available off-the-shelf clustering methods provided by SPFlow
     if isinstance(clustering_method, str):
@@ -282,6 +292,7 @@ def learn_spn(
                 # estimate leaves node parameters from data
                 leaf_layer.maximum_likelihood_estimation(
                     data,
+                    preprocess_data=False
                 )
 
                 leaves.append(leaf_layer)
@@ -315,7 +326,7 @@ def learn_spn(
             product_inputs = []
             for partition in partitions:
                 sub_structure = learn_spn(
-                    data,
+                    data=data[:,partition[0]],
                     leaf_modules=leaf_modules,
                     scope=Scope([scope.query[rv] for rv in partition[0]]),
                     out_channels=out_channels,
@@ -325,8 +336,9 @@ def learn_spn(
                     min_instances_slice=min_instances_slice,
                 )
                 product_inputs.append(sub_structure)
-
-            return Product(product_inputs)
+            leaf_oc = leaf_modules[0].out_channels if isinstance(leaf_modules, list) else leaf_modules.out_channels
+            adapted_product_inputs = adapt_product_inputs(product_inputs, leaf_oc, out_channels)
+            return Product(adapted_product_inputs)
 
         else:
             # if not enough instances to cluster, create leaves layer (can be set to prevent overfitting too much or to reduce network size)

@@ -192,8 +192,9 @@ def _process_training_batch(
 
     # Compute loss based on task type (classification vs density estimation)
     if is_classification:
-        log_likelihood = model.log_likelihood(data)
-        loss = loss_fn(log_likelihood, targets)
+        #log_likelihood = model.log_likelihood(data)
+        log_likelihood = model.log_posterior(data)
+        loss = loss_fn(log_likelihood, targets) + -model.log_likelihood(data).mean()
         predicted = torch.argmax(log_likelihood, dim=-1).squeeze()
         metrics.update_train_batch(loss, predicted, targets)
     else:
