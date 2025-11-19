@@ -7,7 +7,7 @@ from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data import Scope
 from spflow.modules.base import Module
 from spflow.modules.ops.cat import Cat
-from spflow.utils.cache import Cache
+from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
@@ -229,6 +229,7 @@ class Sum(Module):
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, weights={self.weights_shape}"
 
+    @cached
     def log_likelihood(
         self,
         data: Tensor,
@@ -271,11 +272,6 @@ class Sum(Module):
             result = output.view(-1, self.out_features, self.out_channels)
         else:
             result = output.view(-1, self.out_features, self.out_channels, self.num_repetitions)
-
-        # Cache the result for EM step
-        if "log_likelihood" not in cache:
-            cache["log_likelihood"] = {}
-        cache["log_likelihood"][self] = result
 
         return result
 
