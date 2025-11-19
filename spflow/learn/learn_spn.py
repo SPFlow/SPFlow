@@ -290,9 +290,7 @@ def learn_spn(
                     scope=Scope(sorted(scope_inter)), out_channels=leaf_module.out_channels
                 )
                 # estimate leaves node parameters from data
-                leaf_layer.maximum_likelihood_estimation(
-                    data,
-                )
+                leaf_layer.maximum_likelihood_estimation(data)
 
                 leaves.append(leaf_layer)
 
@@ -325,7 +323,8 @@ def learn_spn(
             product_inputs = []
             for partition in partitions:
                 sub_structure = learn_spn(
-                    data=data[:,partition[0]],
+                    data=data,
+                    # data=data[:,partition[0]],  # TODO: check if this is correct -> seems not necessary since scope is passed
                     leaf_modules=leaf_modules,
                     scope=Scope([scope.query[rv] for rv in partition[0]]),
                     out_channels=out_channels,
