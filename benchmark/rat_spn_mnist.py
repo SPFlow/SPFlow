@@ -156,7 +156,6 @@ def make_spn(device) -> RatSPN:
     model = model.to(device)
     model.train()
 
-    print("Using device:", device)
     return model
 
 

@@ -44,7 +44,8 @@ def test_log_likelihood(out_channels: int, out_features: int, num_reps):
     data = make_normal_data(out_features=out_features)
     lls = module.log_likelihood(data)
 
-    assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
+    num_reps_after_mixing = 1
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps_after_mixing)
 
 
 @pytest.mark.parametrize("out_channels,out_features,num_reps", params)

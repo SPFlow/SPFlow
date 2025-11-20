@@ -33,7 +33,7 @@ class Sum(Module):
         self,
         inputs: Module | list[Module],
         out_channels: int | None = None,
-        num_repetitions: int | None = None,
+        num_repetitions: int = 1,
         weights: Tensor | list[float] | None = None,
         sum_dim: int | None = 1,
     ) -> None:
@@ -70,6 +70,13 @@ class Sum(Module):
                     f"Cannot specify both 'out_channels' and 'weights' for 'Sum' module."
                 )
 
+            if num_repetitions is not None and (num_repetitions != 1 and num_repetitions != weights.shape[-1]):
+                # Num_repetitions must be either None or match weights shape if both are given
+                raise InvalidParameterCombinationError(
+                    f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. Was {num_repetitions} but weights shape indicates {weights.shape[-1]}."
+                )
+
+
             match weights.dim():
                 case 1:
                     weights = weights.view(1, -1, 1)  # shape: (1, in_channels, 1)
@@ -95,6 +102,7 @@ class Sum(Module):
                     )
 
             out_channels = weights.shape[2]
+            num_repetitions = weights.shape[3]
 
         if out_channels < 1:
             raise ValueError(
@@ -118,21 +126,12 @@ class Sum(Module):
 
         self.num_repetitions = num_repetitions
 
-        # If num_repetitions is not provided, infer it from the weights
-        if num_repetitions is None:
-            if weights is not None:
-                if weights.ndim == 4:
-                    self.num_repetitions = weights.shape[3]
-
-        if self.num_repetitions is not None:
-            self.weights_shape = (
-                self._out_features,
-                self._in_channels_total,
-                self._out_channels_total,
-                self.num_repetitions,
-            )
-        else:
-            self.weights_shape = (self._out_features, self._in_channels_total, self._out_channels_total)
+        self.weights_shape = (
+            self._out_features,
+            self._in_channels_total,
+            self._out_channels_total,
+            self.num_repetitions,
+        )
 
         self.scope = self.inputs.scope
 
@@ -258,20 +257,18 @@ class Sum(Module):
             cache=cache,
         )
 
-        ll = ll.unsqueeze(3)  # shape: (B, F, input_OC, 1)
+        ll = ll.unsqueeze(3)  # shape: (B, F, input_OC, R)
 
-        log_weights = self.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC)
+        log_weights = self.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC, R)
 
         # Weighted log-likelihoods
-        weighted_lls = ll + log_weights  # shape: (B, F, IC, OC)
+        weighted_lls = ll + log_weights  # shape: (B, F, IC, OC, R)
 
         # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
-        output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1).squeeze(-1)  # shape: (B, F, OC)
+        output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)
 
-        if self.num_repetitions is None:
-            result = output.view(-1, self.out_features, self.out_channels)
-        else:
-            result = output.view(-1, self.out_features, self.out_channels, self.num_repetitions)
+        batch_size = output.shape[0]
+        result = output.view(batch_size, self.out_features, self.out_channels, self.num_repetitions)
 
         return result
 
@@ -325,7 +322,16 @@ class Sum(Module):
             logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
 
         else:
-            logits = self.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
+            if self.num_repetitions > 1:
+                raise ValueError(
+                    "sampling_ctx.repetition_idx must be provided when sampling from a module with "
+                    "num_repetitions > 1."
+                )
+            logits = self.logits[..., 0] # Select the 0th repetition
+            logits = logits.unsqueeze(0) # Make space for the batch
+
+            # Expand to batch size
+            logits = logits.expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
 
         idxs = sampling_ctx.channel_index[..., None, None]
         in_channels_total = logits.shape[2]
@@ -498,4 +504,4 @@ class Sum(Module):
             return None
 
         else:
-            return Sum(inputs=marg_input, weights=module_weights)
+            return Sum(inputs=marg_input, weights=module_weights, sum_dim=self.sum_dim)

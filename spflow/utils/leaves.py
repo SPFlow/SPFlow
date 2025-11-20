@@ -160,9 +160,6 @@ def parse_leaf_args(
                 raise InvalidParameterCombinationError(
                     "If out_channels is given, it must match the second dimension of all parameter tensors."
                 )
-            # raise InvalidParameterCombinationError(
-        #     "Either out_channels or distribution parameters must be given."
-        # )
 
         if query_length != params[0].shape[0]:
             raise InvalidParameterCombinationError(

@@ -14,7 +14,7 @@ from tests.utils.leaves import make_normal_leaf, make_normal_data
 out_channels_values = [1, 5]
 out_features_values = [1, 6]
 dim_values = [1, 2]
-num_repetitions = [None, 5]
+num_repetitions = [1, 5]
 params = list(product(out_channels_values, out_features_values, num_repetitions, dim_values))
 
 
@@ -45,10 +45,8 @@ def test_log_likelihood(out_channels: int, out_features: int, num_reps, dim: int
     ).to(device)
     data = make_normal_data(out_features=module.out_features).to(device)
     lls = module.log_likelihood(data)
-    if num_reps == None:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
-    else:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
+    # Always expect 4D output [batch, features, channels, num_reps]
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
 
 
 @pytest.mark.parametrize("out_channels,out_features, num_reps, dim", params)
@@ -66,10 +64,8 @@ def test_sample(out_channels: int, out_features: int, num_reps, dim: int, device
             low=0, high=module.out_channels, size=(n_samples, module.out_features)
         ).to(device)
         mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool).to(device)
-        if num_reps is not None:
-            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
-        else:
-            repetition_index = None
+        # Always set repetition_index since num_reps is never None
+        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )

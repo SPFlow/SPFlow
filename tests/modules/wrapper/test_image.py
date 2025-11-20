@@ -13,7 +13,7 @@ from spflow.modules.wrapper.image_wrapper import ImageWrapper, MarginalizationCo
 from tests.utils.leaves import make_data, make_normal_leaf
 
 num_channel = [1, 3]
-num_repetitions = [None, 3]
+num_repetitions = [1, 3]
 
 params = list(product(num_channel, num_repetitions))
 
@@ -41,10 +41,8 @@ def test_log_likelihood(num_channel: int, num_reps):
     data = make_data(cls=leaves.Normal, out_features=out_features, n_samples=5)
     data = data.view(data.shape[0], num_channel, height, width)
     lls = module.log_likelihood(data)
-    if num_reps is not None:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
-    else:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
+    # Always expect 4D output
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
     assert torch.isfinite(lls).all()
 
 
@@ -54,7 +52,7 @@ def test_log_likelihood(num_channel: int, num_reps):
 )
 def test_sample(num_channel: int, is_mpe: bool):
     # cls = leaves.Normal
-    module = make_wrapper(num_channel, num_reps=None)
+    module = make_wrapper(num_channel, num_reps=1)
     # Setup sampling context
     n_samples = 10
     height = 4
@@ -124,9 +122,9 @@ class TestImageWrapperExceptions:
 
         # Create a module with different number of features (e.g., 50)
         scope = Scope(list(range(50)))
-        leaf_module = make_normal_leaf(scope=scope, out_channels=2, num_repetitions=None)
+        leaf_module = make_normal_leaf(scope=scope, out_channels=2, num_repetitions=1)
         product_layer = Product(inputs=leaf_module)
-        root = Sum(inputs=product_layer, out_channels=1, num_repetitions=None)
+        root = Sum(inputs=product_layer, out_channels=1, num_repetitions=1)
 
         # This should raise StructureError because 50 != 4*4*3
         with pytest.raises(StructureError):
@@ -134,7 +132,7 @@ class TestImageWrapperExceptions:
 
     def test_flatten_wrong_dimensions(self):
         """Test that ShapeError is raised when flatten() receives non-4D tensor."""
-        wrapper = make_wrapper(num_channel=3, num_reps=None)
+        wrapper = make_wrapper(num_channel=3, num_reps=1)
 
         # 3D tensor instead of 4D
         wrong_tensor = torch.randn(10, 3, 16)
@@ -143,7 +141,7 @@ class TestImageWrapperExceptions:
 
     def test_flatten_wrong_channel_dimension(self):
         """Test that ShapeError is raised when flatten() receives wrong channel dimension."""
-        wrapper = make_wrapper(num_channel=3, num_reps=None)
+        wrapper = make_wrapper(num_channel=3, num_reps=1)
 
         # 4D tensor but with wrong channel dimension (2 instead of 3)
         wrong_tensor = torch.randn(10, 2, 4, 4)
@@ -152,7 +150,7 @@ class TestImageWrapperExceptions:
 
     def test_to_image_format_batch_wrong_dimensions(self):
         """Test that ShapeError is raised when to_image_format() with batch=True receives non-2D tensor."""
-        wrapper = make_wrapper(num_channel=3, num_reps=None)
+        wrapper = make_wrapper(num_channel=3, num_reps=1)
 
         # 3D tensor instead of 2D for batch mode
         wrong_tensor = torch.randn(10, 3, 16)
@@ -161,7 +159,7 @@ class TestImageWrapperExceptions:
 
     def test_to_image_format_non_batch_wrong_dimensions(self):
         """Test that ShapeError is raised when to_image_format() with batch=False receives non-1D tensor."""
-        wrapper = make_wrapper(num_channel=3, num_reps=None)
+        wrapper = make_wrapper(num_channel=3, num_reps=1)
 
         # 2D tensor instead of 1D for non-batch mode
         wrong_tensor = torch.randn(3, 16)
@@ -170,7 +168,7 @@ class TestImageWrapperExceptions:
 
     def test_log_likelihood_wrong_shape(self):
         """Test that ShapeError is raised when log_likelihood() receives wrong shaped data."""
-        wrapper = make_wrapper(num_channel=3, num_reps=None)
+        wrapper = make_wrapper(num_channel=3, num_reps=1)
 
         # Wrong shape: (10, 3, 4, 5) instead of (10, 3, 4, 4)
         wrong_data = torch.randn(10, 3, 4, 5)
@@ -179,7 +177,7 @@ class TestImageWrapperExceptions:
 
     def test_log_likelihood_wrong_channels(self):
         """Test that ShapeError is raised when log_likelihood() receives wrong number of channels."""
-        wrapper = make_wrapper(num_channel=3, num_reps=None)
+        wrapper = make_wrapper(num_channel=3, num_reps=1)
 
         # Wrong channels: (10, 2, 4, 4) instead of (10, 3, 4, 4)
         wrong_data = torch.randn(10, 2, 4, 4)

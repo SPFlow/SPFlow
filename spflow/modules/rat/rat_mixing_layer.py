@@ -28,7 +28,7 @@ class MixingLayer(Sum):
         self,
         inputs: Module,
         out_channels: int | None = None,
-        num_repetitions: int | None = None,
+        num_repetitions: int = 1,
         weights: Tensor | None = None,
         sum_dim: int | None = 1,
     ) -> None:
@@ -72,10 +72,7 @@ class MixingLayer(Sum):
                 "MixingLayer represents the first layer of the RatSPN, so it must have a single output feature."
             )
 
-        if num_repetitions is not None:
-            self.num_repetitions = num_repetitions
-        else:
-            raise ValueError("num_repetitions must be specified for 'MixingLayer' module.")
+        self.num_repetitions = num_repetitions
 
         # sum up all repetitions
         self._in_channels = self.num_repetitions
@@ -201,6 +198,7 @@ class MixingLayer(Sum):
             Tensor: Computed log likelihood values.
         """
 
+        batch_size = data.shape[0]
         ll = self.inputs.log_likelihood(
             data,
             cache=cache,
@@ -216,4 +214,6 @@ class MixingLayer(Sum):
         # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
         output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)  # shape: (B, F, OC, R)
 
-        return output.view(-1, self.out_features, self.out_channels)
+        # Since modules always have R as last dimension, we need to set it to 1 as Mixing mixes over it
+        num_repetitions_after_mixing = 1
+        return output.view(batch_size, self.out_features, self.out_channels, num_repetitions_after_mixing)

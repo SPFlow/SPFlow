@@ -205,7 +205,7 @@ class Hypergeometric(LeafModule):
         self,
         scope: Scope,
         out_channels: int = None,
-        num_repetitions: int = None,
+        num_repetitions: int = 1,
         K: Tensor | None = None,
         N: Tensor | None = None,
         n: Tensor | None = None,

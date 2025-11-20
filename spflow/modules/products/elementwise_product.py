@@ -60,7 +60,7 @@ class ElementwiseProduct(BaseProduct):
 
         self.num_repetitions = self.inputs[0].num_repetitions
 
-        if self.num_splits == None:
+        if self.num_splits is None:
             self.num_splits = num_splits
 
         self.check_shapes()
@@ -200,10 +200,6 @@ class ElementwiseProduct(BaseProduct):
         # Compute the elementwise sum of left and right split
         output = torch.sum(torch.stack(lls, dim=-1), dim=-1)
 
-        # View as [b, n, m, r]
-        if output.ndim == 4:
-            output = output.view(output.size(0), self.out_features, self.out_channels, -1)
-        else:
-            output = output.view(output.size(0), self.out_features, self.out_channels)
+        output = output.view(output.size(0), self.out_features, self.out_channels, self.num_repetitions)
 
         return output

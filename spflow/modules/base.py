@@ -244,7 +244,7 @@ class Module(nn.Module, ABC):
 
         if cache is None:
             cache = Cache()
-        shape = (1, self.out_features, self.out_channels, *(() if self.num_repetitions is None else (self.num_repetitions,)))
+        shape = (1, self.out_features, self.out_channels, self.num_repetitions)
         if log_prior is not None:
             assert log_prior.shape == shape, f"Expected log_prior shape {shape}, got {log_prior.shape}"
             ll_y = log_prior
