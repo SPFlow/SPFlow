@@ -1,3 +1,5 @@
+from itertools import product
+
 import pytest
 import torch
 
@@ -9,17 +11,20 @@ from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 cls = [ElementwiseProduct, OuterProduct]
 
+out_channels_values = [1, 4]
+out_features_values = [2, 4]
+num_repetition_values = [1, 5]
 
-@pytest.mark.parametrize("cls", cls)
-def test_split_result(cls, device):
+@pytest.mark.parametrize("cls,out_channels,out_features,num_repetitions", product(cls, out_channels_values, out_features_values, num_repetition_values))
+def test_split_result(device, cls, out_channels: int, out_features: int, num_repetitions: int):
     torch.manual_seed(0)
-    out_channels = 10
-    num_features = 6
+    out_channels = out_channels
+    num_features =out_features
     scope = Scope(list(range(0, num_features)))
     scope_1 = Scope(list(range(0, num_features // 2)))
     scope_2 = Scope(list(range(num_features // 2, num_features)))
-    mean = torch.randn(num_features, out_channels)
-    std = torch.rand(num_features, out_channels)
+    mean = torch.randn(num_features, out_channels, num_repetitions)
+    std = torch.rand(num_features, out_channels, num_repetitions)
     leaf = make_normal_leaf(scope=scope, mean=mean, std=std).to(device)
     leaf_half_1 = make_normal_leaf(
         scope=scope_1, mean=mean[: num_features // 2], std=std[: num_features // 2]
@@ -46,8 +51,9 @@ def test_split_result(cls, device):
     channel_index = torch.randint(low=0, high=spn1.out_channels, size=(n_samples, spn1.out_features)).to(
         device
     )
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
-    sampling_ctx2 = SamplingContext(channel_index=channel_index, mask=mask)
+    rep_index = torch.randint(low=0, high=num_repetitions, size=(n_samples,)).to(device)
+    sampling_ctx = SamplingContext(channel_index=channel_index, repetition_index=rep_index, mask=mask)
+    sampling_ctx2 = SamplingContext(channel_index=channel_index, repetition_index=rep_index, mask=mask)
 
     s1 = spn1.sample(data=data1, sampling_ctx=sampling_ctx, is_mpe=True)
     s2 = spn2.sample(data=data2, sampling_ctx=sampling_ctx2, is_mpe=True)

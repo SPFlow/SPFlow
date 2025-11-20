@@ -16,7 +16,7 @@ cls_values = [ElementwiseProduct, OuterProduct]
 in_channels_values = [1, 4]
 out_channels_values = [1, 5]
 out_features_values = [1, 6]
-num_repetitions = [7, None]
+num_repetitions = [1, 7]
 params = list(product(in_channels_values, out_channels_values, out_features_values, num_repetitions))
 
 
@@ -45,10 +45,8 @@ def test_log_likelihood(cls, in_channels: int, out_features: int, num_reps):
     )
     data = make_data(cls=Normal, out_features=out_features * len(module.inputs))
     lls = module.log_likelihood(data)
-    if num_reps is not None:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
-    else:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
+    # Always expect 4D output [batch, features, channels, num_reps]
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
 
 @pytest.mark.parametrize("cls,in_channels,out_features, num_reps, prior", product(cls_values, in_channels_values, [1, 6], num_repetitions, [True,False]))
 def test_log_posterior(cls, in_channels: int, out_features: int, num_reps, prior: bool):
@@ -56,7 +54,8 @@ def test_log_posterior(cls, in_channels: int, out_features: int, num_reps, prior
         cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps
     )
     data = make_data(cls=Normal, out_features=out_features * len(module.inputs))
-    shape = (1, out_features, module.out_channels, *(() if num_reps is None else (num_reps,)))
+    # Always include num_reps in shape (shape is [1, features, channels, num_reps])
+    shape = (1, out_features, module.out_channels, num_reps)
     if prior:
         prior_tensor = torch.rand(shape)
         prior_tensor = prior_tensor / prior_tensor.sum(dim=2, keepdim=True)
@@ -69,10 +68,8 @@ def test_log_posterior(cls, in_channels: int, out_features: int, num_reps, prior
         return
     else:
         lls = module.log_posterior(data, log_prior=log_prior_tensor)
-    if num_reps is not None:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
-    else:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
+    # Always expect 4D output [batch, features, channels, num_reps]
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
 
 @pytest.mark.parametrize(
     "cls,out_features,num_reps", product(cls_values, out_features_values, num_repetitions)
@@ -100,10 +97,8 @@ def test_log_likelihood_broadcasting_channels(cls, out_features: int, num_reps):
 
     # Compute the log-likelihood
     lls = module.log_likelihood(data)
-    if num_reps is not None:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
-    else:
-        assert lls.shape == (data.shape[0], out_features, module.out_channels)
+    # Always expect 4D output [batch, features, channels, num_reps]
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
 
 
 @pytest.mark.parametrize(
@@ -119,10 +114,8 @@ def test_sample(cls, in_channels: int, out_features: int, num_reps):
     data = torch.full((n_samples, out_features * len(module.inputs)), torch.nan)
     mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool)
     channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
-    if num_reps is not None:
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-    else:
-        repetition_index = None
+    # Always set repetition_index since num_reps is never None
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
     samples = module.sample(data=data, sampling_ctx=sampling_ctx)
 
@@ -156,10 +149,8 @@ def test_sample_two_inputs_broadcasting_channels(cls, out_features: int, num_rep
     data = torch.full((n_samples, out_features * len(module.inputs)), torch.nan)
     channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
     mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool)
-    if num_reps is not None:
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-    else:
-        repetition_index = None
+    # Always set repetition_index since num_reps is never None
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
     samples = module.sample(data=data, sampling_ctx=sampling_ctx)
 

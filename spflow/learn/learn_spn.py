@@ -390,7 +390,7 @@ def learn_spn(
                             out_c = child.out_channels
                             weights_stack.append(weights[:, idx, :].repeat(out_c, 1) / out_c)
 
-                        weights = (torch.cat(weights_stack)).unsqueeze(0)
+                        weights = (torch.cat(weights_stack)).unsqueeze(0).unsqueeze(-1)
                         sum_vectors.append(Sum(inputs=inputs, weights=weights))
 
                     if len(sum_vectors) == 1:

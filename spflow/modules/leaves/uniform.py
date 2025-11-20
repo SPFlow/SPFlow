@@ -25,7 +25,7 @@ class Uniform(LeafModule):
         self,
         scope: Scope,
         out_channels: int = None,
-        num_repetitions: int = None,
+        num_repetitions: int = 1,
         low: Tensor | None = None,
         high: Tensor | None = None,
         validate_args: bool | None = True,

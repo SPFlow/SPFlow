@@ -149,7 +149,7 @@ def _format_node(module: Module, show_params: bool = True, show_scope: bool = Tr
     properties.append(f"D={module.out_features}")
     properties.append(f"C={module.out_channels}")
 
-    if hasattr(module, "num_repetitions") and module.num_repetitions is not None:
+    if hasattr(module, "num_repetitions"):
         properties.append(f"R={module.num_repetitions}")
 
     props_str = ", ".join(properties)

@@ -56,7 +56,22 @@ class ElementwiseSum(Module):
                     f"Cannot specify both 'out_channels' and 'weights' for 'Sum' module."
                 )
 
+            if num_repetitions is not None:
+                raise InvalidParameterCombinationError(
+                    f"Cannot specify both 'num_repetitions' and 'weights' for 'Sum' module."
+                )
+
             out_channels = weights.shape[2]
+            num_repetitions = weights.shape[4]
+        else:
+            if out_channels is None:
+                raise ValueError(
+                    f"Either 'out_channels' or 'weights' must be specified for 'Sum' module."
+                )
+            if num_repetitions is None:
+                num_repetitions = 1
+
+
 
         if out_channels < 1:
             raise ValueError(
@@ -87,10 +102,7 @@ class ElementwiseSum(Module):
         # Multiple inputs, stack and sum over stacked dimension
         self._out_features = self.inputs[0].out_features
 
-        if num_repetitions is None:
-            self.num_repetitions = self.inputs[0].num_repetitions
-        else:
-            self.num_repetitions = num_repetitions
+        self.num_repetitions = num_repetitions
 
         self._num_inputs = len(inputs)
 
@@ -98,21 +110,13 @@ class ElementwiseSum(Module):
         self._in_channels_per_input = max([module.out_channels for module in self.inputs])
         self._out_channels_total = self._num_sums * self._in_channels_per_input
 
-        if self.num_repetitions is not None:
-            self.weights_shape = (
-                self._out_features,
-                self._in_channels_per_input,
-                self._num_sums,
-                self._num_inputs,
-                self.num_repetitions,
-            )
-        else:
-            self.weights_shape = (
-                self._out_features,
-                self._in_channels_per_input,
-                self._num_sums,
-                self._num_inputs,
-            )
+        self.weights_shape = (
+            self._out_features,
+            self._in_channels_per_input,
+            self._num_sums,
+            self._num_inputs,
+            self.num_repetitions,
+        )
 
         # Store unraveled in- and out-channel indices
         # E.g. for 2 inputs with 3 in_channels_per_input, the mapping should be:
@@ -300,7 +304,17 @@ class ElementwiseSum(Module):
             )
             logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
         else:
-            logits = self.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
+            if self.num_repetitions > 1:
+                raise ValueError(
+                    "sampling_ctx.repetition_idx must be provided when sampling from a module with "
+                    "num_repetitions > 1."
+                )
+            logits = self.logits[..., 0] # Select the 0th repetition
+            logits = logits.unsqueeze(0) # Make space for the batch
+
+            # Expand to batch size
+            logits = logits.expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
+
         cids_mapped = self.unraveled_channel_indices[sampling_ctx.channel_index]
 
         # Take the first element of the tuple (input_channel_idx, output_channel_idx)
@@ -388,10 +402,6 @@ class ElementwiseSum(Module):
         Returns:
             Tensor: Computed log likelihood values.
         """
-        # initialize cache
-        if cache is None:
-            cache = Cache()
-
         # Get input log-likelihoods
         lls = []
         for inp in self.inputs:
@@ -402,7 +412,7 @@ class ElementwiseSum(Module):
 
             # Prepare for broadcasting
             if inp.out_channels == 1 and self._in_channels_per_input > 1:
-                ll = ll.expand(data.shape[0], self.out_features, self._in_channels_per_input)
+                ll = ll.expand(data.shape[0], self.out_features, self._in_channels_per_input, self.num_repetitions)
 
             lls.append(ll)
 
@@ -418,10 +428,7 @@ class ElementwiseSum(Module):
 
         # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
         output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)
-        if self.num_repetitions is not None:
-            output = output.view(data.shape[0], self.out_features, self.out_channels, self.num_repetitions)
-        else:
-            output = output.view(data.shape[0], self.out_features, self.out_channels)
+        output = output.view(data.shape[0], self.out_features, self.out_channels, self.num_repetitions)
 
         return output
 

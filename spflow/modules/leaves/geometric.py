@@ -21,7 +21,7 @@ class Geometric(LeafModule):
         self,
         scope,
         out_channels=None,
-        num_repetitions=None,
+        num_repetitions=1,
         parameter_network=None,
         validate_args: bool | None = True,
         probs: Tensor | None = None,

@@ -18,7 +18,7 @@ class LeafModule(Module, ABC):
         self,
         scope: Scope | int | list[int],
         out_channels: int = None,
-        num_repetitions: int = None,
+        num_repetitions: int = 1,
         params: list[Tensor | None] | None = None,
         parameter_network: nn.Module = None,
         validate_args: bool | None = True,
@@ -158,16 +158,13 @@ class LeafModule(Module, ABC):
         return len(self.scope.query)
 
     @property
-    def num_repetitions(self) -> int | None:
-        """Return number of repetitions (3D event shape only).
+    def num_repetitions(self) -> int:
+        """Return number of repetitions.
 
         Returns:
-            Number of repetitions or None for 2D event shapes.
+            Number of repetitions (last dimension of event shape).
         """
-        if len(self.event_shape) == 3:
-            return self.event_shape[2]
-        else:
-            return None
+        return self.event_shape[2]
 
     @property
     def out_channels(self) -> int:
@@ -291,6 +288,9 @@ class LeafModule(Module, ABC):
         Returns:
             Log-likelihood tensor.
         """
+
+        if data.dim() != 2:
+            raise ValueError(f"Data must be 2-dimensional (batch, num_features), got shape {data.shape}.")
         # get information relevant for the scope
         data_q = data[:, self.scope.query]
         if self.event_shape[0] != len(self.scope.query):
@@ -309,12 +309,9 @@ class LeafModule(Module, ABC):
 
         # ----- log probabilities -----
 
-        # Unsqueeze scope_data to make space for num_nodes and repetition dimension
-        data_q = data_q.unsqueeze(2)
-
-        # Use self.event_shape (not self.distribution.event_shape which may be torch's event_shape)
-        if len(self.event_shape) > 2:
-            data_q = data_q.unsqueeze(-1)
+        # Unsqueeze scope_data to make space for out_channels and repetition dimensions
+        # event_shape is now always [features, out_channels, num_repetitions]
+        data_q = data_q.unsqueeze(2).unsqueeze(-1)
 
         if self.is_conditional:
             # Get evidence
@@ -328,20 +325,15 @@ class LeafModule(Module, ABC):
         # Marginalize entries - broadcast mask to log_prob shape
         if has_marginalizations:
             # Expand marg_mask to match log_prob shape by broadcasting
-            # marg_mask is [batch, features], unsqueeze(2) makes it [batch, features, 1]
-            marg_mask_for_log_prob = marg_mask.unsqueeze(2)  # [batch, features, 1]
-            # For higher-dimensional event shapes, add another dimension
-            if len(self.event_shape) > 2:
-                marg_mask_for_log_prob = marg_mask_for_log_prob.unsqueeze(-1)  # [batch, features, 1, 1]
+            # marg_mask is [batch, features], expand to [batch, features, 1, 1]
+            marg_mask_for_log_prob = marg_mask.unsqueeze(2).unsqueeze(-1)
             # Broadcast to log_prob shape
             marg_mask_for_log_prob = torch.broadcast_to(marg_mask_for_log_prob, log_prob.shape)
             log_prob[marg_mask_for_log_prob] = 0.0
 
         # Set marginalized scope data back to NaNs
         if has_marginalizations:
-            marg_mask_for_data = marg_mask.unsqueeze(2)
-            if len(self.event_shape) > 2:
-                marg_mask_for_data = marg_mask_for_data.unsqueeze(-1)
+            marg_mask_for_data = marg_mask.unsqueeze(2).unsqueeze(-1)
             data_q[marg_mask_for_data] = torch.nan
 
         return log_prob
@@ -449,6 +441,14 @@ class LeafModule(Module, ABC):
         instance_mask = samples_mask.sum(1) > 0
         n_samples = instance_mask.sum()  # count number of rows which have at least one true value
 
+        if sampling_ctx.repetition_idx is None:
+            if self.num_repetitions > 1:
+                raise ValueError(
+                    "Repetition index must be provided in sampling context for leaves with multiple repetitions."
+                )
+            else:
+                sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
+
         if is_mpe:
             # Get mode of distribution as MPE
             samples = self.mode.unsqueeze(0)
@@ -457,10 +457,10 @@ class LeafModule(Module, ABC):
                 # repetition_idx shape: (n_samples,)
                 repetition_idx = sampling_ctx.repetition_idx[instance_mask]
 
-                indices = repetition_idx.view(-1, 1, 1, 1).expand(-1, samples.shape[1], samples.shape[2], -1)
+                r_idxs = repetition_idx.view(-1, 1, 1, 1).expand(-1, samples.shape[1], samples.shape[2], -1)
 
                 # Gather samples according to repetition index
-                samples = torch.gather(samples, dim=-1, index=indices).squeeze(-1)
+                samples = torch.gather(samples, dim=-1, index=r_idxs).squeeze(-1)
 
             elif (
                 sampling_ctx.repetition_idx is not None
@@ -490,10 +490,10 @@ class LeafModule(Module, ABC):
                 # repetition_idx shape: (n_samples,)
                 repetition_idx = sampling_ctx.repetition_idx[instance_mask]
 
-                indices = repetition_idx.view(-1, 1, 1, 1).expand(-1, samples.shape[1], samples.shape[2], -1)
+                r_idxs = repetition_idx.view(-1, 1, 1, 1).expand(-1, samples.shape[1], samples.shape[2], -1)
 
                 # Gather samples according to repetition index
-                samples = torch.gather(samples, dim=-1, index=indices).squeeze(-1)
+                samples = torch.gather(samples, dim=-1, index=r_idxs).squeeze(-1)
 
             elif (
                 sampling_ctx.repetition_idx is not None
@@ -515,10 +515,10 @@ class LeafModule(Module, ABC):
             # this input was broadcasted to match the channel dimension of the other inputs
             sampling_ctx.channel_index.zero_()
 
-        index = sampling_ctx.channel_index[instance_mask].unsqueeze(-1)
+        c_idxs = sampling_ctx.channel_index[instance_mask].unsqueeze(-1)
 
         # Index the channel_index to get the correct samples for each scope
-        samples = samples.gather(dim=2, index=index).squeeze(2)
+        samples = samples.gather(dim=2, index=c_idxs).squeeze(2)
 
         # Ensure, that no data is overwritten
         if data[samples_mask].isfinite().any():

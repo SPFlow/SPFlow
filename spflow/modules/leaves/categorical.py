@@ -21,7 +21,7 @@ class Categorical(LeafModule):
         self,
         scope: Scope,
         out_channels: int = None,
-        num_repetitions: int = None,
+        num_repetitions: int = 1,
         K: int | Tensor | None = None,
         probs: Tensor | None = None,
         logits: Tensor | None = None,
@@ -116,7 +116,8 @@ class Categorical(LeafModule):
             weights: Normalized weights.
             bias_correction: Not used for Categorical (included for interface consistency).
         """
-        weights_flat = weights.reshape(weights.shape[0], -1)[:, 0]
+        # weights_flat = weights.reshape(weights.shape[0], -1)[:, 0]  # TODO: investigate why this is correct / makes sense?
+        weights_flat = weights.flatten()
         n_total = weights_flat.sum()
 
         if self.K is not None:
@@ -137,16 +138,9 @@ class Categorical(LeafModule):
         p_est = torch.stack(p_entries, dim=0).to(data.device)
 
         # p_est has shape (out_features, K)
-        # Broadcast to event_shape: (out_features, out_channels) or (out_features, out_channels, num_reps)
-        # For Categorical, we need to add out_channels dimension(s) between features and K
-        if self.num_repetitions is not None:
-            # Shape should be (out_features, out_channels, num_reps, K)
-            # Insert dimensions for out_channels and num_reps
-            p_est = p_est.unsqueeze(1).unsqueeze(2).expand(-1, self.out_channels, self.num_repetitions, -1)
-        else:
-            # Shape should be (out_features, out_channels, K)
-            # Insert dimension for out_channels
-            p_est = p_est.unsqueeze(1).expand(-1, self.out_channels, -1)
+        # Broadcast to event_shape: (out_features, out_channels, num_reps, K)
+        # Insert dimensions for out_channels and num_reps
+        p_est = p_est.unsqueeze(1).unsqueeze(2).expand(-1, self.out_channels, self.num_repetitions, -1)
 
         # Convert to logits and assign
         probs = p_est

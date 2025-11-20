@@ -17,7 +17,7 @@ from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf
 in_channels_values = [1, 4]
 out_channels_values = [1, 5]
 out_features_values = [1, 6]
-num_repetitions = [None, 7]
+num_repetitions = [1, 7]
 params = list(product(in_channels_values, out_channels_values, out_features_values, num_repetitions))
 
 
@@ -49,10 +49,8 @@ def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, 
     )
     data = make_normal_data(out_features=out_features)
     lls = module.log_likelihood(data)
-    if num_reps is not None:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
-    else:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
+    # Always expect 4D output
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps, prior", product(in_channels_values, out_channels_values, out_features_values, num_repetitions, [True,False]))
 def test_log_posterior(in_channels: int, out_channels: int, out_features: int, num_reps, prior: bool):
@@ -64,7 +62,10 @@ def test_log_posterior(in_channels: int, out_channels: int, out_features: int, n
         num_repetitions=num_reps,
     )
     data = make_normal_data(out_features=out_features)
-    shape = (1, out_features, out_channels, *(() if num_reps is None else (num_reps,)))
+    # Convert None to 1 and always create 4D shape
+    if num_reps is None:
+        num_reps = 1
+    shape = (1, out_features, out_channels, num_reps)
     if prior:
         prior_tensor = torch.rand(shape)
         prior_tensor = prior_tensor / prior_tensor.sum(dim=2, keepdim=True)
@@ -77,10 +78,8 @@ def test_log_posterior(in_channels: int, out_channels: int, out_features: int, n
         return
     else:
         lls = module.log_posterior(data, log_prior=log_prior_tensor)
-    if num_reps is not None:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
-    else:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
+    # Always expect 4D output
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
 
 @pytest.mark.parametrize(
     "in_channels,out_channels,out_features,num_reps",
@@ -272,55 +271,44 @@ def test_gradient_descent_optimization(in_channels: int, out_channels: int, out_
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
 def test_weights(in_channels: int, out_channels: int, out_features: int, num_reps):
-    if num_reps is not None:
-        weights = torch.ones((out_features, in_channels, out_channels, num_reps))
-    else:
-        weights = torch.ones((out_features, in_channels, out_channels))
+    weights = torch.ones((out_features, in_channels, out_channels, num_reps))
     weights = weights / weights.sum(dim=1, keepdim=True)
 
     module = make_sum(
         weights=weights,
         in_channels=in_channels,
-        num_repetitions=num_reps,
     )
     assert torch.allclose(module.weights.sum(dim=module.sum_dim), torch.tensor(1.0))
     assert torch.allclose(module.log_weights, module.weights.log())
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
-def test_invalid_weights_normalized(in_channels: int, out_channels: int, out_features: int, num_reps):
-    if num_reps is not None:
-        weights = torch.rand((out_features, in_channels, out_channels, num_reps))
-    else:
-        weights = torch.rand((out_features, in_channels, out_channels))
+def test_invalid_weights_not_normalized(in_channels: int, out_channels: int, out_features: int, num_reps):
+    weights = torch.rand((out_features, in_channels, out_channels, num_reps))
     with pytest.raises(ValueError):
-        make_sum(weights=weights, in_channels=in_channels, num_repetitions=num_reps)
+        make_sum(weights=weights, in_channels=in_channels)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
 def test_invalid_weights_negative(in_channels: int, out_channels: int, out_features: int, num_reps):
-    if num_reps is not None:
-        weights = torch.rand((out_features, in_channels, out_channels, num_reps)) - 1.0
-    else:
-        weights = torch.rand((out_features, in_channels, out_channels)) - 1.0
+    weights = torch.rand((out_features, in_channels, out_channels, num_reps)) - 1.0
     with pytest.raises(ValueError):
-        make_sum(weights=weights, in_channels=in_channels, num_repetitions=num_reps)
+        make_sum(weights=weights, in_channels=in_channels)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
 def test_invalid_specification_of_out_channels_and_weights(
     in_channels: int, out_channels: int, out_features: int, num_reps
 ):
+    weights = torch.rand((out_features, in_channels, out_channels, num_reps))
+    weights = weights / weights.sum(dim=2, keepdim=True)
+    out_channels_leaf = 3*out_channels  # Different from weights out_channels
     with pytest.raises(ValueError):
-        if num_reps is not None:
-            weights = torch.rand((out_features, in_channels, out_channels, num_reps))
-        else:
-            weights = torch.rand((out_features, in_channels, out_channels))
-        weights = weights / weights.sum(dim=2, keepdim=True)
+
+        # Should raise error because out_channels in weights and leaves do not match
         Sum(
             weights=weights,
-            inputs=make_normal_leaf(out_features=out_features, out_channels=3, num_repetitions=num_reps),
-            num_repetitions=num_reps,
+            inputs=make_normal_leaf(out_features=out_features, out_channels=out_channels_leaf, num_repetitions=num_reps),
         )
 
 
@@ -409,8 +397,7 @@ def test_multiple_input():
     module_a = Sum(inputs=normal_layer_a, out_channels=sum_out_channels, num_repetitions=num_reps)
 
     module_b = Sum(
-        inputs=[normal_layer_b1, normal_layer_b2], weights=module_a.weights, num_repetitions=num_reps
-    )
+        inputs=[normal_layer_b1, normal_layer_b2], weights=module_a.weights)
 
     # test log likelihood
 

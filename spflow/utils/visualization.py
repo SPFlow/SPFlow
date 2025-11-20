@@ -445,7 +445,7 @@ def _get_module_label(
             c_out = module._out_channels_total
             d = module.out_features
             label = f"D: {d}, C-in: {c_in}, C-out: {c_out}"
-            if hasattr(module, "num_repetitions") and module.num_repetitions is not None:
+            if hasattr(module, "num_repetitions"):
                 label += f", R: {module.num_repetitions}"
             label_parts.append(label)
         elif class_name == "ElementwiseSum":
@@ -453,7 +453,7 @@ def _get_module_label(
             c_out = module._num_sums
             d = module.out_features
             label = f"D: {d}, C-per-in: {c_per_in}, C-out: {c_out}"
-            if hasattr(module, "num_repetitions") and module.num_repetitions is not None:
+            if hasattr(module, "num_repetitions"):
                 label += f", R: {module.num_repetitions}"
             label_parts.append(label)
         elif class_name == "MixingLayer":

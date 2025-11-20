@@ -171,7 +171,7 @@ class RatSPN(Module):
 
         # root node: Sum over all out_channels
         if self.n_root_nodes > 1:
-            self.root_node = Sum(inputs=root, out_channels=1, num_repetitions=None)
+            self.root_node = Sum(inputs=root, out_channels=1, num_repetitions=1)
         else:
             self.root_node = root
 

@@ -8,15 +8,13 @@ from spflow.modules.leaves.base import LeafModule
 
 def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):
     lls = module.log_likelihood(data)
-    if module.num_repetitions is not None:
-        assert lls.shape == (
-            data.shape[0],
-            len(module.scope.query),
-            module.out_channels,
-            module.num_repetitions,
-        )
-    else:
-        assert lls.shape == (data.shape[0], len(module.scope.query), module.out_channels)
+    # Always expect 4D output with num_repetitions dimension
+    assert lls.shape == (
+        data.shape[0],
+        len(module.scope.query),
+        module.out_channels,
+        module.num_repetitions,
+    )
     assert torch.isfinite(lls).all()
 
 
@@ -37,6 +35,7 @@ def make_normal_leaf(
         mean: Mean of the distribution.
         std: Standard deviation of the distribution.
     """
+    num_repetitions = 1 if num_repetitions is None else num_repetitions
     if mean is not None:
         out_features = mean.shape[0]
     # assert (scope is None) ^ (out_features is None), "Either scope or out_features must be given"
@@ -55,12 +54,9 @@ def make_normal_leaf(
     if out_features and scope:
         assert len(scope.query) == out_features, "scope and out_features must have the same length"
 
-    if num_repetitions is not None:
-        mean = mean if mean is not None else torch.randn(len(scope.query), out_channels, num_repetitions)
-        std = std if std is not None else torch.rand(len(scope.query), out_channels, num_repetitions) + 1e-8
-    else:
-        mean = mean if mean is not None else torch.randn(len(scope.query), out_channels)
-        std = std if std is not None else torch.rand(len(scope.query), out_channels) + 1e-8
+    # Always create 3D parameters with num_repetitions dimension
+    mean = mean if mean is not None else torch.randn(len(scope.query), out_channels, num_repetitions)
+    std = std if std is not None else torch.rand(len(scope.query), out_channels, num_repetitions) + 1e-8
     return Normal(scope=scope, loc=mean, scale=std, num_repetitions=num_repetitions)
 
 
@@ -74,6 +70,7 @@ def make_leaf(
 ) -> LeafModule:
     assert (out_features is None) ^ (scope is None), "Either out_features or scope must be provided"
 
+    num_repetitions = 1 if num_repetitions is None else num_repetitions
     if scope is None:
         scope = Scope(list(range(0, out_features)))
 
@@ -100,72 +97,45 @@ def make_leaf(
             num_repetitions=num_repetitions,
         )
     elif cls == leaves.Hypergeometric:
-        if num_repetitions is None:
-            return leaves.Hypergeometric(
-                scope=scope,
-                n=torch.ones((len(scope.query), out_channels)) * 3,
-                N=torch.ones((len(scope.query), out_channels)) * 10,
-                K=torch.ones((len(scope.query), out_channels)) * 5,
-                num_repetitions=num_repetitions,
-            )
-        else:
-            return leaves.Hypergeometric(
-                scope=scope,
-                n=torch.ones((len(scope.query), out_channels, num_repetitions)) * 3,
-                N=torch.ones((len(scope.query), out_channels, num_repetitions)) * 10,
-                K=torch.ones((len(scope.query), out_channels, num_repetitions)) * 5,
-                num_repetitions=num_repetitions,
-            )
+        return leaves.Hypergeometric(
+            scope=scope,
+            n=torch.ones((len(scope.query), out_channels, num_repetitions)) * 3,
+            N=torch.ones((len(scope.query), out_channels, num_repetitions)) * 10,
+            K=torch.ones((len(scope.query), out_channels, num_repetitions)) * 5,
+            num_repetitions=num_repetitions,
+        )
     elif cls == leaves.Uniform:
-        if num_repetitions is None:
-            return leaves.Uniform(
-                scope=scope,
-                low=torch.zeros((len(scope.query), out_channels)),
-                high=torch.ones((len(scope.query), out_channels)),
-                num_repetitions=num_repetitions,
-            )
-        else:
-            return leaves.Uniform(
-                scope=scope,
-                low=torch.zeros((len(scope.query), out_channels, num_repetitions)),
-                high=torch.ones((len(scope.query), out_channels, num_repetitions)),
-                num_repetitions=num_repetitions,
-            )
+        return leaves.Uniform(
+            scope=scope,
+            low=torch.zeros((len(scope.query), out_channels, num_repetitions)),
+            high=torch.ones((len(scope.query), out_channels, num_repetitions)),
+            num_repetitions=num_repetitions,
+        )
     else:
         # Default case: just call the class
         return cls(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
 
 
 def make_leaf_args(cls, out_channels: int = None, scope: Scope = None, num_repetitions=None) -> dict:
+    num_repetitions = 1 if num_repetitions is None else num_repetitions
     # Check special cases
     if cls == leaves.Binomial or cls == leaves.NegativeBinomial:
         return {"total_count": torch.ones(1) * 3}
     elif cls == leaves.Categorical:
         return {"K": 3}
     elif cls == leaves.Hypergeometric:
-        if num_repetitions is None:
-            return {
-                "n": torch.ones((len(scope.query), out_channels)) * 3,
-                "N": torch.ones((len(scope.query), out_channels)) * 10,
-                "K": torch.ones((len(scope.query), out_channels)) * 5,
-            }
-        else:
-            return {
-                "n": torch.ones((len(scope.query), out_channels, num_repetitions)) * 3,
-                "N": torch.ones((len(scope.query), out_channels, num_repetitions)) * 10,
-                "K": torch.ones((len(scope.query), out_channels, num_repetitions)) * 5,
-            }
+        # Always create 3D tensors with num_repetitions dimension
+        return {
+            "n": torch.ones((len(scope.query), out_channels, num_repetitions)) * 3,
+            "N": torch.ones((len(scope.query), out_channels, num_repetitions)) * 10,
+            "K": torch.ones((len(scope.query), out_channels, num_repetitions)) * 5,
+        }
     elif cls == leaves.Uniform:
-        if num_repetitions is None:
-            return {
-                "low": torch.zeros((len(scope.query), out_channels)),
-                "high": torch.ones((len(scope.query), out_channels)),
-            }
-        else:
-            return {
-                "low": torch.zeros((len(scope.query), out_channels, num_repetitions)),
-                "high": torch.ones((len(scope.query), out_channels, num_repetitions)),
-            }
+        # Always create 3D tensors with num_repetitions dimension
+        return {
+            "low": torch.zeros((len(scope.query), out_channels, num_repetitions)),
+            "high": torch.ones((len(scope.query), out_channels, num_repetitions)),
+        }
     else:
         return {}
 
@@ -215,7 +185,7 @@ def make_cond_leaf(
 
 def make_data(cls, out_features: int, n_samples: int = 5) -> torch.Tensor:
     scope = Scope(list(range(0, out_features)))
-    return make_leaf(cls=cls, scope=scope, out_channels=1).distribution.sample((n_samples,)).squeeze(-1)
+    return make_leaf(cls=cls, scope=scope, out_channels=1).distribution.sample((n_samples,)).squeeze(-1).squeeze(-1)
 
 
 def make_cond_data(cls, out_features: int, n_samples: int = 5) -> torch.Tensor:
@@ -261,10 +231,8 @@ class SimpleParameterNetwork(torch.nn.Module):
 
         # Only create network for trainable parameters
         if len(param_constraints) > 0:
-            if num_repetitions is None:
-                output_features = num_features * output_size * len(param_constraints)
-            else:
-                output_features = num_features * output_size * num_repetitions * len(param_constraints)
+            # Always use 3D output with num_repetitions dimension
+            output_features = num_features * output_size * num_repetitions * len(param_constraints)
             self.network = torch.nn.Sequential(
                 torch.nn.Linear(input_size, 64),
                 torch.nn.ReLU(),
@@ -288,14 +256,10 @@ class SimpleParameterNetwork(torch.nn.Module):
         # Generate trainable parameters
         if self.network is not None and len(self.param_constraints) > 0:
             params = self.network(evidence)
-            if self.num_repetitions is None:
-                params = params.reshape(
-                    batch_size, self.num_features, self.output_size, len(self.param_constraints)
-                )
-            else:
-                params = params.reshape(
-                    batch_size, self.num_features, self.output_size, self.num_repetitions, len(self.param_constraints)
-                )
+            # Always reshape to 5D with num_repetitions dimension
+            params = params.reshape(
+                batch_size, self.num_features, self.output_size, self.num_repetitions, len(self.param_constraints)
+            )
 
             for i, (param_name, param_constraint) in enumerate(self.param_constraints.items()):
                 p = params[..., i]
@@ -313,19 +277,19 @@ class SimpleParameterNetwork(torch.nn.Module):
         # Add fixed parameters (broadcast to batch size if needed)
         for param_name, param_value in self.fixed_params.items():
             # Expand fixed parameter to match batch size
-            # Fixed params are typically shaped (num_features, out_channels) or scalar
-            # Need to expand to (batch_size, num_features, out_channels) or similar
+            # Fixed params are typically shaped as (num_features, out_channels) or scalar
+            # Always expand to 4D: (batch_size, num_features, out_channels, num_repetitions)
             if param_value.ndim == 0:
                 # Scalar
-                if self.num_repetitions is None:
-                    expanded = param_value.expand(batch_size, self.num_features, self.output_size)
-                else:
-                    expanded = param_value.expand(batch_size, self.num_features, self.output_size, self.num_repetitions)
+                expanded = param_value.expand(batch_size, self.num_features, self.output_size, self.num_repetitions)
+            elif param_value.ndim == 1:
+                # Scalar or 1D - expand to 4D
+                expanded = param_value.expand(batch_size, self.num_features, self.output_size, self.num_repetitions)
             elif param_value.ndim == 2:
-                # (num_features, out_channels)
-                expanded = param_value.unsqueeze(0).expand(batch_size, -1, -1)
+                # (num_features, out_channels) - add batch and num_repetitions dimensions
+                expanded = param_value.unsqueeze(0).unsqueeze(-1).expand(batch_size, -1, -1, self.num_repetitions)
             elif param_value.ndim == 3:
-                # (num_features, out_channels, num_repetitions)
+                # (num_features, out_channels, num_repetitions) - add batch dimension
                 expanded = param_value.unsqueeze(0).expand(batch_size, -1, -1, -1)
             else:
                 expanded = param_value

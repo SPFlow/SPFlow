@@ -14,7 +14,7 @@ from tests.utils.leaves import make_leaf, make_data, create_conditional_paramete
 
 out_channels_values = [1, 3]
 out_features_values = [1, 4]
-num_repetitions = [None, 5]
+num_repetitions = [1, 5]
 leaf_cls_values = [
     leaves.Bernoulli,
     leaves.Binomial,
@@ -47,7 +47,8 @@ def test_log_posterior(leaf_cls, out_features: int, out_channels: int, num_reps,
         cls=leaf_cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps
     )
     data = make_data(cls=leaf_cls, out_features=out_features, n_samples=5)
-    shape = (1, out_features, out_channels, *(() if num_reps is None else (num_reps,)))
+    # Always use 4D shape with num_repetitions dimension
+    shape = (1, out_features, out_channels, num_reps)
     if prior:
         prior_tensor = torch.rand(shape)
         prior_tensor = prior_tensor / prior_tensor.sum(dim=2, keepdim=True)
@@ -60,10 +61,7 @@ def test_log_posterior(leaf_cls, out_features: int, out_channels: int, num_reps,
         return
     else:
         lls = module.log_posterior(data, log_prior=log_prior_tensor)
-    if num_reps is not None:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
-    else:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
 
 
 @pytest.mark.parametrize(
@@ -80,10 +78,8 @@ def test_sample(leaf_cls, out_features: int, out_channels: int, num_reps, is_mpe
     data = torch.full((n_samples, out_features), torch.nan)
     channel_index = torch.randint(low=0, high=out_channels, size=(n_samples, out_features))
     mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
-    if num_reps is not None:
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-    else:
-        repetition_index = None
+    # Always provide repetition_index with num_repetitions dimension
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
 
     # Sample
@@ -119,17 +115,14 @@ def test_maximum_likelihood_estimation(
     # Construct sampler
     scope = Scope(list(range(0, out_features)))
     sampler = make_leaf(cls=leaf_cls, scope=scope, out_channels=1)
-    data = sampler.distribution.sample((100000,)).squeeze(-1)
+    data = sampler.distribution.sample((1000000,)).squeeze(-1).squeeze(-1)
 
     module.maximum_likelihood_estimation(data, bias_correction=bias_correction)
 
     # Check that module and sampler params are equal
     for param_name, param_module in module.named_parameters():
-        param_sampler = _getattr_nested(sampler, param_name)
-        if num_reps:
-            assert torch.allclose(param_module, param_sampler.unsqueeze(2), atol=3e-1)
-        else:
-            assert torch.allclose(param_module, param_sampler, atol=3e-1)
+        param_sampler = getattr(sampler, param_name)
+        assert torch.allclose(param_module, param_sampler, atol=3e-1)
 
 
 @pytest.mark.parametrize("leaf_cls, out_features, out_channels, num_reps", params)

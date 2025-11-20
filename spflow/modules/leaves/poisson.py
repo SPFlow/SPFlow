@@ -19,7 +19,7 @@ class Poisson(LeafModule):
         self,
         scope,
         out_channels: int = None,
-        num_repetitions: int = None,
+        num_repetitions: int = 1,
         parameter_network: nn.Module = None,
         validate_args: bool | None = True,
         rate: Tensor = None,

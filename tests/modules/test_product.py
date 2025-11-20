@@ -11,7 +11,7 @@ from tests.utils.leaves import make_normal_leaf, make_normal_data
 # Constants
 in_channels_values = [1, 3]
 out_features_values = [1, 4]
-num_repetitions = [None, 5]
+num_repetitions = [1, 5]
 params = list(product(in_channels_values, out_features_values, num_repetitions))
 
 
@@ -28,10 +28,8 @@ def test_log_likelihood(in_channels: int, out_features: int, num_reps, device):
     product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
     data = make_normal_data(out_features=out_features)
     lls = product_layer.log_likelihood(data)
-    if num_reps is None:
-        assert lls.shape == (data.shape[0], 1, product_layer.out_channels)
-    else:
-        assert lls.shape == (data.shape[0], 1, product_layer.out_channels, num_reps)
+    # Always expect 4D output
+    assert lls.shape == (data.shape[0], 1, product_layer.out_channels, num_reps)
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps", params)
