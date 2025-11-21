@@ -6,3 +6,7 @@ sampling contexts, caching mechanisms, and other supporting utilities.
 These utilities are designed to work seamlessly with the main SPFlow modules
 while maintaining clean separation of concerns.
 """
+
+from spflow.utils.replace import replace
+
+__all__ = ["replace"]
