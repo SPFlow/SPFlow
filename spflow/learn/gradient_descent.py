@@ -128,7 +128,7 @@ def nll_loss(ll: Tensor, target: Tensor) -> torch.Tensor:
     Returns:
         torch.Tensor: Scalar negative log-likelihood loss tensor.
     """
-    return nn.NLLLoss()(ll.squeeze(1), target)
+    return nn.NLLLoss()(ll.squeeze(-1), target)
 
 
 def _extract_batch_data(
