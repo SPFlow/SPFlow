@@ -121,6 +121,51 @@ class NegativeBinomial(LeafModule):
         """Returns distribution parameters."""
         return {"total_count": self.total_count, "logits": self.logits}
 
+    def _compute_parameter_estimates(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> dict[str, Tensor]:
+        """Compute raw MLE estimates for negative binomial distribution (without broadcasting).
+
+        Args:
+            data: Scope-filtered data (failure counts).
+            weights: Normalized sample weights.
+            bias_correction: Whether to apply bias correction.
+
+        Returns:
+            Dictionary with 'probs' estimate (shape: out_features).
+        """
+        # Extract base total_count value (first channel, first repetition)
+        # to match the unbounded n_success shape
+        if self.total_count.dim() > 1:
+            total_count_base = self.total_count[:, 0, 0]
+        else:
+            total_count_base = self.total_count
+
+        n_total = weights.sum() * total_count_base
+        if bias_correction:
+            n_total = n_total - 1
+
+        n_success = (weights * data).sum(0)
+        p_est = 1 - n_total / (n_success + n_total)
+
+        # Handle edge cases (NaN, zero, or near-zero/one probs) before broadcasting
+        p_est = _handle_mle_edge_cases(p_est, lb=0.0, ub=1.0)
+
+        return {"probs": p_est}
+
+    def _set_mle_parameters(self, params_dict: dict[str, Tensor]) -> None:
+        """Set MLE-estimated parameters for NegativeBinomial distribution.
+
+        Explicitly handles the parameter type:
+        - probs: Property with setter, calls property setter which updates _logits
+
+        Note: total_count (n) is fixed and not updated during MLE.
+
+        Args:
+            params_dict: Dictionary with 'probs' parameter value.
+        """
+        self.probs = params_dict["probs"]  # Uses property setter
+
     def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Compute MLE for success probability p (given fixed n).
 
@@ -129,18 +174,7 @@ class NegativeBinomial(LeafModule):
             weights: Normalized sample weights.
             bias_correction: Whether to apply bias correction.
         """
-        n_total = weights.sum() * self.total_count
-        if bias_correction:
-            n_total = n_total - 1
+        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
 
-        n_success = (weights * data).sum(0)
-        success_est = self._broadcast_to_event_shape(n_success)
-        p_est = 1 - n_total / (success_est + n_total)
-
-        # Handle edge cases before assigning
-        p_est = _handle_mle_edge_cases(p_est, lb=0.0, ub=1.0)
-
-        # Assign using logits
-        p_est = self._broadcast_to_event_shape(p_est)
-        logits = proj_bounded_to_real(p_est, lb=0.0, ub=1.0)
-        self.logits = logits
+        # Broadcast to event_shape and assign directly
+        self.probs = self._broadcast_to_event_shape(estimates["probs"])

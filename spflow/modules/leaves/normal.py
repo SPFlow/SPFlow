@@ -78,13 +78,18 @@ class Normal(LeafModule):
         """Return batch shape of the distribution."""
         return self.distribution.batch_shape
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute weighted mean and standard deviation.
+    def _compute_parameter_estimates(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> dict[str, Tensor]:
+        """Compute raw MLE estimates for normal distribution (without broadcasting).
 
         Args:
             data: Input data tensor.
             weights: Weight tensor for each data point.
             bias_correction: Whether to apply bias correction to variance estimate.
+
+        Returns:
+            Dictionary with 'loc' and 'scale' estimates (shape: out_features).
         """
         n_total = weights.sum()
         loc_est = (weights * data).sum(0) / n_total
@@ -97,6 +102,31 @@ class Normal(LeafModule):
         # Handle edge cases (NaN, zero, or near-zero std) before broadcasting
         scale_est = _handle_mle_edge_cases(scale_est, lb=0.0)
 
+        return {"loc": loc_est, "scale": scale_est}
+
+    def _set_mle_parameters(self, params_dict: dict[str, Tensor]) -> None:
+        """Set MLE-estimated parameters for Normal distribution.
+
+        Explicitly handles the two parameter types:
+        - loc: Direct nn.Parameter, update .data attribute
+        - scale: Property with setter, calls property setter which updates log_scale
+
+        Args:
+            params_dict: Dictionary with 'loc' and 'scale' parameter values.
+        """
+        self.loc.data = params_dict["loc"]
+        self.scale = params_dict["scale"]  # Uses property setter
+
+    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
+        """Compute weighted mean and standard deviation.
+
+        Args:
+            data: Input data tensor.
+            weights: Weight tensor for each data point.
+            bias_correction: Whether to apply bias correction to variance estimate.
+        """
+        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
+
         # Broadcast to event_shape and assign directly
-        self.loc.data = self._broadcast_to_event_shape(loc_est)
-        self.scale = self._broadcast_to_event_shape(scale_est)
+        self.loc.data = self._broadcast_to_event_shape(estimates["loc"])
+        self.scale = self._broadcast_to_event_shape(estimates["scale"])

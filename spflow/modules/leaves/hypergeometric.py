@@ -301,6 +301,37 @@ class Hypergeometric(LeafModule):
         """Returns distribution parameters."""
         return {"K": self.K, "N": self.N, "n": self.n}
 
+    def _compute_parameter_estimates(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> dict[str, Tensor]:
+        """Compute raw MLE estimates for hypergeometric distribution (without broadcasting).
+
+        Since hypergeometric parameters are fixed buffers and cannot be learned,
+        this method returns the current parameter values unchanged.
+
+        Args:
+            data: Input data tensor.
+            weights: Weight tensor for each data point.
+            bias_correction: Not used for Hypergeometric (fixed parameters).
+
+        Returns:
+            Dictionary with 'K', 'N', and 'n' estimates (shape: out_features).
+        """
+        # Hypergeometric parameters are fixed - return current values
+        return {"K": self.K, "N": self.N, "n": self.n}
+
+    def _set_mle_parameters(self, params_dict: dict[str, Tensor]) -> None:
+        """Set MLE-estimated parameters for Hypergeometric distribution.
+
+        Since all parameters (K, N, n) are fixed buffers and cannot be learned,
+        this method is a no-op. Hypergeometric parameters remain constant.
+
+        Args:
+            params_dict: Dictionary with 'K', 'N', and 'n' parameter values (unused).
+        """
+        # Hypergeometric parameters are fixed buffers - no updates needed
+        pass
+
     def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Hypergeometric parameters are fixed buffers; nothing to estimate.
 
@@ -309,7 +340,10 @@ class Hypergeometric(LeafModule):
             weights: Normalized weights.
             bias_correction: Not used for Hypergeometric (fixed parameters).
         """
-        pass
+        # For consistency with the pattern, call _compute_parameter_estimates
+        # but don't use the result since parameters are fixed
+        _ = self._compute_parameter_estimates(data, weights, bias_correction)
+        # No assignment needed - parameters are fixed buffers
 
     def check_support(self, data: Tensor) -> Tensor:
         """Check if data is in support of the Hypergeometric distribution.

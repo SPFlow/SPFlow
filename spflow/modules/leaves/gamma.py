@@ -102,15 +102,20 @@ class Gamma(LeafModule):
         """Returns distribution parameters."""
         return {"concentration": self.concentration, "rate": self.rate}
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute MLE for shape α and rate β parameters.
+    def _compute_parameter_estimates(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> dict[str, Tensor]:
+        """Compute raw MLE estimates for Gamma distribution (without broadcasting).
 
         Uses moment-matching equations to estimate parameters with optional bias correction.
 
         Args:
-            data: Scope-filtered data.
-            weights: Normalized sample weights.
-            bias_correction: Whether to apply bias correction.
+            data: Input data tensor.
+            weights: Weight tensor for each data point.
+            bias_correction: Whether to apply bias correction to parameter estimates.
+
+        Returns:
+            Dictionary with 'concentration' and 'rate' estimates (shape: out_features).
         """
         n_total = weights.sum()
 
@@ -135,6 +140,33 @@ class Gamma(LeafModule):
         concentration_est = _handle_mle_edge_cases(concentration_est, lb=0.0)
         rate_est = _handle_mle_edge_cases(rate_est, lb=0.0)
 
-        # Broadcast to event_shape and assign - LogSpaceParameter ensures positivity
-        self.concentration = self._broadcast_to_event_shape(concentration_est)
-        self.rate = self._broadcast_to_event_shape(rate_est)
+        return {"concentration": concentration_est, "rate": rate_est}
+
+    def _set_mle_parameters(self, params_dict: dict[str, Tensor]) -> None:
+        """Set MLE-estimated parameters for Gamma distribution.
+
+        Explicitly handles the two parameter types:
+        - concentration: Property with setter, calls property setter which updates log_concentration
+        - rate: Property with setter, calls property setter which updates log_rate
+
+        Args:
+            params_dict: Dictionary with 'concentration' and 'rate' parameter values.
+        """
+        self.concentration = params_dict["concentration"]  # Uses property setter
+        self.rate = params_dict["rate"]  # Uses property setter
+
+    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
+        """Compute MLE for shape α and rate β parameters.
+
+        Uses moment-matching equations to estimate parameters with optional bias correction.
+
+        Args:
+            data: Scope-filtered data.
+            weights: Normalized sample weights.
+            bias_correction: Whether to apply bias correction.
+        """
+        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
+
+        # Broadcast to event_shape and assign
+        self.concentration = self._broadcast_to_event_shape(estimates["concentration"])
+        self.rate = self._broadcast_to_event_shape(estimates["rate"])

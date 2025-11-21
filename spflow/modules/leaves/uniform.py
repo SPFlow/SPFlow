@@ -84,6 +84,47 @@ class Uniform(LeafModule):
         """Returns distribution parameters."""
         return {"low": self.low, "high": self.high}
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """No-op: Uniform parameters are fixed buffers and cannot be learned."""
+    def _compute_parameter_estimates(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> dict[str, Tensor]:
+        """Compute raw MLE estimates for uniform distribution (without broadcasting).
+
+        Note: For Uniform distribution, this is a no-op since parameters are fixed buffers.
+        This method exists to maintain consistency with other leaf distributions.
+
+        Args:
+            data: Input data tensor.
+            weights: Weight tensor for each data point.
+            bias_correction: Whether to apply bias correction (unused for Uniform).
+
+        Returns:
+            Empty dictionary (no parameters to estimate).
+        """
+        return {}
+
+    def _set_mle_parameters(self, params_dict: dict[str, Tensor]) -> None:
+        """Set MLE-estimated parameters for Uniform distribution.
+
+        Note: For Uniform distribution, this is a no-op since parameters are fixed buffers.
+        The low and high bounds cannot be updated through MLE.
+        This method exists to maintain consistency with other leaf distributions.
+
+        Args:
+            params_dict: Dictionary with parameter values (empty for Uniform).
+        """
         pass
+
+    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
+        """No-op: Uniform parameters are fixed buffers and cannot be learned.
+
+        This method follows the same pattern as other distributions by calling
+        _compute_parameter_estimates() and _set_mle_parameters(), but both are no-ops
+        for Uniform since the bounds are fixed.
+
+        Args:
+            data: Input data tensor.
+            weights: Weight tensor for each data point.
+            bias_correction: Whether to apply bias correction (unused for Uniform).
+        """
+        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
+        self._set_mle_parameters(estimates)
