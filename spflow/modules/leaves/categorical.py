@@ -108,15 +108,19 @@ class Categorical(LeafModule):
         """Returns distribution parameters."""
         return {"logits": self.logits}
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Estimate categorical probabilities for each category.
+    def _compute_parameter_estimates(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> dict[str, Tensor]:
+        """Compute raw MLE estimates for categorical distribution (without broadcasting).
 
         Args:
-            data: Scope-filtered data.
-            weights: Normalized weights.
+            data: Input data tensor.
+            weights: Weight tensor for each data point.
             bias_correction: Not used for Categorical (included for interface consistency).
+
+        Returns:
+            Dictionary with 'probs' estimates (shape: out_features x K).
         """
-        # weights_flat = weights.reshape(weights.shape[0], -1)[:, 0]  # TODO: investigate why this is correct / makes sense?
         weights_flat = weights.flatten()
         n_total = weights_flat.sum()
 
@@ -137,11 +141,39 @@ class Categorical(LeafModule):
 
         p_est = torch.stack(p_entries, dim=0).to(data.device)
 
+        # Handle edge cases (NaN or invalid probabilities) before broadcasting
+        # For categorical, we ensure probabilities sum to 1 and are non-negative
+        p_est = torch.clamp(p_est, min=1e-10)  # Avoid zero probabilities
+        p_est = p_est / p_est.sum(dim=-1, keepdim=True)  # Renormalize
+
+        return {"probs": p_est}
+
+    def _set_mle_parameters(self, params_dict: dict[str, Tensor]) -> None:
+        """Set MLE-estimated parameters for Categorical distribution.
+
+        Explicitly handles the parameter type:
+        - probs: Property with setter, calls property setter which updates _logits
+
+        Args:
+            params_dict: Dictionary with 'probs' parameter values.
+        """
+        self.probs = params_dict["probs"]  # Uses property setter
+
+    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
+        """Estimate categorical probabilities for each category.
+
+        Args:
+            data: Scope-filtered data.
+            weights: Normalized weights.
+            bias_correction: Not used for Categorical (included for interface consistency).
+        """
+        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
+
         # p_est has shape (out_features, K)
         # Broadcast to event_shape: (out_features, out_channels, num_reps, K)
         # Insert dimensions for out_channels and num_reps
+        p_est = estimates["probs"]
         p_est = p_est.unsqueeze(1).unsqueeze(2).expand(-1, self.out_channels, self.num_repetitions, -1)
 
-        # Convert to logits and assign
-        probs = p_est
-        self.logits = proj_convex_to_real(probs)
+        # Convert to logits and assign via property setter
+        self.probs = p_est

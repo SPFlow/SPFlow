@@ -72,15 +72,20 @@ class Exponential(LeafModule):
         """Returns distribution parameters."""
         return {"rate": self.rate}
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute MLE for rate parameter λ.
+    def _compute_parameter_estimates(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> dict[str, Tensor]:
+        """Compute raw MLE estimates for exponential distribution (without broadcasting).
 
         For Exponential distribution, the MLE is λ = n / sum(x_i).
 
         Args:
-            data: Scope-filtered data.
-            weights: Normalized sample weights.
+            data: Input data tensor.
+            weights: Weight tensor for each data point.
             bias_correction: Whether to apply bias correction (n-1 instead of n).
+
+        Returns:
+            Dictionary with 'rate' estimate (shape: out_features).
         """
         n_total = weights.sum()
 
@@ -92,5 +97,28 @@ class Exponential(LeafModule):
         # Handle edge cases (NaN, zero, or near-zero rate) before broadcasting
         rate_est = _handle_mle_edge_cases(rate_est, lb=0.0)
 
-        # Broadcast to event_shape and assign - LogSpaceParameter ensures positivity
-        self.rate = self._broadcast_to_event_shape(rate_est)
+        return {"rate": rate_est}
+
+    def _set_mle_parameters(self, params_dict: dict[str, Tensor]) -> None:
+        """Set MLE-estimated parameters for Exponential distribution.
+
+        Explicitly handles the parameter assignment:
+        - rate: Property with setter, calls property setter which updates log_rate
+
+        Args:
+            params_dict: Dictionary with 'rate' parameter value.
+        """
+        self.rate = params_dict["rate"]  # Uses property setter
+
+    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
+        """Compute MLE for rate parameter λ.
+
+        Args:
+            data: Scope-filtered data.
+            weights: Normalized sample weights.
+            bias_correction: Whether to apply bias correction (n-1 instead of n).
+        """
+        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
+
+        # Broadcast to event_shape and assign
+        self.rate = self._broadcast_to_event_shape(estimates["rate"])

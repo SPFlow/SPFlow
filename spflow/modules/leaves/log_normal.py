@@ -80,6 +80,49 @@ class LogNormal(LeafModule):
         """Returns distribution parameters."""
         return {"loc": self.loc, "scale": self.scale}
 
+    def _compute_parameter_estimates(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> dict[str, Tensor]:
+        """Compute raw MLE estimates for log-normal distribution (without broadcasting).
+
+        For Log-Normal distribution, we compute statistics on log-transformed data.
+
+        Args:
+            data: Input data tensor (must be positive).
+            weights: Weight tensor for each data point.
+            bias_correction: Whether to apply bias correction to variance estimate.
+
+        Returns:
+            Dictionary with 'loc' and 'scale' estimates (shape: out_features).
+        """
+        n_total = weights.sum()
+
+        log_data = data.log()
+        loc_est = (weights * log_data).sum(0) / n_total
+
+        centered = log_data - loc_est
+        var_numerator = (weights * centered.pow(2)).sum(0)
+        denom = n_total - 1 if bias_correction else n_total
+        scale_est = torch.sqrt(var_numerator / denom)
+
+        # Handle edge cases (NaN, zero, or near-zero std) before broadcasting
+        scale_est = _handle_mle_edge_cases(scale_est, lb=0.0)
+
+        return {"loc": loc_est, "scale": scale_est}
+
+    def _set_mle_parameters(self, params_dict: dict[str, Tensor]) -> None:
+        """Set MLE-estimated parameters for LogNormal distribution.
+
+        Explicitly handles the two parameter types:
+        - loc: Direct nn.Parameter, update .data attribute
+        - scale: Property with setter, calls property setter which updates log_scale
+
+        Args:
+            params_dict: Dictionary with 'loc' and 'scale' parameter values.
+        """
+        self.loc.data = params_dict["loc"]
+        self.scale = params_dict["scale"]  # Uses property setter
+
     def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Compute MLE for mean μ and std σ by fitting ln(data).
 
@@ -90,18 +133,8 @@ class LogNormal(LeafModule):
             weights: Normalized sample weights.
             bias_correction: Whether to apply bias correction to variance estimate.
         """
-        n_total = weights.sum()
-
-        log_data = data.log()
-        loc_est = (weights * log_data).sum(0) / n_total
-
-        var_numerator = (weights * torch.pow(log_data - loc_est, 2)).sum(0)
-        denom = n_total - 1 if bias_correction else n_total
-        std_est = torch.sqrt(var_numerator / denom)
-
-        # Handle edge cases (NaN, zero, or near-zero std) before broadcasting
-        std_est = _handle_mle_edge_cases(std_est, lb=0.0)
+        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
 
         # Broadcast to event_shape and assign directly
-        self.loc.data = self._broadcast_to_event_shape(loc_est)
-        self.scale = self._broadcast_to_event_shape(std_est)
+        self.loc.data = self._broadcast_to_event_shape(estimates["loc"])
+        self.scale = self._broadcast_to_event_shape(estimates["scale"])

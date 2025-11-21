@@ -117,6 +117,47 @@ class LeafModule(Module, ABC):
         """
         pass
 
+    def _compute_parameter_estimates(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> Dict[str, Tensor]:
+        """Compute raw MLE parameter estimates without broadcasting.
+
+        Used internally by both simple and KMeans clustering paths.
+        Subclasses should override this method for better efficiency when supporting KMeans.
+
+        Args:
+            data: Scope-filtered data.
+            weights: Normalized weights.
+            bias_correction: Apply bias correction.
+
+        Returns:
+            Dictionary mapping parameter names to raw estimates (shape: out_features).
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement _compute_parameter_estimates() "
+            "to support use_kmeans=True. Either implement this method or use use_kmeans=False."
+        )
+
+    def _set_mle_parameters(self, params_dict: Dict[str, Tensor]) -> None:
+        """Set MLE-estimated parameters.
+
+        This method handles the assignment of estimated parameters, accounting for both
+        direct nn.Parameter objects and property-based parameters with custom setters.
+
+        Subclasses can override this method to explicitly specify how parameters should
+        be set, which improves code clarity and serves as documentation.
+
+        Args:
+            params_dict: Dictionary mapping parameter names to their estimated values.
+        """
+        for param_name, param_tensor in params_dict.items():
+            try:
+                # Try using property setter (works for properties like 'scale')
+                setattr(self, param_name, param_tensor)
+            except TypeError:
+                # Direct parameter (like 'loc') - update .data attribute
+                getattr(self, param_name).data = param_tensor
+
     @property
     def mode(self) -> Tensor:
         """Return distribution mode.
@@ -369,12 +410,64 @@ class LeafModule(Module, ABC):
 
         return scoped_data, mle_weights
 
+    def _update_parameters_with_kmeans(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> None:
+        """Update parameters using KMeans clustering followed by MLE for each cluster.
+
+        Clusters data into `out_channels` clusters per repetition, then estimates parameters
+        for each cluster separately using `_compute_parameter_estimates()`.
+
+        Args:
+            data: Scope-filtered data.
+            weights: Normalized weights.
+            bias_correction: Apply bias correction.
+        """
+        from fast_pytorch_kmeans import KMeans
+
+        # Get parameter names from the distribution
+        param_names = list(self.params().keys())
+
+        # Create empty tensors for all parameters
+        new_params = {name: torch.empty_like(getattr(self, name)) for name in param_names}
+
+        # Iterate over repetitions
+        for rep_idx in range(self.num_repetitions):
+            # Run KMeans to cluster data into out_channels clusters
+            kmeans = KMeans(
+                n_clusters=self.out_channels, mode="euclidean", init_method="kmeans++"
+            )
+            cluster_ids = kmeans.fit_predict(data)
+
+            # For each cluster/channel, filter data and estimate parameters
+            for channel_idx in range(self.out_channels):
+                # Filter data and weights by cluster membership
+                cluster_mask = cluster_ids == channel_idx
+                cluster_data = data[cluster_mask]
+                cluster_weights = weights[cluster_mask]
+
+                if cluster_data.size(0) == 0:
+                    # Empty cluster - use global statistics as fallback
+                    estimates = self._compute_parameter_estimates(data, weights, bias_correction)
+                else:
+                    estimates = self._compute_parameter_estimates(
+                        cluster_data, cluster_weights, bias_correction
+                    )
+
+                # Assign estimated parameters to the specific channel and repetition
+                for param_name, param_value in estimates.items():
+                    new_params[param_name][:, channel_idx, rep_idx] = param_value
+
+        # Assign all parameters using the helper method
+        self._set_mle_parameters(new_params)
+
     def maximum_likelihood_estimation(
         self,
         data: Tensor,
         weights: Optional[Tensor] = None,
         bias_correction: bool = True,
         nan_strategy: str | Callable | None = None,
+        use_kmeans: bool = False,
         cache: Cache | None = None,
     ) -> None:
         """Maximum (weighted) likelihood estimation via template method pattern.
@@ -387,8 +480,9 @@ class LeafModule(Module, ABC):
             weights: Optional sample weights.
             bias_correction: Apply bias correction.
             nan_strategy: Handle NaN ('ignore', callable, or None).
+            use_kmeans: If True, cluster data using KMeans before estimation.
+                        Runs KMeans for each repetition with out_channels clusters.
             cache: Optional cache dictionary.
-            preprocess_data: Select scope-relevant features.
         """
 
         if self.is_conditional:
@@ -401,8 +495,11 @@ class LeafModule(Module, ABC):
             nan_strategy=nan_strategy,
         )
 
-        # Step 2: Update distribution-specific statistics (implemented by subclass)
-        self._mle_update_statistics(data_prepared, weights_prepared, bias_correction)
+        # Step 2: Update distribution-specific statistics
+        if use_kmeans:
+            self._update_parameters_with_kmeans(data_prepared, weights_prepared, bias_correction)
+        else:
+            self._mle_update_statistics(data_prepared, weights_prepared, bias_correction)
 
     def sample(
         self,

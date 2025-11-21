@@ -92,6 +92,41 @@ class Bernoulli(LeafModule):
         """Returns distribution parameters."""
         return {"logits": self.logits}
 
+    def _compute_parameter_estimates(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> dict[str, Tensor]:
+        """Compute raw MLE estimates for Bernoulli distribution (without broadcasting).
+
+        For Bernoulli distribution, the MLE is the weighted proportion of successes.
+
+        Args:
+            data: Scope-filtered data.
+            weights: Normalized sample weights.
+            bias_correction: Not used for Bernoulli.
+
+        Returns:
+            Dictionary with 'probs' estimate (shape: out_features).
+        """
+        n_total = weights.sum()
+        n_success = (weights * data).sum(dim=0)
+        p_est = n_success / n_total
+
+        # Handle edge cases (NaN, zero, or near-zero p) before broadcasting
+        p_est = _handle_mle_edge_cases(p_est, lb=0.0)
+
+        return {"probs": p_est}
+
+    def _set_mle_parameters(self, params_dict: dict[str, Tensor]) -> None:
+        """Set MLE-estimated parameters for Bernoulli distribution.
+
+        Explicitly handles the parameter:
+        - probs: Property with setter, calls property setter which updates _logits
+
+        Args:
+            params_dict: Dictionary with 'probs' parameter value.
+        """
+        self.probs = params_dict["probs"]  # Uses property setter
+
     def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Compute MLE for success probability p.
 
@@ -102,10 +137,7 @@ class Bernoulli(LeafModule):
             weights: Normalized sample weights.
             bias_correction: Not used for Bernoulli.
         """
-        n_total = weights.sum()
-        n_success = (weights * data).sum(dim=0)
-        p_est = n_success / n_total
+        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
 
-        # Handle edge cases (NaN, zero, or near-zero p) before broadcasting
-        p_est = _handle_mle_edge_cases(p_est, lb=0.0)
-        self.probs = self._broadcast_to_event_shape(p_est)
+        # Broadcast to event_shape and assign via property setter
+        self.probs = self._broadcast_to_event_shape(estimates["probs"])
