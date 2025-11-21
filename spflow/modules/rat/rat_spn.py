@@ -236,14 +236,15 @@ class RatSPN(Module):
         if self.n_root_nodes <= 1:
             raise ValueError("Posterior can only be computed for models with multiple classes.")
 
-        ll_y = self.root_node.log_weights  # shape: (1, n_root_nodes, 1)
-        ll_y = ll_y.squeeze(-1)  # shape: (1, n_root_nodes)
+        ll_y = self.root_node.log_weights  # shape: (1, n_root_nodes, 1, 1)
+        ll_y = ll_y.squeeze().view(1, -1)  # shape: (1, n_root_nodes)
         ll = self.root_node.inputs.log_likelihood(
             data,
             cache=cache,
         )  # shape: (batch_size,1 , n_root_nodes)
 
-        ll = ll.squeeze(1)  # shape: (batch_size, n_root_nodes)
+        # Remove singleton feature and repetition dimensions to obtain (batch_size, n_root_nodes)
+        ll = ll.squeeze().view(ll.shape[0], -1)
 
         # logp(y | x) = logp(x, y) - logp(x)
         #             = logp(x | y) + logp(y) - logp(x)
