@@ -236,7 +236,57 @@ Log-likelihood sample: tensor([[-0.4677],
         [-1.4382]], grad_fn=<SelectBackward0>)
 ```
 
-## Example 5: Graph Visualization
+### Example 5: Temporary Method Replacement
+
+SPFlow further supports substituting methods of modules for temporary modified method calls, e.g. replacing the sum operation in the `Sum` module with a max operation:
+
+```python
+import torch
+from spflow.modules.sums import Sum
+from spflow.modules.products import Product
+from spflow.modules.leaves import Normal
+from spflow.meta import Scope
+from spflow.utils import replace
+
+torch.manual_seed(1)
+
+# Create a probabilistic circuit: Product(Sum(Product(Normal)))
+scope = Scope([0, 1])
+normal = Normal(scope=scope, out_channels=4)
+inner_product = Product(inputs=normal)
+sum_module = Sum(inputs=inner_product, out_channels=1)
+root_product = Product(inputs=sum_module)
+
+# Create test data
+data = torch.randn(3, 2)
+
+# Normal inference
+log_likelihood_original = root_product.log_likelihood(data).flatten()
+print(f"Original log-likelihood: {log_likelihood_original}")
+
+# Define a custom log_likelihood for Sum modules
+def max_ll(self, data, cache=None):
+    ll = self.inputs.log_likelihood(data, cache=cache).unsqueeze(3)
+    weighted_lls = ll + self.log_weights.unsqueeze(0)
+    return torch.max(weighted_lls, dim=self.sum_dim + 1)[0]
+
+# Temporarily replace Sum.log_likelihood with custom implementation
+with replace(Sum.log_likelihood, max_ll):
+    log_likelihood_custom = root_product.log_likelihood(data).flatten()
+    print(f"Custom log-likelihood:   {log_likelihood_custom}")
+
+# Original method is automatically restored
+log_likelihood_restored = root_product.log_likelihood(data).flatten()
+print(f"Restored log-likelihood: {log_likelihood_restored}")
+```
+Output:
+```
+Original log-likelihood: tensor([-1.2842, -2.8750, -7.2442], grad_fn=<ViewBackward0>)
+Custom log-likelihood:   tensor([-1.4334, -3.5256, -7.9031], grad_fn=<ViewBackward0>)
+Restored log-likelihood: tensor([-1.2842, -2.8750, -7.2442], grad_fn=<ViewBackward0>)
+```
+
+## Example 6: Graph Visualization
 
 ``` python
 import torch

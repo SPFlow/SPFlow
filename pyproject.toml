@@ -73,7 +73,9 @@ dev = [
   "sphinx-copybutton",
   "myst-parser",
   "ipykernel",
-    "scipy-stubs"
+  "scipy-stubs",
+  "pdbpp",
+  "nbstripout"
 ]
 
 
