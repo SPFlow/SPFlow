@@ -18,7 +18,6 @@ class _HypergeometricDistribution:
         self.K = K
         self.n = n
         self.event_shape = n.shape
-        self.batch_shape = ()  # No batch shape for hypergeometric, event_shape contains all the structure
         self.validate_args = validate_args
 
     def _align_support_mask(self, mask: Tensor, data: Tensor) -> Tensor:

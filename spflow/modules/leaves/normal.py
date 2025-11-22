@@ -73,11 +73,6 @@ class Normal(LeafModule):
     def params(self):
         return {"loc": self.loc, "scale": self.scale}
 
-    @property
-    def batch_shape(self):
-        """Return batch shape of the distribution."""
-        return self.distribution.batch_shape
-
     def _compute_parameter_estimates(
         self, data: Tensor, weights: Tensor, bias_correction: bool
     ) -> dict[str, Tensor]:
