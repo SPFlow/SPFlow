@@ -41,37 +41,40 @@ class BaseProduct(Module, ABC):
         """
         super().__init__()
 
-        # Obtain number of splits and check input type
+        # ========== 1. INPUT VALIDATION ==========
+        # Validate before processing to avoid indexing errors
+        if isinstance(inputs, list) and not inputs:
+            raise ValueError(f"'{self.__class__.__name__}' requires at least one input to be specified.")
+
+        # ========== 2. INPUT TYPE PROCESSING ==========
+        # Check if input is Split type and handle accordingly
         if isinstance(inputs, Split):
-            inputs = [inputs]
             self.input_is_split = True
-            self.num_splits = inputs[0].num_splits
+            self.num_splits = inputs.num_splits
+            inputs = [inputs]
         else:
             self.input_is_split = False
+            # Determine num_splits from first input's features
             if inputs[0].out_features == 1:
                 self.num_splits = 1
             else:
                 self.num_splits = None
 
-        if not inputs:
-            raise ValueError(f"'{self.__class__.__name__}' requires at least one input to be specified.")
-
-        self.inputs = nn.ModuleList(inputs)
-
-        # Check that scopes are disjoint
-        if not Scope.all_pairwise_disjoint([inp.scope for inp in self.inputs]):
+        # ========== 3. CONFIGURATION VALIDATION ==========
+        # Validate scopes are pairwise disjoint
+        if not Scope.all_pairwise_disjoint([inp.scope for inp in inputs]):
             raise ScopeError("Input scopes must be disjoint.")
 
+        # ========== 4. INPUT MODULE SETUP ==========
+        self.inputs = nn.ModuleList(inputs)
+
+        # ========== 5. ATTRIBUTE INITIALIZATION ==========
+        # Calculate derived attributes
         self._max_out_channels = max(inp.out_channels for inp in self.inputs)
-
-        # Join all scopes
-        scope = self.inputs[0].scope
-        for inp in self.inputs[1:]:
-            scope = scope.join(inp.scope)
-
-        self.scope = scope
-
         self.num_repetitions = self.inputs[0].num_repetitions
+
+        # Join all input scopes to create combined scope
+        self.scope = Scope.join_all([inp.scope for inp in self.inputs])
 
     @abstractmethod
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:

@@ -58,58 +58,63 @@ class Sum(Module):
         """
         super().__init__()
 
+        # ========== 1. INPUT VALIDATION ==========
         if not inputs:
             raise ValueError("'Sum' requires at least one input to be specified.")
 
-        if weights is not None:
-            if isinstance(weights, list):
-                weights = torch.tensor(weights)
+        # Convert weights from list to tensor if needed
+        if weights is not None and isinstance(weights, list):
+            weights = torch.tensor(weights)
 
+        # ========== 2. WEIGHTS PARAMETER PROCESSING ==========
+        if weights is not None:
+            # Validate mutual exclusivity with out_channels
             if out_channels is not None:
                 raise InvalidParameterCombinationError(
                     f"Cannot specify both 'out_channels' and 'weights' for 'Sum' module."
                 )
 
+            # Validate num_repetitions compatibility
             if num_repetitions is not None and (num_repetitions != 1 and num_repetitions != weights.shape[-1]):
-                # Num_repetitions must be either None or match weights shape if both are given
                 raise InvalidParameterCombinationError(
-                    f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. Was {num_repetitions} but weights shape indicates {weights.shape[-1]}."
+                    f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. "
+                    f"Was {num_repetitions} but weights shape indicates {weights.shape[-1]}."
                 )
 
+            # Reshape weights to canonical 4D form: (out_features, in_channels, out_channels, num_repetitions)
+            weight_dim = weights.dim()
+            if weight_dim == 1:
+                weights = weights.view(1, -1, 1)
+            elif weight_dim == 2:
+                weights = weights.view(1, weights.shape[0], weights.shape[1])
+            elif weight_dim == 3:
+                pass  # Already 3D, will add repetition dimension below
+            elif weight_dim == 4:
+                pass  # Already 4D
+            else:
+                raise ValueError(
+                    f"Weights for 'Sum' must be a 1D, 2D, 3D, or 4D tensor but was {weight_dim}D."
+                )
 
-            match weights.dim():
-                case 1:
-                    weights = weights.view(1, -1, 1)  # shape: (1, in_channels, 1)
-                case 2:
-                    if sum_dim > 1:
-                        raise ValueError(
-                            f"When providing 2D weights, 'sum_dim' must be 0 or 1 but was {sum_dim}."
-                        )
-                    weights = weights.view(1, weights.shape[0], weights.shape[1])
-                case 3:
-                    if sum_dim > 3:
-                        raise ValueError(
-                            f"When providing 3D weights, 'sum_dim' must be 0, 1, or 2 but was {sum_dim}."
-                        )
-                case 4:
-                    if sum_dim > 4:
-                        raise ValueError(
-                            f"When providing 4D weights, 'sum_dim' must be 0, 1, 2, or 3 but was {sum_dim}."
-                        )
-                case _:
-                    raise ValueError(
-                        f"Weights for 'Sum' must be a 1D, 2D, 3D, or 4D tensor but was {weights.dim()}D."
-                    )
-
+            # Derive configuration from weights shape
             out_channels = weights.shape[2]
             num_repetitions = weights.shape[3]
 
+        # ========== 3. CONFIGURATION VALIDATION ==========
         if out_channels < 1:
             raise ValueError(
                 f"Number of nodes for 'Sum' must be greater of equal to 1 but was {out_channels}."
             )
 
-        # if a list of input modules is provided, concatenate them to single module
+        # Validate sum_dim compatibility with weights dimensionality
+        if weights is not None:
+            max_sum_dim = weights.dim() - 1
+            if sum_dim > max_sum_dim:
+                raise ValueError(
+                    f"When providing {weights.dim()}D weights, 'sum_dim' must be at most {max_sum_dim} but was {sum_dim}."
+                )
+
+        # ========== 4. INPUT MODULE SETUP ==========
         if isinstance(inputs, list):
             if len(inputs) == 1:
                 self.inputs = inputs[0]
@@ -119,11 +124,11 @@ class Sum(Module):
             self.inputs = inputs
 
         self.sum_dim = sum_dim
-        self._out_features = self.inputs.out_features
 
+        # ========== 5. ATTRIBUTE INITIALIZATION ==========
+        self._out_features = self.inputs.out_features
         self._in_channels_total = self.inputs.out_channels
         self._out_channels_total = out_channels
-
         self.num_repetitions = num_repetitions
 
         self.weights_shape = (
@@ -135,21 +140,17 @@ class Sum(Module):
 
         self.scope = self.inputs.scope
 
-        # If weights are not provided, initialize them randomly
+        # ========== 6. WEIGHT INITIALIZATION & PARAMETER REGISTRATION ==========
         if weights is None:
-            weights = (
-                # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                torch.rand(self.weights_shape)
-                + 1e-08
-            )  # avoid zeros
+            # Initialize weights randomly with small epsilon to avoid zeros
+            weights = torch.rand(self.weights_shape) + 1e-08
+            # Normalize to sum to one along sum_dim
+            weights /= torch.sum(weights, dim=self.sum_dim, keepdims=True)
 
-            # Normalize
-            weights /= torch.sum(weights, axis=self.sum_dim, keepdims=True)
-
-        # Register unnormalized log-probabilities for weights as torch parameters
+        # Register parameter for unnormalized log-probabilities
         self.logits = torch.nn.Parameter()
 
-        # Initialize weights (which sets self.logits under the hood accordingly)
+        # Set weights (converts to logits internally via property setter)
         self.weights = weights
 
     @property
