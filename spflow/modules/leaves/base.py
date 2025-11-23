@@ -410,9 +410,7 @@ class LeafModule(Module, ABC):
 
         return scoped_data, mle_weights
 
-    def _update_parameters_with_kmeans(
-        self, data: Tensor, weights: Tensor, bias_correction: bool
-    ) -> None:
+    def _update_parameters_with_kmeans(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Update parameters using KMeans clustering followed by MLE for each cluster.
 
         Clusters data into `out_channels` clusters per repetition, then estimates parameters
@@ -434,9 +432,7 @@ class LeafModule(Module, ABC):
         # Iterate over repetitions
         for rep_idx in range(self.num_repetitions):
             # Run KMeans to cluster data into out_channels clusters
-            kmeans = KMeans(
-                n_clusters=self.out_channels, mode="euclidean", init_method="kmeans++"
-            )
+            kmeans = KMeans(n_clusters=self.out_channels, mode="euclidean", init_method="kmeans++")
             cluster_ids = kmeans.fit_predict(data)
 
             # For each cluster/channel, filter data and estimate parameters
@@ -626,42 +622,6 @@ class LeafModule(Module, ABC):
         data[samples_mask] = samples[samples_mask_subset].to(data.dtype)
 
         return data
-
-    def sample_with_evidence(
-        self,
-        evidence: Tensor,
-        num_samples: int = 1,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: Optional[SamplingContext] = None,
-    ) -> Tensor:
-        """Sample conditioned on evidence (forwards to sample).
-
-        Args:
-            evidence: Evidence tensor.
-            num_samples: Number of samples to generate.
-            is_mpe: Perform MPE (mode) instead of sampling.
-            cache: Optional cache dictionary.
-            sampling_ctx: Optional sampling context.
-
-        Returns:
-            Sampled data tensor conditioned on evidence.
-        """
-
-        if evidence is None:
-            raise ValueError("Evidence tensor must be provided for leaves sampling.")
-
-        if num_samples is not None and num_samples != evidence.shape[0]:
-            raise ValueError(
-                f"num_samples ({num_samples}) must match evidence batch size ({evidence.shape[0]})."
-            )
-
-        return self.sample(
-            data=evidence,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-        )
 
     def marginalize(
         self,
