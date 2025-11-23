@@ -315,7 +315,7 @@ def learn_spn(
         partitions = []
 
         if not data.shape[0] == 1:
-            for partition_id in torch.sort(torch.unique(partition_ids), axis=-1)[0]:  # uc
+            for partition_id in torch.sort(torch.unique(partition_ids), dim=-1)[0]:  # uc
                 partitions.append(torch.where(partition_ids == partition_id))  # uc
 
         # multiple partition (i.e., data can be partitioned)

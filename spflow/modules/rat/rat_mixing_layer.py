@@ -90,7 +90,7 @@ class MixingLayer(Sum):
             )  # avoid zeros
 
             # Normalize
-            weights /= torch.sum(weights, axis=self.sum_dim, keepdims=True)
+            weights /= torch.sum(weights, dim=self.sum_dim, keepdims=True)
 
         # Register unnormalized log-probabilities for weights as torch parameters
         self.logits = torch.nn.Parameter()
