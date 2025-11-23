@@ -79,7 +79,7 @@ def test_rdc():
 
     partitions = []
 
-    for partition_id in torch.sort(torch.unique(partition_ids), axis=-1)[0]:  # uc
+    for partition_id in torch.sort(torch.unique(partition_ids), dim=-1)[0]:  # uc
         partitions.append(torch.where(partition_ids == partition_id))  # uc
 
     assert len(partitions) == 4
