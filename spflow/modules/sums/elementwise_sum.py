@@ -45,25 +45,27 @@ class ElementwiseSum(Module):
         """
         super().__init__()
 
+        # ========== 1. INPUT VALIDATION ==========
         if not inputs:
             raise ValueError("'Sum' requires at least one input to be specified.")
 
-        self.inputs = nn.ModuleList(inputs)
-
+        # ========== 2. WEIGHTS PARAMETER PROCESSING ==========
         if weights is not None:
+            # Validate mutual exclusivity
             if out_channels is not None:
                 raise InvalidParameterCombinationError(
                     f"Cannot specify both 'out_channels' and 'weights' for 'Sum' module."
                 )
-
             if num_repetitions is not None:
                 raise InvalidParameterCombinationError(
                     f"Cannot specify both 'num_repetitions' and 'weights' for 'Sum' module."
                 )
 
+            # Derive configuration from weights shape
             out_channels = weights.shape[2]
             num_repetitions = weights.shape[4]
         else:
+            # Set defaults when weights not provided
             if out_channels is None:
                 raise ValueError(
                     f"Either 'out_channels' or 'weights' must be specified for 'Sum' module."
@@ -71,42 +73,39 @@ class ElementwiseSum(Module):
             if num_repetitions is None:
                 num_repetitions = 1
 
-
-
+        # ========== 3. CONFIGURATION VALIDATION ==========
         if out_channels < 1:
             raise ValueError(
                 f"Number of nodes for 'Sum' must be greater of equal to 1 but was {out_channels}."
             )
 
-        # Save number of sums
-        self._num_sums = out_channels
-        self.sum_dim = sum_dim
-
-        # Check, that all inputs have the same number of features
+        # Validate all inputs have the same number of features
         if not all([module.out_features == inputs[0].out_features for module in inputs]):
             raise ValueError("All inputs must have the same number of features.")
 
-        # Check, that all inputs have the same number of channels or 1 channel (broadcast)
+        # Validate all inputs have compatible channels (same or 1 for broadcasting)
         if not all([module.out_channels in (1, max(m.out_channels for m in inputs)) for module in inputs]):
             raise ValueError(
                 "All inputs must have the same number of channels or 1 channel (in which case the "
                 "operation is broadcast)."
             )
 
-        # Check that all input modules have the same scope
+        # Validate all input modules have the same scope
         if not Scope.all_equal([module.scope for module in inputs]):
             raise ScopeError("All input modules must have the same scope.")
 
+        # ========== 4. INPUT MODULE SETUP ==========
+        self.inputs = nn.ModuleList(inputs)
+        self.sum_dim = sum_dim
         self.scope = inputs[0].scope
 
-        # Multiple inputs, stack and sum over stacked dimension
+        # ========== 5. ATTRIBUTE INITIALIZATION ==========
         self._out_features = self.inputs[0].out_features
-
+        self._num_sums = out_channels
         self.num_repetitions = num_repetitions
-
         self._num_inputs = len(inputs)
 
-        # out_channels will be flattened and thus multiplied by the number of inputs
+        # Compute channel dimensions and weights shape
         self._in_channels_per_input = max([module.out_channels for module in self.inputs])
         self._out_channels_total = self._num_sums * self._in_channels_per_input
 
@@ -118,34 +117,24 @@ class ElementwiseSum(Module):
             self.num_repetitions,
         )
 
-        # Store unraveled in- and out-channel indices
-        # E.g. for 2 inputs with 3 in_channels_per_input, the mapping should be:
-        # [   0  ,    1  ,    2  ,    3  ,    4  ,    5  ]
-        #     |       |       |       |       |       |
-        #     v       v       v       v       v       v
-        # [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2)]
-        #
-        # This is necessary to map the output indices to the correct input indices
+        # Register unraveled channel indices for mapping flattened indices to (channel, sum) pairs
+        # E.g. for 3 in_channels_per_input and 2 sums: [0,1,2,3,4,5] -> [(0,0), (0,1), (0,2), (1,0), (1,1), (1,2)]
         unraveled_channel_indices = torch.tensor(
             [(i, j) for i in range(self._in_channels_per_input) for j in range(self._num_sums)]
         )
         self.register_buffer(name="unraveled_channel_indices", tensor=unraveled_channel_indices)
 
-        # If weights are not provided, initialize them randomly
+        # ========== 6. WEIGHT INITIALIZATION & PARAMETER REGISTRATION ==========
         if weights is None:
-            weights = (
-                # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                torch.rand(self.weights_shape)
-                + 1e-08
-            )  # avoid zeros
-
-            # Normalize
+            # Initialize weights randomly with small epsilon to avoid zeros
+            weights = torch.rand(self.weights_shape) + 1e-08
+            # Normalize to sum to one along sum_dim
             weights /= torch.sum(weights, dim=self.sum_dim, keepdim=True)
 
-        # Register unnormalized log-probabilities for weights as torch parameters
+        # Register parameter for unnormalized log-probabilities
         self.logits = torch.nn.Parameter(torch.zeros(self.weights_shape))
 
-        # Initialize weights (which sets self.logits under the hood accordingly)
+        # Set weights (converts to logits internally via property setter)
         self.weights = weights
 
     @property
