@@ -30,7 +30,7 @@ def rdc(x, y, f=torch.sin, k=20, s=1 / 6.0, n=1):
                 values.append(rdc(x, y, f, k, s, 1))
             except torch.linalg.LinAlgError:
                 pass
-        return torch.median(values)
+        return torch.median(torch.tensor(values, device=x.device, dtype=x.dtype))
 
     if len(x.shape) == 1:
         x = x.reshape((-1, 1))
