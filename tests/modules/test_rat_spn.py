@@ -210,7 +210,8 @@ def test_rat_spn_feature_to_scope():
     assert np.array_equal(feature_scopes, root_scopes)
 
     # Check shape matches number of features in scope
-    assert feature_scopes.shape[0] == len(model.scope)
+    assert feature_scopes.shape == (1, 1)
+    assert feature_scopes[0, 0] == model.scope
 
     # All elements should be Scope objects
     assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
@@ -238,7 +239,7 @@ def test_rat_spn_feature_to_scope_single_root_node():
     assert np.array_equal(feature_scopes, model.root_node.feature_to_scope)
 
     # Verify shape and Scope objects
-    assert feature_scopes.shape[0] == num_features
+    assert len(feature_scopes[0,0].query) == num_features
     assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
 
 
@@ -266,7 +267,7 @@ def test_rat_spn_feature_to_scope_multiple_repetitions():
 
         # Should delegate correctly regardless of repetitions
         assert np.array_equal(feature_scopes, model.root_node.feature_to_scope)
-        assert feature_scopes.shape[0] == num_features
+        assert len(feature_scopes[0,0].query) == num_features
         assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
 
 
@@ -292,5 +293,5 @@ def test_rat_spn_feature_to_scope_split_variants():
 
         # Should work with both split strategies
         assert np.array_equal(feature_scopes, model.root_node.feature_to_scope)
-        assert feature_scopes.shape[0] == num_features
+        assert len(feature_scopes[0,0].query) == num_features
         assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())

@@ -80,6 +80,63 @@ def test_factorization():
     assert factorization is not None
 
 
+def test_feature_to_scope_basic():
+    """Factorize groups input scopes according to indices."""
+    out_features = 4
+    num_reps = 1
+    leaf = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_reps)
+    module = Factorize(inputs=[leaf], depth=1, num_repetitions=num_reps)
+
+    # Force deterministic grouping: outputs are {0,1} and {2,3}
+    indices = torch.zeros(out_features, module.out_features, num_reps)
+    indices[0:2, 0, 0] = 1
+    indices[2:4, 1, 0] = 1
+    module.indices = indices
+
+    feature_scopes = module.feature_to_scope
+
+    assert feature_scopes.shape == (module.out_features, num_reps)
+    expected_scope_0 = Scope.join_all([leaf.feature_to_scope[0, 0], leaf.feature_to_scope[1, 0]])
+    expected_scope_1 = Scope.join_all([leaf.feature_to_scope[2, 0], leaf.feature_to_scope[3, 0]])
+    assert feature_scopes[0, 0] == expected_scope_0
+    assert feature_scopes[1, 0] == expected_scope_1
+    assert all(isinstance(s, Scope) for s in feature_scopes.flatten())
+
+
+def test_feature_to_scope_multiple_repetitions():
+    """Each repetition uses its own factorization pattern."""
+    out_features = 4
+    num_reps = 2
+    leaf = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_reps)
+    module = Factorize(inputs=[leaf], depth=1, num_repetitions=num_reps)
+
+    # rep 0: {0,1}, {2,3}; rep 1: {0,2}, {1,3}
+    indices = torch.zeros(out_features, module.out_features, num_reps)
+    indices[0:2, 0, 0] = 1
+    indices[2:4, 1, 0] = 1
+    indices[[0, 2], 0, 1] = 1
+    indices[[1, 3], 1, 1] = 1
+    module.indices = indices
+
+    feature_scopes = module.feature_to_scope
+
+    assert feature_scopes.shape == (module.out_features, num_reps)
+    expected_rep0 = [
+        Scope.join_all([leaf.feature_to_scope[0, 0], leaf.feature_to_scope[1, 0]]),
+        Scope.join_all([leaf.feature_to_scope[2, 0], leaf.feature_to_scope[3, 0]]),
+    ]
+    expected_rep1 = [
+        Scope.join_all([leaf.feature_to_scope[0, 1], leaf.feature_to_scope[2, 1]]),
+        Scope.join_all([leaf.feature_to_scope[1, 1], leaf.feature_to_scope[3, 1]]),
+    ]
+
+    assert feature_scopes[0, 0] == expected_rep0[0]
+    assert feature_scopes[1, 0] == expected_rep0[1]
+    assert feature_scopes[0, 1] == expected_rep1[0]
+    assert feature_scopes[1, 1] == expected_rep1[1]
+    assert all(isinstance(s, Scope) for s in feature_scopes.flatten())
+
+
 @pytest.mark.parametrize(
     "prune,in_channels,marg_rvs,num_reps",
     product(

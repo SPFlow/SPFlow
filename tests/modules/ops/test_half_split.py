@@ -88,11 +88,13 @@ def test_split_halves_feature_to_scope():
 
     # Split operations delegate to input's feature_to_scope
     feature_scopes = split.feature_to_scope
-    leaf_scopes = leaf.feature_to_scope
 
     # Should be identical to the input's feature_to_scope
-    assert np.array_equal(feature_scopes, leaf_scopes)
-    assert feature_scopes.shape == (6, 1)
+    assert feature_scopes.shape == (3, 2, 1)
+    assert np.array_equal(
+        feature_scopes, np.array([[Scope(0), Scope(1), Scope(2)], [Scope(3), Scope(4), Scope(5)]]).reshape(3, 2, 1)
+    )
+
     # Each element should be a Scope object
     assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
 

@@ -65,7 +65,23 @@ class Factorize(BaseProduct):
 
     @property
     def feature_to_scope(self) -> np.ndarray:
-        return self.inputs[0].feature_to_scope
+        f2s_inputs = self.inputs[0].feature_to_scope
+
+        # We need to map the input features to output features based on the factorization given in self.indices
+        # self.indices shape: [num_features_in, num_features_out, num_repetitions]
+        # f2s_inputs shape: [num_features_in, num_repetitions]
+        # f2s_outputs shape: [num_features_out, num_repetitions]
+        indices = self.indices.detach().cpu().numpy()
+        out = np.empty((self.out_features, self.num_repetitions), dtype=Scope)
+
+        for r in range(self.num_repetitions):
+            for o in range(self.out_features):
+                mask = indices[:, o, r] > 0
+                scopes = f2s_inputs[mask, r]
+                out[o, r] = Scope.join_all(scopes)
+
+        return out
+
 
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         return self.unraveled_channel_indices[output_ids]
@@ -112,7 +128,7 @@ class Factorize(BaseProduct):
                     high = num_features
                 scopes[idxs[low:high], o, r] = 1
 
-        return scopes  # .to(torch.int32)
+        return scopes
 
     @cached
     def log_likelihood(

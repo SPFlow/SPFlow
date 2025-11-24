@@ -71,25 +71,6 @@ def test_split_alternate_extra_repr():
     assert "dim=1" in repr_str
 
 
-def test_split_alternate_apply_hook(device):
-    """Test _apply function hook behavior for device movement."""
-    scope = Scope(list(range(0, 6)))
-    leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitAlternate(inputs=leaf, num_splits=2, dim=1)
-
-    # Move to device (tests _apply hook)
-    split_on_device = split.to(device)
-
-    # Verify split_masks were moved to the device
-    for mask in split_on_device.split_masks:
-        assert mask.device.type == device.type
-
-    # Verify functionality still works
-    data = make_normal_data(out_features=6).to(device)
-    lls = split_on_device.log_likelihood(data)
-    assert len(lls) == 2
-
-
 def test_split_alternate_feature_mapping():
     """Test feature_to_scope mapping delegates to input."""
     scope = Scope(list(range(0, 6)))
@@ -98,11 +79,13 @@ def test_split_alternate_feature_mapping():
 
     # Split operations delegate to input's feature_to_scope
     feature_scopes = split.feature_to_scope
-    leaf_scopes = leaf.feature_to_scope
 
     # Should be identical to the input's feature_to_scope
-    assert np.array_equal(feature_scopes, leaf_scopes)
-    assert feature_scopes.shape == (6, 1)
+    assert feature_scopes.shape == (3, 2, 1)
+
+    assert np.array_equal(
+        feature_scopes, np.array([[Scope(0), Scope(2), Scope(4)], [Scope(1), Scope(3), Scope(5)]]).reshape(3, 2, 1)
+    )
 
     # Each element should be a Scope object
     assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())

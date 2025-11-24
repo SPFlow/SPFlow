@@ -122,21 +122,23 @@ class ElementwiseProduct(BaseProduct):
 
     @property
     def feature_to_scope(self) -> np.ndarray:
-        feature_to_scope_list = []
+        out = []
         for r in range(self.num_repetitions):
-            if isinstance(self.inputs, Split):
-                scope_lists_r = self.inputs.feature_to_scope[:, r]
+            if self.input_is_split:
+                scope_lists_r = self.inputs[0].feature_to_scope[..., r]  # Shape: (num_features_per_split, num_splits)
+                scope_lists_r = [scope_lists_r[:, i] for i in range(self.num_splits)]
             else:
-                scope_lists_r = [module.feature_to_scope[:, r] for module in self.inputs]
+                scope_lists_r = [module.feature_to_scope[..., r] for module in self.inputs]  # Shape: (num_features_per_split, num_splits)
 
             feature_to_scope_r = []
             # Group elements by index
             grouped_scopes_r = list(zip(*scope_lists_r))
             for scopes_r in grouped_scopes_r:
                 feature_to_scope_r.append(Scope.join_all(scopes_r))
-            feature_to_scope_list.append(feature_to_scope_r)
-        # Transpose from (num_repetitions, num_features) to (num_features, num_repetitions)
-        return np.array(feature_to_scope_list).T
+
+            out.append(np.array(feature_to_scope_r))
+
+        return np.stack(out, axis=1)
 
     def map_out_channels_to_in_channels(self, index: Tensor) -> Tensor:
         """Map output channel indices to input channel indices.
