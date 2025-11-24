@@ -216,15 +216,6 @@ def test_broadcast(shape, label, product):
         assert prod is not None
 
 
-# @pytest.mark.parametrize("cls,prune", product(cls_values, [True, False]))
-# def test_marginalize_single_input(cls, prune: bool, split_cls):
-#     out_features = 6
-#     out_channels = 6
-#     leaf_layer = make_normal_leaf(out_features=out_features, out_channels=out_channels)
-#     split = SplitHalves(inputs=leaf_layer)
-#     module = cls(inputs=[split])
-
-
 def test_elementwise_product_feature_to_scope():
     """Test feature_to_scope property for ElementwiseProduct module.
 

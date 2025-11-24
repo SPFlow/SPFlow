@@ -124,24 +124,23 @@ class OuterProduct(BaseProduct):
             return self.inputs[0].out_features
 
     @property
-    def feature_to_scope(self) -> np.ndarray:
-        result_scopes = []
+    def feature_to_scope(self) -> list[Scope]:
+        out = []
         for r in range(self.num_repetitions):
             if isinstance(self.inputs, Split):
-                scope_lists = self.inputs.feature_to_scope[:, r]
+                scope_lists_r = self.inputs.feature_to_scope[..., r]  # Shape: (num_features_per_split, num_splits)
+                scope_lists_r = [scope_lists_r[:, i] for i in range(self.num_splits)]
             else:
-                scope_lists = [module.feature_to_scope[:, r] for module in self.inputs]
+                scope_lists_r = [module.feature_to_scope[..., r] for module in self.inputs]  # Shape: (num_features_per_split, num_splits)
 
-            outer_product = list(product(*scope_lists))
 
-            feature_to_scope = []
-            for joined_scopes in outer_product:
-                feature_to_scope.append(Scope.join_all(joined_scopes))
+            outer_product_r = list(product(*scope_lists_r))
 
-            result_scopes.append(feature_to_scope)
-
-        # Transpose from (num_repetitions, num_features) to (num_features, num_repetitions)
-        return np.array(result_scopes).T
+            feature_to_scope_r = []
+            for scopes_r in outer_product_r:
+                feature_to_scope_r.append(Scope.join_all(scopes_r))
+            out.append(np.array(feature_to_scope_r))
+        return np.stack(out, axis=1)
 
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         """Map output channel indices to input channel indices.

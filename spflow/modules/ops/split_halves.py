@@ -29,10 +29,18 @@ class SplitHalves(Split):
 
     @property
     def feature_to_scope(self) -> np.ndarray:
-        # Split operations don't change the feature-to-scope mapping,
-        # just reorganize the channel structure. Delegate to input.
-        return self.inputs[0].feature_to_scope
-            
+        scopes = self.inputs[0].feature_to_scope
+        num_scopes_per_chunk = len(scopes) // self.num_splits
+        out = []
+        for r in range(self.num_repetitions):
+            feature_to_scope_r = []
+            for i in range(self.num_splits):
+                sub_scopes_r = scopes[i * num_scopes_per_chunk : (i + 1) * num_scopes_per_chunk, r]
+                feature_to_scope_r.append(sub_scopes_r)
+            out.append(np.array(feature_to_scope_r).reshape(num_scopes_per_chunk, self.num_splits))
+
+        out = np.stack(out, axis=2)
+        return out
 
     @cached
     def log_likelihood(

@@ -47,15 +47,27 @@ class SplitAlternate(Split):
 
     @property
     def feature_to_scope(self) -> np.ndarray:
-        # Split operations don't change the feature-to-scope mapping,
-        # just reorganize the channel structure. Delegate to input.
-        return self.inputs[0].feature_to_scope
+        """
+        Get feature-to-scope mapping for each split.
 
-    def _apply(self, fn):
-        # Apply the function to the module and its split masks
-        super()._apply(fn)
-        self.split_masks = [fn(mask) for mask in self.split_masks]
-        return self
+        Returns:
+            np.ndarray: Array mapping features to scopes for each split.
+                        Shape: (num_features_per_split, num_splits, num_repetitions)
+        
+        """
+        scopes = self.inputs[0].feature_to_scope
+        num_scopes_per_chunk = len(scopes) // self.num_splits
+        out = []
+        for r in range(self.num_repetitions):
+            feature_to_scope_r = []
+            for i in range(self.num_splits):
+                sub_scopes_r = scopes[i :: self.num_splits, r]
+                feature_to_scope_r.append(sub_scopes_r)
+
+            out.append(np.array(feature_to_scope_r).reshape(num_scopes_per_chunk, self.num_splits))
+
+        out = np.stack(out, axis=2)
+        return out
 
     @cached
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> list[Tensor]:
