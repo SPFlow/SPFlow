@@ -6,11 +6,11 @@ input channels. Extends base Sum with RAT-SPN specific optimizations.
 
 from __future__ import annotations
 
+import numpy as np
 import torch
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError
-from spflow.meta.data import Scope
 from spflow.modules.base import Module
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
@@ -107,7 +107,7 @@ class MixingLayer(Sum):
         return self._out_channels_total
 
     @property
-    def feature_to_scope(self) -> list[Scope]:
+    def feature_to_scope(self) -> np.ndarray:
         return self.inputs.feature_to_scope
 
     def sample(

@@ -64,7 +64,7 @@ class Factorize(BaseProduct):
         return 2**self.depth
 
     @property
-    def feature_to_scope(self) -> list[Scope]:
+    def feature_to_scope(self) -> np.ndarray:
         return self.inputs[0].feature_to_scope
 
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:

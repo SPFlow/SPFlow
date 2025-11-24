@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Callable
 
@@ -69,9 +70,6 @@ class LeafModule(Module, ABC):
     def __make_distribution(self, params: Dict[str, Tensor]) -> torch.distributions.Distribution:
         """Helper method to create distribution from given parameters.
 
-        Subclasses should implement this method to construct the distribution
-        from the provided parameters.
-
         Args:
             params: Dictionary of distribution parameters.
 
@@ -83,8 +81,6 @@ class LeafModule(Module, ABC):
     def conditional_distribution(self, evidence: Tensor) -> torch.distributions.Distribution:
         """Generates torch.distributions object conditionally based on evidence.
 
-        Subclasses should override this method to construct distribution from parameter network output.
-
         Args:
             evidence: Evidence tensor for conditioning.
 
@@ -93,7 +89,8 @@ class LeafModule(Module, ABC):
         """
         if evidence is None:
             raise ValueError("Evidence tensor must be provided for conditional distribution.")
-        return self.__make_distribution(self.parameter_network(evidence))
+        params = self.parameter_network(evidence)
+        return self.__make_distribution(params)
 
     @property
     @abstractmethod
@@ -117,13 +114,13 @@ class LeafModule(Module, ABC):
         """
         pass
 
+    @abstractmethod
     def _compute_parameter_estimates(
         self, data: Tensor, weights: Tensor, bias_correction: bool
     ) -> Dict[str, Tensor]:
         """Compute raw MLE parameter estimates without broadcasting.
 
         Used internally by both simple and KMeans clustering paths.
-        Subclasses should override this method for better efficiency when supporting KMeans.
 
         Args:
             data: Scope-filtered data.
@@ -133,19 +130,13 @@ class LeafModule(Module, ABC):
         Returns:
             Dictionary mapping parameter names to raw estimates (shape: out_features).
         """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} must implement _compute_parameter_estimates() "
-            "to support use_kmeans=True. Either implement this method or use use_kmeans=False."
-        )
+        pass
 
     def _set_mle_parameters(self, params_dict: Dict[str, Tensor]) -> None:
         """Set MLE-estimated parameters.
 
         This method handles the assignment of estimated parameters, accounting for both
         direct nn.Parameter objects and property-based parameters with custom setters.
-
-        Subclasses can override this method to explicitly specify how parameters should
-        be set, which improves code clarity and serves as documentation.
 
         Args:
             params_dict: Dictionary mapping parameter names to their estimated values.
@@ -220,13 +211,18 @@ class LeafModule(Module, ABC):
             return self.event_shape[1]
 
     @property
-    def feature_to_scope(self) -> list[Scope]:
+    def feature_to_scope(self) -> np.ndarray[Scope]:
         """Return list of scopes per feature.
 
         Returns:
             List of Scope objects, one per feature.
         """
-        return [Scope([i]) for i in self.scope.query]
+        scopes = np.empty((self.out_features, self.num_repetitions), dtype=Scope)
+        for i in range(self.out_features):
+            for j in range(self.num_repetitions):
+                scopes[i, j] = Scope([self.scope.query[i]])
+
+        return scopes
 
     @property
     def device(self) -> torch.device:

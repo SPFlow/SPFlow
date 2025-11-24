@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+import numpy as np
 import torch
 from torch import Tensor, nn
 
@@ -66,10 +67,10 @@ class Cat(Module):
             return self.inputs[0].out_channels
 
     @property
-    def feature_to_scope(self) -> list[Scope]:
+    def feature_to_scope(self) -> np.ndarray:
         if self.dim == 1:
-            scope_list = []
-            return [scope_list + module.feature_to_scope for module in self.inputs]
+            # Concatenate along features dimension (axis=0) since we're concatenating features
+            return np.concatenate([module.feature_to_scope for module in self.inputs], axis=0)
         else:
             return self.inputs[0].feature_to_scope
 
@@ -128,13 +129,13 @@ class Cat(Module):
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
         if self.dim == 1:
-            # split_size = self.out_features // len(self.inputs)
-            # channel_index_per_module = sampling_ctx.channel_index.split(split_size, dim=self.dim)
-            # mask_per_module = sampling_ctx.mask.split(split_size, dim=self.dim)
+            # When concatenating features (dim=1), we need to split the sampling context
+            # for each input module based on which features belong to that module
             channel_index_per_module = []
             mask_per_module = []
-            for s in self.feature_to_scope:
-                query = Scope.join_all(s).query
+            for module in self.inputs:
+                # Get the query variables for this module (same across all repetitions)
+                query = module.scope.query
                 channel_index_per_module.append(sampling_ctx.channel_index[:, query])
                 mask_per_module.append(sampling_ctx.mask[:, query])
 

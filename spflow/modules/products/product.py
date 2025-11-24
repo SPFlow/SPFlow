@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import torch
 from torch import Tensor
 
@@ -50,8 +51,12 @@ class Product(Module):
         return 1
 
     @property
-    def feature_to_scope(self) -> list[Scope]:
-        return [Scope.join_all(self.inputs.feature_to_scope)]
+    def feature_to_scope(self) -> np.ndarray:
+        out = []
+        for r in range(self.num_repetitions):
+            joined_scope = Scope.join_all(self.inputs.feature_to_scope[:, r])
+            out.append(np.array([[joined_scope]]))
+        return np.concatenate(out, axis=1)
 
     @cached
     def log_likelihood(

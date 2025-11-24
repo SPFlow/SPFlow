@@ -1,5 +1,6 @@
 from itertools import product
 
+import numpy as np
 import pytest
 import torch
 
@@ -402,3 +403,148 @@ def test_multiple_input():
     samples_b = module_b.sample(data=data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
 
     assert torch.allclose(samples_a, samples_b)
+
+
+def test_feature_to_scope_single_input():
+    """Test that feature_to_scope correctly delegates to input module with single input."""
+    out_features = 6
+    in_channels = 3
+    out_channels = 4
+    num_reps = 2
+
+    # Create input leaf module
+    scope = Scope(list(range(out_features)))
+    leaf = make_normal_leaf(scope=scope, out_channels=in_channels, num_repetitions=num_reps)
+
+    # Create Sum module with single input
+    module = Sum(inputs=leaf, out_channels=out_channels, num_repetitions=num_reps)
+
+    # Get feature_to_scope from both modules
+    feature_scopes = module.feature_to_scope
+    leaf_scopes = leaf.feature_to_scope
+
+    # Should delegate to input's feature_to_scope
+    assert np.array_equal(feature_scopes, leaf_scopes)
+
+    # Validate shape matches input
+    assert feature_scopes.shape == (out_features, num_reps)
+
+    # Validate all elements are Scope objects
+    assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
+
+    # Validate content matches input (each feature should map to its corresponding scope)
+    for f_idx in range(out_features):
+        for r_idx in range(num_reps):
+            assert feature_scopes[f_idx, r_idx] == leaf_scopes[f_idx, r_idx]
+            # Each scope should contain the single feature (query is a tuple)
+            assert feature_scopes[f_idx, r_idx].query == (f_idx,)
+
+
+def test_feature_to_scope_multiple_inputs():
+    """Test that feature_to_scope correctly delegates to Cat module with multiple inputs."""
+    out_features = 4
+    in_channels = 2
+    out_channels = 3
+    num_reps = 3
+
+    # Create two input leaf modules with same scope
+    scope = Scope(list(range(out_features)))
+    leaf1 = make_normal_leaf(scope=scope, out_channels=in_channels, num_repetitions=num_reps)
+    leaf2 = make_normal_leaf(scope=scope, out_channels=in_channels, num_repetitions=num_reps)
+
+    # Create Sum module with multiple inputs (internally creates Cat)
+    module = Sum(inputs=[leaf1, leaf2], out_channels=out_channels, num_repetitions=num_reps)
+
+    # Get feature_to_scope
+    feature_scopes = module.feature_to_scope
+
+    # Should delegate to Cat input's feature_to_scope
+    cat_scopes = module.inputs.feature_to_scope
+    assert np.array_equal(feature_scopes, cat_scopes)
+
+    # Validate shape
+    assert feature_scopes.shape == (out_features, num_reps)
+
+    # Validate all elements are Scope objects
+    assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
+
+    # Validate content (each feature should map to its scope)
+    for f_idx in range(out_features):
+        for r_idx in range(num_reps):
+            assert feature_scopes[f_idx, r_idx].query == (f_idx,)
+
+
+def test_feature_to_scope_with_product_input():
+    """Test that feature_to_scope works correctly when input is a product module."""
+    in_channels = 2
+    out_channels = 3
+    num_reps = 2
+
+    # Create two leaf modules for different scopes
+    # Product will have features equal to the number of features in the first input
+    # since it operates element-wise
+    scope_a = Scope(list(range(0, 2)))
+    scope_b = Scope(list(range(2, 4)))
+    leaf_a = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_a, num_repetitions=num_reps)
+    leaf_b = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_b, num_repetitions=num_reps)
+
+    # Create product module - this joins scopes element-wise
+    prod = ElementwiseProduct(inputs=[leaf_a, leaf_b])
+
+    # Create Sum module with product input
+    module = Sum(inputs=prod, out_channels=out_channels, num_repetitions=num_reps)
+
+    # Get feature_to_scope
+    feature_scopes = module.feature_to_scope
+
+    # Should delegate to product's feature_to_scope
+    prod_scopes = prod.feature_to_scope
+    assert np.array_equal(feature_scopes, prod_scopes)
+
+    # Product has same number of features as inputs (element-wise operation)
+    expected_features = prod.out_features
+    assert feature_scopes.shape == (expected_features, num_reps)
+
+    # Validate all elements are Scope objects
+    assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
+
+    # Validate content - each feature should have a joined scope from both inputs
+    for f_idx in range(expected_features):
+        for r_idx in range(num_reps):
+            # The product joins scopes, so each feature has scope from both leaf_a and leaf_b
+            assert len(feature_scopes[f_idx, r_idx].query) == 2  # Joined from 2 inputs
+
+
+@pytest.mark.parametrize("num_reps", [1, 3, 7])
+def test_feature_to_scope_with_repetitions(num_reps: int):
+    """Test that feature_to_scope correctly handles different num_repetitions values."""
+    out_features = 5
+    in_channels = 2
+    out_channels = 3
+
+    # Create input leaf module with specified repetitions
+    scope = Scope(list(range(out_features)))
+    leaf = make_normal_leaf(scope=scope, out_channels=in_channels, num_repetitions=num_reps)
+
+    # Create Sum module
+    module = Sum(inputs=leaf, out_channels=out_channels, num_repetitions=num_reps)
+
+    # Get feature_to_scope
+    feature_scopes = module.feature_to_scope
+
+    # Should delegate to input's feature_to_scope
+    leaf_scopes = leaf.feature_to_scope
+    assert np.array_equal(feature_scopes, leaf_scopes)
+
+    # Validate shape includes repetitions
+    assert feature_scopes.shape == (out_features, num_reps)
+
+    # Validate all elements are Scope objects
+    assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
+
+    # Validate each repetition has correct scopes
+    for r_idx in range(num_reps):
+        for f_idx in range(out_features):
+            assert feature_scopes[f_idx, r_idx].query == (f_idx,)
+            # All repetitions should have same scope structure (may differ in content for certain modules)
+            assert feature_scopes[f_idx, r_idx] == leaf_scopes[f_idx, r_idx]

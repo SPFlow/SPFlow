@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import torch
 from torch import Tensor
 
@@ -120,18 +121,22 @@ class ElementwiseProduct(BaseProduct):
             return self.inputs[0].out_features
 
     @property
-    def feature_to_scope(self) -> list[Scope]:
-        if isinstance(self.inputs, Split):
-            scope_lists = self.inputs.feature_to_scope
-        else:
-            scope_lists = [module.feature_to_scope for module in self.inputs]
+    def feature_to_scope(self) -> np.ndarray:
+        feature_to_scope_list = []
+        for r in range(self.num_repetitions):
+            if isinstance(self.inputs, Split):
+                scope_lists_r = self.inputs.feature_to_scope[:, r]
+            else:
+                scope_lists_r = [module.feature_to_scope[:, r] for module in self.inputs]
 
-        feature_to_scope = []
-        # Group elements by index
-        grouped_scopes = list(zip(*scope_lists))
-        for scopes in grouped_scopes:
-            feature_to_scope.append(Scope.join_all(scopes))
-        return feature_to_scope
+            feature_to_scope_r = []
+            # Group elements by index
+            grouped_scopes_r = list(zip(*scope_lists_r))
+            for scopes_r in grouped_scopes_r:
+                feature_to_scope_r.append(Scope.join_all(scopes_r))
+            feature_to_scope_list.append(feature_to_scope_r)
+        # Transpose from (num_repetitions, num_features) to (num_features, num_repetitions)
+        return np.array(feature_to_scope_list).T
 
     def map_out_channels_to_in_channels(self, index: Tensor) -> Tensor:
         """Map output channel indices to input channel indices.
