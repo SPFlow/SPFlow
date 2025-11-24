@@ -23,7 +23,7 @@ class Bernoulli(LeafModule):
         scope,
         out_channels: int = None,
         num_repetitions: int = 1,
-        parameter_network: nn.Module = None,
+        parameter_fn: nn.Module = None,
         validate_args: bool | None = True,
         probs: Tensor | None = None,
         logits: Tensor | None = None,
@@ -34,7 +34,7 @@ class Bernoulli(LeafModule):
             scope: Variable scope (Scope, int, or list[int]).
             out_channels: Number of output channels (inferred from params if None).
             num_repetitions: Number of repetitions (for 3D event shapes).
-            parameter_network: Optional neural network for parameter generation.
+            parameter_fn: Optional neural network for parameter generation.
             validate_args: Whether to enable torch.distributions argument validation.
             probs: Success probability tensor in [0, 1].
             logits: Logits corresponding to success probability.
@@ -48,7 +48,7 @@ class Bernoulli(LeafModule):
             out_channels=out_channels,
             num_repetitions=num_repetitions,
             params=[param_source],
-            parameter_network=parameter_network,
+            parameter_fn=parameter_fn,
             validate_args=validate_args,
         )
 

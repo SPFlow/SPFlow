@@ -25,7 +25,7 @@ class Categorical(LeafModule):
         K: int | Tensor | None = None,
         probs: Tensor | None = None,
         logits: Tensor | None = None,
-        parameter_network: nn.Module = None,
+        parameter_fn: nn.Module = None,
         validate_args: bool | None = True,
     ):
         """Initialize Categorical distribution leaf module.
@@ -37,7 +37,7 @@ class Categorical(LeafModule):
             K: Number of categories (optional if parameter tensor provided).
             probs: Probability tensor over categories.
             logits: Logits tensor over categories.
-            parameter_network: Optional neural network for parameter generation.
+            parameter_fn: Optional neural network for parameter generation.
             validate_args: Whether to enable torch.distributions argument validation.
         """
         # K can be inferred from provided tensor if available
@@ -57,7 +57,7 @@ class Categorical(LeafModule):
             out_channels=out_channels,
             num_repetitions=num_repetitions,
             params=[param_source],
-            parameter_network=parameter_network,
+            parameter_fn=parameter_fn,
             validate_args=validate_args,
         )
         self.K = K

@@ -10,7 +10,7 @@ from spflow.meta import Scope
 from spflow.modules import leaves
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import evaluate_log_likelihood
-from tests.utils.leaves import make_leaf, make_data, create_conditional_parameter_network, make_leaf_args
+from tests.utils.leaves import make_leaf, make_data, create_conditional_parameter_fn, make_leaf_args
 
 out_channels_values = [1, 3]
 out_features_values = [1, 4]
@@ -341,7 +341,7 @@ class TestConditionalLeaves:
         assert not leaf.is_conditional
 
         # Conditional leaf
-        param_net = create_conditional_parameter_network(
+        param_net = create_conditional_parameter_fn(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
@@ -353,7 +353,7 @@ class TestConditionalLeaves:
             cls=leaf_cls, out_channels=out_channels, scope=scope_cond, num_repetitions=num_reps
         )
         leaf_cond = leaf_cls(
-            scope=scope_cond, out_channels=out_channels, parameter_network=param_net, **leaf_args
+            scope=scope_cond, out_channels=out_channels, parameter_fn=param_net, **leaf_args
         )
         assert leaf_cond.is_conditional
 
@@ -363,7 +363,7 @@ class TestConditionalLeaves:
         query = list(range(out_features))
         evidence = [out_features, out_features + 1]
 
-        param_net = create_conditional_parameter_network(
+        param_net = create_conditional_parameter_fn(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
@@ -372,7 +372,7 @@ class TestConditionalLeaves:
         )
         scope = Scope(query, evidence=evidence)
         leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
-        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
+        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         # Create evidence tensor
         batch_size = 4
@@ -388,7 +388,7 @@ class TestConditionalLeaves:
         query = list(range(out_features))
         evidence = [out_features, out_features + 1]
 
-        param_net = create_conditional_parameter_network(
+        param_net = create_conditional_parameter_fn(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
@@ -397,7 +397,7 @@ class TestConditionalLeaves:
         )
         scope = Scope(query, evidence=evidence)
         leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
-        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
+        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         # Should raise error if evidence is not provided
         # Note: Gamma has a custom conditional_distribution that doesn't check for None,
@@ -415,7 +415,7 @@ class TestConditionalLeaves:
         query = list(range(out_features))
         evidence = [out_features, out_features + 1]
 
-        param_net = create_conditional_parameter_network(
+        param_net = create_conditional_parameter_fn(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
@@ -424,7 +424,7 @@ class TestConditionalLeaves:
         )
         scope = Scope(query, evidence=evidence)
         leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
-        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
+        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         # Create random evidence data
         batch_size = 4
@@ -446,7 +446,7 @@ class TestConditionalLeaves:
         query = list(range(out_features))
         evidence = [out_features, out_features + 1]
 
-        param_net = create_conditional_parameter_network(
+        param_net = create_conditional_parameter_fn(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
@@ -455,7 +455,7 @@ class TestConditionalLeaves:
         )
         scope = Scope(query, evidence=evidence)
         leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
-        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
+        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         # Create random evidence data
         batch_size = 4
@@ -469,12 +469,12 @@ class TestConditionalLeaves:
         "leaf_cls,out_features,out_channels,num_reps",
         product(conditional_leaf_cls_values, [1], [1], [1]),
     )
-    def test_conditional_leaf_parameter_network_gradients(self, leaf_cls, out_features, out_channels, num_reps):
+    def test_conditional_leaf_parameter_fn_gradients(self, leaf_cls, out_features, out_channels, num_reps):
         """Ensure a gradient step populates .grad for parameter network params."""
         query = list(range(out_features))
         evidence = [out_features, out_features + 1]
 
-        param_net = create_conditional_parameter_network(
+        param_net = create_conditional_parameter_fn(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
@@ -483,7 +483,7 @@ class TestConditionalLeaves:
         )
         scope = Scope(query, evidence=evidence)
         leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
-        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
+        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         batch_size = 3
         evidence_data = torch.randn(batch_size, len(evidence))
@@ -498,7 +498,7 @@ class TestConditionalLeaves:
         loss.backward()
         optimizer.step()
 
-        grads = [param.grad for param in leaf.parameter_network.parameters() if param.requires_grad]
+        grads = [param.grad for param in leaf.parameter_fn.parameters() if param.requires_grad]
         assert grads
         for grad in grads:
             assert grad is not None
@@ -510,7 +510,7 @@ class TestConditionalLeaves:
         query = list(range(out_features))
         evidence = [out_features, out_features + 1]
 
-        param_net = create_conditional_parameter_network(
+        param_net = create_conditional_parameter_fn(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
@@ -519,7 +519,7 @@ class TestConditionalLeaves:
         )
         scope = Scope(query, evidence=evidence)
         leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
-        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
+        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         batch_size = 4
         n_vars = max(query + evidence) + 1
@@ -534,7 +534,7 @@ class TestConditionalLeaves:
         query = list(range(out_features))
         evidence = [out_features, out_features + 1]
 
-        param_net = create_conditional_parameter_network(
+        param_net = create_conditional_parameter_fn(
             distribution_class=leaf_cls,
             out_features=out_features,
             out_channels=out_channels,
@@ -543,7 +543,7 @@ class TestConditionalLeaves:
         )
         scope = Scope(query, evidence=evidence)
         leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
-        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
+        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         with pytest.raises(RuntimeError, match="Marginalization not supported for conditional"):
             leaf.marginalize(marg_rvs=[0])

@@ -34,7 +34,7 @@ class TinyLeaf(LeafModule):
         scope: Scope,
         out_channels: int = 1,
         num_repetitions: int = 1,
-        parameter_network: nn.Module | None = None,
+        parameter_fn: nn.Module | None = None,
         type_error_scale: bool = False,
         override_compute: bool = True,
     ):
@@ -44,7 +44,7 @@ class TinyLeaf(LeafModule):
             scope=scope,
             out_channels=out_channels,
             num_repetitions=num_repetitions,
-            parameter_network=parameter_network,
+            parameter_fn=parameter_fn,
         )
         self.loc = nn.Parameter(torch.zeros((len(scope.query), out_channels, num_repetitions)))
         self._scale = nn.Parameter(torch.ones((len(scope.query), out_channels, num_repetitions)))
@@ -126,11 +126,11 @@ class TrackingLeaf(TinyLeaf):
         return super()._compute_parameter_estimates(data, weights, bias_correction)
 
 
-def test_conditional_distribution_uses_parameter_network():
+def test_conditional_distribution_uses_parameter_fn():
     """Verify conditional_distribution delegates parameter creation to the network."""
     scope = Scope([0])
     param_net = SimpleParameterNet(value=2.5)
-    leaf = TinyLeaf(scope=scope, parameter_network=param_net)
+    leaf = TinyLeaf(scope=scope, parameter_fn=param_net)
     evidence = torch.ones((4, 1))
 
     dist = leaf.conditional_distribution(evidence)
@@ -231,7 +231,7 @@ def test_update_parameters_with_kmeans_empty_cluster(monkeypatch):
 def test_mle_rejects_conditional_leaf():
     """Conditional leaves should refuse MLE updates."""
     scope = Scope([0])
-    leaf = TinyLeaf(scope=scope, parameter_network=SimpleParameterNet(value=1.0))
+    leaf = TinyLeaf(scope=scope, parameter_fn=SimpleParameterNet(value=1.0))
     data = torch.randn(4, 1)
 
     with pytest.raises(RuntimeError):

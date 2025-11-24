@@ -22,7 +22,7 @@ class Geometric(LeafModule):
         scope,
         out_channels=None,
         num_repetitions=1,
-        parameter_network=None,
+        parameter_fn=None,
         validate_args: bool | None = True,
         probs: Tensor | None = None,
         logits: Tensor | None = None,
@@ -33,7 +33,7 @@ class Geometric(LeafModule):
             scope: Variable scope (Scope, int, or list[int]).
             out_channels: Number of output channels (inferred from params if None).
             num_repetitions: Number of repetitions (for 3D event shapes).
-            parameter_network: Optional neural network for parameter generation.
+            parameter_fn: Optional neural network for parameter generation.
             validate_args: Whether to enable torch.distributions argument validation.
             probs: Success probability tensor.
             logits: Log-odds tensor of the success probability.
@@ -47,7 +47,7 @@ class Geometric(LeafModule):
             out_channels=out_channels,
             num_repetitions=num_repetitions,
             params=[param_source],
-            parameter_network=parameter_network,
+            parameter_fn=parameter_fn,
             validate_args=validate_args,
         )
 
