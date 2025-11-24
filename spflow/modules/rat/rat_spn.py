@@ -14,7 +14,9 @@ from __future__ import annotations
 import torch
 
 from spflow.meta.data.scope import Scope
+from spflow.utils.inference import log_posterior
 from spflow.modules.base import Module
+from spflow.interfaces.classifier import Classifier
 from spflow.modules.leaves.base import LeafModule
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.ops.split_halves import SplitHalves
@@ -27,7 +29,7 @@ from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
-class RatSPN(Module):
+class RatSPN(Module, Classifier):
     """Random and Tensorized Sum-Product Network (RAT-SPN).
 
     Scalable deep probabilistic model with randomized circuit construction.
@@ -242,19 +244,18 @@ class RatSPN(Module):
             data,
             cache=cache,
         )  # shape: (batch_size,1 , n_root_nodes)
+        return log_posterior(log_likelihood=ll, log_prior=ll_y)
 
-        # Remove singleton feature and repetition dimensions to obtain (batch_size, n_root_nodes)
-        ll = ll.squeeze().view(ll.shape[0], -1)
+    def predict_proba(self, data: torch.Tensor):
+        """Classify input data using RAT-SPN.
 
-        # logp(y | x) = logp(x, y) - logp(x)
-        #             = logp(x | y) + logp(y) - logp(x)
-        #             = logp(x | y) + logp(y) - logsumexp(logp(x,y), dim=y)
-
-        ll_x_and_y = ll + ll_y
-        ll_x = torch.logsumexp(ll_x_and_y, dim=1, keepdim=True)
-        ll_y_given_x = ll_x_and_y - ll_x
-
-        return ll_y_given_x
+        Args:
+            data: Input data tensor.
+        Returns:
+            Predicted class labels.
+        """
+        log_post = self.log_posterior(data)
+        return torch.exp(log_post)
 
     def sample(
         self,
@@ -285,7 +286,6 @@ class RatSPN(Module):
 
         # if no sampling context is provided, initialize a context by sampling from the root node
         if sampling_ctx is None and self.n_root_nodes > 1:
-
             sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
             logits = self.root_node.logits
             if logits.shape != (1, self.n_root_nodes, 1):
