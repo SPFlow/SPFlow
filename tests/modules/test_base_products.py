@@ -167,7 +167,7 @@ def test_scopes(cls, in_channels: int, out_features: int, num_reps):
     module = make_module(
         cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps
     )
-    assert module.scope.query == list(range(out_features * len(module.inputs)))
+    assert module.scope.query == tuple(range(out_features * len(module.inputs)))
 
 
 @pytest.mark.parametrize(

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from functools import reduce
 
 
+@dataclass(frozen=True)
 class Scope:
     """Scopes over random variables (RVs).
 
@@ -18,10 +20,13 @@ class Scope:
         evidence: List of non-negative integers representing evidence variables.
     """
 
+    query: tuple[int, ...]
+    evidence: tuple[int, ...]
+
     def __init__(
         self,
-        query: int | list[int],
-        evidence: int | list[int] | None = None,
+        query: int | list[int] | tuple[int, ...] | None = None,
+        evidence: int | list[int] | tuple[int, ...] | None = None,
     ) -> None:
         """Initializes Scope object.
 
@@ -68,8 +73,9 @@ class Scope:
         if not set(query).isdisjoint(evidence):
             raise ValueError("Specified query and evidence variables for 'Scope' are not disjoint.")
 
-        self.query = query
-        self.evidence = evidence
+        # Use object.__setattr__ because the instance is frozen
+        object.__setattr__(self, "query", tuple(query))
+        object.__setattr__(self, "evidence", tuple(evidence))
 
     def __repr__(self) -> str:
         """Returns a string representation of the scope of form Scope(query|evidence).
@@ -118,11 +124,11 @@ class Scope:
         Returns:
             Scope object with the variable removed, or None if query becomes empty.
         """
-        self.query.remove(rv)
-        if len(self.query) == 0:
-            return None
-        else:
-            return self
+
+        # Create a new Scope with the specified RV removed from the query
+        query = list(self.query)
+        query.remove(rv)
+        return Scope(query, self.evidence)
 
     def equal_query(self, other: "Scope") -> bool:
         """Checks if the query of the scope is identical to that of another.
@@ -150,7 +156,7 @@ class Scope:
         """
         return set(self.evidence) == set(other.evidence)
 
-    def isempty(self) -> bool:
+    def empty(self) -> bool:
         """Checks if the scope is empty.
 
         A scope is considered empty if its query is empty, i.e., the scope does not represent any RVs.
