@@ -79,7 +79,6 @@ class TestRDCParameters:
         assert isinstance(result, torch.Tensor)
         assert 0.0 <= result.item() <= 1.0
 
-    @pytest.mark.skip(reason="Implementation bug: torch.median called on list instead of tensor")
     def test_rdc_with_n_greater_than_1(self, device):
         """Test rdc with n=5 (median of multiple runs)."""
         torch.manual_seed(42)
@@ -292,7 +291,6 @@ class TestRDCEdgeCases:
 class TestRDCReproducibility:
     """Test reproducibility of rdc."""
 
-    @pytest.mark.skip(reason="Implementation bug: torch.median called on list instead of tensor")
     def test_rdc_multiple_runs_consistency(self, device):
         """Test rdc with n>1 gives reasonable results."""
         torch.manual_seed(42)
@@ -419,7 +417,6 @@ class TestRDCDifferentDataTypes:
 class TestRDCLinAlgErrorHandling:
     """Test handling of linear algebra errors."""
 
-    @pytest.mark.skip(reason="Implementation bug: torch.median called on list instead of tensor")
     def test_rdc_with_n_greater_1_handles_errors(self, device):
         """Test that rdc with n>1 handles LinAlgError gracefully."""
         torch.manual_seed(42)
