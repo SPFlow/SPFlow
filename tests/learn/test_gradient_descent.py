@@ -266,6 +266,17 @@ def test_extract_batch_data_validation():
         _extract_batch_data((data, targets, targets), is_classification=False)
 
 
+def test_train_gradient_descent_requires_classifier_for_classification_mode(model, dataloader):
+    """Ensure TypeError is raised when using is_classification=True with non-Classifier model."""
+    with pytest.raises(TypeError, match="model must be a Classifier instance when is_classification=True"):
+        train_gradient_descent(
+            model,  # DummyModel doesn't implement Classifier
+            dataloader,
+            epochs=1,
+            is_classification=True,
+        )
+
+
 def test_train_gradient_descent_classification_mode(classification_model, classification_dataloader):
     """Train in classification mode and ensure posterior path is used."""
     initial_params = [p.clone() for p in classification_model.parameters()]
