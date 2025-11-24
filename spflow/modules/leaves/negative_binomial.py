@@ -28,7 +28,7 @@ class NegativeBinomial(LeafModule):
         total_count: Tensor | None = None,
         probs: Tensor | None = None,
         logits: Tensor | None = None,
-        parameter_network: nn.Module = None,
+        parameter_fn: nn.Module = None,
         validate_args: bool | None = True,
     ):
         """Initialize Negative Binomial distribution leaf module.
@@ -40,7 +40,7 @@ class NegativeBinomial(LeafModule):
             total_count: Number of required successes tensor (required).
             probs: Success probability tensor (optional).
             logits: Logits of the success probability.
-            parameter_network: Optional neural network for parameter generation.
+            parameter_fn: Optional neural network for parameter generation.
             validate_args: Whether to enable torch.distributions argument validation.
         """
         if total_count is None:
@@ -58,7 +58,7 @@ class NegativeBinomial(LeafModule):
             out_channels=out_channels,
             num_repetitions=num_repetitions,
             params=[param_source],
-            parameter_network=parameter_network,
+            parameter_fn=parameter_fn,
             validate_args=validate_args,
         )
 

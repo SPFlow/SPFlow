@@ -342,7 +342,7 @@ def get_param_constraints(distribution_class) -> dict[str, str]:
         raise ValueError(f"Unknown distribution class: {distribution_class}")
 
 
-def create_conditional_parameter_network(
+def create_conditional_parameter_fn(
         distribution_class, out_features: int, out_channels: int, evidence_size: int, num_repetitions: int | None = None
 ):
     """Create a parameter network for conditional distribution testing.

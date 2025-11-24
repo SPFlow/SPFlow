@@ -21,7 +21,7 @@ class LeafModule(Module, ABC):
         out_channels: int = None,
         num_repetitions: int = 1,
         params: list[Tensor | None] | None = None,
-        parameter_network: nn.Module = None,
+        parameter_fn: Callable[[Tensor], dict[str, Tensor]] = None,
         validate_args: bool | None = True,
     ):
         """Base class for leaf distribution modules.
@@ -31,7 +31,7 @@ class LeafModule(Module, ABC):
             out_channels: Number of output channels (inferred from params if None).
             num_repetitions: Number of repetitions (for 3D event shapes).
             params: List of parameter tensors (can include None to trigger random init).
-            parameter_network: Optional neural network for parameter generation.
+            parameter_fn: Optional function that takes evidence and returns distribution parameters as dictionary.
             validate_args: Whether to enable torch.distributions argument validation.
         """
         super().__init__()
@@ -49,13 +49,13 @@ class LeafModule(Module, ABC):
 
         self.scope = scope.copy()
         self._event_shape = event_shape
-        self.parameter_network = parameter_network
+        self.parameter_fn = parameter_fn
         self._validate_args = validate_args
 
     @property
     def is_conditional(self):
         """Indicates if the leaf uses a parameter network for conditional parameters."""
-        return self.parameter_network is not None
+        return self.parameter_fn is not None
 
     @property
     def distribution(self) -> torch.distributions.Distribution:
@@ -89,7 +89,7 @@ class LeafModule(Module, ABC):
         """
         if evidence is None:
             raise ValueError("Evidence tensor must be provided for conditional distribution.")
-        params = self.parameter_network(evidence)
+        params = self.parameter_fn(evidence)
         return self.__make_distribution(params)
 
     @property
