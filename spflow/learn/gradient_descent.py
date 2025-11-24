@@ -109,10 +109,10 @@ def negative_log_likelihood_loss(model: Module, data: Tensor) -> torch.Tensor:
     Returns:
         torch.Tensor: Scalar negative log-likelihood loss tensor.
     """
-    return -1 * model.log_likelihood(data).sum()
+    return -1 * model.log_likelihood(data).mean()
 
 
-def nll_loss(ll: Tensor, target: Tensor) -> torch.Tensor:
+def classification_loss(ll: Tensor, target: Tensor) -> torch.Tensor:
     """Compute negative log-likelihood loss for classification tasks.
 
     Note:
@@ -172,6 +172,7 @@ def _process_training_batch(
     metrics: TrainingMetrics,
     is_classification: bool,
     callback_batch: Callable[[Tensor, int], None] | None,
+    nll_weight: float = 1.0,
 ) -> Tensor:
     """Process a single training batch and return the loss.
 
@@ -183,6 +184,7 @@ def _process_training_batch(
         metrics: TrainingMetrics instance for tracking.
         is_classification: Whether this is a classification task.
         callback_batch: Optional callback function after each batch.
+        nll_weight: Weight for the density estimation (NLL) term in classification tasks.
 
     Returns:
         The computed loss tensor.
@@ -195,7 +197,7 @@ def _process_training_batch(
     if is_classification:
         #log_likelihood = model.log_likelihood(data)
         log_likelihood = model.predict_proba(data)
-        loss = loss_fn(log_likelihood, targets) + -model.log_likelihood(data).mean()
+        loss = loss_fn(log_likelihood, targets) + nll_weight * (-model.log_likelihood(data).mean())
         predicted = torch.argmax(log_likelihood, dim=-1).squeeze()
         metrics.update_train_batch(loss, predicted, targets)
     else:
@@ -219,6 +221,7 @@ def _run_validation_epoch(
     metrics: TrainingMetrics,
     is_classification: bool,
     callback_batch: Callable[[Tensor, int], None] | None,
+    nll_weight: float = 1.0,
 ) -> Tensor:
     """Run validation epoch and return final validation loss.
 
@@ -229,6 +232,7 @@ def _run_validation_epoch(
         metrics: TrainingMetrics instance for tracking.
         is_classification: Whether this is a classification task.
         callback_batch: Optional callback function after each batch.
+        nll_weight: Weight for the density estimation (NLL) term in classification tasks.
 
     Returns:
         The final validation loss tensor from the last processed batch.
@@ -244,7 +248,7 @@ def _run_validation_epoch(
 
             if is_classification:
                 log_likelihood = model.log_likelihood(data)
-                val_loss = loss_fn(log_likelihood, targets)
+                val_loss = loss_fn(log_likelihood, targets) + nll_weight * negative_log_likelihood_loss(model, data)
                 predicted = torch.argmax(log_likelihood, dim=-1).squeeze()
                 metrics.update_val_batch(val_loss, predicted, targets)
             else:
@@ -272,6 +276,7 @@ def train_gradient_descent(
     validation_dataloader: torch.utils.data.DataLoader | None = None,
     callback_batch: Callable[[Tensor, int], None] | None = None,
     callback_epoch: Callable[[list[Tensor], int], None] | None = None,
+    nll_weight: float = 1.0,
 ):
     """Train model using gradient descent.
 
@@ -288,6 +293,8 @@ def train_gradient_descent(
         validation_dataloader: Validation data loader for periodic evaluation.
         callback_batch: Function called after each batch with (loss, step).
         callback_epoch: Function called after each epoch with (losses, epoch).
+        nll_weight: Weight for the density estimation (NLL) term when is_classification=True.
+            Controls the balance between discriminative and generative loss. Default is 1.0.
 
     Raises:
         ValueError: If epochs is not a positive integer.
@@ -313,7 +320,7 @@ def train_gradient_descent(
 
     # Initialize loss function based on task type
     if loss_fn is None:
-        loss_fn = nll_loss if is_classification else negative_log_likelihood_loss
+        loss_fn = classification_loss if is_classification else negative_log_likelihood_loss
     metrics = TrainingMetrics()
 
     # Training loop
@@ -323,7 +330,7 @@ def train_gradient_descent(
         # Process training batches
         for batch in dataloader:
             loss = _process_training_batch(
-                model, batch, optimizer, loss_fn, metrics, is_classification, callback_batch
+                model, batch, optimizer, loss_fn, metrics, is_classification, callback_batch, nll_weight
             )
 
         scheduler.step()
@@ -335,7 +342,7 @@ def train_gradient_descent(
         # Run validation
         if validation_dataloader is not None and epoch % 10 == 0:
             val_loss = _run_validation_epoch(
-                model, validation_dataloader, loss_fn, metrics, is_classification, callback_batch
+                model, validation_dataloader, loss_fn, metrics, is_classification, callback_batch, nll_weight
             )
             logger.debug(f"Validation Loss: {val_loss.item()}")
             if is_classification:

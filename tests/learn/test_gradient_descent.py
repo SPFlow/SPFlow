@@ -12,7 +12,7 @@ from spflow.learn.gradient_descent import (
     TrainingMetrics,
     _extract_batch_data,
     _run_validation_epoch,
-    nll_loss,
+    classification_loss,
     negative_log_likelihood_loss,
     train_gradient_descent,
 )
@@ -301,7 +301,7 @@ def test_run_validation_epoch_classification(classification_model, classificatio
     val_loss = _run_validation_epoch(
         classification_model,
         classification_dataloader,
-        nll_loss,
+        classification_loss,
         metrics,
         is_classification=True,
         callback_batch=None,
@@ -337,7 +337,7 @@ def test_train_gradient_descent_classification_with_validation(classification_mo
     train_batches = len(train_loader)
     val_batches = len(val_loader)
     assert classification_model.posterior_calls == train_batches
-    assert classification_model.likelihood_calls == train_batches * 2 + val_batches
+    assert classification_model.likelihood_calls == train_batches * 2 + val_batches * 2
 
 
 @pytest.fixture
