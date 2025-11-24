@@ -8,6 +8,9 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from spflow.learn.gradient_descent import (
     TrainingMetrics,
+    _extract_batch_data,
+    _run_validation_epoch,
+    nll_loss,
     negative_log_likelihood_loss,
     train_gradient_descent,
 )
@@ -77,6 +80,75 @@ def dataloader(device):
     return DataLoader(dataset, batch_size=3)
 
 
+class ClassificationModel(Module):
+    """Minimal classification model with log-prob outputs for testing."""
+
+    def __init__(self, num_features: int = 2, num_classes: int = 3):
+        super().__init__()
+        self.linear = nn.Linear(num_features, num_classes)
+        self.posterior_calls = 0
+        self.likelihood_calls = 0
+        self.scope = Scope(list(range(num_features)))
+
+    @property
+    def feature_to_scope(self) -> list[Scope]:
+        return [Scope([idx]) for idx in range(self.out_features)]
+
+    @property
+    def out_channels(self) -> int:
+        return self.linear.out_features
+
+    @property
+    def out_features(self) -> int:
+        return self.linear.in_features
+
+    def log_likelihood(self, data: torch.Tensor, cache=None) -> torch.Tensor:
+        self.likelihood_calls += 1
+        logits = self.linear(data)
+        return torch.log_softmax(logits, dim=1)
+
+    def log_posterior(self, data: torch.Tensor, log_prior=None, cache=None) -> torch.Tensor:
+        self.posterior_calls += 1
+        return self.log_likelihood(data, cache=cache)
+
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: torch.Tensor | None = None,
+        is_mpe: bool = False,
+        cache=None,
+        sampling_ctx=None,
+    ):
+        raise NotImplementedError
+
+    def expectation_maximization(self, data: torch.Tensor, cache=None):
+        raise NotImplementedError
+
+    def maximum_likelihood_estimation(
+        self,
+        data: torch.Tensor,
+        weights: torch.Tensor | None = None,
+        cache=None,
+    ):
+        raise NotImplementedError
+
+    def marginalize(self, marg_rvs: list[int], prune: bool = True, cache=None):
+        return self
+
+
+@pytest.fixture
+def classification_model(device) -> ClassificationModel:
+    return ClassificationModel().to(device)
+
+
+@pytest.fixture
+def classification_dataloader(device):
+    torch.manual_seed(0)
+    features = torch.randn(12, 2, device=device)
+    labels = torch.randint(0, 3, (12,), device=device)
+    return DataLoader(TensorDataset(features, labels), batch_size=4)
+
+
 def test_negative_log_likelihood_loss(model, dataloader, device):
     data = next(iter(dataloader))[0]
     loss = negative_log_likelihood_loss(model, data)
@@ -141,6 +213,115 @@ def test_train_gradient_descent_multiple_epochs(model, dataloader, epochs):
     train_gradient_descent(model, dataloader, epochs=epochs)
     final_loss = negative_log_likelihood_loss(model, next(iter(dataloader))[0])
     assert final_loss < initial_loss  # loss should decrease after training
+
+
+def test_train_gradient_descent_custom_scheduler(model, dataloader):
+    """Custom scheduler should be stepped once per epoch."""
+
+    class CountingScheduler:
+        def __init__(self):
+            self.calls = 0
+
+        def step(self):
+            self.calls += 1
+
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+    scheduler = CountingScheduler()
+
+    epochs = 3
+    train_gradient_descent(
+        model,
+        dataloader,
+        epochs=epochs,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        loss_fn=negative_log_likelihood_loss,
+    )
+
+    assert scheduler.calls == epochs  # scheduler.step should be called once per epoch
+
+
+def test_extract_batch_data_validation():
+    """Ensure batch extraction handles classification and regression formats."""
+    data = torch.randn(3, 2)
+    targets = torch.tensor([0, 1, 2])
+
+    out_data, out_targets = _extract_batch_data((data, targets), is_classification=True)
+    torch.testing.assert_close(out_data, data)
+    torch.testing.assert_close(out_targets, targets)
+
+    reg_data, reg_targets = _extract_batch_data((data, targets), is_classification=False)
+    torch.testing.assert_close(reg_data, data)
+    assert reg_targets is None
+
+    with pytest.raises(ValueError):
+        _extract_batch_data(data, is_classification=True)
+
+    with pytest.raises(ValueError):
+        _extract_batch_data((data, targets, targets), is_classification=False)
+
+
+def test_train_gradient_descent_classification_mode(classification_model, classification_dataloader):
+    """Train in classification mode and ensure posterior path is used."""
+    initial_params = [p.clone() for p in classification_model.parameters()]
+
+    train_gradient_descent(
+        classification_model,
+        classification_dataloader,
+        epochs=2,
+        is_classification=True,
+        lr=0.05,
+    )
+
+    assert classification_model.posterior_calls > 0
+    assert classification_model.likelihood_calls > 0
+    for param, initial in zip(classification_model.parameters(), initial_params):
+        assert not torch.allclose(param, initial)
+
+
+def test_run_validation_epoch_classification(classification_model, classification_dataloader):
+    """Validation loop computes losses and accuracy for classification batches."""
+    metrics = TrainingMetrics()
+    val_loss = _run_validation_epoch(
+        classification_model,
+        classification_dataloader,
+        nll_loss,
+        metrics,
+        is_classification=True,
+        callback_batch=None,
+    )
+
+    assert isinstance(val_loss, torch.Tensor)
+    assert metrics.val_total == 12
+    assert metrics.validation_steps == len(classification_dataloader)
+    assert metrics.get_val_accuracy() >= 0.0
+
+
+def test_train_gradient_descent_classification_with_validation(classification_model, device):
+    """Training with validation dataloader should hit classification validation logic."""
+    torch.manual_seed(1)
+    train_loader = DataLoader(
+        TensorDataset(torch.randn(12, 2, device=device), torch.randint(0, 3, (12,), device=device)),
+        batch_size=4,
+    )
+    val_loader = DataLoader(
+        TensorDataset(torch.randn(8, 2, device=device), torch.randint(0, 3, (8,), device=device)),
+        batch_size=4,
+    )
+
+    train_gradient_descent(
+        classification_model,
+        train_loader,
+        epochs=1,
+        is_classification=True,
+        lr=0.05,
+        validation_dataloader=val_loader,
+    )
+
+    train_batches = len(train_loader)
+    val_batches = len(val_loader)
+    assert classification_model.posterior_calls == train_batches
+    assert classification_model.likelihood_calls == train_batches * 2 + val_batches
 
 
 @pytest.fixture
