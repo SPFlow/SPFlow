@@ -22,7 +22,7 @@ class TestFeatureContextInitialization:
         domains = {0: NormalType(), 1: BernoulliType()}
         ctx = FeatureContext(scope, domains)
 
-        assert ctx.scope.query == [0, 1]
+        assert ctx.scope.query == (0, 1)
         assert isinstance(ctx.domain_map[0], NormalType)
         assert isinstance(ctx.domain_map[1], BernoulliType)
 
@@ -57,8 +57,8 @@ class TestFeatureContextInitialization:
         scope = Scope([0, 1, 2], evidence=[3])
         ctx = FeatureContext(scope)
 
-        assert ctx.scope.query == [0, 1, 2]
-        assert ctx.scope.evidence == [3]
+        assert ctx.scope.query == (0, 1, 2)
+        assert ctx.scope.evidence == (3,)
 
 
 class TestFeatureContextParseType:
@@ -262,7 +262,7 @@ class TestFeatureContextSelect:
         # Select features 1 and 3
         subset_ctx = ctx.select([1, 3])
 
-        assert subset_ctx.scope.query == [1, 3]
+        assert subset_ctx.scope.query == (1, 3)
         assert len(subset_ctx.domain_map) == 2
         assert isinstance(subset_ctx.domain_map[1], BernoulliType)
         assert isinstance(subset_ctx.domain_map[3], BernoulliType)
@@ -274,7 +274,7 @@ class TestFeatureContextSelect:
 
         subset_ctx = ctx.select(1)
 
-        assert subset_ctx.scope.query == [1]
+        assert subset_ctx.scope.query == (1,)
         assert isinstance(subset_ctx.domain_map[1], BernoulliType)
 
     def test_select_preserves_types(self):
@@ -295,7 +295,7 @@ class TestFeatureContextSelect:
 
         subset_ctx = ctx.select([0, 2])
 
-        assert subset_ctx.scope.evidence == [5, 6]
+        assert subset_ctx.scope.evidence == (5, 6)
 
     def test_select_all_features(self):
         """Test select() with all features."""
@@ -304,7 +304,7 @@ class TestFeatureContextSelect:
 
         subset_ctx = ctx.select([0, 1])
 
-        assert subset_ctx.scope.query == [0, 1]
+        assert subset_ctx.scope.query == (0, 1)
         assert isinstance(subset_ctx.domain_map[0], NormalType)
         assert isinstance(subset_ctx.domain_map[1], BernoulliType)
 

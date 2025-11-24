@@ -83,20 +83,21 @@ def test_copy():
     assert original_scope == copied_scope
     assert original_scope is not copied_scope
 
-    # Modify the copy and check that the original is unchanged
-    copied_scope.query.append(4)
-    assert original_scope != copied_scope  # Should now be different
+    # Verify that modification is prevented (frozen dataclass)
+    from dataclasses import FrozenInstanceError
+    with pytest.raises(FrozenInstanceError):
+        copied_scope.query = (1, 2, 3, 4)
 
 
 def test_scope_init_valid():
     # Test valid initializations
     scope1 = Scope([1, 2, 3], [4, 5])
-    assert scope1.query == [1, 2, 3]
-    assert scope1.evidence == [4, 5]
+    assert scope1.query == (1, 2, 3)
+    assert scope1.evidence == (4, 5)
 
     scope2 = Scope([0, 1])  # Only query, no evidence
-    assert scope2.query == [0, 1]
-    assert scope2.evidence == []
+    assert scope2.query == (0, 1)
+    assert scope2.evidence == ()
 
 
 def test_scope_init_invalid():
