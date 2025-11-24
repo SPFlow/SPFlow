@@ -487,6 +487,45 @@ class TestConditionalLeaves:
         dist = leaf.conditional_distribution(evidence=evidence_data)
         assert dist is not None
 
+    @pytest.mark.parametrize(
+        "leaf_cls,out_features,out_channels,num_reps",
+        product(conditional_leaf_cls_values, [1], [1], [1]),
+    )
+    def test_conditional_leaf_parameter_network_gradients(self, leaf_cls, out_features, out_channels, num_reps):
+        """Ensure a gradient step populates .grad for parameter network params."""
+        query = list(range(out_features))
+        evidence = [out_features, out_features + 1]
+
+        param_net = create_conditional_parameter_network(
+            distribution_class=leaf_cls,
+            out_features=out_features,
+            out_channels=out_channels,
+            evidence_size=len(evidence),
+            num_repetitions=num_reps,
+        )
+        scope = Scope(query, evidence=evidence)
+        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
+        leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_network=param_net, **leaf_args)
+
+        batch_size = 3
+        evidence_data = torch.randn(batch_size, len(evidence))
+        dist = leaf.conditional_distribution(evidence=evidence_data)
+        query_data = dist.sample().reshape(batch_size, -1).float()
+        query_data = query_data[:, : len(query)]
+        data = torch.cat([query_data, evidence_data], dim=1)
+
+        optimizer = torch.optim.SGD(leaf.parameters(), lr=1e-2)
+        optimizer.zero_grad()
+        loss = -leaf.log_likelihood(data).sum()
+        loss.backward()
+        optimizer.step()
+
+        grads = [param.grad for param in leaf.parameter_network.parameters() if param.requires_grad]
+        assert grads
+        for grad in grads:
+            assert grad is not None
+            assert torch.isfinite(grad).all()
+
     @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
     def test_conditional_leaf_mle_not_supported(self, leaf_cls, out_features, out_channels, num_reps):
         """Test that MLE raises error for conditional leaf."""
