@@ -15,7 +15,6 @@ Increment when making **incompatible API changes**:
 - Removing public APIs, functions, classes, or modules
 - Changing function signatures (removing parameters, changing parameter order)
 - Changing the behavior of existing APIs in backward-incompatible ways
-- Removing or renaming dispatch functions (`log_likelihood`, `sample`, `em`, etc.)
 - Changing data formats that break existing saved models
 - Dropping support for Python versions
 - Major architectural changes that require user code modifications
@@ -23,7 +22,6 @@ Increment when making **incompatible API changes**:
 **Examples:**
 - Removing a module: `spflow.modules.sum.Sum` → deleted
 - Changing signature: `log_likelihood(module, data)` → `log_likelihood(module, data, context)`
-- Renaming dispatch: `maximum_likelihood_estimation()` → `mle()`
 
 ### MINOR version (x.Y.0)
 
@@ -185,7 +183,6 @@ Optional scopes to specify what changed:
 
 - `modules:` - Changes to module implementations
 - `learn:` - Learning algorithms
-- `dispatch:` - Dispatch system
 - `leaf:` - Leaf distributions
 - `rat:` - RAT-SPN specific
 - `deps:` - Dependency updates

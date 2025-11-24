@@ -107,7 +107,6 @@ Optional scopes to specify what area changed:
 
 - `modules` - Module implementations
 - `learn` - Learning algorithms
-- `dispatch` - Dispatch system
 - `leaf` - Leaf distributions
 - `rat` - RAT-SPN specific
 - `deps` - Dependencies
