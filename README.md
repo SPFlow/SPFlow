@@ -368,7 +368,6 @@ SPFlow 1.0.0 represents a complete rewrite of SPFlow with PyTorch as the primary
 - Modern PyTorch architecture for GPU acceleration
 - Significantly improved performance
 - Enhanced modular design
-- Comprehensive dispatch system for extensibility
 
 See the [CHANGELOG](CHANGELOG.md) for detailed version history and recent changes.
 
