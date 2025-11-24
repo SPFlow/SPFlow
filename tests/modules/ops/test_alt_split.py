@@ -1,5 +1,6 @@
 from itertools import product
 
+import numpy as np
 import pytest
 import torch
 
@@ -90,17 +91,21 @@ def test_split_alternate_apply_hook(device):
 
 
 def test_split_alternate_feature_mapping():
-    """Test feature_to_scope mapping for alternating pattern."""
+    """Test feature_to_scope mapping delegates to input."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
     split = SplitAlternate(inputs=leaf, num_splits=2, dim=1)
 
+    # Split operations delegate to input's feature_to_scope
     feature_scopes = split.feature_to_scope
-    assert len(feature_scopes) == 2
+    leaf_scopes = leaf.feature_to_scope
 
-    # Check alternating pattern: [0, 2, 4] and [1, 3, 5]
-    assert len(feature_scopes[0]) == 3
-    assert len(feature_scopes[1]) == 3
+    # Should be identical to the input's feature_to_scope
+    assert np.array_equal(feature_scopes, leaf_scopes)
+    assert feature_scopes.shape == (6, 1)
+
+    # Each element should be a Scope object
+    assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
 
 
 def test_split_alternate_num_splits_one(device):

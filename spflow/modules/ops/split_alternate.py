@@ -7,10 +7,10 @@ and similar architectures.
 
 from __future__ import annotations
 
+import numpy as np
 import torch
 from torch import Tensor
 
-from spflow.meta.data import Scope
 from spflow.modules.base import Module
 from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache, cached
@@ -46,13 +46,10 @@ class SplitAlternate(Split):
         return f"{super().extra_repr()}, dim={self.dim}"
 
     @property
-    def feature_to_scope(self) -> list[Scope]:
-        scopes = self.inputs[0].feature_to_scope
-        feature_to_scope = []
-        for i in range(self.num_splits):
-            sub_scopes = scopes[i :: self.num_splits]
-            feature_to_scope.append(sub_scopes)
-        return feature_to_scope
+    def feature_to_scope(self) -> np.ndarray:
+        # Split operations don't change the feature-to-scope mapping,
+        # just reorganize the channel structure. Delegate to input.
+        return self.inputs[0].feature_to_scope
 
     def _apply(self, fn):
         # Apply the function to the module and its split masks

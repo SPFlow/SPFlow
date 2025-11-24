@@ -223,3 +223,195 @@ def test_broadcast(shape, label, product):
 #     leaf_layer = make_normal_leaf(out_features=out_features, out_channels=out_channels)
 #     split = SplitHalves(inputs=leaf_layer)
 #     module = cls(inputs=[split])
+
+
+def test_elementwise_product_feature_to_scope():
+    """Test feature_to_scope property for ElementwiseProduct module.
+
+    ElementwiseProduct performs element-wise joining of corresponding features from inputs.
+    Output shape should be (out_features, num_repetitions).
+    """
+
+    # Test with single repetition
+    out_features = 3
+    out_channels = 2
+    num_reps = 1
+
+    # Create inputs with disjoint scopes
+    scope_a = Scope(list(range(out_features)))
+    scope_b = Scope(list(range(out_features, out_features * 2)))
+
+    leaf_a = make_normal_leaf(scope=scope_a, out_channels=out_channels, num_repetitions=num_reps)
+    leaf_b = make_normal_leaf(scope=scope_b, out_channels=out_channels, num_repetitions=num_reps)
+
+    elem_prod = ElementwiseProduct(inputs=[leaf_a, leaf_b])
+
+    # Get feature_to_scope
+    feature_scopes = elem_prod.feature_to_scope
+
+    # Validate shape: should be (out_features, num_repetitions)
+    assert feature_scopes.shape == (out_features, num_reps), \
+        f"Expected shape ({out_features}, {num_reps}), got {feature_scopes.shape}"
+
+    # Validate all elements are Scope objects
+    assert all(isinstance(s, Scope) for s in feature_scopes.flatten()), "All elements should be Scope objects"
+
+    # Validate scope content: each output feature should be the join of corresponding input features
+    for i in range(out_features):
+        for r in range(num_reps):
+            # Element-wise product joins corresponding features
+            expected_scope = Scope.join_all([leaf_a.feature_to_scope[i, r], leaf_b.feature_to_scope[i, r]])
+            assert feature_scopes[i, r] == expected_scope, \
+                f"Feature {i}, Rep {r}: expected {expected_scope}, got {feature_scopes[i, r]}"
+            # Each output feature should contain exactly 2 input features (one from each input)
+            assert len(feature_scopes[i, r].query) == 2, \
+                f"Feature {i}, Rep {r}: expected 2 features in scope, got {len(feature_scopes[i, r].query)}"
+
+
+def test_elementwise_product_feature_to_scope_multiple_repetitions():
+    """Test feature_to_scope with multiple repetitions for ElementwiseProduct module."""
+
+    # Test with multiple repetitions
+    out_features = 4
+    out_channels = 3
+    num_reps = 3
+
+    # Create inputs with disjoint scopes
+    scope_a = Scope(list(range(out_features)))
+    scope_b = Scope(list(range(out_features, out_features * 2)))
+    scope_c = Scope(list(range(out_features * 2, out_features * 3)))
+
+    leaf_a = make_normal_leaf(scope=scope_a, out_channels=out_channels, num_repetitions=num_reps)
+    leaf_b = make_normal_leaf(scope=scope_b, out_channels=out_channels, num_repetitions=num_reps)
+    leaf_c = make_normal_leaf(scope=scope_c, out_channels=out_channels, num_repetitions=num_reps)
+
+    elem_prod = ElementwiseProduct(inputs=[leaf_a, leaf_b, leaf_c])
+
+    # Get feature_to_scope
+    feature_scopes = elem_prod.feature_to_scope
+
+    # Validate shape: should be (out_features, num_repetitions)
+    assert feature_scopes.shape == (out_features, num_reps), \
+        f"Expected shape ({out_features}, {num_reps}), got {feature_scopes.shape}"
+
+    # Validate all elements are Scope objects
+    assert all(isinstance(s, Scope) for s in feature_scopes.flatten()), "All elements should be Scope objects"
+
+    # Validate scope content for each repetition
+    for i in range(out_features):
+        for r in range(num_reps):
+            # Element-wise product joins corresponding features from all 3 inputs
+            expected_scope = Scope.join_all([
+                leaf_a.feature_to_scope[i, r],
+                leaf_b.feature_to_scope[i, r],
+                leaf_c.feature_to_scope[i, r]
+            ])
+            assert feature_scopes[i, r] == expected_scope, \
+                f"Feature {i}, Rep {r}: expected {expected_scope}, got {feature_scopes[i, r]}"
+            # Each output feature should contain 3 input features (one from each input)
+            assert len(feature_scopes[i, r].query) == 3, \
+                f"Feature {i}, Rep {r}: expected 3 features in scope, got {len(feature_scopes[i, r].query)}"
+
+
+def test_outer_product_feature_to_scope():
+    """Test feature_to_scope property for OuterProduct module.
+
+    OuterProduct performs Cartesian product expansion: all combinations of input features.
+    With 2 inputs each having 2 features, output has 2x2=4 features.
+    """
+    from itertools import product as iter_product
+
+    # Test with single repetition and 2 inputs
+    out_features = 2
+    out_channels_a = 2
+    out_channels_b = 3
+    num_reps = 1
+
+    # Create inputs with disjoint scopes
+    scope_a = Scope(list(range(out_features)))
+    scope_b = Scope(list(range(out_features, out_features * 2)))
+
+    leaf_a = make_normal_leaf(scope=scope_a, out_channels=out_channels_a, num_repetitions=num_reps)
+    leaf_b = make_normal_leaf(scope=scope_b, out_channels=out_channels_b, num_repetitions=num_reps)
+
+    outer_prod = OuterProduct(inputs=[leaf_a, leaf_b])
+
+    # Get feature_to_scope
+    feature_scopes = outer_prod.feature_to_scope
+
+    # OuterProduct creates Cartesian product: 2 features x 2 features = 4 output features
+    expected_num_features = out_features * out_features
+
+    # Validate shape: should be (expected_num_features, num_repetitions)
+    assert feature_scopes.shape == (expected_num_features, num_reps), \
+        f"Expected shape ({expected_num_features}, {num_reps}), got {feature_scopes.shape}"
+
+    # Validate all elements are Scope objects
+    assert all(isinstance(s, Scope) for s in feature_scopes.flatten()), "All elements should be Scope objects"
+
+    # Validate Cartesian product logic
+    # The outer product should create all combinations of features from both inputs
+    for r in range(num_reps):
+        expected_combinations = list(iter_product(leaf_a.feature_to_scope[:, r], leaf_b.feature_to_scope[:, r]))
+
+        for i, (scope_a_elem, scope_b_elem) in enumerate(expected_combinations):
+            expected_scope = Scope.join_all([scope_a_elem, scope_b_elem])
+            assert feature_scopes[i, r] == expected_scope, \
+                f"Feature {i}, Rep {r}: expected {expected_scope}, got {feature_scopes[i, r]}"
+            # Each output feature should contain 2 input features (one from each input)
+            assert len(feature_scopes[i, r].query) == 2, \
+                f"Feature {i}, Rep {r}: expected 2 features in scope, got {len(feature_scopes[i, r].query)}"
+
+
+def test_outer_product_feature_to_scope_multiple_repetitions():
+    """Test feature_to_scope with multiple repetitions for OuterProduct module.
+
+    With 3 inputs each having 2 features, output has 2x2x2=8 features (Cartesian product).
+    """
+    from itertools import product as iter_product
+
+    # Test with multiple repetitions and 3 inputs
+    out_features = 2  # Each input has 2 features
+    out_channels = 2
+    num_reps = 2
+
+    # Create inputs with disjoint scopes
+    scope_a = Scope(list(range(out_features)))
+    scope_b = Scope(list(range(out_features, out_features * 2)))
+    scope_c = Scope(list(range(out_features * 2, out_features * 3)))
+
+    leaf_a = make_normal_leaf(scope=scope_a, out_channels=out_channels, num_repetitions=num_reps)
+    leaf_b = make_normal_leaf(scope=scope_b, out_channels=out_channels, num_repetitions=num_reps)
+    leaf_c = make_normal_leaf(scope=scope_c, out_channels=out_channels, num_repetitions=num_reps)
+
+    outer_prod = OuterProduct(inputs=[leaf_a, leaf_b, leaf_c])
+
+    # Get feature_to_scope
+    feature_scopes = outer_prod.feature_to_scope
+
+    # Cartesian product: 2 x 2 x 2 = 8 output features
+    expected_num_features = out_features * out_features * out_features
+
+    # Validate shape: should be (expected_num_features, num_repetitions)
+    assert feature_scopes.shape == (expected_num_features, num_reps), \
+        f"Expected shape ({expected_num_features}, {num_reps}), got {feature_scopes.shape}"
+
+    # Validate all elements are Scope objects
+    assert all(isinstance(s, Scope) for s in feature_scopes.flatten()), "All elements should be Scope objects"
+
+    # Validate scope content for each repetition
+    for r in range(num_reps):
+        # Create all Cartesian product combinations
+        expected_combinations = list(iter_product(
+            leaf_a.feature_to_scope[:, r],
+            leaf_b.feature_to_scope[:, r],
+            leaf_c.feature_to_scope[:, r]
+        ))
+
+        for i, (scope_a_elem, scope_b_elem, scope_c_elem) in enumerate(expected_combinations):
+            expected_scope = Scope.join_all([scope_a_elem, scope_b_elem, scope_c_elem])
+            assert feature_scopes[i, r] == expected_scope, \
+                f"Feature {i}, Rep {r}: expected {expected_scope}, got {feature_scopes[i, r]}"
+            # Each output feature should contain 3 input features (one from each input)
+            assert len(feature_scopes[i, r].query) == 3, \
+                f"Feature {i}, Rep {r}: expected 3 features in scope, got {len(feature_scopes[i, r].query)}"

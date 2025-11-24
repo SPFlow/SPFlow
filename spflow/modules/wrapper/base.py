@@ -8,6 +8,7 @@ maintaining compatibility with the core module interfaces.
 """
 
 from abc import ABC
+import numpy as np
 
 from spflow.meta.data import Scope
 from spflow.modules.base import Module
@@ -73,7 +74,7 @@ class Wrapper(Module, ABC):
         return self.module.out_channels
 
     @property
-    def feature_to_scope(self) -> list[Scope]:
+    def feature_to_scope(self) -> np.ndarray:
         """Returns the mapping from features to scopes from the wrapped module.
 
         Delegates to the wrapped module's feature_to_scope property.

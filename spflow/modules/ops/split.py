@@ -6,6 +6,7 @@ systematic tensor partitioning.
 """
 
 from __future__ import annotations
+import numpy as np
 
 from abc import abstractmethod, ABC
 from typing import Any, Dict, Optional
@@ -83,7 +84,7 @@ class Split(Module, ABC):
 
     @property
     @abstractmethod
-    def feature_to_scope(self) -> list[Scope]:
+    def feature_to_scope(self) -> np.ndarray:
         pass
 
     def sample(

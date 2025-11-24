@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from itertools import product
 
+import numpy as np
 import torch
 from torch import Tensor
 
@@ -123,18 +124,24 @@ class OuterProduct(BaseProduct):
             return self.inputs[0].out_features
 
     @property
-    def feature_to_scope(self) -> list[Scope]:
-        if isinstance(self.inputs, Split):
-            scope_lists = self.inputs.feature_to_scope
-        else:
-            scope_lists = [module.feature_to_scope for module in self.inputs]
+    def feature_to_scope(self) -> np.ndarray:
+        result_scopes = []
+        for r in range(self.num_repetitions):
+            if isinstance(self.inputs, Split):
+                scope_lists = self.inputs.feature_to_scope[:, r]
+            else:
+                scope_lists = [module.feature_to_scope[:, r] for module in self.inputs]
 
-        outer_product = list(product(*scope_lists))
+            outer_product = list(product(*scope_lists))
 
-        feature_to_scope = []
-        for scopes in outer_product:
-            feature_to_scope.append(Scope.join_all(scopes))
-        return feature_to_scope
+            feature_to_scope = []
+            for joined_scopes in outer_product:
+                feature_to_scope.append(Scope.join_all(joined_scopes))
+
+            result_scopes.append(feature_to_scope)
+
+        # Transpose from (num_repetitions, num_features) to (num_features, num_repetitions)
+        return np.array(result_scopes).T
 
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         """Map output channel indices to input channel indices.

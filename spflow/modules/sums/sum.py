@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import numpy as np
 import torch
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError
-from spflow.meta.data import Scope
 from spflow.modules.base import Module
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
@@ -154,7 +154,7 @@ class Sum(Module):
         self.weights = weights
 
     @property
-    def feature_to_scope(self) -> list[Scope]:
+    def feature_to_scope(self) -> np.ndarray:
         return self.inputs.feature_to_scope
 
     @property
@@ -485,18 +485,43 @@ class Sum(Module):
 
             # if marginalized input is not None
             if marg_input:
-                feature_to_scope = self.inputs.feature_to_scope
-                # remove mutual_rvs from feature_to_scope list
-                for rv in mutual_rvs:
-                    for idx, scope in enumerate(feature_to_scope):
-                        if scope is not None:
-                            if rv in scope.query:
-                                feature_to_scope[idx] = scope.remove_from_query(rv)
+                # Apply mask to weights per-repetition
+                masked_weights_list = []
+                for r in range(self.num_repetitions):
+                    feature_to_scope_r = self.inputs.feature_to_scope[:, r].copy()
+                    # remove mutual_rvs from feature_to_scope list
+                    for rv in mutual_rvs:
+                        for idx, scope in enumerate(feature_to_scope_r):
+                            if scope is not None:
+                                if rv in scope.query:
+                                    feature_to_scope_r[idx] = scope.remove_from_query(rv)
 
-                # construct mask with empty scopes
-                mask = [scope is not None for scope in feature_to_scope]
+                    # construct mask with empty scopes
+                    mask = torch.tensor([not scope.empty() for scope in feature_to_scope_r], device=self.device).bool()
 
-                module_weights = module_weights[mask]
+                    # Apply mask to weights for this repetition: (out_features, in_channels, out_channels)
+                    masked_weights_r = module_weights[:, :, :, r][mask]
+                    masked_weights_list.append(masked_weights_r)
+
+                # Stack weights back along the repetition dimension
+                # Handle different repetition counts if needed
+                if all(w.shape[0] == masked_weights_list[0].shape[0] for w in masked_weights_list):
+                    # All repetitions have same number of features, can stack directly
+                    module_weights = torch.stack(masked_weights_list, dim=-1)
+                else:
+                    # Features differ across repetitions - this shouldn't happen in practice
+                    # but handle gracefully by keeping the largest
+                    max_features = max(w.shape[0] for w in masked_weights_list)
+                    padded_list = []
+                    for w in masked_weights_list:
+                        if w.shape[0] < max_features:
+                            padding = torch.zeros(
+                                max_features - w.shape[0], w.shape[1], w.shape[2],
+                                device=w.device, dtype=w.dtype
+                            )
+                            w = torch.cat([w, padding], dim=0)
+                        padded_list.append(w)
+                    module_weights = torch.stack(padded_list, dim=-1)
 
         else:
             marg_input = self.inputs

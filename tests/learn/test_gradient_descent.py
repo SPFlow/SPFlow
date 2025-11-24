@@ -1,5 +1,7 @@
 import logging
 
+import numpy as np
+from spflow.interfaces.classifier import Classifier
 from spflow.utils.cache import cached
 import pytest
 import torch
@@ -21,8 +23,8 @@ from spflow.modules.base import Module
 # Define a DummyModel class for testing
 class DummyModel(Module):
     @property
-    def feature_to_scope(self) -> list[Scope]:
-        return [Scope([0])]
+    def feature_to_scope(self) -> np.array:
+        return np.array([Scope([0])]).view(1, 1)
 
     @property
     def out_channels(self) -> int:
@@ -80,7 +82,7 @@ def dataloader(device):
     return DataLoader(dataset, batch_size=3)
 
 
-class ClassificationModel(Module):
+class ClassificationModel(Module, Classifier):
     """Minimal classification model with log-prob outputs for testing."""
 
     def __init__(self, num_features: int = 2, num_classes: int = 3):
@@ -91,8 +93,8 @@ class ClassificationModel(Module):
         self.scope = Scope(list(range(num_features)))
 
     @property
-    def feature_to_scope(self) -> list[Scope]:
-        return [Scope([idx]) for idx in range(self.out_features)]
+    def feature_to_scope(self) -> np.ndarray:
+        return np.array([Scope([idx]) for idx in range(self.out_features)]).view(-1, 1)
 
     @property
     def out_channels(self) -> int:
@@ -101,6 +103,9 @@ class ClassificationModel(Module):
     @property
     def out_features(self) -> int:
         return self.linear.in_features
+
+    def predict_proba(self, data: torch.Tensor) -> torch.Tensor:
+        return self.log_posterior(data).exp()
 
     def log_likelihood(self, data: torch.Tensor, cache=None) -> torch.Tensor:
         self.likelihood_calls += 1

@@ -63,6 +63,15 @@ class DummyLeaf(LeafModule):
         std_est = torch.full_like(mean_est, 0.5)
         self.std = self._broadcast_to_event_shape(std_est)
 
+    def _compute_parameter_estimates(
+        self, data: torch.Tensor, weights: torch.Tensor, bias_correction: bool
+    ) -> dict[str, torch.Tensor]:
+        """Compute raw MLE parameter estimates without broadcasting."""
+        n_total = weights.sum()
+        mean_est = (weights * data).sum(0) / n_total
+        std_est = torch.full_like(mean_est, 0.5)
+        return {"mean": mean_est, "std": std_est}
+
     def maximum_likelihood_estimation(
         self,
         data: torch.Tensor,

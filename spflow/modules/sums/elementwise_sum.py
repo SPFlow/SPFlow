@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 from typing import Optional
 
 import torch
@@ -146,7 +147,7 @@ class ElementwiseSum(Module):
         return self._out_channels_total
 
     @property
-    def feature_to_scope(self) -> list[Scope]:
+    def feature_to_scope(self) -> np.ndarray:
         return self.inputs[0].feature_to_scope
 
     @property

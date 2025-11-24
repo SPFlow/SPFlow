@@ -162,3 +162,102 @@ def test_multiple_inputs():
     samples_b = module_b.sample(data=data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
 
     assert torch.allclose(samples_a, samples_b)
+
+
+def test_feature_to_scope():
+    """Test feature_to_scope property for Product module.
+
+    Product joins all input scopes into a single combined scope per repetition.
+    Output shape should be (1, num_repetitions).
+    """
+    from spflow.meta import Scope
+
+    # Test with single repetition
+    out_features = 6
+    out_channels = 3
+    num_reps = 1
+
+    # Create input with known scope
+    scope = Scope(list(range(out_features)))
+    leaf = make_normal_leaf(scope=scope, out_channels=out_channels, num_repetitions=num_reps)
+    product = Product(inputs=leaf)
+
+    # Get feature_to_scope
+    feature_scopes = product.feature_to_scope
+
+    # Validate shape: should be (1, num_repetitions) since Product outputs 1 feature
+    assert feature_scopes.shape == (1, num_reps), f"Expected shape (1, {num_reps}), got {feature_scopes.shape}"
+
+    # Validate all elements are Scope objects
+    assert all(isinstance(s, Scope) for s in feature_scopes.flatten()), "All elements should be Scope objects"
+
+    # Validate scope content: should be the joined scope of all input features
+    expected_scope = Scope.join_all(leaf.feature_to_scope[:, 0])
+    assert feature_scopes[0, 0] == expected_scope, f"Expected {expected_scope}, got {feature_scopes[0, 0]}"
+
+    # Verify the joined scope contains all input features
+    assert set(feature_scopes[0, 0].query) == set(range(out_features)), "Joined scope should contain all input features"
+
+
+def test_feature_to_scope_multiple_repetitions():
+    """Test feature_to_scope with multiple repetitions for Product module."""
+    from spflow.meta import Scope
+
+    # Test with multiple repetitions
+    out_features = 4
+    out_channels = 2
+    num_reps = 3
+
+    scope = Scope(list(range(out_features)))
+    leaf = make_normal_leaf(scope=scope, out_channels=out_channels, num_repetitions=num_reps)
+    product = Product(inputs=leaf)
+
+    # Get feature_to_scope
+    feature_scopes = product.feature_to_scope
+
+    # Validate shape: should be (1, num_repetitions)
+    assert feature_scopes.shape == (1, num_reps), f"Expected shape (1, {num_reps}), got {feature_scopes.shape}"
+
+    # Validate all elements are Scope objects
+    assert all(isinstance(s, Scope) for s in feature_scopes.flatten()), "All elements should be Scope objects"
+
+    # Validate each repetition has the same joined scope
+    for r in range(num_reps):
+        expected_scope = Scope.join_all(leaf.feature_to_scope[:, r])
+        assert feature_scopes[0, r] == expected_scope, f"Repetition {r}: expected {expected_scope}, got {feature_scopes[0, r]}"
+        assert set(feature_scopes[0, r].query) == set(range(out_features)), f"Repetition {r}: joined scope should contain all features"
+
+
+def test_feature_to_scope_multiple_inputs():
+    """Test feature_to_scope with multiple input modules for Product module."""
+    from spflow.meta import Scope
+
+    # Create two inputs with disjoint scopes
+    out_features_1 = 3
+    out_features_2 = 2
+    out_channels = 2
+    num_reps = 2
+
+    scope_1 = Scope(list(range(out_features_1)))
+    scope_2 = Scope(list(range(out_features_1, out_features_1 + out_features_2)))
+
+    leaf_1 = make_normal_leaf(scope=scope_1, out_channels=out_channels, num_repetitions=num_reps)
+    leaf_2 = make_normal_leaf(scope=scope_2, out_channels=out_channels, num_repetitions=num_reps)
+
+    # Product with multiple inputs (they will be concatenated)
+    product = Product(inputs=[leaf_1, leaf_2])
+
+    # Get feature_to_scope
+    feature_scopes = product.feature_to_scope
+
+    # Validate shape: should be (1, num_repetitions)
+    assert feature_scopes.shape == (1, num_reps), f"Expected shape (1, {num_reps}), got {feature_scopes.shape}"
+
+    # Validate all elements are Scope objects
+    assert all(isinstance(s, Scope) for s in feature_scopes.flatten()), "All elements should be Scope objects"
+
+    # Validate scope content: should contain all features from both inputs
+    total_features = out_features_1 + out_features_2
+    for r in range(num_reps):
+        assert set(feature_scopes[0, r].query) == set(range(total_features)), \
+            f"Repetition {r}: joined scope should contain all {total_features} features"

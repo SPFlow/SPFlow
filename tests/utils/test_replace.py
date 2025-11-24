@@ -1,5 +1,6 @@
 """Unit tests for method replacement context manager."""
 
+import numpy as np
 from typing import Optional
 
 import pytest
@@ -35,9 +36,9 @@ class MockModule(Module):
         return 1
 
     @property
-    def feature_to_scope(self) -> list:
+    def feature_to_scope(self) -> np.ndarray:
         """Return list of scopes per feature."""
-        return [Scope([0])]
+        return np.array([Scope([0])]).view(-1, 1)
 
     @cached
     def log_likelihood(self, data, cache: Optional[Cache] = None):

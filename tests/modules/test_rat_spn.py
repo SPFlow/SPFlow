@@ -1,5 +1,6 @@
 from itertools import product
 
+import numpy as np
 import pytest
 import torch
 
@@ -183,3 +184,113 @@ def test_multidistribution_input(region_nodes, leaves, num_reps, root_nodes, out
     samples = model.sample(sampling_ctx=sampling_ctx)
 
     assert samples.shape == (1, out_features_1 + out_features_2)
+
+
+def test_rat_spn_feature_to_scope():
+    """Test feature_to_scope delegates to root_node."""
+    num_features = 64
+    leaf_cls = Normal
+    leaf_layer = make_leaf(cls=leaf_cls, out_channels=3, out_features=num_features, num_repetitions=1)
+
+    model = RatSPN(
+        leaf_modules=[leaf_layer],
+        n_root_nodes=2,
+        n_region_nodes=4,
+        num_repetitions=1,
+        depth=1,
+        outer_product=False,
+        split_halves=True,
+    )
+
+    # Get feature_to_scope from both RatSPN and root_node
+    feature_scopes = model.feature_to_scope
+    root_scopes = model.root_node.feature_to_scope
+
+    # Should delegate to root_node's feature_to_scope
+    assert np.array_equal(feature_scopes, root_scopes)
+
+    # Check shape matches number of features in scope
+    assert feature_scopes.shape[0] == len(model.scope)
+
+    # All elements should be Scope objects
+    assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
+
+
+def test_rat_spn_feature_to_scope_single_root_node():
+    """Test feature_to_scope when n_root_nodes=1."""
+    num_features = 4
+    leaf_cls = Normal
+    leaf_layer = make_leaf(cls=leaf_cls, out_channels=2, out_features=num_features, num_repetitions=1)
+
+    model = RatSPN(
+        leaf_modules=[leaf_layer],
+        n_root_nodes=1,
+        n_region_nodes=3,
+        num_repetitions=1,
+        depth=1,
+        outer_product=False,
+        split_halves=False,
+    )
+
+    feature_scopes = model.feature_to_scope
+
+    # Verify delegation to root_node
+    assert np.array_equal(feature_scopes, model.root_node.feature_to_scope)
+
+    # Verify shape and Scope objects
+    assert feature_scopes.shape[0] == num_features
+    assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
+
+
+def test_rat_spn_feature_to_scope_multiple_repetitions():
+    """Test feature_to_scope with num_repetitions > 1."""
+    num_features = 64
+    leaf_cls = Normal
+
+    for num_reps in [1, 2, 3]:
+        leaf_layer = make_leaf(
+            cls=leaf_cls, out_channels=4, out_features=num_features, num_repetitions=num_reps
+        )
+
+        model = RatSPN(
+            leaf_modules=[leaf_layer],
+            n_root_nodes=2,
+            n_region_nodes=3,
+            num_repetitions=num_reps,
+            depth=1,
+            outer_product=False,
+            split_halves=True,
+        )
+
+        feature_scopes = model.feature_to_scope
+
+        # Should delegate correctly regardless of repetitions
+        assert np.array_equal(feature_scopes, model.root_node.feature_to_scope)
+        assert feature_scopes.shape[0] == num_features
+        assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
+
+
+def test_rat_spn_feature_to_scope_split_variants():
+    """Test feature_to_scope with different split strategies."""
+    num_features = 64
+    leaf_cls = Normal
+
+    for use_split_halves in [True, False]:
+        leaf_layer = make_leaf(cls=leaf_cls, out_channels=3, out_features=num_features, num_repetitions=1)
+
+        model = RatSPN(
+            leaf_modules=[leaf_layer],
+            n_root_nodes=2,
+            n_region_nodes=4,
+            num_repetitions=1,
+            depth=1,
+            outer_product=False,
+            split_halves=use_split_halves,
+        )
+
+        feature_scopes = model.feature_to_scope
+
+        # Should work with both split strategies
+        assert np.array_equal(feature_scopes, model.root_node.feature_to_scope)
+        assert feature_scopes.shape[0] == num_features
+        assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())

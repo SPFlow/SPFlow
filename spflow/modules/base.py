@@ -6,6 +6,7 @@ and scope management with PyTorch integration.
 """
 
 from __future__ import annotations
+import numpy as np
 
 from abc import ABC, abstractmethod
 
@@ -81,11 +82,12 @@ class Module(nn.Module, ABC):
 
     @property
     @abstractmethod
-    def feature_to_scope(self) -> list[Scope]:
+    def feature_to_scope(self) -> np.ndarray:
         """Mapping from output features to their respective scopes.
 
         Returns:
-            list[Scope]: List of scopes, one for each output feature.
+            np.ndarray[Scope]: 2D-array of scopes. Each row corresponds to an output feature,
+                each column to a repetition.
         """
         pass
 
