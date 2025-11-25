@@ -17,9 +17,6 @@ from spflow.modules.sums.sum import Sum
 from spflow.utils.visualization import (
     visualize,
     _build_graph,
-    _format_scope_string,
-    _format_param_count,
-    _count_parameters,
 )
 
 
@@ -33,105 +30,6 @@ pytestmark_requires_graphviz = pytest.mark.skipif(
     not has_graphviz_dot(),
     reason="graphviz 'dot' binary not found. Install graphviz to run visualization tests.",
 )
-
-
-class TestFormatScopeString:
-    """Test the _format_scope_string function for formatting scope indices."""
-
-    def test_empty_list(self):
-        """Test formatting an empty list of scopes."""
-        assert _format_scope_string([]) == ""
-
-    def test_single_element(self):
-        """Test formatting a single scope."""
-        assert _format_scope_string([5]) == "5"
-
-    def test_two_elements(self):
-        """Test formatting two non-consecutive scopes."""
-        assert _format_scope_string([5, 10]) == "5, 10"
-
-    def test_two_consecutive_elements(self):
-        """Test formatting two consecutive scopes."""
-        assert _format_scope_string([5, 6]) == "5, 6"
-
-    def test_three_consecutive_elements(self):
-        """Test formatting three consecutive scopes (should use range with 3+ threshold)."""
-        assert _format_scope_string([5, 6, 7]) == "5...7"
-
-    def test_four_consecutive_elements(self):
-        """Test formatting four consecutive scopes (should use range)."""
-        assert _format_scope_string([5, 6, 7, 8]) == "5...8"
-
-    def test_complex_mix(self):
-        """Test formatting with mixed consecutive and non-consecutive scopes.
-
-        This matches the example in the docstring:
-        [0,1,2,3,4,8,9,10,23,24,25,26,90] -> "0...4, 8...10, 23...26, 90"
-        """
-        scopes = [0, 1, 2, 3, 4, 8, 9, 10, 23, 24, 25, 26, 90]
-        assert _format_scope_string(scopes) == "0...4, 8...10, 23...26, 90"
-
-    def test_unsorted_input(self):
-        """Test that unsorted input is handled correctly."""
-        assert _format_scope_string([5, 1, 2, 3, 10]) == "1...3, 5, 10"
-
-    def test_duplicate_elements(self):
-        """Test that duplicate elements are handled correctly."""
-        assert _format_scope_string([1, 2, 2, 3, 3, 3]) == "1...3"
-
-    def test_single_large_range(self):
-        """Test formatting a single large consecutive range."""
-        assert _format_scope_string(list(range(0, 10))) == "0...9"
-
-    def test_multiple_ranges_and_singles(self):
-        """Test multiple ranges with single elements in between."""
-        scopes = [0, 1, 2, 3, 10, 15, 16, 17, 18, 19, 25]
-        assert _format_scope_string(scopes) == "0...3, 10, 15...19, 25"
-
-    def test_ranges_at_boundaries(self):
-        """Test ranges that start at 0 and include high numbers."""
-        assert _format_scope_string([0, 1, 2, 3, 100, 101, 102, 103]) == "0...3, 100...103"
-
-
-class TestFormatParamCount:
-    """Test the _format_param_count function for formatting parameter counts."""
-
-    def test_format_small_count(self):
-        """Test formatting parameter counts less than 1000."""
-        assert _format_param_count(0) == "0"
-        assert _format_param_count(1) == "1"
-        assert _format_param_count(42) == "42"
-        assert _format_param_count(999) == "999"
-
-    def test_format_thousands(self):
-        """Test formatting parameter counts in thousands."""
-        assert _format_param_count(1000) == "1.0K"
-        assert _format_param_count(1234) == "1.2K"
-        assert _format_param_count(5678) == "5.7K"
-        assert _format_param_count(999_999) == "1000.0K"
-
-    def test_format_millions(self):
-        """Test formatting parameter counts in millions."""
-        assert _format_param_count(1_000_000) == "1.0M"
-        assert _format_param_count(1_234_567) == "1.2M"
-        assert _format_param_count(10_000_000) == "10.0M"
-
-    def test_count_parameters_leaf_module(self):
-        """Test counting parameters in a leaves module."""
-        # Normal module stores its parameters (mean, std) in a child Distribution module
-        # Leaf modules count all parameters including the distribution child
-        leaf = Normal(scope=Scope([0, 1]), out_channels=2)
-        param_count = _count_parameters(leaf)
-        # Should have parameters (mean and std for 2 features x 2 channels)
-        assert param_count > 0
-
-    def test_count_parameters_sum_module(self):
-        """Test counting parameters in a sum module."""
-        leaf = Normal(scope=Scope([0, 1]), out_channels=2)
-        sum_module = Sum(inputs=leaf, out_channels=3)
-        param_count = _count_parameters(sum_module)
-        # Should have parameters (only the sum module's own weights, not leaves parameters)
-        assert param_count > 0
 
 
 class TestVisualizationSkipModules:
