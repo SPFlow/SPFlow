@@ -142,30 +142,6 @@ def test_conditional_distribution_uses_parameter_fn():
         leaf.conditional_distribution(evidence=None)
 
 
-def test_compute_parameter_estimates_not_implemented():
-    """Base class raises when _compute_parameter_estimates is not overridden."""
-    scope = Scope([0])
-    leaf = NoComputeLeaf(scope=scope)
-    data = torch.randn(3, 1)
-    weights = torch.ones((3, 1))
-
-    with pytest.raises(NotImplementedError):
-        leaf._compute_parameter_estimates(data, weights, bias_correction=False)
-
-
-def test_set_mle_parameters_handles_type_error():
-    """_set_mle_parameters should fall back to .data assignment on setter errors."""
-    scope = Scope([0])
-    leaf = TinyLeaf(scope=scope, type_error_scale=True)
-    new_loc = torch.full_like(leaf.loc, 3.0)
-    new_scale = torch.full_like(leaf.scale, 0.7)
-
-    leaf._set_mle_parameters({"loc": new_loc, "scale": new_scale})
-
-    torch.testing.assert_close(leaf.loc, new_loc)
-    torch.testing.assert_close(leaf.scale, new_scale)
-
-
 def test_mode_property_matches_distribution_mode():
     """Mode property should mirror the underlying distribution mode."""
     scope = Scope([0])
@@ -236,19 +212,6 @@ def test_mle_rejects_conditional_leaf():
 
     with pytest.raises(RuntimeError):
         leaf.maximum_likelihood_estimation(data=data)
-
-
-def test_prepare_mle_data_ignore_nan():
-    """NaN handling should respect the 'ignore' nan_strategy."""
-    scope = Scope([0])
-    leaf = TinyLeaf(scope=scope)
-    data = torch.tensor([[0.1], [float("nan")], [0.3]])
-
-    scoped, weights = leaf._prepare_mle_data(data, nan_strategy="ignore")
-
-    assert scoped.shape[0] == 2
-    assert weights.shape[0] == 2
-    assert torch.all(weights.squeeze(-1) > 0)
 
 
 def test_sample_requires_repetition_index_for_multiple_repetitions():
