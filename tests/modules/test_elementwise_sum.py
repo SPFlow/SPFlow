@@ -8,12 +8,11 @@ from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.meta import Scope
-from spflow.modules.leaves import Normal
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.sums.elementwise_sum import ElementwiseSum
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
-from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf
+from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, DummyLeaf
 
 in_channels_values = [1, 4]
 out_channels_values = [1, 5]
@@ -40,8 +39,8 @@ def make_sum(
         scope_b = Scope(list(range(out_features)))
     else:
         scope_a, scope_b = scopes
-    inputs_a = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_a, num_repetitions=num_repetitions)
-    inputs_b = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_b, num_repetitions=num_repetitions)
+    inputs_a = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_a, num_repetitions=num_repetitions)
+    inputs_b = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_b, num_repetitions=num_repetitions)
     inputs = [inputs_a, inputs_b]
 
     return ElementwiseSum(
@@ -72,13 +71,13 @@ def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, 
 )
 def test_log_likelihood_two_product_inputs(in_channels: int, out_channels: int, out_features: int, num_reps):
     inputs_a = make_leaf(
-        cls=Normal,
+        cls=DummyLeaf,
         out_channels=in_channels,
         scope=Scope(range(0, out_features // 2)),
         num_repetitions=num_reps,
     )
     inputs_b = make_leaf(
-        cls=Normal,
+        cls=DummyLeaf,
         out_channels=in_channels,
         scope=Scope(
             range(out_features // 2, out_features),
@@ -89,13 +88,13 @@ def test_log_likelihood_two_product_inputs(in_channels: int, out_channels: int, 
     prod_0 = ElementwiseProduct(inputs=inputs)
 
     inputs_a = make_leaf(
-        cls=Normal,
+        cls=DummyLeaf,
         out_channels=in_channels,
         scope=Scope(range(0, out_features // 2)),
         num_repetitions=num_reps,
     )
     inputs_b = make_leaf(
-        cls=Normal,
+        cls=DummyLeaf,
         out_channels=in_channels,
         scope=Scope(range(out_features // 2, out_features)),
         num_repetitions=num_reps,
@@ -118,16 +117,16 @@ def test_log_likelihood_broadcasting_channels(out_channels: int):
     in_channels_a = 1
     in_channels_b = 3
     out_features = 2
-    inputs_a_0 = make_leaf(cls=Normal, out_channels=in_channels_a, scope=Scope(range(0, out_features // 2)))
+    inputs_a_0 = make_leaf(cls=DummyLeaf, out_channels=in_channels_a, scope=Scope(range(0, out_features // 2)))
     inputs_a_1 = make_leaf(
-        cls=Normal, out_channels=in_channels_a, scope=Scope(range(out_features // 2, out_features))
+        cls=DummyLeaf, out_channels=in_channels_a, scope=Scope(range(out_features // 2, out_features))
     )
     inputs = [inputs_a_0, inputs_a_1]
     prod_0 = ElementwiseProduct(inputs=inputs)
 
-    inputs_b_0 = make_leaf(cls=Normal, out_channels=in_channels_b, scope=Scope(range(0, out_features // 2)))
+    inputs_b_0 = make_leaf(cls=DummyLeaf, out_channels=in_channels_b, scope=Scope(range(0, out_features // 2)))
     inputs_b_1 = make_leaf(
-        cls=Normal, out_channels=in_channels_b, scope=Scope(range(out_features // 2, out_features))
+        cls=DummyLeaf, out_channels=in_channels_b, scope=Scope(range(out_features // 2, out_features))
     )
     inputs = [inputs_b_0, inputs_b_1]
     prod_1 = ElementwiseProduct(inputs=inputs)
@@ -171,13 +170,13 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps
 def test_sample_two_product_inputs(in_channels: int, out_channels: int, out_features: int, num_reps):
     n_samples = 100
     inputs_a = make_leaf(
-        cls=Normal,
+        cls=DummyLeaf,
         out_channels=in_channels,
         scope=Scope(range(0, out_features // 2)),
         num_repetitions=num_reps,
     )
     inputs_b = make_leaf(
-        cls=Normal,
+        cls=DummyLeaf,
         out_channels=in_channels,
         scope=Scope(range(out_features // 2, out_features)),
         num_repetitions=num_reps,
@@ -186,13 +185,13 @@ def test_sample_two_product_inputs(in_channels: int, out_channels: int, out_feat
     prod_0 = ElementwiseProduct(inputs=inputs)
 
     inputs_a = make_leaf(
-        cls=Normal,
+        cls=DummyLeaf,
         out_channels=in_channels,
         scope=Scope(range(0, out_features // 2)),
         num_repetitions=num_reps,
     )
     inputs_b = make_leaf(
-        cls=Normal,
+        cls=DummyLeaf,
         out_channels=in_channels,
         scope=Scope(range(out_features // 2, out_features)),
         num_repetitions=num_reps,
@@ -226,8 +225,8 @@ def test_sample_two_inputs_broadcasting_channels(out_channels: int):
     out_features = 10
 
     # Define the inputs
-    inputs_a = make_leaf(cls=Normal, out_channels=in_channels_a, out_features=out_features)
-    inputs_b = make_leaf(cls=Normal, out_channels=in_channels_b, out_features=out_features)
+    inputs_a = make_leaf(cls=DummyLeaf, out_channels=in_channels_a, out_features=out_features)
+    inputs_b = make_leaf(cls=DummyLeaf, out_channels=in_channels_b, out_features=out_features)
     inputs = [inputs_a, inputs_b]
 
     # Create the module
@@ -556,12 +555,12 @@ def test_feature_to_scope_with_product_inputs():
     # Product joins scopes element-wise
     scope_a = Scope(list(range(0, 2)))
     scope_b = Scope(list(range(2, 4)))
-    leaf_a1 = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_a, num_repetitions=num_reps)
-    leaf_b1 = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_b, num_repetitions=num_reps)
+    leaf_a1 = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_a, num_repetitions=num_reps)
+    leaf_b1 = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_b, num_repetitions=num_reps)
     prod1 = ElementwiseProduct(inputs=[leaf_a1, leaf_b1])
 
-    leaf_a2 = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_a, num_repetitions=num_reps)
-    leaf_b2 = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_b, num_repetitions=num_reps)
+    leaf_a2 = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_a, num_repetitions=num_reps)
+    leaf_b2 = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_b, num_repetitions=num_reps)
     prod2 = ElementwiseProduct(inputs=[leaf_a2, leaf_b2])
 
     # Create ElementwiseSum module with product inputs

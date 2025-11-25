@@ -5,13 +5,10 @@ from typing import Optional
 
 import pytest
 import torch
+from torch import nn
 
 from spflow.meta import Scope
 from spflow.modules.base import Module
-from spflow.modules.leaves import Normal
-from spflow.modules.ops import Cat
-from spflow.modules.products import Product
-from spflow.modules.sums import Sum
 from spflow.utils.cache import Cache, cached
 from spflow.utils.replace import replace
 
@@ -57,6 +54,109 @@ class MockModule(Module):
     def non_cached_method(self):
         """Method without @cached decorator."""
         return "original"
+
+
+class StubModule(Module):
+    """Stub module with configurable output for testing replace() with different module types."""
+
+    def __init__(self, scope: Scope, out_channels: int = 1):
+        super().__init__()
+        self._scope = scope
+        self._out_channels = out_channels
+
+    @property
+    def out_features(self) -> int:
+        return len(self._scope.query)
+
+    @property
+    def out_channels(self) -> int:
+        return self._out_channels
+
+    @property
+    def feature_to_scope(self) -> np.ndarray:
+        """Return scopes for each feature."""
+        scopes = [[Scope([rv])] for rv in self._scope.query]
+        return np.array(scopes)
+
+    def log_likelihood(self, data, cache: Optional[Cache] = None):
+        """Return fake log-likelihood with appropriate shape."""
+        batch_size = data.shape[0]
+        # Return zeros so replacements are visibly different
+        return torch.zeros(batch_size, self._out_channels, 1)
+
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
+        """Return fake samples."""
+        return torch.randn(num_samples or 1, len(self._scope.query))
+
+    def marginalize(self, marg_rvs, prune=True, cache=None):
+        """Return marginalized version."""
+        return self
+
+
+class StubProduct(StubModule):
+    """Stub product module that accepts inputs."""
+
+    def __init__(self, inputs, out_channels: int = 1):
+        if isinstance(inputs, list):
+            scope = inputs[0]._scope
+        else:
+            scope = inputs._scope
+        super().__init__(scope, out_channels)
+        if isinstance(inputs, list):
+            self.inputs = nn.ModuleList(inputs)
+        else:
+            self.inputs = inputs
+
+    def log_likelihood(self, data, cache: Optional[Cache] = None):
+        """Call input's log_likelihood and return combined result."""
+        if isinstance(self.inputs, nn.ModuleList):
+            return self.inputs[0].log_likelihood(data, cache)
+        else:
+            return self.inputs.log_likelihood(data, cache)
+
+
+class StubSum(StubModule):
+    """Stub sum module that accepts inputs."""
+
+    def __init__(self, inputs, out_channels: int = 1):
+        if isinstance(inputs, list):
+            scope = inputs[0]._scope
+        else:
+            scope = inputs._scope
+        super().__init__(scope, out_channels)
+        if isinstance(inputs, list):
+            self.inputs = nn.ModuleList(inputs)
+        else:
+            self.inputs = inputs
+
+    def log_likelihood(self, data, cache: Optional[Cache] = None):
+        """Call input's log_likelihood and return result."""
+        if isinstance(self.inputs, nn.ModuleList):
+            return self.inputs[0].log_likelihood(data, cache)
+        else:
+            return self.inputs.log_likelihood(data, cache)
+
+
+class StubCat(StubModule):
+    """Stub concatenation module that accepts list of inputs."""
+
+    def __init__(self, inputs, dim: int = 0):
+        # Combine scopes from all inputs
+        all_query = set()
+        for inp in inputs:
+            all_query.update(inp._scope.query)
+        scope = Scope(sorted(all_query))
+        out_channels = sum(inp.out_channels for inp in inputs)
+        super().__init__(scope, out_channels)
+        self.inputs = nn.ModuleList(inputs)
+
+    def log_likelihood(self, data, cache: Optional[Cache] = None):
+        """Call all inputs' log_likelihood and aggregate results."""
+        results = []
+        for inp in self.inputs:
+            results.append(inp.log_likelihood(data, cache))
+        # Stack results along a new dimension
+        return torch.stack(results, dim=1)
 
 
 class TestBasicReplacement:
@@ -268,44 +368,44 @@ class TestErrorHandling:
             pass
 
 
-class TestIntegrationWithRealModules:
-    """Integration tests with actual SPFlow modules."""
+class TestIntegrationWithModuleStubs:
+    """Integration tests with stub modules to verify replace() works across module hierarchies."""
 
     def test_replace_sum_log_likelihood(self):
         """Test replacing log_likelihood on Sum module."""
-        # Create a simple structure: Sum(Normal)
+        # Create a simple structure: Sum(StubModule)
         scope = Scope([0, 1])
-        normal = Normal(scope=scope, out_channels=2)
-        sum_module = Sum(inputs=normal, out_channels=2)
+        stub = StubModule(scope=scope, out_channels=2)
+        sum_module = StubSum(inputs=stub, out_channels=2)
 
         def custom_ll(self, data, cache=None):
             # Custom implementation that returns ones
             batch_size = data.shape[0]
-            # Match the shape of normal's output (4D for this case)
-            return torch.ones(batch_size, 2, 1, 1)
+            return torch.ones(batch_size, 2, 1)
 
         data = torch.randn(3, 2)  # 3 samples, 2 features
 
         # Get original result
         original_result = sum_module.log_likelihood(data)
         original_shape = original_result.shape
-        original_batch_size = original_shape[0]
+        assert original_shape[0] == 3  # batch size
 
         # Use custom implementation
-        with replace(Sum.log_likelihood, custom_ll):
+        with replace(StubSum.log_likelihood, custom_ll):
             custom_result = sum_module.log_likelihood(data)
             assert custom_result.shape[0] == 3  # batch size preserved
+            assert torch.equal(custom_result, torch.ones(3, 2, 1))
 
         # Original restored
         restored_result = sum_module.log_likelihood(data)
         assert torch.equal(restored_result, original_result)
 
     def test_replace_in_nested_structure(self):
-        """Test replacement works in a nested structure."""
+        """Test replacement works in a nested structure with multiple module types."""
         scope = Scope([0, 1])
-        normal = Normal(scope=scope, out_channels=2)
-        sum_module = Sum(inputs=normal, out_channels=2)
-        product_module = Product(inputs=sum_module)
+        stub = StubModule(scope=scope, out_channels=2)
+        sum_module = StubSum(inputs=stub, out_channels=2)
+        product_module = StubProduct(inputs=sum_module)
 
         call_count = 0
 
@@ -322,7 +422,7 @@ class TestIntegrationWithRealModules:
         original_result = product_module.log_likelihood(data)
 
         # With replacement - the custom Sum.log_likelihood should be called
-        with replace(Sum.log_likelihood, custom_sum_ll):
+        with replace(StubSum.log_likelihood, custom_sum_ll):
             custom_result = product_module.log_likelihood(data)
             assert call_count == 1  # Sum.log_likelihood was called once
 
@@ -330,19 +430,19 @@ class TestIntegrationWithRealModules:
         assert not torch.equal(custom_result, original_result)
 
     def test_replace_multiple_instances_same_class(self):
-        """Test that replacement affects all instances of a class in a tree."""
+        """Test that replacement affects all instances of a class in a hierarchy."""
         scope1 = Scope([0, 1])
         scope2 = Scope([2, 3])
 
         # Create a tree with multiple Sum nodes
-        normal1 = Normal(scope=scope1, out_channels=2)
-        sum1 = Sum(inputs=normal1, out_channels=2)
+        stub1 = StubModule(scope=scope1, out_channels=2)
+        sum1 = StubSum(inputs=stub1, out_channels=2)
 
-        normal2 = Normal(scope=scope2, out_channels=2)
-        sum2 = Sum(inputs=normal2, out_channels=2)
+        stub2 = StubModule(scope=scope2, out_channels=2)
+        sum2 = StubSum(inputs=stub2, out_channels=2)
 
         # Cat both sums together
-        combined = Cat(inputs=[sum1, sum2], dim=1)
+        combined = StubCat(inputs=[sum1, sum2], dim=1)
 
         call_count = 0
 
@@ -357,7 +457,7 @@ class TestIntegrationWithRealModules:
         data = torch.randn(2, 4)  # 4 features for scopes [0,1,2,3]
 
         # With replacement, both Sum instances should use custom
-        with replace(Sum.log_likelihood, custom_ll):
+        with replace(StubSum.log_likelihood, custom_ll):
             combined.log_likelihood(data)
             # Both sum1 and sum2 should have called the custom function
             assert call_count == 2

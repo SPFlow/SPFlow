@@ -6,11 +6,10 @@ import torch
 from spflow.exceptions import ScopeError
 from spflow.learn import expectation_maximization
 from spflow.meta import Scope
-from spflow.modules.leaves import Normal
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.products.outer_product import OuterProduct
 from spflow.utils.sampling_context import SamplingContext
-from tests.utils.leaves import make_normal_leaf, make_data, make_leaf
+from tests.utils.leaves import make_normal_leaf, make_data, make_leaf, DummyLeaf
 
 cls_values = [ElementwiseProduct, OuterProduct]
 in_channels_values = [1, 4]
@@ -27,9 +26,9 @@ def make_module(cls, out_features: int, in_channels: int, scopes=None, num_repet
         scope_c = Scope(list(range(out_features * 2, out_features * 3)))
     else:
         scope_a, scope_b, scope_c = scopes
-    inputs_a = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_a, num_repetitions=num_repetitions)
-    inputs_b = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_b, num_repetitions=num_repetitions)
-    inputs_c = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_c, num_repetitions=num_repetitions)
+    inputs_a = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_a, num_repetitions=num_repetitions)
+    inputs_b = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_b, num_repetitions=num_repetitions)
+    inputs_c = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_c, num_repetitions=num_repetitions)
     inputs = [inputs_a, inputs_b, inputs_c]
 
     return cls(inputs=inputs)
@@ -43,7 +42,7 @@ def test_log_likelihood(cls, in_channels: int, out_features: int, num_reps):
     module = make_module(
         cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps
     )
-    data = make_data(cls=Normal, out_features=out_features * len(module.inputs))
+    data = make_data(cls=DummyLeaf, out_features=out_features * len(module.inputs))
     lls = module.log_likelihood(data)
     # Always expect 4D output [batch, features, channels, num_reps]
     assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
@@ -61,16 +60,16 @@ def test_log_likelihood_broadcasting_channels(cls, out_features: int, num_reps):
     scope_c = Scope(list(range(out_features * 2, out_features * 3)))
 
     # Define the inputs
-    inputs_a = make_leaf(cls=Normal, out_channels=in_channels_a, scope=scope_a, num_repetitions=num_reps)
-    inputs_b = make_leaf(cls=Normal, out_channels=in_channels_b, scope=scope_b, num_repetitions=num_reps)
-    inputs_c = make_leaf(cls=Normal, out_channels=in_channels_c, scope=scope_c, num_repetitions=num_reps)
+    inputs_a = make_leaf(cls=DummyLeaf, out_channels=in_channels_a, scope=scope_a, num_repetitions=num_reps)
+    inputs_b = make_leaf(cls=DummyLeaf, out_channels=in_channels_b, scope=scope_b, num_repetitions=num_reps)
+    inputs_c = make_leaf(cls=DummyLeaf, out_channels=in_channels_c, scope=scope_c, num_repetitions=num_reps)
     inputs = [inputs_a, inputs_b, inputs_c]
 
     # Create the module
     module = cls(inputs=inputs)
 
     # Create the data
-    data = make_data(cls=Normal, out_features=out_features * len(module.inputs))
+    data = make_data(cls=DummyLeaf, out_features=out_features * len(module.inputs))
 
     # Compute the log-likelihood
     lls = module.log_likelihood(data)
@@ -114,9 +113,9 @@ def test_sample_two_inputs_broadcasting_channels(cls, out_features: int, num_rep
     scope_c = Scope(list(range(out_features * 2, out_features * 3)))
 
     # Define the inputs
-    inputs_a = make_leaf(cls=Normal, out_channels=in_channels_a, scope=scope_a, num_repetitions=num_reps)
-    inputs_b = make_leaf(cls=Normal, out_channels=in_channels_b, scope=scope_b, num_repetitions=num_reps)
-    inputs_c = make_leaf(cls=Normal, out_channels=in_channels_c, scope=scope_c, num_repetitions=num_reps)
+    inputs_a = make_leaf(cls=DummyLeaf, out_channels=in_channels_a, scope=scope_a, num_repetitions=num_reps)
+    inputs_b = make_leaf(cls=DummyLeaf, out_channels=in_channels_b, scope=scope_b, num_repetitions=num_reps)
+    inputs_c = make_leaf(cls=DummyLeaf, out_channels=in_channels_c, scope=scope_c, num_repetitions=num_reps)
     inputs = [inputs_a, inputs_b, inputs_c]
 
     # Create the module
@@ -155,7 +154,7 @@ def test_expectation_maximization(cls, in_channels: int, out_features: int, num_
     module = make_module(
         cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps
     )
-    data = make_data(cls=Normal, out_features=out_features * len(module.inputs))
+    data = make_data(cls=DummyLeaf, out_features=out_features * len(module.inputs))
     expectation_maximization(module, data, max_steps=2)
 
 

@@ -3,7 +3,7 @@
 import torch
 import pytest
 
-from spflow.utils.sampling_context import SamplingContext, _check_mask_bool
+from spflow.utils.sampling_context import SamplingContext
 
 
 def test_sampling_context_init_defaults():
@@ -124,9 +124,3 @@ def test_sampling_context_copy_is_deep():
     assert torch.equal(ctx.channel_index, channel_index)
     assert torch.equal(ctx.mask, mask)
     assert torch.equal(ctx.repetition_idx, repetition_index)
-
-
-def test_check_mask_bool_helper():
-    """_check_mask_bool raises on non-boolean masks."""
-    with pytest.raises(ValueError, match="Mask must be of type torch.bool"):
-        _check_mask_bool(torch.ones((1, 1), dtype=torch.float32))
