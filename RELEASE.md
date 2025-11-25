@@ -102,8 +102,8 @@ Before starting the release process, ensure:
 
 ```bash
 # Ensure you're on the main development branch
-git checkout dev/torch
-git pull origin dev/torch
+git checkout develop
+git pull origin develop
 
 # Create release branch (optional, for preparation)
 git checkout -b release/vX.Y.Z
@@ -185,15 +185,15 @@ git show vX.Y.Z
 
 ```bash
 # Push commit to remote
-git push origin dev/torch
+git push origin develop
 
 # Push tag
 git push origin vX.Y.Z
 
-# If using release branch, merge to dev/torch first
-git checkout dev/torch
+# If using release branch, merge to develop first
+git checkout develop
 git merge --no-ff release/vX.Y.Z
-git push origin dev/torch
+git push origin develop
 git push origin vX.Y.Z
 ```
 
@@ -251,13 +251,13 @@ rm -rf verify_release
 - [ ] Update any version-specific links
 - [ ] Announce release in documentation
 
-### Step 3: Merge to Master (Stable Branch)
+### Step 3: Merge to Main (Stable Branch)
 
 ```bash
-# Merge stable releases to master branch
-git checkout master
+# Merge stable releases to main branch
+git checkout main
 git merge --no-ff vX.Y.Z
-git push origin master
+git push origin main
 ```
 
 ### Step 5: Prepare for Next Release
@@ -281,6 +281,6 @@ EOF
 
 git add spflow/__init__.py CHANGELOG.md
 git commit -m "chore: prepare for next development cycle"
-git push origin dev/torch
+git push origin develop
 ```
 

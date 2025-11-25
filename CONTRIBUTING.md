@@ -143,7 +143,7 @@ Closes #123"
 1. **Update your branch** with latest upstream changes:
    ```bash
    git fetch upstream
-   git rebase upstream/dev/torch
+   git rebase upstream/develop
    ```
 
 2. **Push your branch** to your fork:
@@ -152,7 +152,7 @@ Closes #123"
    ```
 
 3. **Open a Pull Request** on GitHub:
-   - Target the `dev/torch` branch (or `master` for hotfixes)
+   - Target the `develop` branch (or `main` for hotfixes)
    - Use a descriptive title following commit conventions
    - Reference related issues (e.g., "Fixes #123")
    - Fill out the PR template
