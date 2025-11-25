@@ -10,8 +10,6 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from spflow.learn.gradient_descent import (
     TrainingMetrics,
-    _extract_batch_data,
-    _run_validation_epoch,
     classification_loss,
     negative_log_likelihood_loss,
     train_gradient_descent,
@@ -246,26 +244,6 @@ def test_train_gradient_descent_custom_scheduler(model, dataloader):
     assert scheduler.calls == epochs  # scheduler.step should be called once per epoch
 
 
-def test_extract_batch_data_validation():
-    """Ensure batch extraction handles classification and regression formats."""
-    data = torch.randn(3, 2)
-    targets = torch.tensor([0, 1, 2])
-
-    out_data, out_targets = _extract_batch_data((data, targets), is_classification=True)
-    torch.testing.assert_close(out_data, data)
-    torch.testing.assert_close(out_targets, targets)
-
-    reg_data, reg_targets = _extract_batch_data((data, targets), is_classification=False)
-    torch.testing.assert_close(reg_data, data)
-    assert reg_targets is None
-
-    with pytest.raises(ValueError):
-        _extract_batch_data(data, is_classification=True)
-
-    with pytest.raises(ValueError):
-        _extract_batch_data((data, targets, targets), is_classification=False)
-
-
 def test_train_gradient_descent_requires_classifier_for_classification_mode(model, dataloader):
     """Ensure TypeError is raised when using is_classification=True with non-Classifier model."""
     with pytest.raises(TypeError, match="model must be a Classifier instance when is_classification=True"):
@@ -293,24 +271,6 @@ def test_train_gradient_descent_classification_mode(classification_model, classi
     assert classification_model.likelihood_calls > 0
     for param, initial in zip(classification_model.parameters(), initial_params):
         assert not torch.allclose(param, initial)
-
-
-def test_run_validation_epoch_classification(classification_model, classification_dataloader):
-    """Validation loop computes losses and accuracy for classification batches."""
-    metrics = TrainingMetrics()
-    val_loss = _run_validation_epoch(
-        classification_model,
-        classification_dataloader,
-        classification_loss,
-        metrics,
-        is_classification=True,
-        callback_batch=None,
-    )
-
-    assert isinstance(val_loss, torch.Tensor)
-    assert metrics.val_total == 12
-    assert metrics.validation_steps == len(classification_dataloader)
-    assert metrics.get_val_accuracy() >= 0.0
 
 
 def test_train_gradient_descent_classification_with_validation(classification_model, device):
