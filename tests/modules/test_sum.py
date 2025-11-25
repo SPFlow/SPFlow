@@ -8,12 +8,11 @@ from spflow.exceptions import InvalidParameterCombinationError
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.meta import Scope
-from spflow.modules.leaves import Normal
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.sums import Sum
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
-from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf
+from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, DummyLeaf
 
 in_channels_values = [1, 4]
 out_channels_values = [1, 5]
@@ -60,13 +59,13 @@ def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, 
 )
 def test_log_likelihood_product_inputs(in_channels: int, out_channels: int, out_features: int, num_reps):
     inputs_a = make_leaf(
-        cls=Normal,
+        cls=DummyLeaf,
         out_channels=in_channels,
         scope=Scope(range(0, out_features // 2)),
         num_repetitions=num_reps,
     )
     inputs_b = make_leaf(
-        cls=Normal,
+        cls=DummyLeaf,
         out_channels=in_channels,
         scope=Scope(range(out_features // 2, out_features)),
         num_repetitions=num_reps,
@@ -78,10 +77,7 @@ def test_log_likelihood_product_inputs(in_channels: int, out_channels: int, out_
 
     data = make_normal_data(out_features=out_features)
     lls = module.log_likelihood(data)
-    if num_reps is not None:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
-    else:
-        assert lls.shape == (data.shape[0], module.out_features, module.out_channels)
+    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
@@ -97,10 +93,7 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps
         data = torch.full((n_samples, module.out_features), torch.nan)
         channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
         mask = torch.full((n_samples, module.out_features), True)
-        if num_reps is not None:
-            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-        else:
-            repetition_index = None
+        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
@@ -117,13 +110,13 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps
 def test_sample_product_inputs(in_channels: int, out_channels: int, out_features: int, num_reps):
     n_samples = 100
     inputs_a = make_leaf(
-        cls=Normal,
+        cls=DummyLeaf,
         out_channels=in_channels,
         scope=Scope(range(0, out_features // 2)),
         num_repetitions=num_reps,
     )
     inputs_b = make_leaf(
-        cls=Normal,
+        cls=DummyLeaf,
         out_channels=in_channels,
         scope=Scope(range(out_features // 2, out_features)),
         num_repetitions=num_reps,
@@ -137,10 +130,7 @@ def test_sample_product_inputs(in_channels: int, out_channels: int, out_features
         data = torch.full((n_samples, out_features), torch.nan)
         channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
         mask = torch.full((n_samples, module.out_features), True)
-        if num_reps is not None:
-            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-        else:
-            repetition_index = None
+        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
@@ -175,10 +165,7 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
 
         channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
         mask = torch.full(channel_index.shape, True)
-        if num_reps is not None:
-            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-        else:
-            repetition_index = None
+        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
@@ -287,10 +274,7 @@ def test_invalid_specification_of_out_channels_and_weights(
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
 def test_invalid_parameter_combination(in_channels: int, out_channels: int, out_features: int, num_reps):
-    if num_reps is not None:
-        weights = torch.rand((out_features, in_channels, out_channels, num_reps)) + 1.0
-    else:
-        weights = torch.rand((out_features, in_channels, out_channels)) + 1.0
+    weights = torch.rand((out_features, in_channels, out_channels, num_reps)) + 1.0
     with pytest.raises(InvalidParameterCombinationError):
         make_sum(
             weights=weights, out_channels=out_channels, in_channels=in_channels, num_repetitions=num_reps
@@ -485,8 +469,8 @@ def test_feature_to_scope_with_product_input():
     # since it operates element-wise
     scope_a = Scope(list(range(0, 2)))
     scope_b = Scope(list(range(2, 4)))
-    leaf_a = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_a, num_repetitions=num_reps)
-    leaf_b = make_leaf(cls=Normal, out_channels=in_channels, scope=scope_b, num_repetitions=num_reps)
+    leaf_a = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_a, num_repetitions=num_reps)
+    leaf_b = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_b, num_repetitions=num_reps)
 
     # Create product module - this joins scopes element-wise
     prod = ElementwiseProduct(inputs=[leaf_a, leaf_b])

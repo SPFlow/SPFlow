@@ -5,6 +5,10 @@ from spflow.modules import leaves
 from spflow.modules.leaves import Normal
 from spflow.modules.leaves.base import LeafModule
 
+from torch import Tensor, nn
+
+from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases
+
 
 def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):
     lls = module.log_likelihood(data)
@@ -28,7 +32,7 @@ def evaluate_samples(node: LeafModule, data: torch.Tensor, is_mpe: bool, samplin
 
 def make_normal_leaf(
     scope=None, out_features=None, out_channels=None, num_repetitions=None, mean=None, std=None
-) -> Normal:
+) -> "DummyLeaf":
     """Create a Normal leaves module.
 
     Args:
@@ -57,7 +61,7 @@ def make_normal_leaf(
     # Always create 3D parameters with num_repetitions dimension
     mean = mean if mean is not None else torch.randn(len(scope.query), out_channels, num_repetitions)
     std = std if std is not None else torch.rand(len(scope.query), out_channels, num_repetitions) + 1e-8
-    return Normal(scope=scope, loc=mean, scale=std, num_repetitions=num_repetitions)
+    return DummyLeaf(scope=scope, loc=mean, scale=std, num_repetitions=num_repetitions)
 
 
 def make_normal_data(mean=0.0, std=1.0, num_samples=10, out_features=2):
@@ -376,3 +380,99 @@ def create_conditional_parameter_fn(
         fixed_params=fixed_params if fixed_params else None,
         num_repetitions=num_repetitions,
     )
+
+
+
+
+class DummyLeaf(LeafModule):
+    """Dummy leaf module for testing purposes."""
+    def __init__(
+        self,
+        scope,
+        out_channels: int = None,
+        num_repetitions: int = 1,
+        loc: Tensor = None,
+        scale: Tensor = None,
+        parameter_fn: nn.Module = None,
+        validate_args: bool | None = True,
+    ):
+        super().__init__(
+            scope=scope,
+            out_channels=out_channels,
+            num_repetitions=num_repetitions,
+            params=[loc, scale],
+            parameter_fn=parameter_fn,
+            validate_args=validate_args,
+        )
+
+        loc = init_parameter(param=loc, event_shape=self._event_shape, init=torch.randn)
+        scale = init_parameter(param=scale, event_shape=self._event_shape, init=torch.rand)
+
+        self.loc = nn.Parameter(loc)
+        self.log_scale = nn.Parameter(torch.log(scale))
+
+    @property
+    def scale(self) -> Tensor:
+        """Standard deviation in natural space (read via exp of log_std)."""
+        return torch.exp(self.log_scale)
+
+    @scale.setter
+    def scale(self, value: Tensor) -> None:
+        """Set standard deviation (stores as log_std, no validation after init)."""
+        self.log_scale.data = torch.log(
+            torch.as_tensor(value, dtype=self.log_scale.dtype, device=self.log_scale.device)
+        )
+
+    @property
+    def _supported_value(self):
+        return 0.0
+
+    @property
+    def _torch_distribution_class(self) -> type[torch.distributions.Normal]:
+        return torch.distributions.Normal
+
+    def params(self):
+        return {"loc": self.loc, "scale": self.scale}
+
+    def _compute_parameter_estimates(
+        self, data: Tensor, weights: Tensor, bias_correction: bool
+    ) -> dict[str, Tensor]:
+        """Compute raw MLE estimates for normal distribution (without broadcasting).
+
+        Args:
+            data: Input data tensor.
+            weights: Weight tensor for each data point.
+            bias_correction: Whether to apply bias correction to variance estimate.
+
+        Returns:
+            Dictionary with 'loc' and 'scale' estimates (shape: out_features).
+        """
+        return {"loc": torch.zeros_like(self.loc), "scale": torch.ones_like(self.scale)}
+
+    def _set_mle_parameters(self, params_dict: dict[str, Tensor]) -> None:
+        """Set MLE-estimated parameters for Normal distribution.
+
+        Explicitly handles the two parameter types:
+        - loc: Direct nn.Parameter, update .data attribute
+        - scale: Property with setter, calls property setter which updates log_scale
+
+        Args:
+            params_dict: Dictionary with 'loc' and 'scale' parameter values.
+        """
+        self.loc.data = params_dict["loc"]
+        self.scale = params_dict["scale"]  # Uses property setter
+
+
+    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
+        """Compute weighted mean and standard deviation.
+
+        Args:
+            data: Input data tensor.
+            weights: Weight tensor for each data point.
+            bias_correction: Whether to apply bias correction to variance estimate.
+        """
+        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
+
+        # Broadcast to event_shape and assign directly
+        self.loc.data = self._broadcast_to_event_shape(estimates["loc"])
+        self.scale = self._broadcast_to_event_shape(estimates["scale"])

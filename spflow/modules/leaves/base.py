@@ -103,16 +103,18 @@ class LeafModule(Module, ABC):
         """Returns the parameters of the distribution."""
         pass
 
-    @abstractmethod
     def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute distribution-specific statistics and update parameters.
+        """Compute and set MLE parameter estimates.
 
         Args:
-            data: Scope-filtered data.
-            weights: Normalized weights.
-            bias_correction: Apply bias correction.
+            data: Input data tensor.
+            weights: Weight tensor for each data point.
+            bias_correction: Whether to apply bias correction to variance estimate.
         """
-        pass
+        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
+
+        estimates = {k: self._broadcast_to_event_shape(v) for k, v in estimates.items()}
+        self._set_mle_parameters(estimates)
 
     @abstractmethod
     def _compute_parameter_estimates(

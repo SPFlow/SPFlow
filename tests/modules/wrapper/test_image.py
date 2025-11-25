@@ -11,7 +11,7 @@ from spflow.modules import leaves
 from spflow.modules.products import Product
 from spflow.modules.sums import Sum
 from spflow.modules.wrapper.image_wrapper import ImageWrapper, MarginalizationContext
-from tests.utils.leaves import make_data, make_normal_leaf
+from tests.utils.leaves import DummyLeaf, make_data, make_normal_leaf
 
 num_channel = [1, 3]
 num_repetitions = [1, 3]
@@ -39,7 +39,7 @@ def test_log_likelihood(num_channel: int, num_reps):
     width = 4
     out_features = height * width * num_channel
 
-    data = make_data(cls=leaves.Normal, out_features=out_features, n_samples=5)
+    data = make_data(cls=DummyLeaf, out_features=out_features, n_samples=5)
     data = data.view(data.shape[0], num_channel, height, width)
     lls = module.log_likelihood(data)
     # Always expect 4D output
@@ -77,7 +77,7 @@ def test_expectation_maximization(
     width = 4
 
     module = make_wrapper(num_channel, num_reps)
-    data = make_data(cls=leaves.Normal, out_features=height * width * num_channel, n_samples=20)
+    data = make_data(cls=DummyLeaf, out_features=height * width * num_channel, n_samples=20)
     data = data.reshape(20, num_channel, height, width)
 
     expectation_maximization(module, data, max_steps=10)

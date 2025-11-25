@@ -6,11 +6,10 @@ import torch
 from spflow.exceptions import StructureError
 from spflow.learn import expectation_maximization
 from spflow.meta.data.scope import Scope
-from spflow.modules.leaves import Normal, Bernoulli
 from spflow.modules.rat import Factorize
 from spflow.utils.sampling_context import SamplingContext
 from spflow.utils.sampling_context import init_default_sampling_context
-from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, make_data
+from tests.utils.leaves import DummyLeaf, make_data, make_leaf, make_normal_data, make_normal_leaf
 
 # Constants
 in_channels_values = [1, 3]
@@ -174,8 +173,8 @@ def test_multidistribution_input():
     scope_1 = Scope(list(range(0, out_features_1)))
     scope_2 = Scope(list(range(out_features_1, out_features_1 + out_features_2)))
 
-    cls_1 = Normal
-    cls_2 = Bernoulli
+    cls_1 = DummyLeaf
+    cls_2 = DummyLeaf
 
     module_1 = make_leaf(cls=cls_1, out_channels=out_channels, scope=scope_1, num_repetitions=num_reps)
     data_1 = make_data(cls=cls_1, out_features=out_features_1, n_samples=5)
