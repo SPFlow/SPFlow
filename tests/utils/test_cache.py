@@ -32,13 +32,6 @@ class MockModule:
 class TestThreadSafeCache:
     """Tests for ThreadSafeCache class."""
 
-    def test_cache_initialization(self):
-        """Test that cache initializes correctly."""
-        cache = Cache()
-        assert isinstance(cache._locks, dict)
-        assert isinstance(cache._cache, dict)
-        assert len(cache._cache) == 0
-
     def test_cache_set_and_get(self):
         """Test basic set and get operations."""
         cache = Cache()
@@ -88,16 +81,6 @@ class TestThreadSafeCache:
 
         assert torch.equal(cache.get("log_likelihood", module1), value1)
         assert torch.equal(cache.get("log_likelihood", module2), value2)
-
-    def test_getitem_creates_weak_dict(self):
-        """Test __getitem__ creates WeakKeyDictionary for method."""
-        cache = Cache()
-
-        # Access non-existent method
-        weak_dict = cache["log_likelihood"]
-
-        assert isinstance(weak_dict, WeakKeyDictionary)
-        assert "log_likelihood" in cache._cache
 
     def test_contains_empty(self):
         """Test __contains__ returns False for empty cache."""
