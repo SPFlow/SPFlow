@@ -87,7 +87,7 @@ class Poisson(LeafModule):
         Returns:
             Dictionary with 'rate' estimate (shape: out_features).
         """
-        n_total = weights.sum()
+        n_total = weights.sum(dim=0)
         rate_est = (weights * data).sum(dim=0) / n_total
 
         # Handle edge cases (NaN, zero, or near-zero rate) before broadcasting
@@ -106,17 +106,3 @@ class Poisson(LeafModule):
         """
         self.rate = params_dict["rate"]  # Uses property setter
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute MLE for rate parameter λ.
-
-        For Poisson distribution, the MLE is simply the weighted mean of the data.
-
-        Args:
-            data: Scope-filtered data.
-            weights: Normalized sample weights.
-            bias_correction: Not used for Poisson.
-        """
-        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
-
-        # Broadcast to event_shape and assign - property setter ensures positivity
-        self.rate = self._broadcast_to_event_shape(estimates["rate"])

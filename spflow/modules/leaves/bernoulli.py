@@ -107,7 +107,7 @@ class Bernoulli(LeafModule):
         Returns:
             Dictionary with 'probs' estimate (shape: out_features).
         """
-        n_total = weights.sum()
+        n_total = weights.sum(dim=0)
         n_success = (weights * data).sum(dim=0)
         p_est = n_success / n_total
 
@@ -126,18 +126,3 @@ class Bernoulli(LeafModule):
             params_dict: Dictionary with 'probs' parameter value.
         """
         self.probs = params_dict["probs"]  # Uses property setter
-
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute MLE for success probability p.
-
-        For Bernoulli distribution, the MLE is the weighted proportion of successes.
-
-        Args:
-            data: Scope-filtered data.
-            weights: Normalized sample weights.
-            bias_correction: Not used for Bernoulli.
-        """
-        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
-
-        # Broadcast to event_shape and assign via property setter
-        self.probs = self._broadcast_to_event_shape(estimates["probs"])

@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-import numpy as np
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Callable
 
+import numpy as np
 import torch
-from torch import Tensor, nn
+from torch import Tensor
 
 from spflow.meta.data.scope import Scope
 from spflow.modules.base import Module
 from spflow.utils.cache import Cache, cached
-from spflow.utils.leaves import apply_nan_strategy, _prepare_mle_weights, parse_leaf_args
+from spflow.utils.leaves import apply_nan_strategy, parse_leaf_args
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -111,9 +111,9 @@ class LeafModule(Module, ABC):
             weights: Weight tensor for each data point.
             bias_correction: Whether to apply bias correction to variance estimate.
         """
+        data = data.view(data.shape[0], self.out_features, 1, 1)  # Add channel and repetition dims
         estimates = self._compute_parameter_estimates(data, weights, bias_correction)
 
-        estimates = {k: self._broadcast_to_event_shape(v) for k, v in estimates.items()}
         self._set_mle_parameters(estimates)
 
     @abstractmethod
@@ -293,14 +293,11 @@ class LeafModule(Module, ABC):
 
             # get cached log-likelihood gradients w.r.t. module log-likelihoods
             expectations = cache["log_likelihood"][self].grad
-            # normalize expectations for better numerical stability
-            # Reduce expectations to shape [batch_size, 1]
-            dims = list(range(1, len(expectations.shape)))
-            expectations = expectations.sum(dims)
-            expectations /= expectations.sum(dim=None, keepdim=True)
+            expectations += 1e-12  # numerical stability
+            expectations /= expectations.sum(0, keepdim=True)  # Normalize
+
 
             # ----- maximization step -----
-
             # update parameters through maximum weighted likelihood estimation
             self.maximum_likelihood_estimation(
                 data,
@@ -397,63 +394,14 @@ class LeafModule(Module, ABC):
         # Step 1: Select scope-relevant features
         scoped_data = data[:, self.scope.query]
 
+        if weights is None:
+            weights = torch.ones(scoped_data.shape[0], self.out_features, self.out_channels, self.num_repetitions, device=self.device)
+
         # Step 2: Apply NaN strategy (drop/impute)
         scoped_data, normalized_weights = apply_nan_strategy(nan_strategy, scoped_data, self.device, weights)
 
-        # Step 3: Prepare weights for broadcasting
-        # Convert from (batch, 1) to (batch, 1, 1, ...) for proper broadcasting
-        # with multi-dimensional data
-        normalized_weights_flat = normalized_weights.squeeze(-1)
-        mle_weights = _prepare_mle_weights(scoped_data, normalized_weights_flat)
+        return scoped_data, normalized_weights
 
-        return scoped_data, mle_weights
-
-    def _update_parameters_with_kmeans(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Update parameters using KMeans clustering followed by MLE for each cluster.
-
-        Clusters data into `out_channels` clusters per repetition, then estimates parameters
-        for each cluster separately using `_compute_parameter_estimates()`.
-
-        Args:
-            data: Scope-filtered data.
-            weights: Normalized weights.
-            bias_correction: Apply bias correction.
-        """
-        from fast_pytorch_kmeans import KMeans
-
-        # Get parameter names from the distribution
-        param_names = list(self.params().keys())
-
-        # Create empty tensors for all parameters
-        new_params = {name: torch.empty_like(getattr(self, name)) for name in param_names}
-
-        # Iterate over repetitions
-        for rep_idx in range(self.num_repetitions):
-            # Run KMeans to cluster data into out_channels clusters
-            kmeans = KMeans(n_clusters=self.out_channels, mode="euclidean", init_method="kmeans++")
-            cluster_ids = kmeans.fit_predict(data)
-
-            # For each cluster/channel, filter data and estimate parameters
-            for channel_idx in range(self.out_channels):
-                # Filter data and weights by cluster membership
-                cluster_mask = cluster_ids == channel_idx
-                cluster_data = data[cluster_mask]
-                cluster_weights = weights[cluster_mask]
-
-                if cluster_data.size(0) == 0:
-                    # Empty cluster - use global statistics as fallback
-                    estimates = self._compute_parameter_estimates(data, weights, bias_correction)
-                else:
-                    estimates = self._compute_parameter_estimates(
-                        cluster_data, cluster_weights, bias_correction
-                    )
-
-                # Assign estimated parameters to the specific channel and repetition
-                for param_name, param_value in estimates.items():
-                    new_params[param_name][:, channel_idx, rep_idx] = param_value
-
-        # Assign all parameters using the helper method
-        self._set_mle_parameters(new_params)
 
     def maximum_likelihood_estimation(
         self,
@@ -461,7 +409,6 @@ class LeafModule(Module, ABC):
         weights: Optional[Tensor] = None,
         bias_correction: bool = True,
         nan_strategy: str | Callable | None = None,
-        use_kmeans: bool = False,
         cache: Cache | None = None,
     ) -> None:
         """Maximum (weighted) likelihood estimation via template method pattern.
@@ -474,8 +421,6 @@ class LeafModule(Module, ABC):
             weights: Optional sample weights.
             bias_correction: Apply bias correction.
             nan_strategy: Handle NaN ('ignore', callable, or None).
-            use_kmeans: If True, cluster data using KMeans before estimation.
-                        Runs KMeans for each repetition with out_channels clusters.
             cache: Optional cache dictionary.
         """
 
@@ -490,10 +435,7 @@ class LeafModule(Module, ABC):
         )
 
         # Step 2: Update distribution-specific statistics
-        if use_kmeans:
-            self._update_parameters_with_kmeans(data_prepared, weights_prepared, bias_correction)
-        else:
-            self._mle_update_statistics(data_prepared, weights_prepared, bias_correction)
+        self._mle_update_statistics(data_prepared, weights_prepared, bias_correction)
 
     def sample(
         self,

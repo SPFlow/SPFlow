@@ -107,7 +107,7 @@ class Geometric(LeafModule):
         Returns:
             Dictionary with 'probs' estimate (shape: out_features).
         """
-        n_total = weights.sum()
+        n_total = weights.sum(dim=0)
         n_success = (weights * data).sum(0)
 
         p_est = n_total / (n_success + n_total)
@@ -130,17 +130,3 @@ class Geometric(LeafModule):
         """
         self.probs = params_dict["probs"]  # Uses property setter
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute MLE for success probability p.
-
-        For Geometric distribution, the MLE is p = n / (sum(x_i) + n).
-
-        Args:
-            data: Scope-filtered data.
-            weights: Normalized sample weights.
-            bias_correction: Whether to apply bias correction.
-        """
-        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
-
-        # Broadcast to event_shape and assign via property setter
-        self.probs = self._broadcast_to_event_shape(estimates["probs"])

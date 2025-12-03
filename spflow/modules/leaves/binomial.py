@@ -138,15 +138,9 @@ class Binomial(LeafModule):
         Returns:
             Dictionary with 'probs' estimate (shape: out_features).
         """
-        normalized_weights = weights / weights.sum()
-        # Extract base total_count value (first channel, first repetition)
-        # to match the unbounded n_success shape
-        if self.total_count.dim() > 1:
-            total_count_base = self.total_count[:, 0, 0]
-        else:
-            total_count_base = self.total_count
+        normalized_weights = weights / weights.sum(dim=0)
 
-        n_total = normalized_weights.sum() * total_count_base
+        n_total = normalized_weights.sum(dim=0) * self.total_count
         n_success = (normalized_weights * data).sum(0)
         probs_est = n_success / n_total
 
@@ -166,18 +160,3 @@ class Binomial(LeafModule):
         """
         self.probs = params_dict["probs"]  # Uses property setter
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute MLE for success probability p.
-
-        Estimates the success probability parameter p using weighted maximum
-        likelihood estimation. The parameter n is fixed and not learned.
-
-        Args:
-            data: Scope-filtered data.
-            weights: Normalized weights.
-            bias_correction: Not used for Binomial (included for interface consistency).
-        """
-        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
-
-        # Broadcast to event_shape and assign via property setter
-        self.probs = self._broadcast_to_event_shape(estimates["probs"])

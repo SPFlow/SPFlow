@@ -134,14 +134,8 @@ class NegativeBinomial(LeafModule):
         Returns:
             Dictionary with 'probs' estimate (shape: out_features).
         """
-        # Extract base total_count value (first channel, first repetition)
-        # to match the unbounded n_success shape
-        if self.total_count.dim() > 1:
-            total_count_base = self.total_count[:, 0, 0]
-        else:
-            total_count_base = self.total_count
 
-        n_total = weights.sum() * total_count_base
+        n_total = weights.sum(dim=0) * self.total_count
         if bias_correction:
             n_total = n_total - 1
 
@@ -166,15 +160,3 @@ class NegativeBinomial(LeafModule):
         """
         self.probs = params_dict["probs"]  # Uses property setter
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute MLE for success probability p (given fixed n).
-
-        Args:
-            data: Scope-filtered data (failure counts).
-            weights: Normalized sample weights.
-            bias_correction: Whether to apply bias correction.
-        """
-        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
-
-        # Broadcast to event_shape and assign directly
-        self.probs = self._broadcast_to_event_shape(estimates["probs"])

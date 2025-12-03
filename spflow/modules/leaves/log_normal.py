@@ -95,7 +95,7 @@ class LogNormal(LeafModule):
         Returns:
             Dictionary with 'loc' and 'scale' estimates (shape: out_features).
         """
-        n_total = weights.sum()
+        n_total = weights.sum(dim=0)
 
         log_data = data.log()
         loc_est = (weights * log_data).sum(0) / n_total
@@ -122,19 +122,3 @@ class LogNormal(LeafModule):
         """
         self.loc.data = params_dict["loc"]
         self.scale = params_dict["scale"]  # Uses property setter
-
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute MLE for mean μ and std σ by fitting ln(data).
-
-        For Log-Normal distribution, we compute statistics on log-transformed data.
-
-        Args:
-            data: Scope-filtered data (must be positive).
-            weights: Normalized sample weights.
-            bias_correction: Whether to apply bias correction to variance estimate.
-        """
-        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
-
-        # Broadcast to event_shape and assign directly
-        self.loc.data = self._broadcast_to_event_shape(estimates["loc"])
-        self.scale = self._broadcast_to_event_shape(estimates["scale"])

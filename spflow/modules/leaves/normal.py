@@ -86,7 +86,7 @@ class Normal(LeafModule):
         Returns:
             Dictionary with 'loc' and 'scale' estimates (shape: out_features).
         """
-        n_total = weights.sum()
+        n_total = weights.sum(dim=0)
         loc_est = (weights * data).sum(0) / n_total
 
         centered = data - loc_est
@@ -112,16 +112,3 @@ class Normal(LeafModule):
         self.loc.data = params_dict["loc"]
         self.scale = params_dict["scale"]  # Uses property setter
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute weighted mean and standard deviation.
-
-        Args:
-            data: Input data tensor.
-            weights: Weight tensor for each data point.
-            bias_correction: Whether to apply bias correction to variance estimate.
-        """
-        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
-
-        # Broadcast to event_shape and assign directly
-        self.loc.data = self._broadcast_to_event_shape(estimates["loc"])
-        self.scale = self._broadcast_to_event_shape(estimates["scale"])

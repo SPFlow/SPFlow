@@ -53,17 +53,14 @@ def apply_nan_strategy(
     """
     # Initialize weights if not provided
     if weights is None:
-        weights = torch.ones(scope_data.shape[0], device=device)
+        raise ValueError("Weights tensor must be provided for MLE estimation.")
 
     # Validate weights shape
-    if weights.ndim != 1 or weights.shape[0] != scope_data.shape[0]:
+    if weights.shape[0] != scope_data.shape[0]:
         raise ValueError(
             f"Weights shape {weights.shape} does not match number of data points {scope_data.shape[0]}. "
             f"Expected shape ({scope_data.shape[0]},) for maximum-likelihood estimation."
         )
-
-    # Reshape weights to column vector for broadcasting
-    weights = weights.reshape((-1, 1))
 
     # Check for NaN entries
     nan_mask = torch.isnan(scope_data)
@@ -236,22 +233,3 @@ def _handle_mle_edge_cases(
     return param_est
 
 
-def _prepare_mle_weights(data: Tensor, weights: Tensor | None = None) -> Tensor:
-    """Prepare weights for MLE with proper shape for broadcasting.
-
-    Args:
-        data: Input data tensor.
-        weights: Optional sample weights.
-
-    Returns:
-        Weights tensor with proper shape for broadcasting.
-    """
-    if weights is None:
-        _shape = (data.shape[0], *([1] * (data.dim() - 1)))
-        weights = torch.ones(_shape, device=data.device)
-    elif weights.dim() == 1 and data.dim() > 1:
-        # Reshape 1D weights to broadcast properly with multi-dimensional data
-        # e.g., weights [batch_size] -> [batch_size, 1, 1, ...]
-        _shape = (weights.shape[0], *([1] * (data.dim() - 1)))
-        weights = weights.view(_shape)
-    return weights
