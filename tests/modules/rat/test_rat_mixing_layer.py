@@ -2,10 +2,10 @@ import numpy as np
 import pytest
 import torch
 
-from modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta import Scope
 from spflow.modules.base import Module
+from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 
 
 class DummyInput(Module):
@@ -120,10 +120,15 @@ def test_mixing_layer_rejects_nonpositive_out_channels():
         RepetitionMixingLayer(inputs=inputs, out_channels=0, num_repetitions=1)
 
 
-def test_mixing_layer_rejects_feature_count_not_one():
-    bad_inputs = DummyInput(out_channels=1, num_repetitions=1, out_features=2)
-    with pytest.raises(ValueError):
-        RepetitionMixingLayer(inputs=bad_inputs, out_channels=1, num_repetitions=1)
+def test_mixing_layer_supports_multiple_features():
+    inputs = DummyInput(out_channels=1, num_repetitions=1, out_features=2)
+    layer = RepetitionMixingLayer(inputs=inputs, out_channels=1, num_repetitions=1)
+
+    data = torch.randn(3, inputs.out_features)
+    ll = layer.log_likelihood(data)
+
+    assert layer.out_features == inputs.out_features
+    assert ll.shape == (data.shape[0], inputs.out_features, layer.out_channels, 1)
 
 
 def test_mixing_layer_conflicting_weights_and_out_channels():

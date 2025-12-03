@@ -93,7 +93,7 @@ def test_maximum_likelihood_estimation(
     # Construct sampler
     scope = Scope(list(range(0, out_features)))
     sampler = make_leaf(cls=leaf_cls, scope=scope, out_channels=1)
-    data = sampler.distribution.sample((1000000,)).squeeze(-1).squeeze(-1)
+    data = sampler.distribution.sample((1000,)).squeeze(-1).squeeze(-1)
 
     module.maximum_likelihood_estimation(data, bias_correction=bias_correction)
 

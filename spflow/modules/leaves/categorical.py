@@ -121,8 +121,7 @@ class Categorical(LeafModule):
         Returns:
             Dictionary with 'probs' estimates (shape: out_features x K).
         """
-        weights_flat = weights.flatten()
-        n_total = weights_flat.sum()
+        n_total = weights.sum(dim=0)
 
         if self.K is not None:
             num_categories = self.K
@@ -130,21 +129,17 @@ class Categorical(LeafModule):
             finite_values = data[~torch.isnan(data)]
             num_categories = int(finite_values.max().item()) + 1 if finite_values.numel() else 1
 
-        p_entries: list[Tensor] = []
-        for column in range(data.shape[1]):
-            cat_probs: list[Tensor] = []
-            for cat in range(num_categories):
-                cat_mask = (data[:, column] == cat).float()
-                cat_est = torch.sum(weights_flat * cat_mask) / n_total
-                cat_probs.append(cat_est)
-            p_entries.append(torch.stack(cat_probs))
+        p_est = torch.empty_like(self.probs)
+        for cat in range(num_categories):
+            cat_mask = (data == cat).float()
+            p_est[..., cat] = torch.sum(weights * cat_mask, dim=0) / n_total
 
-        p_est = torch.stack(p_entries, dim=0).to(data.device)
 
         # Handle edge cases (NaN or invalid probabilities) before broadcasting
         # For categorical, we ensure probabilities sum to 1 and are non-negative
         p_est = torch.clamp(p_est, min=1e-10)  # Avoid zero probabilities
         p_est = p_est / p_est.sum(dim=-1, keepdim=True)  # Renormalize
+        # TODO: check if this is the correct dim ^
 
         return {"probs": p_est}
 
@@ -159,21 +154,3 @@ class Categorical(LeafModule):
         """
         self.probs = params_dict["probs"]  # Uses property setter
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Estimate categorical probabilities for each category.
-
-        Args:
-            data: Scope-filtered data.
-            weights: Normalized weights.
-            bias_correction: Not used for Categorical (included for interface consistency).
-        """
-        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
-
-        # p_est has shape (out_features, K)
-        # Broadcast to event_shape: (out_features, out_channels, num_reps, K)
-        # Insert dimensions for out_channels and num_reps
-        p_est = estimates["probs"]
-        p_est = p_est.unsqueeze(1).unsqueeze(2).expand(-1, self.out_channels, self.num_repetitions, -1)
-
-        # Convert to logits and assign via property setter
-        self.probs = p_est

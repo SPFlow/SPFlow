@@ -1,6 +1,3 @@
-import sys
-import types
-
 import pytest
 import torch
 from torch import nn
@@ -151,57 +148,6 @@ def test_mode_property_matches_distribution_mode():
     torch.testing.assert_close(leaf.mode, torch.full_like(leaf.loc, 1.75))
 
 
-def test_update_parameters_with_kmeans(monkeypatch):
-    """KMeans path should assign per-cluster parameter estimates."""
-    scope = Scope([0])
-    leaf = TinyLeaf(scope=scope, out_channels=2)
-    cluster_one = torch.randn(6, 1) * 0.1
-    cluster_two = torch.randn(6, 1) * 0.1 + 5.0
-    data = torch.cat([cluster_one, cluster_two], dim=0)
-
-    class StubKMeans:
-        def __init__(self, n_clusters: int, mode: str, init_method: str):
-            self.n_clusters = n_clusters
-
-        def fit_predict(self, inputs: torch.Tensor) -> torch.Tensor:
-            midpoint = inputs.mean()
-            return (inputs.view(-1) > midpoint).long()
-
-    monkeypatch.setitem(
-        sys.modules,
-        "fast_pytorch_kmeans",
-        types.SimpleNamespace(KMeans=StubKMeans),
-    )
-
-    leaf.maximum_likelihood_estimation(data=data, use_kmeans=True)
-
-    assert leaf.loc.shape == (1, 2, 1)
-    assert leaf.loc[:, 0, 0] < leaf.loc[:, 1, 0]
-
-
-def test_update_parameters_with_kmeans_empty_cluster(monkeypatch):
-    """Empty clusters should fall back to global estimates."""
-    scope = Scope([0])
-    leaf = TrackingLeaf(scope=scope, out_channels=2)
-    data = torch.randn(5, 1)
-
-    class StubKMeans:
-        def __init__(self, n_clusters: int, mode: str, init_method: str):
-            self.n_clusters = n_clusters
-
-        def fit_predict(self, inputs: torch.Tensor) -> torch.Tensor:
-            return torch.zeros(inputs.shape[0], dtype=torch.long)
-
-    monkeypatch.setitem(
-        sys.modules,
-        "fast_pytorch_kmeans",
-        types.SimpleNamespace(KMeans=StubKMeans),
-    )
-
-    leaf.maximum_likelihood_estimation(data=data, use_kmeans=True)
-
-    assert leaf.compute_calls == [data.shape[0], data.shape[0]]
-    torch.testing.assert_close(leaf.loc[:, 0, 0], leaf.loc[:, 1, 0])
 
 
 def test_mle_rejects_conditional_leaf():

@@ -7,7 +7,6 @@ from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta import Scope
 from spflow.utils.leaves import (
     _handle_mle_edge_cases,
-    _prepare_mle_weights,
     apply_nan_strategy,
     init_parameter,
     parse_leaf_args,
@@ -80,20 +79,20 @@ class TestApplyNanStrategy:
     def test_apply_nan_strategy_ignore_all_valid(self, device):
         """Test apply_nan_strategy with 'ignore' and all valid data."""
         data = torch.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], device=device)
-        weights = None
+        weights = torch.ones((data.shape[0], data.shape[1], 1, 1), device=device)
 
         result_data, result_weights = apply_nan_strategy("ignore", data, device, weights)
 
         # Data should be unchanged
         assert torch.equal(result_data, data)
-        # Weights should be created as uniform
-        assert result_weights.shape == (3, 1)
-        assert torch.allclose(result_weights, torch.ones(3, 1, device=device))
+        # Weights should keep shape and normalize to number of samples
+        assert result_weights.shape == weights.shape
+        assert torch.allclose(result_weights.sum(), torch.tensor(float(data.shape[0]), device=device))
 
     def test_apply_nan_strategy_ignore_some_nan(self, device):
         """Test apply_nan_strategy with 'ignore' and some NaN."""
         data = torch.tensor([[1.0, 2.0], [float("nan"), 4.0], [5.0, 6.0]], device=device)
-        weights = None
+        weights = torch.ones((data.shape[0], data.shape[1], 1, 1), device=device)
 
         result_data, result_weights = apply_nan_strategy("ignore", data, device, weights)
 
@@ -101,12 +100,13 @@ class TestApplyNanStrategy:
         expected_data = torch.tensor([[1.0, 2.0], [5.0, 6.0]], device=device)
         assert torch.equal(result_data, expected_data)
         # Weights should be adjusted
-        assert result_weights.shape == (2, 1)
+        assert result_weights.shape == (expected_data.shape[0], expected_data.shape[1], 1, 1)
+        assert torch.allclose(result_weights.sum(), torch.tensor(float(expected_data.shape[0]), device=device))
 
     def test_apply_nan_strategy_ignore_all_nan(self, device):
         """Test apply_nan_strategy with 'ignore' and all NaN."""
         data = torch.tensor([[float("nan"), float("nan")], [float("nan"), float("nan")]], device=device)
-        weights = None
+        weights = torch.ones((data.shape[0], data.shape[1], 1, 1), device=device)
 
         with pytest.raises(ValueError) as exc_info:
             apply_nan_strategy("ignore", data, device, weights)
@@ -116,20 +116,29 @@ class TestApplyNanStrategy:
     def test_apply_nan_strategy_with_weights(self, device):
         """Test apply_nan_strategy filters weights consistently."""
         data = torch.tensor([[1.0, 2.0], [float("nan"), 4.0], [5.0, 6.0]], device=device)
-        weights = torch.tensor([1.0, 2.0, 3.0], device=device)
+        weights = torch.tensor(
+            [
+                [[[1.0]], [[1.0]]],
+                [[[2.0]], [[2.0]]],
+                [[[3.0]], [[3.0]]],
+            ],
+            device=device,
+        )
 
         result_data, result_weights = apply_nan_strategy("ignore", data, device, weights)
 
         # Should keep rows 0 and 2 (weights 1.0 and 3.0)
         expected_data = torch.tensor([[1.0, 2.0], [5.0, 6.0]], device=device)
         assert torch.equal(result_data, expected_data)
-        # Weights normalized: [1, 3] -> normalized to sum to 2 (number of samples)
-        assert result_weights.shape == (2, 1)
+        kept_weights = torch.stack([weights[0], weights[2]])
+        expected_weights = kept_weights * (expected_data.shape[0] / kept_weights.sum())
+        assert result_weights.shape == expected_weights.shape
+        assert torch.allclose(result_weights, expected_weights)
 
     def test_apply_nan_strategy_weights_shape_error(self, device):
         """Test apply_nan_strategy errors with wrong weights shape."""
         data = torch.tensor([[1.0, 2.0]] * 100, device=device)  # (100, 2)
-        weights = torch.tensor([1.0] * 50, device=device)  # (50,) - wrong size
+        weights = torch.ones((50, data.shape[1], 1, 1), device=device)  # Wrong first dimension
 
         with pytest.raises(ValueError) as exc_info:
             apply_nan_strategy(None, data, device, weights)
@@ -137,20 +146,20 @@ class TestApplyNanStrategy:
         assert "Weights shape" in str(exc_info.value)
         assert "does not match" in str(exc_info.value)
 
-    def test_apply_nan_strategy_weights_multidim_error(self, device):
-        """Test apply_nan_strategy errors with multi-dimensional weights."""
+    def test_apply_nan_strategy_handles_multidimensional_weights(self, device):
+        """Test apply_nan_strategy accepts multi-dimensional weights."""
         data = torch.tensor([[1.0, 2.0]] * 10, device=device)  # (10, 2)
-        weights = torch.tensor([[1.0, 2.0]] * 10, device=device)  # (10, 2) - wrong ndim
+        weights = torch.ones((data.shape[0], data.shape[1], 1, 1), device=device)
 
-        with pytest.raises(ValueError) as exc_info:
-            apply_nan_strategy(None, data, device, weights)
+        result_data, result_weights = apply_nan_strategy(None, data, device, weights)
 
-        assert "Weights shape" in str(exc_info.value)
+        assert torch.equal(result_data, data)
+        assert result_weights.shape == weights.shape
 
     def test_apply_nan_strategy_none_with_nan_error(self, device):
         """Test apply_nan_strategy errors when strategy is None and data has NaN."""
         data = torch.tensor([[1.0, 2.0], [float("nan"), 4.0]], device=device)
-        weights = None
+        weights = torch.ones((data.shape[0], data.shape[1], 1, 1), device=device)
 
         with pytest.raises(ValueError) as exc_info:
             apply_nan_strategy(None, data, device, weights)
@@ -161,7 +170,7 @@ class TestApplyNanStrategy:
     def test_apply_nan_strategy_unknown_strategy(self, device):
         """Test apply_nan_strategy with unknown strategy."""
         data = torch.tensor([[1.0, 2.0], [float("nan"), 4.0]], device=device)
-        weights = None
+        weights = torch.ones((data.shape[0], data.shape[1], 1, 1), device=device)
 
         with pytest.raises(ValueError) as exc_info:
             apply_nan_strategy("unknown", data, device, weights)
@@ -171,7 +180,14 @@ class TestApplyNanStrategy:
     def test_apply_nan_strategy_weights_normalization(self, device):
         """Test that weights are normalized to sum to number of samples."""
         data = torch.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], device=device)
-        weights = torch.tensor([1.0, 2.0, 3.0], device=device)
+        weights = torch.tensor(
+            [
+                [[[1.0]], [[2.0]]],
+                [[[3.0]], [[4.0]]],
+                [[[5.0]], [[6.0]]],
+            ],
+            device=device,
+        )
 
         result_data, result_weights = apply_nan_strategy(None, data, device, weights)
 
@@ -183,13 +199,14 @@ class TestApplyNanStrategy:
         data = torch.tensor(
             [[1.0, 2.0, 3.0], [4.0, float("nan"), 6.0], [7.0, 8.0, float("nan")]], device=device
         )
-        weights = None
+        weights = torch.ones((data.shape[0], data.shape[1], 1, 1), device=device)
 
         result_data, result_weights = apply_nan_strategy("ignore", data, device, weights)
 
         # Should only keep first row (no NaN)
         expected_data = torch.tensor([[1.0, 2.0, 3.0]], device=device)
         assert torch.equal(result_data, expected_data)
+        assert result_weights.shape == (expected_data.shape[0], expected_data.shape[1], 1, 1)
 
 
 class TestInitParameter:
@@ -489,76 +506,6 @@ class TestHandleMleEdgeCases:
         assert result[1] <= 10.0
 
 
-class TestPrepareMleWeights:
-    """Test _prepare_mle_weights function."""
-
-    def test_prepare_mle_weights_none(self, device):
-        """Test _prepare_mle_weights with weights=None."""
-        data = torch.randn(100, 5, device=device)
-        weights = _prepare_mle_weights(data, weights=None)
-
-        # Should create uniform weights with shape (100, 1)
-        assert weights.shape == (100, 1)
-        assert torch.all(weights == 1.0)
-
-    def test_prepare_mle_weights_1d_data(self, device):
-        """Test _prepare_mle_weights with 1D data."""
-        data = torch.randn(100, device=device)
-        weights = _prepare_mle_weights(data, weights=None)
-
-        # Should create weights with shape (100,)
-        assert weights.shape == (100,)
-        assert torch.all(weights == 1.0)
-
-    def test_prepare_mle_weights_2d_data(self, device):
-        """Test _prepare_mle_weights with 2D data."""
-        data = torch.randn(100, 5, device=device)
-        weights = _prepare_mle_weights(data, weights=None)
-
-        # Should create weights with shape (100, 1)
-        assert weights.shape[0] == 100
-        assert torch.all(weights == 1.0)
-
-    def test_prepare_mle_weights_3d_data(self, device):
-        """Test _prepare_mle_weights with 3D data."""
-        data = torch.randn(10, 100, 5, device=device)
-        weights = _prepare_mle_weights(data, weights=None)
-
-        # Should create weights with shape (10, 1, 1)
-        assert weights.shape[0] == 10
-        assert torch.all(weights == 1.0)
-
-    def test_prepare_mle_weights_custom_1d(self, device):
-        """Test _prepare_mle_weights with custom 1D weights."""
-        data = torch.randn(100, 5, device=device)
-        custom_weights = torch.rand(100, device=device)
-
-        weights = _prepare_mle_weights(data, weights=custom_weights)
-
-        # Should reshape to (100, 1)
-        assert weights.shape == (100, 1)
-        assert torch.equal(weights.squeeze(), custom_weights)
-
-    def test_prepare_mle_weights_already_shaped(self, device):
-        """Test _prepare_mle_weights with already properly shaped weights."""
-        data = torch.randn(100, 5, device=device)
-        custom_weights = torch.rand(100, 1, device=device)
-
-        weights = _prepare_mle_weights(data, weights=custom_weights)
-
-        # Should remain unchanged
-        assert torch.equal(weights, custom_weights)
-
-    def test_prepare_mle_weights_broadcasting(self, device):
-        """Test that prepared weights can broadcast with data."""
-        data = torch.randn(100, 5, 3, device=device)
-        weights = _prepare_mle_weights(data, weights=None)
-
-        # Should be broadcastable
-        result = data * weights
-        assert result.shape == data.shape
-
-
 class TestLeafUtilsIntegration:
     """Integration tests for leaf utilities."""
 
@@ -580,9 +527,10 @@ class TestLeafUtilsIntegration:
         """Test NaN handling flow."""
         # Create data with NaN
         data = torch.tensor([[1.0, 2.0], [float("nan"), 4.0], [5.0, 6.0]], device=device)
+        weights = torch.ones((data.shape[0], data.shape[1], 1, 1), device=device)
 
         # Apply NaN strategy
-        clean_data, weights = apply_nan_strategy("ignore", data, device, None)
+        clean_data, weights = apply_nan_strategy("ignore", data, device, weights)
 
         # Handle edge cases in estimates
         estimates = clean_data.mean(dim=0)
@@ -608,28 +556,6 @@ class TestLeafUtilsIntegration:
 
 class TestLeafUtilsEdgeCases:
     """Test edge cases in leaf utilities."""
-
-    def test_leaves_utils_empty_data(self, device):
-        """Test with empty data array."""
-        data = torch.empty((0, 5), device=device)
-        weights = _prepare_mle_weights(data, weights=None)
-
-        assert weights.shape[0] == 0
-
-    def test_leaves_utils_single_sample(self, device):
-        """Test with single sample."""
-        data = torch.tensor([[1.0, 2.0, 3.0]], device=device)
-        clean_data, weights = apply_nan_strategy(None, data, device, None)
-
-        assert clean_data.shape == (1, 3)
-        assert weights.shape == (1, 1)
-
-    def test_leaves_utils_many_features(self, device):
-        """Test with many features."""
-        data = torch.randn(1000, 100, device=device)
-        weights = _prepare_mle_weights(data, weights=None)
-
-        assert weights.shape[0] == 1000
 
     def test_handle_mle_multiple_edge_cases(self, device):
         """Test handling multiple edge cases at once."""

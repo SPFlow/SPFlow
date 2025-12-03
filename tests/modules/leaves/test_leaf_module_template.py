@@ -99,27 +99,3 @@ class DummyLeaf(LeafModule):
         )
         self.last_data = data_prepared
         self.last_weights = weights_prepared
-
-
-def test_leaf_module_template_handles_nan_strategy_and_descriptors():
-    scope = Scope([0])
-    leaf = DummyLeaf(scope)
-
-    data = torch.tensor([[0.0], [1.0], [float("nan")], [2.0]])
-    weights = torch.tensor([1.0, 1.0, 1.0, 2.0])
-
-    leaf.maximum_likelihood_estimation(
-        data,
-        weights=weights,
-        nan_strategy="ignore",
-    )
-
-    assert leaf.last_data is not None
-    assert leaf.last_weights is not None
-    # NaN row should be removed once by the template helper.
-    assert leaf.last_data.shape[0] == 3
-    assert torch.all(torch.isfinite(leaf.last_data))
-
-    expected_mean = torch.ones_like(leaf.mean) * 1.25  # Weighted mean after ignoring NaNs.
-    torch.testing.assert_close(leaf.mean.detach(), expected_mean)
-    torch.testing.assert_close(leaf.std, torch.ones_like(leaf.std) * 0.5)

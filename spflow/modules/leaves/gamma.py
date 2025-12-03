@@ -117,7 +117,7 @@ class Gamma(LeafModule):
         Returns:
             Dictionary with 'concentration' and 'rate' estimates (shape: out_features).
         """
-        n_total = weights.sum()
+        n_total = weights.sum(dim=0)
 
         data_log = data.log()
         mean_xlnx = (weights * data_log * data).sum(dim=0) / n_total
@@ -155,18 +155,3 @@ class Gamma(LeafModule):
         self.concentration = params_dict["concentration"]  # Uses property setter
         self.rate = params_dict["rate"]  # Uses property setter
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute MLE for shape α and rate β parameters.
-
-        Uses moment-matching equations to estimate parameters with optional bias correction.
-
-        Args:
-            data: Scope-filtered data.
-            weights: Normalized sample weights.
-            bias_correction: Whether to apply bias correction.
-        """
-        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
-
-        # Broadcast to event_shape and assign
-        self.concentration = self._broadcast_to_event_shape(estimates["concentration"])
-        self.rate = self._broadcast_to_event_shape(estimates["rate"])

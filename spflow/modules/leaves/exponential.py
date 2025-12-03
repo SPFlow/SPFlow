@@ -87,7 +87,7 @@ class Exponential(LeafModule):
         Returns:
             Dictionary with 'rate' estimate (shape: out_features).
         """
-        n_total = weights.sum()
+        n_total = weights.sum(dim=0)
 
         if bias_correction:
             n_total = n_total - 1
@@ -110,15 +110,3 @@ class Exponential(LeafModule):
         """
         self.rate = params_dict["rate"]  # Uses property setter
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """Compute MLE for rate parameter λ.
-
-        Args:
-            data: Scope-filtered data.
-            weights: Normalized sample weights.
-            bias_correction: Whether to apply bias correction (n-1 instead of n).
-        """
-        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
-
-        # Broadcast to event_shape and assign
-        self.rate = self._broadcast_to_event_shape(estimates["rate"])

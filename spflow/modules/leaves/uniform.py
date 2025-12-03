@@ -114,17 +114,3 @@ class Uniform(LeafModule):
         """
         pass
 
-    def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
-        """No-op: Uniform parameters are fixed buffers and cannot be learned.
-
-        This method follows the same pattern as other distributions by calling
-        _compute_parameter_estimates() and _set_mle_parameters(), but both are no-ops
-        for Uniform since the bounds are fixed.
-
-        Args:
-            data: Input data tensor.
-            weights: Weight tensor for each data point.
-            bias_correction: Whether to apply bias correction (unused for Uniform).
-        """
-        estimates = self._compute_parameter_estimates(data, weights, bias_correction)
-        self._set_mle_parameters(estimates)
