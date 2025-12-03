@@ -1,9 +1,3 @@
-"""Mixing layer for RAT-SPN region nodes.
-
-Specialized sum node for RAT-SPNs creating mixture distributions over
-input channels. Extends base Sum with RAT-SPN specific optimizations.
-"""
-
 from __future__ import annotations
 
 import numpy as np
@@ -12,12 +6,12 @@ from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.modules.base import Module
-from spflow.modules.sums.sum import Sum
+from spflow.modules.sums import Sum
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
-class MixingLayer(Sum):
+class RepetitionMixingLayer(Sum):
     """Mixing layer for RAT-SPN region nodes.
 
     Specialized sum node for RAT-SPNs. Creates mixtures over input channels.
@@ -30,7 +24,6 @@ class MixingLayer(Sum):
         out_channels: int | None = None,
         num_repetitions: int = 1,
         weights: Tensor | None = None,
-        sum_dim: int | None = 1,
     ) -> None:
         """Initialize mixing layer for RAT-SPN.
 
@@ -39,9 +32,8 @@ class MixingLayer(Sum):
             out_channels: Number of output mixture components.
             num_repetitions: Number of parallel repetitions.
             weights: Initial mixing weights (if None, randomly initialized).
-            sum_dim: Dimension over which to perform mixing.
         """
-        super().__init__(inputs, out_channels, num_repetitions, weights, sum_dim)
+        super().__init__(inputs, out_channels, num_repetitions, weights)
         if not inputs:
             raise ValueError("'Sum' requires at least one input to be specified.")
 
@@ -61,23 +53,19 @@ class MixingLayer(Sum):
         self.inputs = inputs
 
         # Single input, sum over in_channel dimension
-        self.sum_dim = sum_dim
+        self.sum_dim = 2
         self._out_features = self.inputs.out_features
-        self._out_channels_total = out_channels
 
         if out_channels != inputs.out_channels:
             raise ValueError("out_channels must match the out_channels of the input module.")
-        if self._out_features != 1:
-            raise ValueError(
-                "MixingLayer represents the first layer of the RatSPN, so it must have a single output feature."
-            )
+        # if self._out_features != 1:
+        #     raise ValueError(
+        #         "MixingLayer represents the first layer of the RatSPN, so it must have a single output feature."
+        #     )
 
         self.num_repetitions = num_repetitions
 
-        # sum up all repetitions
-        self._in_channels = self.num_repetitions
-
-        self.weights_shape = (self._out_features, self._in_channels, self._out_channels_total)
+        self.weights_shape = (self._out_features, self.out_channels, self.num_repetitions)
 
         self.scope = self.inputs.scope
 
@@ -156,16 +144,16 @@ class MixingLayer(Sum):
             input_lls = cache["log_likelihood"][self.inputs]
             log_prior = logits
             log_posterior = log_prior + input_lls.unsqueeze(3)
-            log_posterior = log_posterior.log_softmax(dim=2)
+            log_posterior = log_posterior.log_softmax(dim=3)
             logits = log_posterior
 
         if is_mpe:
             # Take the argmax of the logits to obtain the most probable index
-            repetition_idx = torch.argmax(logits.sum(-1), dim=-1).squeeze(-1)
+            repetition_idx = torch.argmax(logits.sum(-2), dim=-1).squeeze(-1)
         else:
             # Sample from categorical distribution defined by weights to obtain indices for repetitions
             # sum up the input channel for distribution
-            repetition_idx = torch.distributions.Categorical(logits=logits.sum(-1)).sample()
+            repetition_idx = torch.distributions.Categorical(logits=logits.sum(-2)).sample()
 
         # get repetition index for the given channels
         # repetition_idx = repetition_idx.gather(dim=1,index=sampling_ctx.channel_index).squeeze()
@@ -208,8 +196,8 @@ class MixingLayer(Sum):
 
         # Weighted log-likelihoods
         weighted_lls = (
-            ll.permute(0, 1, 3, 2) + log_weights
-        )  # shape: (B, F, R, OC) + (1, F, IC, OC) = (B, F, R = IC, OC)
+            ll + log_weights
+        )  # shape: (B, F, OC, R) + (1, F, OC, R) = (B, F, R, OC)
 
         # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
         output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)  # shape: (B, F, OC, R)
@@ -217,3 +205,47 @@ class MixingLayer(Sum):
         # Since modules always have R as last dimension, we need to set it to 1 as Mixing mixes over it
         num_repetitions_after_mixing = 1
         return output.view(batch_size, self.out_features, self.out_channels, num_repetitions_after_mixing)
+
+
+    def expectation_maximization(
+            self,
+            data: Tensor,
+            cache: Cache | None = None,
+    ) -> None:
+        """Perform expectation-maximization step.
+
+        Args:
+            data: Input data tensor.
+            cache: Optional cache dictionary with log-likelihoods.
+
+        Raises:
+            ValueError: If required log-likelihoods are not found in cache.
+        """
+        if cache is None:
+            cache = Cache()
+
+        with torch.no_grad():
+            # ----- expectation step -----
+
+            # Get input LLs from cache
+            input_lls = cache["log_likelihood"].get(self.inputs)
+            if input_lls is None:
+                raise ValueError("Input log-likelihoods not found in cache. Call log_likelihood first.")
+
+            # Get module lls from cache
+            module_lls = cache["log_likelihood"].get(self)
+            if module_lls is None:
+                raise ValueError("Module log-likelihoods not found in cache. Call log_likelihood first.")
+
+            log_weights = self.log_weights.unsqueeze(0)
+            log_grads = torch.log(module_lls.grad)
+
+            log_expectations = log_weights + log_grads + input_lls - module_lls
+            log_expectations = log_expectations.logsumexp(0)  # Sum over batch dimension
+            log_expectations = log_expectations.log_softmax(self.sum_dim)  # Normalize
+
+            # ----- maximization step -----
+            self.log_weights = log_expectations
+
+        # Recursively call EM on inputs
+        self.inputs.expectation_maximization(data, cache=cache)

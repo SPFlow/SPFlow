@@ -2,10 +2,10 @@ import numpy as np
 import pytest
 import torch
 
+from modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta import Scope
 from spflow.modules.base import Module
-from spflow.modules.rat.rat_mixing_layer import MixingLayer
 
 
 class DummyInput(Module):
@@ -64,7 +64,7 @@ class DummyInput(Module):
 
 def test_mixing_layer_initialization_validates():
     inputs = DummyInput(out_channels=2, num_repetitions=2)
-    layer = MixingLayer(inputs=inputs, out_channels=2, num_repetitions=2)
+    layer = RepetitionMixingLayer(inputs=inputs, out_channels=2, num_repetitions=2)
 
     assert layer.out_channels == 2
     assert layer.out_features == 1
@@ -74,7 +74,7 @@ def test_mixing_layer_initialization_validates():
 def test_mixing_layer_rejects_out_channel_mismatch():
     inputs = DummyInput(out_channels=2, num_repetitions=1)
     try:
-        MixingLayer(inputs=inputs, out_channels=3, num_repetitions=1)
+        RepetitionMixingLayer(inputs=inputs, out_channels=3, num_repetitions=1)
     except ValueError as exc:
         assert "out_channels must match" in str(exc)
     else:
@@ -83,7 +83,7 @@ def test_mixing_layer_rejects_out_channel_mismatch():
 
 def test_mixing_layer_log_likelihood_shape():
     inputs = DummyInput(out_channels=2, num_repetitions=2)
-    layer = MixingLayer(inputs=inputs, out_channels=2, num_repetitions=2)
+    layer = RepetitionMixingLayer(inputs=inputs, out_channels=2, num_repetitions=2)
     data = torch.randn(4, 1)
 
     ll = layer.log_likelihood(data)
@@ -94,7 +94,7 @@ def test_mixing_layer_log_likelihood_shape():
 
 def test_mixing_layer_sample_uses_cached_posterior():
     inputs = DummyInput(out_channels=1, num_repetitions=1)
-    layer = MixingLayer(inputs=inputs, out_channels=1, num_repetitions=1)
+    layer = RepetitionMixingLayer(inputs=inputs, out_channels=1, num_repetitions=1)
     data = torch.full((1, 1), torch.nan)
 
     cache = {"log_likelihood": {inputs: torch.zeros(1, 1, 1, 1)}}
@@ -107,7 +107,7 @@ def test_mixing_layer_sample_uses_cached_posterior():
 
 def test_mixing_layer_rejects_missing_inputs():
     try:
-        MixingLayer(inputs=None, out_channels=1, num_repetitions=1)  # type: ignore[arg-type]
+        RepetitionMixingLayer(inputs=None, out_channels=1, num_repetitions=1)  # type: ignore[arg-type]
     except ValueError as exc:
         assert "requires at least one input" in str(exc)
     else:
@@ -117,27 +117,27 @@ def test_mixing_layer_rejects_missing_inputs():
 def test_mixing_layer_rejects_nonpositive_out_channels():
     inputs = DummyInput(out_channels=1, num_repetitions=1)
     with pytest.raises(ValueError):
-        MixingLayer(inputs=inputs, out_channels=0, num_repetitions=1)
+        RepetitionMixingLayer(inputs=inputs, out_channels=0, num_repetitions=1)
 
 
 def test_mixing_layer_rejects_feature_count_not_one():
     bad_inputs = DummyInput(out_channels=1, num_repetitions=1, out_features=2)
     with pytest.raises(ValueError):
-        MixingLayer(inputs=bad_inputs, out_channels=1, num_repetitions=1)
+        RepetitionMixingLayer(inputs=bad_inputs, out_channels=1, num_repetitions=1)
 
 
 def test_mixing_layer_conflicting_weights_and_out_channels():
     inputs = DummyInput(out_channels=1, num_repetitions=1)
     weights = torch.ones((1, 1, 1))
     with pytest.raises(InvalidParameterCombinationError):
-        MixingLayer(inputs=inputs, out_channels=2, num_repetitions=1, weights=weights)
+        RepetitionMixingLayer(inputs=inputs, out_channels=2, num_repetitions=1, weights=weights)
 
 
 def test_mixing_layer_feature_to_scope():
     """Test feature_to_scope delegates correctly to input module."""
     # Test with single feature
     inputs = DummyInput(out_channels=2, num_repetitions=2, out_features=1)
-    layer = MixingLayer(inputs=inputs, out_channels=2, num_repetitions=2)
+    layer = RepetitionMixingLayer(inputs=inputs, out_channels=2, num_repetitions=2)
 
     feature_scopes = layer.feature_to_scope
     input_scopes = inputs.feature_to_scope
@@ -156,7 +156,7 @@ def test_mixing_layer_feature_to_scope_various_channels():
     # MixingLayer requires out_features=1, test with various channels
     for out_channels in [1, 2, 5]:
         inputs = DummyInput(out_channels=out_channels, num_repetitions=2, out_features=1)
-        layer = MixingLayer(inputs=inputs, out_channels=out_channels, num_repetitions=2)
+        layer = RepetitionMixingLayer(inputs=inputs, out_channels=out_channels, num_repetitions=2)
 
         feature_scopes = layer.feature_to_scope
         input_scopes = inputs.feature_to_scope
@@ -175,7 +175,7 @@ def test_mixing_layer_feature_to_scope_various_repetitions():
     # MixingLayer requires out_features=1
     for num_reps in [1, 2, 5]:
         inputs = DummyInput(out_channels=2, num_repetitions=num_reps, out_features=1)
-        layer = MixingLayer(inputs=inputs, out_channels=2, num_repetitions=num_reps)
+        layer = RepetitionMixingLayer(inputs=inputs, out_channels=2, num_repetitions=num_reps)
 
         feature_scopes = layer.feature_to_scope
 
