@@ -35,7 +35,6 @@ class Sum(Module):
         out_channels: int | None = None,
         num_repetitions: int = 1,
         weights: Tensor | list[float] | None = None,
-        sum_dim: int | None = 1,
     ) -> None:
         """Create a Sum module for mixture modeling.
 
@@ -50,7 +49,6 @@ class Sum(Module):
                 representations. Inferred from weights if not provided.
             weights (Tensor | list[float] | None, optional): Initial mixture weights.
                 Must have compatible shape with inputs and out_channels.
-            sum_dim (int | None, optional): Dimension over which to sum inputs. Default is 1.
 
         Raises:
             ValueError: If inputs empty, out_channels < 1, or weights have invalid shape/values.
@@ -106,14 +104,6 @@ class Sum(Module):
                 f"Number of nodes for 'Sum' must be greater of equal to 1 but was {out_channels}."
             )
 
-        # Validate sum_dim compatibility with weights dimensionality
-        if weights is not None:
-            max_sum_dim = weights.dim() - 1
-            if sum_dim > max_sum_dim:
-                raise ValueError(
-                    f"When providing {weights.dim()}D weights, 'sum_dim' must be at most {max_sum_dim} but was {sum_dim}."
-                )
-
         # ========== 4. INPUT MODULE SETUP ==========
         if isinstance(inputs, list):
             if len(inputs) == 1:
@@ -123,7 +113,7 @@ class Sum(Module):
         else:
             self.inputs = inputs
 
-        self.sum_dim = sum_dim
+        self.sum_dim = 1
 
         # ========== 5. ATTRIBUTE INITIALIZATION ==========
         self._out_features = self.inputs.out_features
@@ -530,4 +520,4 @@ class Sum(Module):
             return None
 
         else:
-            return Sum(inputs=marg_input, weights=module_weights, sum_dim=self.sum_dim)
+            return Sum(inputs=marg_input, weights=module_weights)
