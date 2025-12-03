@@ -23,7 +23,7 @@ from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.products.elementwise_product import ElementwiseProduct
 from spflow.modules.products.outer_product import OuterProduct
 from spflow.modules.rat.factorize import Factorize
-from spflow.modules.rat.rat_mixing_layer import MixingLayer
+from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
 from spflow.utils.inference import log_posterior
@@ -170,7 +170,7 @@ class RatSPN(Module, Classifier):
                 root = sum_layer
 
         # MixingLayer: Sums over repetitions
-        root = MixingLayer(inputs=root, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions)
+        root = RepetitionMixingLayer(inputs=root, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions)
 
         # root node: Sum over all out_channels
         if self.n_root_nodes > 1:

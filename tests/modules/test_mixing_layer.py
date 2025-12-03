@@ -3,7 +3,7 @@ from itertools import product
 import pytest
 import torch
 
-from spflow.modules.rat import MixingLayer
+from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
@@ -28,7 +28,7 @@ def make_sum(in_channels=None, out_channels=None, out_features=None, weights=Non
         out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions
     )
 
-    return MixingLayer(
+    return RepetitionMixingLayer(
         out_channels=out_channels, inputs=inputs, weights=weights, num_repetitions=num_repetitions
     )
 
