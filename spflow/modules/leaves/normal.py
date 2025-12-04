@@ -91,10 +91,10 @@ class Normal(LeafModule):
 
         centered = data - loc_est
         var_numerator = (weights * centered.pow(2)).sum(0)
-        denom = n_total - 1 if bias_correction else n_total
-        scale_est = torch.sqrt(var_numerator / denom)
+        var_denom = n_total - 1 if bias_correction else n_total
+        scale_est = torch.sqrt(var_numerator / var_denom)
 
-        # Handle edge cases (NaN, zero, or near-zero std) before broadcasting
+        # Handle edge cases (NaN, zero, or near-zero std)
         scale_est = _handle_mle_edge_cases(scale_est, lb=0.0)
 
         return {"loc": loc_est, "scale": scale_est}
@@ -111,4 +111,3 @@ class Normal(LeafModule):
         """
         self.loc.data = params_dict["loc"]
         self.scale = params_dict["scale"]  # Uses property setter
-

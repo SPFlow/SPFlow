@@ -18,9 +18,7 @@ class DummyInput(Module):
         self._out_features = out_features
         self.scope = Scope(list(range(out_features)))
         # Create feature_to_scope mapping as numpy array of Scope objects
-        self._feature_to_scope = np.array(
-            [[Scope(i)] for i in range(out_features)], dtype=object
-        )
+        self._feature_to_scope = np.array([[Scope(i)] for i in range(out_features)], dtype=object)
 
     @property
     def feature_to_scope(self):

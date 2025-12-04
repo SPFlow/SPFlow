@@ -109,4 +109,3 @@ class Exponential(LeafModule):
             params_dict: Dictionary with 'rate' parameter value.
         """
         self.rate = params_dict["rate"]  # Uses property setter
-

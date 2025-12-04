@@ -105,8 +105,12 @@ def test_log_likelihood(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes,
     # Check that output has expected structure: [batch, features, channels, num_reps]
     assert lls.ndim == 4, f"Expected 4D output, got {lls.ndim}D with shape {lls.shape}"
     assert lls.shape[0] == data.shape[0], f"Batch size mismatch: got {lls.shape[0]}, expected {data.shape[0]}"
-    assert lls.shape[1] == module.out_features, f"Out_features mismatch: got {lls.shape[1]}, expected {module.out_features}"
-    assert lls.shape[2] == module.out_channels, f"Out_channels mismatch: got {lls.shape[2]}, expected {module.out_channels}"
+    assert (
+        lls.shape[1] == module.out_features
+    ), f"Out_features mismatch: got {lls.shape[1]}, expected {module.out_features}"
+    assert (
+        lls.shape[2] == module.out_channels
+    ), f"Out_channels mismatch: got {lls.shape[2]}, expected {module.out_channels}"
     assert lls.shape[3] == 1, f"Num_reps mismatch: got {lls.shape[3]}, expected {1}"
 
 
@@ -176,7 +180,12 @@ def test_multidistribution_input(region_nodes, leaves, num_reps, root_nodes, out
 
     lls = model.log_likelihood(data)
 
-    assert lls.shape == (data.shape[0], model.out_features, model.out_channels, 1)  # num_reps is 1 after RAT SPN
+    assert lls.shape == (
+        data.shape[0],
+        model.out_features,
+        model.out_channels,
+        1,
+    )  # num_reps is 1 after RAT SPN
 
     repetition_idx = torch.zeros((1,), dtype=torch.long)
     sampling_ctx = init_default_sampling_context(sampling_ctx=None, num_samples=1)
@@ -239,7 +248,7 @@ def test_rat_spn_feature_to_scope_single_root_node():
     assert np.array_equal(feature_scopes, model.root_node.feature_to_scope)
 
     # Verify shape and Scope objects
-    assert len(feature_scopes[0,0].query) == num_features
+    assert len(feature_scopes[0, 0].query) == num_features
     assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
 
 
@@ -267,7 +276,7 @@ def test_rat_spn_feature_to_scope_multiple_repetitions():
 
         # Should delegate correctly regardless of repetitions
         assert np.array_equal(feature_scopes, model.root_node.feature_to_scope)
-        assert len(feature_scopes[0,0].query) == num_features
+        assert len(feature_scopes[0, 0].query) == num_features
         assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
 
 
@@ -293,5 +302,5 @@ def test_rat_spn_feature_to_scope_split_variants():
 
         # Should work with both split strategies
         assert np.array_equal(feature_scopes, model.root_node.feature_to_scope)
-        assert len(feature_scopes[0,0].query) == num_features
+        assert len(feature_scopes[0, 0].query) == num_features
         assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())

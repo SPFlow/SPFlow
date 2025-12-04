@@ -13,7 +13,9 @@ out_channels_values = [1, 5]
 out_features_values = [1, 6]
 
 
-def make_params(out_features: int, out_channels: int, num_repetitions: int) -> tuple[torch.Tensor, torch.Tensor]:
+def make_params(
+    out_features: int, out_channels: int, num_repetitions: int
+) -> tuple[torch.Tensor, torch.Tensor]:
     shape = (out_features, out_channels, num_repetitions)
     return torch.rand(shape), torch.rand(shape)
 

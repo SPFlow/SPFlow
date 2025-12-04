@@ -101,7 +101,9 @@ class TestApplyNanStrategy:
         assert torch.equal(result_data, expected_data)
         # Weights should be adjusted
         assert result_weights.shape == (expected_data.shape[0], expected_data.shape[1], 1, 1)
-        assert torch.allclose(result_weights.sum(), torch.tensor(float(expected_data.shape[0]), device=device))
+        assert torch.allclose(
+            result_weights.sum(), torch.tensor(float(expected_data.shape[0]), device=device)
+        )
 
     def test_apply_nan_strategy_ignore_all_nan(self, device):
         """Test apply_nan_strategy with 'ignore' and all NaN."""

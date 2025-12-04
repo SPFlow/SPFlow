@@ -128,11 +128,14 @@ class OuterProduct(BaseProduct):
         out = []
         for r in range(self.num_repetitions):
             if isinstance(self.inputs, Split):
-                scope_lists_r = self.inputs.feature_to_scope[..., r]  # Shape: (num_features_per_split, num_splits)
+                scope_lists_r = self.inputs.feature_to_scope[
+                    ..., r
+                ]  # Shape: (num_features_per_split, num_splits)
                 scope_lists_r = [scope_lists_r[:, i] for i in range(self.num_splits)]
             else:
-                scope_lists_r = [module.feature_to_scope[..., r] for module in self.inputs]  # Shape: (num_features_per_split, num_splits)
-
+                scope_lists_r = [
+                    module.feature_to_scope[..., r] for module in self.inputs
+                ]  # Shape: (num_features_per_split, num_splits)
 
             outer_product_r = list(product(*scope_lists_r))
 

@@ -92,7 +92,8 @@ def test_split_halves_feature_to_scope():
     # Should be identical to the input's feature_to_scope
     assert feature_scopes.shape == (3, 2, 1)
     assert np.array_equal(
-        feature_scopes, np.array([[Scope(0), Scope(1), Scope(2)], [Scope(3), Scope(4), Scope(5)]]).reshape(3, 2, 1)
+        feature_scopes,
+        np.array([[Scope(0), Scope(1), Scope(2)], [Scope(3), Scope(4), Scope(5)]]).reshape(3, 2, 1),
     )
 
     # Each element should be a Scope object

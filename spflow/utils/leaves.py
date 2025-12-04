@@ -231,5 +231,3 @@ def _handle_mle_edge_cases(
             param_est[above_mask] = ub_tensor[above_mask] - eps if ub_tensor.ndim else ub_tensor - eps
 
     return param_est
-
-

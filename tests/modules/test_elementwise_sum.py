@@ -39,8 +39,12 @@ def make_sum(
         scope_b = Scope(list(range(out_features)))
     else:
         scope_a, scope_b = scopes
-    inputs_a = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_a, num_repetitions=num_repetitions)
-    inputs_b = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_b, num_repetitions=num_repetitions)
+    inputs_a = make_leaf(
+        cls=DummyLeaf, out_channels=in_channels, scope=scope_a, num_repetitions=num_repetitions
+    )
+    inputs_b = make_leaf(
+        cls=DummyLeaf, out_channels=in_channels, scope=scope_b, num_repetitions=num_repetitions
+    )
     inputs = [inputs_a, inputs_b]
 
     return ElementwiseSum(
@@ -117,14 +121,18 @@ def test_log_likelihood_broadcasting_channels(out_channels: int):
     in_channels_a = 1
     in_channels_b = 3
     out_features = 2
-    inputs_a_0 = make_leaf(cls=DummyLeaf, out_channels=in_channels_a, scope=Scope(range(0, out_features // 2)))
+    inputs_a_0 = make_leaf(
+        cls=DummyLeaf, out_channels=in_channels_a, scope=Scope(range(0, out_features // 2))
+    )
     inputs_a_1 = make_leaf(
         cls=DummyLeaf, out_channels=in_channels_a, scope=Scope(range(out_features // 2, out_features))
     )
     inputs = [inputs_a_0, inputs_a_1]
     prod_0 = ElementwiseProduct(inputs=inputs)
 
-    inputs_b_0 = make_leaf(cls=DummyLeaf, out_channels=in_channels_b, scope=Scope(range(0, out_features // 2)))
+    inputs_b_0 = make_leaf(
+        cls=DummyLeaf, out_channels=in_channels_b, scope=Scope(range(0, out_features // 2))
+    )
     inputs_b_1 = make_leaf(
         cls=DummyLeaf, out_channels=in_channels_b, scope=Scope(range(out_features // 2, out_features))
     )

@@ -51,7 +51,7 @@ class DummyLeaf(LeafModule):
         return {"mean": self.mean, "std": self.std}
 
     def _mle_update_statistics(
-            self, data: torch.Tensor, weights: torch.Tensor, bias_correction: bool
+        self, data: torch.Tensor, weights: torch.Tensor, bias_correction: bool
     ) -> None:
         """Compute mean normally but set std to fixed test value."""
         # Compute mean

@@ -82,7 +82,9 @@ class RepetitionMixingLayer(Sum):
             )
 
         inferred_num_repetitions = weights.shape[-1]
-        if num_repetitions is not None and (num_repetitions != 1 and num_repetitions != inferred_num_repetitions):
+        if num_repetitions is not None and (
+            num_repetitions != 1 and num_repetitions != inferred_num_repetitions
+        ):
             raise InvalidParameterCombinationError(
                 f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. "
                 f"Was {num_repetitions} but weights shape indicates {inferred_num_repetitions}."
@@ -198,9 +200,7 @@ class RepetitionMixingLayer(Sum):
         log_weights = self.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC)
 
         # Weighted log-likelihoods
-        weighted_lls = (
-            ll + log_weights
-        )  # shape: (B, F, OC, R) + (1, F, OC, R) = (B, F, R, OC)
+        weighted_lls = ll + log_weights  # shape: (B, F, OC, R) + (1, F, OC, R) = (B, F, R, OC)
 
         # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
         output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)  # shape: (B, F, OC, R)
@@ -209,11 +209,10 @@ class RepetitionMixingLayer(Sum):
         num_repetitions_after_mixing = 1
         return output.view(batch_size, self.out_features, self.out_channels, num_repetitions_after_mixing)
 
-
     def expectation_maximization(
-            self,
-            data: Tensor,
-            cache: Cache | None = None,
+        self,
+        data: Tensor,
+        cache: Cache | None = None,
     ) -> None:
         """Perform expectation-maximization step.
 

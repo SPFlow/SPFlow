@@ -262,13 +262,14 @@ def test_invalid_specification_of_out_channels_and_weights(
 ):
     weights = torch.rand((out_features, in_channels, out_channels, num_reps))
     weights = weights / weights.sum(dim=2, keepdim=True)
-    out_channels_leaf = 3*out_channels  # Different from weights out_channels
+    out_channels_leaf = 3 * out_channels  # Different from weights out_channels
     with pytest.raises(ValueError):
-
         # Should raise error because out_channels in weights and leaves do not match
         Sum(
             weights=weights,
-            inputs=make_normal_leaf(out_features=out_features, out_channels=out_channels_leaf, num_repetitions=num_reps),
+            inputs=make_normal_leaf(
+                out_features=out_features, out_channels=out_channels_leaf, num_repetitions=num_reps
+            ),
         )
 
 
@@ -353,8 +354,7 @@ def test_multiple_input():
 
     module_a = Sum(inputs=normal_layer_a, out_channels=sum_out_channels, num_repetitions=num_reps)
 
-    module_b = Sum(
-        inputs=[normal_layer_b1, normal_layer_b2], weights=module_a.weights)
+    module_b = Sum(inputs=[normal_layer_b1, normal_layer_b2], weights=module_a.weights)
 
     # test log likelihood
 

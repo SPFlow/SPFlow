@@ -154,4 +154,3 @@ class Gamma(LeafModule):
         """
         self.concentration = params_dict["concentration"]  # Uses property setter
         self.rate = params_dict["rate"]  # Uses property setter
-

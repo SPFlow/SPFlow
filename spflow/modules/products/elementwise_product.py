@@ -6,7 +6,6 @@ from torch import Tensor
 
 from spflow.meta.data import Scope
 from spflow.modules.base import Module
-from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.products.base_product import BaseProduct
@@ -125,10 +124,14 @@ class ElementwiseProduct(BaseProduct):
         out = []
         for r in range(self.num_repetitions):
             if self.input_is_split:
-                scope_lists_r = self.inputs[0].feature_to_scope[..., r]  # Shape: (num_features_per_split, num_splits)
+                scope_lists_r = self.inputs[0].feature_to_scope[
+                    ..., r
+                ]  # Shape: (num_features_per_split, num_splits)
                 scope_lists_r = [scope_lists_r[:, i] for i in range(self.num_splits)]
             else:
-                scope_lists_r = [module.feature_to_scope[..., r] for module in self.inputs]  # Shape: (num_features_per_split, num_splits)
+                scope_lists_r = [
+                    module.feature_to_scope[..., r] for module in self.inputs
+                ]  # Shape: (num_features_per_split, num_splits)
 
             feature_to_scope_r = []
             # Group elements by index

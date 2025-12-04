@@ -116,9 +116,9 @@ class Uniform(LeafModule):
         pass
 
     def expectation_maximization(
-            self,
-            data: torch.Tensor,
-            bias_correction: bool = False,
-            cache: Cache | None = None,
+        self,
+        data: torch.Tensor,
+        bias_correction: bool = False,
+        cache: Cache | None = None,
     ) -> None:
         pass

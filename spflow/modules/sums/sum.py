@@ -134,12 +134,12 @@ class Sum(Module):
         elif weight_dim == 4:
             pass
         else:
-            raise ValueError(
-                f"Weights for 'Sum' must be a 1D, 2D, 3D, or 4D tensor but was {weight_dim}D."
-            )
+            raise ValueError(f"Weights for 'Sum' must be a 1D, 2D, 3D, or 4D tensor but was {weight_dim}D.")
 
         inferred_num_repetitions = weights.shape[-1]
-        if num_repetitions is not None and (num_repetitions != 1 and num_repetitions != inferred_num_repetitions):
+        if num_repetitions is not None and (
+            num_repetitions != 1 and num_repetitions != inferred_num_repetitions
+        ):
             raise InvalidParameterCombinationError(
                 f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. "
                 f"Was {num_repetitions} but weights shape indicates {inferred_num_repetitions}."
@@ -343,8 +343,8 @@ class Sum(Module):
                     "sampling_ctx.repetition_idx must be provided when sampling from a module with "
                     "num_repetitions > 1."
                 )
-            logits = self.logits[..., 0] # Select the 0th repetition
-            logits = logits.unsqueeze(0) # Make space for the batch
+            logits = self.logits[..., 0]  # Select the 0th repetition
+            logits = logits.unsqueeze(0)  # Make space for the batch
 
             # Expand to batch size
             logits = logits.expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
@@ -512,7 +512,9 @@ class Sum(Module):
                                     feature_to_scope_r[idx] = scope.remove_from_query(rv)
 
                     # construct mask with empty scopes
-                    mask = torch.tensor([not scope.empty() for scope in feature_to_scope_r], device=self.device).bool()
+                    mask = torch.tensor(
+                        [not scope.empty() for scope in feature_to_scope_r], device=self.device
+                    ).bool()
 
                     # Apply mask to weights for this repetition: (out_features, in_channels, out_channels)
                     masked_weights_r = module_weights[:, :, :, r][mask]
@@ -531,8 +533,11 @@ class Sum(Module):
                     for w in masked_weights_list:
                         if w.shape[0] < max_features:
                             padding = torch.zeros(
-                                max_features - w.shape[0], w.shape[1], w.shape[2],
-                                device=w.device, dtype=w.dtype
+                                max_features - w.shape[0],
+                                w.shape[1],
+                                w.shape[2],
+                                device=w.device,
+                                dtype=w.dtype,
                             )
                             w = torch.cat([w, padding], dim=0)
                         padded_list.append(w)

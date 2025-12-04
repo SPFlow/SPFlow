@@ -85,6 +85,7 @@ def test_copy():
 
     # Verify that modification is prevented (frozen dataclass)
     from dataclasses import FrozenInstanceError
+
     with pytest.raises(FrozenInstanceError):
         copied_scope.query = (1, 2, 3, 4)
 
