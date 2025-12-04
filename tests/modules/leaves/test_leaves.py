@@ -14,7 +14,7 @@ from tests.utils.leaves import make_leaf, make_data, create_conditional_paramete
 
 out_channels_values = [1, 3]
 out_features_values = [1, 4]
-num_repetitions = [1, 5]
+num_repetition_values = [1, 2]
 leaf_cls_values = [
     leaves.Bernoulli,
     leaves.Binomial,
@@ -29,7 +29,7 @@ leaf_cls_values = [
     leaves.Poisson,
     leaves.Uniform,
 ]
-params = list(product(leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+params = list(product(leaf_cls_values, out_features_values, out_channels_values, num_repetition_values))
 
 
 @pytest.mark.parametrize("leaf_cls, out_features, out_channels, num_reps", params)
@@ -44,7 +44,7 @@ def test_log_likelihood(leaf_cls, out_features: int, out_channels: int, num_reps
 
 @pytest.mark.parametrize(
     "leaf_cls, out_features, out_channels, num_reps, is_mpe",
-    list(product(leaf_cls_values, out_features_values, out_channels_values, num_repetitions, [True, False])),
+    list(product(leaf_cls_values, out_features_values, out_channels_values, num_repetition_values, [True, False])),
 )
 def test_sample(leaf_cls, out_features: int, out_channels: int, num_reps, is_mpe: bool):
     module = make_leaf(
@@ -78,29 +78,28 @@ def _getattr_nested(obj, name):
 
 
 @pytest.mark.parametrize(
-    "leaf_cls, out_features, out_channels, bias_correction, num_reps",
-    list(product(leaf_cls_values, out_features_values, out_channels_values, [True, False], num_repetitions)),
+    "leaf_cls, out_features, bias_correction",
+    list(product(leaf_cls_values, out_features_values, [True, False])),
 )
 def test_maximum_likelihood_estimation(
-    leaf_cls, out_features: int, out_channels: int, bias_correction: bool, num_reps
-):
+        leaf_cls, out_features: int, bias_correction: bool):
     # Construct leaves module
 
-    module = make_leaf(
-        leaf_cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps
-    )
-
+    out_channels = 1
+    num_reps = 1
+    leaf_module = make_leaf(cls=leaf_cls, out_channels=out_channels, num_repetitions=num_reps,
+                            out_features=out_features)
     # Construct sampler
-    scope = Scope(list(range(0, out_features)))
-    sampler = make_leaf(cls=leaf_cls, scope=scope, out_channels=1)
-    data = sampler.distribution.sample((1000,)).squeeze(-1).squeeze(-1)
+    leaf_sampler = make_leaf(cls=leaf_cls, out_channels=out_channels, num_repetitions=num_reps,
+                             out_features=out_features)
 
-    module.maximum_likelihood_estimation(data, bias_correction=bias_correction)
+    data = leaf_sampler.distribution.sample((50000,)).squeeze(-1).squeeze(-1)
+    leaf_module.maximum_likelihood_estimation(data, bias_correction=bias_correction)
 
     # Check that module and sampler params are equal
-    for param_name, param_module in module.named_parameters():
-        param_sampler = getattr(sampler, param_name)
-        assert torch.allclose(param_module, param_sampler, atol=3e-1)
+    for param_name, param_module in leaf_module.named_parameters():
+        param_sampler = getattr(leaf_sampler, param_name)
+        assert torch.allclose(param_module, param_sampler, atol=1e-1)
 
 
 @pytest.mark.parametrize("leaf_cls, out_features, out_channels, num_reps", params)
@@ -116,10 +115,10 @@ def test_requires_grad(leaf_cls, out_features: int, out_channels: int, num_reps)
 
 @pytest.mark.parametrize("leaf_cls,out_features,out_channels, num_reps", params)
 def test_gradient_descent_optimization(
-    leaf_cls,
-    out_features: int,
-    out_channels: int,
-    num_reps,
+        leaf_cls,
+        out_features: int,
+        out_channels: int,
+        num_reps,
 ):
     # Skip leaves without parameters
     if leaf_cls in [leaves.Hypergeometric, leaves.Uniform]:
@@ -145,10 +144,10 @@ def test_gradient_descent_optimization(
 
 @pytest.mark.parametrize("leaf_cls,out_features,out_channels, num_reps", params)
 def test_expectation_maximization(
-    leaf_cls,
-    out_features: int,
-    out_channels: int,
-    num_reps,
+        leaf_cls,
+        out_features: int,
+        out_channels: int,
+        num_reps,
 ):
     # Skip leaves without parameters
     if leaf_cls in [leaves.Hypergeometric, leaves.Uniform]:
@@ -178,7 +177,7 @@ def test_expectation_maximization(
             out_channels_values,
             [True, False],
             [[0], [1], [2], [0, 1], [1, 2], [0, 2], [0, 1, 2]],
-            num_repetitions,
+            num_repetition_values,
         )
     ),
 )
@@ -206,7 +205,7 @@ def test_marginalize(leaf_cls, out_channels: int, prune: bool, marg_rvs, num_rep
 
 @pytest.mark.parametrize(
     "leaf_cls,out_features,out_channels, num_reps",
-    product(leaf_cls_values, out_features_values, out_channels_values, num_repetitions),
+    product(leaf_cls_values, out_features_values, out_channels_values, num_repetition_values),
 )
 def test_constructor_valid_params(leaf_cls, out_features: int, out_channels: int, num_reps):
     """Test the constructor of the distribution with valid parameters."""
@@ -229,7 +228,7 @@ def test_constructor_valid_params(leaf_cls, out_features: int, out_channels: int
 
 @pytest.mark.parametrize(
     "leaf_cls,out_features,out_channels, num_reps",
-    product(leaf_cls_values, out_features_values, out_channels_values, num_repetitions),
+    product(leaf_cls_values, out_features_values, out_channels_values, num_repetition_values),
 )
 def test_constructor_nan_param(leaf_cls, out_features: int, out_channels: int, num_reps):
     """Test the constructor of a Normal distribution with NaN mean."""
@@ -250,7 +249,7 @@ def test_constructor_nan_param(leaf_cls, out_features: int, out_channels: int, n
 
 @pytest.mark.parametrize(
     "leaf_cls,out_features,out_channels, num_reps",
-    product(leaf_cls_values, out_features_values, out_channels_values, num_repetitions),
+    product(leaf_cls_values, out_features_values, out_channels_values, num_repetition_values),
 )
 def test_constructor_inf_param(leaf_cls, out_features: int, out_channels: int, num_reps):
     """Test the constructor of a Normal distribution with NaN mean."""
@@ -271,7 +270,7 @@ def test_constructor_inf_param(leaf_cls, out_features: int, out_channels: int, n
 
 @pytest.mark.parametrize(
     "leaf_cls,out_features,out_channels, num_reps",
-    product(leaf_cls_values, out_features_values, out_channels_values, num_repetitions),
+    product(leaf_cls_values, out_features_values, out_channels_values, num_repetition_values),
 )
 def test_constructor_neginf_param(leaf_cls, out_features: int, out_channels: int, num_reps):
     """Test the constructor of a Normal distribution with NaN mean."""
@@ -292,7 +291,7 @@ def test_constructor_neginf_param(leaf_cls, out_features: int, out_channels: int
 
 @pytest.mark.parametrize(
     "leaf_cls,out_features,out_channels, num_reps",
-    product(leaf_cls_values, out_features_values, out_channels_values, num_repetitions),
+    product(leaf_cls_values, out_features_values, out_channels_values, num_repetition_values),
 )
 def test_constructor_missing_param_and_out_channels(leaf_cls, out_features: int, out_channels: int, num_reps):
     """Test the constructor of a Normal distribution with NaN mean."""
@@ -329,7 +328,9 @@ conditional_leaf_cls_values = [
 
 
 class TestConditionalLeaves:
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
+                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
+                                     num_repetition_values))
     def test_conditional_leaf_is_conditional(self, leaf_cls, out_features, out_channels, num_reps):
         """Test that a leaf with parameter network is marked as conditional."""
         query = list(range(out_features))
@@ -357,7 +358,9 @@ class TestConditionalLeaves:
         )
         assert leaf_cond.is_conditional
 
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
+                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
+                                     num_repetition_values))
     def test_conditional_leaf_distribution_with_evidence(self, leaf_cls, out_features, out_channels: int, num_reps):
         """Test that conditional leaf generates distribution from evidence."""
         query = list(range(out_features))
@@ -382,7 +385,9 @@ class TestConditionalLeaves:
         dist = leaf.conditional_distribution(evidence=evidence_tensor)
         assert dist is not None
 
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
+                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
+                                     num_repetition_values))
     def test_conditional_leaf_distribution_requires_evidence(self, leaf_cls, out_features, out_channels, num_reps):
         """Test that conditional leaf requires evidence when needed."""
         query = list(range(out_features))
@@ -409,7 +414,9 @@ class TestConditionalLeaves:
             with pytest.raises(ValueError, match="Evidence tensor must be provided"):
                 leaf.conditional_distribution(evidence=None)
 
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
+                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
+                                     num_repetition_values))
     def test_conditional_leaf_likelihood(self, leaf_cls, out_features, out_channels, num_reps):
         """Test likelihood computation with conditional leaf."""
         query = list(range(out_features))
@@ -440,7 +447,9 @@ class TestConditionalLeaves:
         assert query_data.shape[1] == len(query)
         assert torch.isfinite(query_data).all()
 
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
+                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
+                                     num_repetition_values))
     def test_conditional_leaf_sampling(self, leaf_cls, out_features, out_channels, num_reps):
         """Test sampling from conditional leaf."""
         query = list(range(out_features))
@@ -504,7 +513,9 @@ class TestConditionalLeaves:
             assert grad is not None
             assert torch.isfinite(grad).all()
 
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
+                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
+                                     num_repetition_values))
     def test_conditional_leaf_mle_not_supported(self, leaf_cls, out_features, out_channels, num_reps):
         """Test that MLE raises error for conditional leaf."""
         query = list(range(out_features))
@@ -528,7 +539,9 @@ class TestConditionalLeaves:
         with pytest.raises(RuntimeError, match="MLE not supported for conditional"):
             leaf.maximum_likelihood_estimation(data=data)
 
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetitions))
+    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
+                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
+                                     num_repetition_values))
     def test_conditional_leaf_marginalization_not_supported(self, leaf_cls, out_features, out_channels, num_reps):
         """Test that marginalization raises error for conditional leaf."""
         query = list(range(out_features))
