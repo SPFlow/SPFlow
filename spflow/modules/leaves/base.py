@@ -296,7 +296,6 @@ class LeafModule(Module, ABC):
             expectations += 1e-12  # numerical stability
             expectations /= expectations.sum(0, keepdim=True)  # Normalize
 
-
             # ----- maximization step -----
             # update parameters through maximum weighted likelihood estimation
             self.maximum_likelihood_estimation(
@@ -395,13 +394,18 @@ class LeafModule(Module, ABC):
         scoped_data = data[:, self.scope.query]
 
         if weights is None:
-            weights = torch.ones(scoped_data.shape[0], self.out_features, self.out_channels, self.num_repetitions, device=self.device)
+            weights = torch.ones(
+                scoped_data.shape[0],
+                self.out_features,
+                self.out_channels,
+                self.num_repetitions,
+                device=self.device,
+            )
 
         # Step 2: Apply NaN strategy (drop/impute)
         scoped_data, normalized_weights = apply_nan_strategy(nan_strategy, scoped_data, self.device, weights)
 
         return scoped_data, normalized_weights
-
 
     def maximum_likelihood_estimation(
         self,

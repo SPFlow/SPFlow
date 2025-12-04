@@ -134,7 +134,6 @@ class Categorical(LeafModule):
             cat_mask = (data == cat).float()
             p_est[..., cat] = torch.sum(weights * cat_mask, dim=0) / n_total
 
-
         # Handle edge cases (NaN or invalid probabilities) before broadcasting
         # For categorical, we ensure probabilities sum to 1 and are non-negative
         p_est = torch.clamp(p_est, min=1e-10)  # Avoid zero probabilities
@@ -153,4 +152,3 @@ class Categorical(LeafModule):
             params_dict: Dictionary with 'probs' parameter values.
         """
         self.probs = params_dict["probs"]  # Uses property setter
-

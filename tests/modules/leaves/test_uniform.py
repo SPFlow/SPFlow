@@ -12,7 +12,9 @@ out_channels_values = [1, 5]
 out_features_values = [1, 6]
 
 
-def make_params(out_features: int, out_channels: int, num_repetitions: int) -> tuple[torch.Tensor, torch.Tensor]:
+def make_params(
+    out_features: int, out_channels: int, num_repetitions: int
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Create parameters for a uniform distribution.
 
     Args:
@@ -80,7 +82,9 @@ def test_uniform_constructor_equal_bounds(out_features: int, out_channels: int, 
     "out_features,out_channels,num_repetitions",
     product(out_features_values, out_channels_values, num_repetition_values),
 )
-def test_uniform_constructor_low_greater_than_high(out_features: int, out_channels: int, num_repetitions: int):
+def test_uniform_constructor_low_greater_than_high(
+    out_features: int, out_channels: int, num_repetitions: int
+):
     """Test the constructor of a Uniform distribution with low greater than high."""
     low, high = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):

@@ -6,10 +6,10 @@ and scope management with PyTorch integration.
 """
 
 from __future__ import annotations
-import numpy as np
 
 from abc import ABC, abstractmethod
 
+import numpy as np
 import torch
 from torch import Tensor, nn
 
@@ -224,7 +224,6 @@ class Module(nn.Module, ABC):
             sampling_ctx=sampling_ctx,
             cache=cache,
         )
-
 
     def expectation_maximization(
         self,

@@ -148,8 +148,6 @@ def test_mode_property_matches_distribution_mode():
     torch.testing.assert_close(leaf.mode, torch.full_like(leaf.loc, 1.75))
 
 
-
-
 def test_mle_rejects_conditional_leaf():
     """Conditional leaves should refuse MLE updates."""
     scope = Scope([0])
@@ -188,11 +186,17 @@ def test_feature_to_scope():
 
     # Validate each feature maps to correct single-element scope
     # Feature 0 should map to Scope([0])
-    assert feature_scopes[0, 0] == Scope([0]), f"Feature 0 should map to Scope([0]), got {feature_scopes[0, 0]}"
+    assert feature_scopes[0, 0] == Scope(
+        [0]
+    ), f"Feature 0 should map to Scope([0]), got {feature_scopes[0, 0]}"
     # Feature 1 should map to Scope([1])
-    assert feature_scopes[1, 0] == Scope([1]), f"Feature 1 should map to Scope([1]), got {feature_scopes[1, 0]}"
+    assert feature_scopes[1, 0] == Scope(
+        [1]
+    ), f"Feature 1 should map to Scope([1]), got {feature_scopes[1, 0]}"
     # Feature 2 should map to Scope([2])
-    assert feature_scopes[2, 0] == Scope([2]), f"Feature 2 should map to Scope([2]), got {feature_scopes[2, 0]}"
+    assert feature_scopes[2, 0] == Scope(
+        [2]
+    ), f"Feature 2 should map to Scope([2]), got {feature_scopes[2, 0]}"
 
     # Validate all repetitions have identical scope mappings
     for i in range(3):
@@ -263,6 +267,6 @@ def test_feature_to_scope_array_type():
     assert isinstance(feature_scopes, np.ndarray), f"Expected np.ndarray, got {type(feature_scopes)}"
 
     # Verify dtype is object (since it contains Scope objects)
-    assert feature_scopes.dtype == object or feature_scopes.dtype == Scope, (
-        f"Expected dtype object or Scope, got {feature_scopes.dtype}"
-    )
+    assert (
+        feature_scopes.dtype == object or feature_scopes.dtype == Scope
+    ), f"Expected dtype object or Scope, got {feature_scopes.dtype}"

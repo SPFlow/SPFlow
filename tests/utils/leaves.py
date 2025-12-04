@@ -1,13 +1,10 @@
 import torch
+from torch import Tensor, nn
 
 from spflow.meta import Scope
 from spflow.modules import leaves
-from spflow.modules.leaves import Normal
 from spflow.modules.leaves.base import LeafModule
-
-from torch import Tensor, nn
-
-from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases
+from spflow.utils.leaves import init_parameter
 
 
 def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):
@@ -70,11 +67,10 @@ def make_normal_data(mean=0.0, std=1.0, num_samples=10, out_features=2):
 
 
 def make_leaf(
-    cls, out_channels: int = None, out_features: int = None, scope: Scope = None, num_repetitions=None
+    cls, out_channels: int = None, out_features: int = None, scope: Scope = None, num_repetitions=1
 ) -> LeafModule:
     assert (out_features is None) ^ (scope is None), "Either out_features or scope must be provided"
 
-    num_repetitions = 1 if num_repetitions is None else num_repetitions
     if scope is None:
         scope = Scope(list(range(0, out_features)))
 
@@ -189,7 +185,12 @@ def make_cond_leaf(
 
 def make_data(cls, out_features: int, n_samples: int = 5) -> torch.Tensor:
     scope = Scope(list(range(0, out_features)))
-    return make_leaf(cls=cls, scope=scope, out_channels=1).distribution.sample((n_samples,)).squeeze(-1).squeeze(-1)
+    return (
+        make_leaf(cls=cls, scope=scope, out_channels=1)
+        .distribution.sample((n_samples,))
+        .squeeze(-1)
+        .squeeze(-1)
+    )
 
 
 def make_cond_data(cls, out_features: int, n_samples: int = 5) -> torch.Tensor:
@@ -208,13 +209,13 @@ class SimpleParameterNetwork(torch.nn.Module):
     """Simple parameter network for conditional distributions with optional fixed parameters."""
 
     def __init__(
-            self,
-            input_size: int,
-            output_size: int,
-            num_features: int,
-            param_constraints: dict[str, str],
-            fixed_params: dict[str, torch.Tensor] | None = None,
-            num_repetitions: int | None = None,
+        self,
+        input_size: int,
+        output_size: int,
+        num_features: int,
+        param_constraints: dict[str, str],
+        fixed_params: dict[str, torch.Tensor] | None = None,
+        num_repetitions: int | None = None,
     ):
         """
         Args:
@@ -262,7 +263,11 @@ class SimpleParameterNetwork(torch.nn.Module):
             params = self.network(evidence)
             # Always reshape to 5D with num_repetitions dimension
             params = params.reshape(
-                batch_size, self.num_features, self.output_size, self.num_repetitions, len(self.param_constraints)
+                batch_size,
+                self.num_features,
+                self.output_size,
+                self.num_repetitions,
+                len(self.param_constraints),
             )
 
             for i, (param_name, param_constraint) in enumerate(self.param_constraints.items()):
@@ -285,13 +290,19 @@ class SimpleParameterNetwork(torch.nn.Module):
             # Always expand to 4D: (batch_size, num_features, out_channels, num_repetitions)
             if param_value.ndim == 0:
                 # Scalar
-                expanded = param_value.expand(batch_size, self.num_features, self.output_size, self.num_repetitions)
+                expanded = param_value.expand(
+                    batch_size, self.num_features, self.output_size, self.num_repetitions
+                )
             elif param_value.ndim == 1:
                 # Scalar or 1D - expand to 4D
-                expanded = param_value.expand(batch_size, self.num_features, self.output_size, self.num_repetitions)
+                expanded = param_value.expand(
+                    batch_size, self.num_features, self.output_size, self.num_repetitions
+                )
             elif param_value.ndim == 2:
                 # (num_features, out_channels) - add batch and num_repetitions dimensions
-                expanded = param_value.unsqueeze(0).unsqueeze(-1).expand(batch_size, -1, -1, self.num_repetitions)
+                expanded = (
+                    param_value.unsqueeze(0).unsqueeze(-1).expand(batch_size, -1, -1, self.num_repetitions)
+                )
             elif param_value.ndim == 3:
                 # (num_features, out_channels, num_repetitions) - add batch dimension
                 expanded = param_value.unsqueeze(0).expand(batch_size, -1, -1, -1)
@@ -347,7 +358,11 @@ def get_param_constraints(distribution_class) -> dict[str, str]:
 
 
 def create_conditional_parameter_fn(
-        distribution_class, out_features: int, out_channels: int, evidence_size: int, num_repetitions: int | None = None
+    distribution_class,
+    out_features: int,
+    out_channels: int,
+    evidence_size: int,
+    num_repetitions: int | None = None,
 ):
     """Create a parameter network for conditional distribution testing.
 
@@ -382,10 +397,9 @@ def create_conditional_parameter_fn(
     )
 
 
-
-
 class DummyLeaf(LeafModule):
     """Dummy leaf module for testing purposes."""
+
     def __init__(
         self,
         scope,
@@ -461,7 +475,6 @@ class DummyLeaf(LeafModule):
         """
         self.loc.data = params_dict["loc"]
         self.scale = params_dict["scale"]  # Uses property setter
-
 
     def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Compute weighted mean and standard deviation.

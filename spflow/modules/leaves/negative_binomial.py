@@ -159,4 +159,3 @@ class NegativeBinomial(LeafModule):
             params_dict: Dictionary with 'probs' parameter value.
         """
         self.probs = params_dict["probs"]  # Uses property setter
-

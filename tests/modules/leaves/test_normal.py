@@ -12,7 +12,9 @@ out_channels_values = [1, 5]
 out_features_values = [1, 6]
 
 
-def make_params(out_features: int, out_channels: int, num_repetitions: int) -> tuple[torch.Tensor, torch.Tensor]:
+def make_params(
+    out_features: int, out_channels: int, num_repetitions: int
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Create parameters for a normal distribution.
 
     Args:

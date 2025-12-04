@@ -170,7 +170,9 @@ class RatSPN(Module, Classifier):
                 root = sum_layer
 
         # MixingLayer: Sums over repetitions
-        root = RepetitionMixingLayer(inputs=root, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions)
+        root = RepetitionMixingLayer(
+            inputs=root, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions
+        )
 
         # root node: Sum over all out_channels
         if self.n_root_nodes > 1:

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import numpy as np
 from typing import Optional
 
+import numpy as np
 import torch
 from torch import Tensor, nn
 
@@ -68,9 +68,7 @@ class ElementwiseSum(Module):
         else:
             # Set defaults when weights not provided
             if out_channels is None:
-                raise ValueError(
-                    f"Either 'out_channels' or 'weights' must be specified for 'Sum' module."
-                )
+                raise ValueError(f"Either 'out_channels' or 'weights' must be specified for 'Sum' module.")
             if num_repetitions is None:
                 num_repetitions = 1
 
@@ -299,8 +297,8 @@ class ElementwiseSum(Module):
                     "sampling_ctx.repetition_idx must be provided when sampling from a module with "
                     "num_repetitions > 1."
                 )
-            logits = self.logits[..., 0] # Select the 0th repetition
-            logits = logits.unsqueeze(0) # Make space for the batch
+            logits = self.logits[..., 0]  # Select the 0th repetition
+            logits = logits.unsqueeze(0)  # Make space for the batch
 
             # Expand to batch size
             logits = logits.expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
@@ -402,7 +400,9 @@ class ElementwiseSum(Module):
 
             # Prepare for broadcasting
             if inp.out_channels == 1 and self._in_channels_per_input > 1:
-                ll = ll.expand(data.shape[0], self.out_features, self._in_channels_per_input, self.num_repetitions)
+                ll = ll.expand(
+                    data.shape[0], self.out_features, self._in_channels_per_input, self.num_repetitions
+                )
 
             lls.append(ll)
 

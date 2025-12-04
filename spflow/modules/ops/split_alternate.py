@@ -53,7 +53,7 @@ class SplitAlternate(Split):
         Returns:
             np.ndarray: Array mapping features to scopes for each split.
                         Shape: (num_features_per_split, num_splits, num_repetitions)
-        
+
         """
         scopes = self.inputs[0].feature_to_scope
         num_scopes_per_chunk = len(scopes) // self.num_splits

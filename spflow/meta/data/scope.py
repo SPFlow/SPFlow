@@ -190,29 +190,29 @@ class Scope:
         return set(self.query).isdisjoint(other.query)
 
     def join(self, other: "Scope") -> "Scope":
-            """Computes the joint scope of the scope and another scope.
+        """Computes the joint scope of the scope and another scope.
 
-            Follows probabilistic semantics, i.e.:
-            - p(X) * p(Z) = p(X,Z)
-            - p(X) * p(Y|Z)= p(X,Y|Z)
-            - p(X) * p(Y|X)= p(X,Y)
-            - p(X|Y) * p(Z|W) = p(X,Z|Y,W)
-            - p(X|Y) * p(Z|Y) = p(X,Z|Y)
-            - p(X|Y) * p(Y|Z) = p(X,Y|Z)
+        Follows probabilistic semantics, i.e.:
+        - p(X) * p(Z) = p(X,Z)
+        - p(X) * p(Y|Z)= p(X,Y|Z)
+        - p(X) * p(Y|X)= p(X,Y)
+        - p(X|Y) * p(Z|W) = p(X,Z|Y,W)
+        - p(X|Y) * p(Z|Y) = p(X,Z|Y)
+        - p(X|Y) * p(Y|Z) = p(X,Y|Z)
 
-            Args:
-                other: Scope object to compute the union with.
+        Args:
+            other: Scope object to compute the union with.
 
-            Returns:
-                Scope object representing the union of both scopes.
-            """
-            # Union of all query variables
-            new_query = set(self.query) | set(other.query)
+        Returns:
+            Scope object representing the union of both scopes.
+        """
+        # Union of all query variables
+        new_query = set(self.query) | set(other.query)
 
-            # Union of evidence variables, minus those that are now in the query
-            new_evidence = (set(self.evidence) | set(other.evidence)) - new_query
+        # Union of evidence variables, minus those that are now in the query
+        new_evidence = (set(self.evidence) | set(other.evidence)) - new_query
 
-            return Scope(sorted(new_query), sorted(new_evidence))
+        return Scope(sorted(new_query), sorted(new_evidence))
 
     @staticmethod
     def join_all(scopes: Iterable["Scope"]) -> "Scope":

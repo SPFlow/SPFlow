@@ -18,7 +18,10 @@ def make_module(*, probs: torch.Tensor | None = None, logits: torch.Tensor | Non
     return Bernoulli(scope=scope, probs=probs, logits=logits)
 
 
-@pytest.mark.parametrize("out_features,out_channels,num_repetitions", product(out_features_values, out_channels_values, num_repetition_values))
+@pytest.mark.parametrize(
+    "out_features,out_channels,num_repetitions",
+    product(out_features_values, out_channels_values, num_repetition_values),
+)
 def test_constructor_accepts_probs(out_features: int, out_channels: int, num_repetitions: int):
     probs = torch.rand(out_features, out_channels, num_repetitions)
     node = make_module(probs=probs)
@@ -26,7 +29,10 @@ def test_constructor_accepts_probs(out_features: int, out_channels: int, num_rep
     assert torch.allclose(node.params()["logits"], node.logits)
 
 
-@pytest.mark.parametrize("out_features,out_channels,num_repetitions", product(out_features_values, out_channels_values, num_repetition_values))
+@pytest.mark.parametrize(
+    "out_features,out_channels,num_repetitions",
+    product(out_features_values, out_channels_values, num_repetition_values),
+)
 def test_constructor_accepts_logits(out_features: int, out_channels: int, num_repetitions: int):
     logits = torch.randn(out_features, out_channels, num_repetitions)
     node = make_module(logits=logits)

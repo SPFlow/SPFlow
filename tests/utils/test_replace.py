@@ -1,8 +1,8 @@
 """Unit tests for method replacement context manager."""
 
-import numpy as np
 from typing import Optional
 
+import numpy as np
 import pytest
 import torch
 from torch import nn
@@ -341,6 +341,7 @@ class TestErrorHandling:
 
     def test_invalid_method_reference_no_name(self):
         """Test error when method reference has no __name__."""
+
         # Lambda functions have __name__, so we test with a class instance
         class NoName:
             def __call__(self):

@@ -195,7 +195,7 @@ def _process_training_batch(
 
     # Compute loss based on task type (classification vs density estimation)
     if is_classification:
-        #log_likelihood = model.log_likelihood(data)
+        # log_likelihood = model.log_likelihood(data)
         log_likelihood = model.predict_proba(data)
         loss = loss_fn(log_likelihood, targets) + nll_weight * (-model.log_likelihood(data).mean())
         predicted = torch.argmax(log_likelihood, dim=-1).squeeze()
@@ -248,7 +248,9 @@ def _run_validation_epoch(
 
             if is_classification:
                 log_likelihood = model.log_likelihood(data)
-                val_loss = loss_fn(log_likelihood, targets) + nll_weight * negative_log_likelihood_loss(model, data)
+                val_loss = loss_fn(log_likelihood, targets) + nll_weight * negative_log_likelihood_loss(
+                    model, data
+                )
                 predicted = torch.argmax(log_likelihood, dim=-1).squeeze()
                 metrics.update_val_batch(val_loss, predicted, targets)
             else:

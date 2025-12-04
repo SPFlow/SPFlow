@@ -44,7 +44,11 @@ def test_log_likelihood(leaf_cls, out_features: int, out_channels: int, num_reps
 
 @pytest.mark.parametrize(
     "leaf_cls, out_features, out_channels, num_reps, is_mpe",
-    list(product(leaf_cls_values, out_features_values, out_channels_values, num_repetition_values, [True, False])),
+    list(
+        product(
+            leaf_cls_values, out_features_values, out_channels_values, num_repetition_values, [True, False]
+        )
+    ),
 )
 def test_sample(leaf_cls, out_features: int, out_channels: int, num_reps, is_mpe: bool):
     module = make_leaf(
@@ -81,17 +85,18 @@ def _getattr_nested(obj, name):
     "leaf_cls, out_features, bias_correction",
     list(product(leaf_cls_values, out_features_values, [True, False])),
 )
-def test_maximum_likelihood_estimation(
-        leaf_cls, out_features: int, bias_correction: bool):
+def test_maximum_likelihood_estimation(leaf_cls, out_features: int, bias_correction: bool):
     # Construct leaves module
 
     out_channels = 1
     num_reps = 1
-    leaf_module = make_leaf(cls=leaf_cls, out_channels=out_channels, num_repetitions=num_reps,
-                            out_features=out_features)
+    leaf_module = make_leaf(
+        cls=leaf_cls, out_channels=out_channels, num_repetitions=num_reps, out_features=out_features
+    )
     # Construct sampler
-    leaf_sampler = make_leaf(cls=leaf_cls, out_channels=out_channels, num_repetitions=num_reps,
-                             out_features=out_features)
+    leaf_sampler = make_leaf(
+        cls=leaf_cls, out_channels=out_channels, num_repetitions=num_reps, out_features=out_features
+    )
 
     data = leaf_sampler.distribution.sample((50000,)).squeeze(-1).squeeze(-1)
     leaf_module.maximum_likelihood_estimation(data, bias_correction=bias_correction)
@@ -115,10 +120,10 @@ def test_requires_grad(leaf_cls, out_features: int, out_channels: int, num_reps)
 
 @pytest.mark.parametrize("leaf_cls,out_features,out_channels, num_reps", params)
 def test_gradient_descent_optimization(
-        leaf_cls,
-        out_features: int,
-        out_channels: int,
-        num_reps,
+    leaf_cls,
+    out_features: int,
+    out_channels: int,
+    num_reps,
 ):
     # Skip leaves without parameters
     if leaf_cls in [leaves.Hypergeometric, leaves.Uniform]:
@@ -144,10 +149,10 @@ def test_gradient_descent_optimization(
 
 @pytest.mark.parametrize("leaf_cls,out_features,out_channels, num_reps", params)
 def test_expectation_maximization(
-        leaf_cls,
-        out_features: int,
-        out_channels: int,
-        num_reps,
+    leaf_cls,
+    out_features: int,
+    out_channels: int,
+    num_reps,
 ):
     # Skip leaves without parameters
     if leaf_cls in [leaves.Hypergeometric, leaves.Uniform]:
@@ -328,9 +333,10 @@ conditional_leaf_cls_values = [
 
 
 class TestConditionalLeaves:
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
-                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
-                                     num_repetition_values))
+    @pytest.mark.parametrize(
+        "leaf_cls,out_features,out_channels,num_reps",
+        product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetition_values),
+    )
     def test_conditional_leaf_is_conditional(self, leaf_cls, out_features, out_channels, num_reps):
         """Test that a leaf with parameter network is marked as conditional."""
         query = list(range(out_features))
@@ -353,15 +359,16 @@ class TestConditionalLeaves:
         leaf_args = make_leaf_args(
             cls=leaf_cls, out_channels=out_channels, scope=scope_cond, num_repetitions=num_reps
         )
-        leaf_cond = leaf_cls(
-            scope=scope_cond, out_channels=out_channels, parameter_fn=param_net, **leaf_args
-        )
+        leaf_cond = leaf_cls(scope=scope_cond, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
         assert leaf_cond.is_conditional
 
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
-                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
-                                     num_repetition_values))
-    def test_conditional_leaf_distribution_with_evidence(self, leaf_cls, out_features, out_channels: int, num_reps):
+    @pytest.mark.parametrize(
+        "leaf_cls,out_features,out_channels,num_reps",
+        product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetition_values),
+    )
+    def test_conditional_leaf_distribution_with_evidence(
+        self, leaf_cls, out_features, out_channels: int, num_reps
+    ):
         """Test that conditional leaf generates distribution from evidence."""
         query = list(range(out_features))
         evidence = [out_features, out_features + 1]
@@ -374,7 +381,9 @@ class TestConditionalLeaves:
             num_repetitions=num_reps,
         )
         scope = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
+        leaf_args = make_leaf_args(
+            cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps
+        )
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         # Create evidence tensor
@@ -385,10 +394,13 @@ class TestConditionalLeaves:
         dist = leaf.conditional_distribution(evidence=evidence_tensor)
         assert dist is not None
 
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
-                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
-                                     num_repetition_values))
-    def test_conditional_leaf_distribution_requires_evidence(self, leaf_cls, out_features, out_channels, num_reps):
+    @pytest.mark.parametrize(
+        "leaf_cls,out_features,out_channels,num_reps",
+        product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetition_values),
+    )
+    def test_conditional_leaf_distribution_requires_evidence(
+        self, leaf_cls, out_features, out_channels, num_reps
+    ):
         """Test that conditional leaf requires evidence when needed."""
         query = list(range(out_features))
         evidence = [out_features, out_features + 1]
@@ -401,7 +413,9 @@ class TestConditionalLeaves:
             num_repetitions=num_reps,
         )
         scope = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
+        leaf_args = make_leaf_args(
+            cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps
+        )
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         # Should raise error if evidence is not provided
@@ -414,9 +428,10 @@ class TestConditionalLeaves:
             with pytest.raises(ValueError, match="Evidence tensor must be provided"):
                 leaf.conditional_distribution(evidence=None)
 
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
-                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
-                                     num_repetition_values))
+    @pytest.mark.parametrize(
+        "leaf_cls,out_features,out_channels,num_reps",
+        product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetition_values),
+    )
     def test_conditional_leaf_likelihood(self, leaf_cls, out_features, out_channels, num_reps):
         """Test likelihood computation with conditional leaf."""
         query = list(range(out_features))
@@ -430,7 +445,9 @@ class TestConditionalLeaves:
             num_repetitions=num_reps,
         )
         scope = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
+        leaf_args = make_leaf_args(
+            cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps
+        )
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         # Create random evidence data
@@ -447,9 +464,10 @@ class TestConditionalLeaves:
         assert query_data.shape[1] == len(query)
         assert torch.isfinite(query_data).all()
 
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
-                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
-                                     num_repetition_values))
+    @pytest.mark.parametrize(
+        "leaf_cls,out_features,out_channels,num_reps",
+        product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetition_values),
+    )
     def test_conditional_leaf_sampling(self, leaf_cls, out_features, out_channels, num_reps):
         """Test sampling from conditional leaf."""
         query = list(range(out_features))
@@ -463,7 +481,9 @@ class TestConditionalLeaves:
             num_repetitions=num_reps,
         )
         scope = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
+        leaf_args = make_leaf_args(
+            cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps
+        )
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         # Create random evidence data
@@ -491,7 +511,9 @@ class TestConditionalLeaves:
             num_repetitions=num_reps,
         )
         scope = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
+        leaf_args = make_leaf_args(
+            cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps
+        )
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         batch_size = 3
@@ -513,9 +535,10 @@ class TestConditionalLeaves:
             assert grad is not None
             assert torch.isfinite(grad).all()
 
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
-                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
-                                     num_repetition_values))
+    @pytest.mark.parametrize(
+        "leaf_cls,out_features,out_channels,num_reps",
+        product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetition_values),
+    )
     def test_conditional_leaf_mle_not_supported(self, leaf_cls, out_features, out_channels, num_reps):
         """Test that MLE raises error for conditional leaf."""
         query = list(range(out_features))
@@ -529,7 +552,9 @@ class TestConditionalLeaves:
             num_repetitions=num_reps,
         )
         scope = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
+        leaf_args = make_leaf_args(
+            cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps
+        )
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         batch_size = 4
@@ -539,10 +564,13 @@ class TestConditionalLeaves:
         with pytest.raises(RuntimeError, match="MLE not supported for conditional"):
             leaf.maximum_likelihood_estimation(data=data)
 
-    @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps",
-                             product(conditional_leaf_cls_values, out_features_values, out_channels_values,
-                                     num_repetition_values))
-    def test_conditional_leaf_marginalization_not_supported(self, leaf_cls, out_features, out_channels, num_reps):
+    @pytest.mark.parametrize(
+        "leaf_cls,out_features,out_channels,num_reps",
+        product(conditional_leaf_cls_values, out_features_values, out_channels_values, num_repetition_values),
+    )
+    def test_conditional_leaf_marginalization_not_supported(
+        self, leaf_cls, out_features, out_channels, num_reps
+    ):
         """Test that marginalization raises error for conditional leaf."""
         query = list(range(out_features))
         evidence = [out_features, out_features + 1]
@@ -555,7 +583,9 @@ class TestConditionalLeaves:
             num_repetitions=num_reps,
         )
         scope = Scope(query, evidence=evidence)
-        leaf_args = make_leaf_args(cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps)
+        leaf_args = make_leaf_args(
+            cls=leaf_cls, out_channels=out_channels, scope=scope, num_repetitions=num_reps
+        )
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
         with pytest.raises(RuntimeError, match="Marginalization not supported for conditional"):

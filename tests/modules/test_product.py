@@ -186,7 +186,10 @@ def test_feature_to_scope():
     feature_scopes = product.feature_to_scope
 
     # Validate shape: should be (1, num_repetitions) since Product outputs 1 feature
-    assert feature_scopes.shape == (1, num_reps), f"Expected shape (1, {num_reps}), got {feature_scopes.shape}"
+    assert feature_scopes.shape == (
+        1,
+        num_reps,
+    ), f"Expected shape (1, {num_reps}), got {feature_scopes.shape}"
 
     # Validate all elements are Scope objects
     assert all(isinstance(s, Scope) for s in feature_scopes.flatten()), "All elements should be Scope objects"
@@ -196,7 +199,9 @@ def test_feature_to_scope():
     assert feature_scopes[0, 0] == expected_scope, f"Expected {expected_scope}, got {feature_scopes[0, 0]}"
 
     # Verify the joined scope contains all input features
-    assert set(feature_scopes[0, 0].query) == set(range(out_features)), "Joined scope should contain all input features"
+    assert set(feature_scopes[0, 0].query) == set(
+        range(out_features)
+    ), "Joined scope should contain all input features"
 
 
 def test_feature_to_scope_multiple_repetitions():
@@ -216,7 +221,10 @@ def test_feature_to_scope_multiple_repetitions():
     feature_scopes = product.feature_to_scope
 
     # Validate shape: should be (1, num_repetitions)
-    assert feature_scopes.shape == (1, num_reps), f"Expected shape (1, {num_reps}), got {feature_scopes.shape}"
+    assert feature_scopes.shape == (
+        1,
+        num_reps,
+    ), f"Expected shape (1, {num_reps}), got {feature_scopes.shape}"
 
     # Validate all elements are Scope objects
     assert all(isinstance(s, Scope) for s in feature_scopes.flatten()), "All elements should be Scope objects"
@@ -224,8 +232,12 @@ def test_feature_to_scope_multiple_repetitions():
     # Validate each repetition has the same joined scope
     for r in range(num_reps):
         expected_scope = Scope.join_all(leaf.feature_to_scope[:, r])
-        assert feature_scopes[0, r] == expected_scope, f"Repetition {r}: expected {expected_scope}, got {feature_scopes[0, r]}"
-        assert set(feature_scopes[0, r].query) == set(range(out_features)), f"Repetition {r}: joined scope should contain all features"
+        assert (
+            feature_scopes[0, r] == expected_scope
+        ), f"Repetition {r}: expected {expected_scope}, got {feature_scopes[0, r]}"
+        assert set(feature_scopes[0, r].query) == set(
+            range(out_features)
+        ), f"Repetition {r}: joined scope should contain all features"
 
 
 def test_feature_to_scope_multiple_inputs():
@@ -251,7 +263,10 @@ def test_feature_to_scope_multiple_inputs():
     feature_scopes = product.feature_to_scope
 
     # Validate shape: should be (1, num_repetitions)
-    assert feature_scopes.shape == (1, num_reps), f"Expected shape (1, {num_reps}), got {feature_scopes.shape}"
+    assert feature_scopes.shape == (
+        1,
+        num_reps,
+    ), f"Expected shape (1, {num_reps}), got {feature_scopes.shape}"
 
     # Validate all elements are Scope objects
     assert all(isinstance(s, Scope) for s in feature_scopes.flatten()), "All elements should be Scope objects"
@@ -259,5 +274,6 @@ def test_feature_to_scope_multiple_inputs():
     # Validate scope content: should contain all features from both inputs
     total_features = out_features_1 + out_features_2
     for r in range(num_reps):
-        assert set(feature_scopes[0, r].query) == set(range(total_features)), \
-            f"Repetition {r}: joined scope should contain all {total_features} features"
+        assert set(feature_scopes[0, r].query) == set(
+            range(total_features)
+        ), f"Repetition {r}: joined scope should contain all {total_features} features"

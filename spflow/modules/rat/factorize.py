@@ -82,7 +82,6 @@ class Factorize(BaseProduct):
 
         return out
 
-
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         return self.unraveled_channel_indices[output_ids]
 
