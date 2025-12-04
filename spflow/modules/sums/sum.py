@@ -144,8 +144,7 @@ class Sum(Module):
                 f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. "
                 f"Was {num_repetitions} but weights shape indicates {inferred_num_repetitions}."
             )
-        if num_repetitions is None:
-            num_repetitions = inferred_num_repetitions
+        num_repetitions = inferred_num_repetitions
 
         out_channels = weights.shape[2]
 

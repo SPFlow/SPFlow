@@ -37,10 +37,6 @@ class RepetitionMixingLayer(Sum):
 
         if self.out_channels != self.inputs.out_channels:
             raise ValueError("out_channels must match the out_channels of the input module.")
-        if self._out_features != 1:
-            raise ValueError(
-                "MixingLayer represents the first layer of the RatSPN, so it must have a single output feature."
-            )
 
     @property
     def out_features(self) -> int:
@@ -89,8 +85,7 @@ class RepetitionMixingLayer(Sum):
                 f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. "
                 f"Was {num_repetitions} but weights shape indicates {inferred_num_repetitions}."
             )
-        if num_repetitions is None:
-            num_repetitions = inferred_num_repetitions
+        num_repetitions = inferred_num_repetitions
 
         out_channels = weights.shape[1]
 
