@@ -34,57 +34,13 @@ class RepetitionMixingLayer(Sum):
             weights: Initial mixing weights (if None, randomly initialized).
         """
         super().__init__(inputs, out_channels, num_repetitions, weights)
-        if not inputs:
-            raise ValueError("'Sum' requires at least one input to be specified.")
 
-        if weights is not None:
-            if out_channels is not None:
-                raise InvalidParameterCombinationError(
-                    f"Cannot specify both 'out_channels' and 'weights' for 'Sum' module."
-                )
-
-            out_channels = weights.shape[2]
-
-        if out_channels < 1:
-            raise ValueError(
-                f"Number of nodes for 'Sum' must be greater of equal to 1 but was {out_channels}."
-            )
-
-        self.inputs = inputs
-
-        # Single input, sum over in_channel dimension
-        self.sum_dim = 2
-        self._out_features = self.inputs.out_features
-
-        if out_channels != inputs.out_channels:
+        if self.out_channels != self.inputs.out_channels:
             raise ValueError("out_channels must match the out_channels of the input module.")
-        # if self._out_features != 1:
-        #     raise ValueError(
-        #         "MixingLayer represents the first layer of the RatSPN, so it must have a single output feature."
-        #     )
-
-        self.num_repetitions = num_repetitions
-
-        self.weights_shape = (self._out_features, self.out_channels, self.num_repetitions)
-
-        self.scope = self.inputs.scope
-
-        # If weights are not provided, initialize them randomly
-        if weights is None:
-            weights = (
-                # weights has shape (n_nodes, n_scopes, n_inputs) to prevent permutation at ll and sample
-                torch.rand(self.weights_shape)
-                + 1e-08
-            )  # avoid zeros
-
-            # Normalize
-            weights /= torch.sum(weights, dim=self.sum_dim, keepdims=True)
-
-        # Register unnormalized log-probabilities for weights as torch parameters
-        self.logits = torch.nn.Parameter()
-
-        # Initialize weights (which sets self.logits under the hood accordingly)
-        self.weights = weights
+        if self._out_features != 1:
+            raise ValueError(
+                "MixingLayer represents the first layer of the RatSPN, so it must have a single output feature."
+            )
 
     @property
     def out_features(self) -> int:
@@ -97,6 +53,56 @@ class RepetitionMixingLayer(Sum):
     @property
     def feature_to_scope(self) -> np.ndarray:
         return self.inputs.feature_to_scope
+
+    def _process_weights_parameter(
+        self,
+        inputs: Module | list[Module],
+        weights: Tensor | None,
+        out_channels: int | None,
+        num_repetitions: int | None,
+    ) -> tuple[Tensor | None, int | None, int | None]:
+        if weights is None:
+            return weights, out_channels, num_repetitions
+
+        if out_channels is not None:
+            raise InvalidParameterCombinationError(
+                f"Cannot specify both 'out_channels' and 'weights' for 'Sum' module."
+            )
+
+        weight_dim = weights.dim()
+        if weight_dim == 1:
+            weights = weights.view(1, -1, 1)
+        elif weight_dim == 2:
+            weights = weights.view(1, weights.shape[0], weights.shape[1])
+        elif weight_dim == 3:
+            pass
+        else:
+            raise ValueError(
+                f"Weights for 'RepetitionMixingLayer' must be a 1D, 2D, or 3D tensor but was {weight_dim}D."
+            )
+
+        inferred_num_repetitions = weights.shape[-1]
+        if num_repetitions is not None and (num_repetitions != 1 and num_repetitions != inferred_num_repetitions):
+            raise InvalidParameterCombinationError(
+                f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. "
+                f"Was {num_repetitions} but weights shape indicates {inferred_num_repetitions}."
+            )
+        if num_repetitions is None:
+            num_repetitions = inferred_num_repetitions
+
+        out_channels = weights.shape[1]
+
+        return weights, out_channels, num_repetitions
+
+    def _get_sum_dim(self) -> int:
+        return 2
+
+    def _get_weights_shape(self) -> tuple[int, int, int]:
+        return (
+            self._out_features,
+            self._out_channels_total,
+            self.num_repetitions,
+        )
 
     def sample(
         self,
@@ -154,9 +160,6 @@ class RepetitionMixingLayer(Sum):
             # Sample from categorical distribution defined by weights to obtain indices for repetitions
             # sum up the input channel for distribution
             repetition_idx = torch.distributions.Categorical(logits=logits.sum(-2)).sample()
-
-        # get repetition index for the given channels
-        # repetition_idx = repetition_idx.gather(dim=1,index=sampling_ctx.channel_index).squeeze()
 
         sampling_ctx.repetition_idx = repetition_idx
 

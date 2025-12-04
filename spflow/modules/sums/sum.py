@@ -64,42 +64,17 @@ class Sum(Module):
         if weights is not None and isinstance(weights, list):
             weights = torch.tensor(weights)
 
-        # ========== 2. WEIGHTS PARAMETER PROCESSING ==========
-        if weights is not None:
-            # Validate mutual exclusivity with out_channels
-            if out_channels is not None:
-                raise InvalidParameterCombinationError(
-                    f"Cannot specify both 'out_channels' and 'weights' for 'Sum' module."
-                )
-
-            # Validate num_repetitions compatibility
-            if num_repetitions is not None and (num_repetitions != 1 and num_repetitions != weights.shape[-1]):
-                raise InvalidParameterCombinationError(
-                    f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. "
-                    f"Was {num_repetitions} but weights shape indicates {weights.shape[-1]}."
-                )
-
-            # Reshape weights to canonical 4D form: (out_features, in_channels, out_channels, num_repetitions)
-            weight_dim = weights.dim()
-            if weight_dim == 1:
-                weights = weights.view(1, -1, 1)
-            elif weight_dim == 2:
-                weights = weights.view(1, weights.shape[0], weights.shape[1])
-            elif weight_dim == 3:
-                pass  # Already 3D, will add repetition dimension below
-            elif weight_dim == 4:
-                pass  # Already 4D
-            else:
-                raise ValueError(
-                    f"Weights for 'Sum' must be a 1D, 2D, 3D, or 4D tensor but was {weight_dim}D."
-                )
-
-            # Derive configuration from weights shape
-            out_channels = weights.shape[2]
-            num_repetitions = weights.shape[3]
+        weights, out_channels, num_repetitions = self._process_weights_parameter(
+            inputs=inputs,
+            weights=weights,
+            out_channels=out_channels,
+            num_repetitions=num_repetitions,
+        )
+        if num_repetitions is None:
+            num_repetitions = 1
 
         # ========== 3. CONFIGURATION VALIDATION ==========
-        if out_channels < 1:
+        if out_channels is None or out_channels < 1:
             raise ValueError(
                 f"Number of nodes for 'Sum' must be greater of equal to 1 but was {out_channels}."
             )
@@ -113,7 +88,7 @@ class Sum(Module):
         else:
             self.inputs = inputs
 
-        self.sum_dim = 1
+        self.sum_dim = self._get_sum_dim()
 
         # ========== 5. ATTRIBUTE INITIALIZATION ==========
         self._out_features = self.inputs.out_features
@@ -121,27 +96,77 @@ class Sum(Module):
         self._out_channels_total = out_channels
         self.num_repetitions = num_repetitions
 
-        self.weights_shape = (
-            self._out_features,
-            self._in_channels_total,
-            self._out_channels_total,
-            self.num_repetitions,
-        )
+        self.weights_shape = self._get_weights_shape()
 
         self.scope = self.inputs.scope
 
         # ========== 6. WEIGHT INITIALIZATION & PARAMETER REGISTRATION ==========
-        if weights is None:
-            # Initialize weights randomly with small epsilon to avoid zeros
-            weights = torch.rand(self.weights_shape) + 1e-08
-            # Normalize to sum to one along sum_dim
-            weights /= torch.sum(weights, dim=self.sum_dim, keepdims=True)
+        weights = self._initialize_weights(weights)
 
         # Register parameter for unnormalized log-probabilities
         self.logits = torch.nn.Parameter()
 
         # Set weights (converts to logits internally via property setter)
         self.weights = weights
+
+    def _process_weights_parameter(
+        self,
+        inputs: Module | list[Module],
+        weights: Tensor | None,
+        out_channels: int | None,
+        num_repetitions: int | None,
+    ) -> tuple[Tensor | None, int | None, int | None]:
+        if weights is None:
+            return weights, out_channels, num_repetitions
+
+        if out_channels is not None:
+            raise InvalidParameterCombinationError(
+                f"Cannot specify both 'out_channels' and 'weights' for 'Sum' module."
+            )
+
+        weight_dim = weights.dim()
+        if weight_dim == 1:
+            weights = weights.view(1, -1, 1, 1)
+        elif weight_dim == 2:
+            weights = weights.view(1, weights.shape[0], weights.shape[1], 1)
+        elif weight_dim == 3:
+            weights = weights.unsqueeze(-1)
+        elif weight_dim == 4:
+            pass
+        else:
+            raise ValueError(
+                f"Weights for 'Sum' must be a 1D, 2D, 3D, or 4D tensor but was {weight_dim}D."
+            )
+
+        inferred_num_repetitions = weights.shape[-1]
+        if num_repetitions is not None and (num_repetitions != 1 and num_repetitions != inferred_num_repetitions):
+            raise InvalidParameterCombinationError(
+                f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. "
+                f"Was {num_repetitions} but weights shape indicates {inferred_num_repetitions}."
+            )
+        if num_repetitions is None:
+            num_repetitions = inferred_num_repetitions
+
+        out_channels = weights.shape[2]
+
+        return weights, out_channels, num_repetitions
+
+    def _get_sum_dim(self) -> int:
+        return 1
+
+    def _get_weights_shape(self) -> tuple[int, ...]:
+        return (
+            self._out_features,
+            self._in_channels_total,
+            self._out_channels_total,
+            self.num_repetitions,
+        )
+
+    def _initialize_weights(self, weights: Tensor | None) -> Tensor:
+        if weights is None:
+            weights = torch.rand(self.weights_shape) + 1e-08
+            weights /= torch.sum(weights, dim=self.sum_dim, keepdims=True)
+        return weights
 
     @property
     def feature_to_scope(self) -> np.ndarray:
