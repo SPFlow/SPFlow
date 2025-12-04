@@ -6,6 +6,7 @@ from torch import Tensor
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data import Scope
 from spflow.modules.leaves.base import LeafModule
+from spflow.utils.cache import Cache
 
 
 class Uniform(LeafModule):
@@ -114,3 +115,10 @@ class Uniform(LeafModule):
         """
         pass
 
+    def expectation_maximization(
+            self,
+            data: torch.Tensor,
+            bias_correction: bool = False,
+            cache: Cache | None = None,
+    ) -> None:
+        pass
