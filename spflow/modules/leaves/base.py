@@ -486,6 +486,7 @@ class LeafModule(Module, ABC):
             else:
                 sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
 
+
         if is_mpe:
             # Get mode of distribution as MPE
             samples = self.mode.unsqueeze(0)
@@ -517,11 +518,12 @@ class LeafModule(Module, ABC):
                 # Get evidence
                 evidence = data[instance_mask][:, self.scope.evidence]
                 dist = self.conditional_distribution(evidence)
+                samples = dist.sample((1,)).squeeze(0)  # Distribution parameters already contain batch dim
             else:
                 dist = self.distribution
+                # Sample n_samples from distribution
+                samples = dist.sample((n_samples,))
 
-            # Sample from distribution
-            samples = dist.sample((n_samples,))
 
             if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
                 # repetition_idx shape: (n_samples,)
