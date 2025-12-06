@@ -6,6 +6,6 @@ structure learning approaches. The learning algorithms support various configura
 for different types of data and circuit structures.
 """
 
-from .expectation_maximization import expectation_maximization
+from .expectation_maximization import expectation_maximization, expectation_maximization_batched
 from .gradient_descent import train_gradient_descent
 from .learn_spn import learn_spn
