@@ -235,6 +235,7 @@ class Module(nn.Module, ABC):
 
         Args:
             data: Input data tensor.
+            bias_correction: Whether to apply bias correction. Defaults to True.
             cache: Optional cache dictionary.
         """
         if cache is None:
