@@ -1,5 +1,6 @@
 from collections import deque
-from itertools import combinations
+from itertools import combinations, product
+import pytest
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -84,6 +85,32 @@ def test_rdc():
 
     assert len(partitions) == 4
 
+@pytest.mark.parametrize(
+    "leaf_channel,sum_channel",
+    list(product([1,2], [1,2])),
+)
+def test_multiple_features(leaf_channel,sum_channel):
+    torch.manual_seed(0)
+
+    # Create leaf layer with Gaussian distributions
+    scope = Scope(list(range(5)))
+    leaf_layer = Normal(scope=scope, out_channels=leaf_channel)
+
+    # Learn SPN structure from data
+    # Construct synthetic data for demonstration with five different clusters
+    torch.manual_seed(42)
+    cluster_1 = torch.randn(200, 5) + torch.tensor([0, 0, 0, 0, 0])
+    cluster_2 = torch.randn(200, 5) + torch.tensor([5, 5, 5, 5, 5])
+    cluster_3 = torch.randn(200, 5) + torch.tensor([-5, -5, -5, -5, -5])
+    cluster_4 = torch.randn(200, 5) + torch.tensor([10, 0, -10, 5, -5])
+    cluster_5 = torch.randn(200, 5) + torch.tensor([-10, 5, 10, -5, 0])
+    data = torch.vstack([cluster_1, cluster_2, cluster_3, cluster_4, cluster_5]).float()
+    model = learn_spn(
+        data,
+        leaf_modules=leaf_layer,
+        out_channels=sum_channel,
+        min_instances_slice=100
+    )
 
 def test_make_moons():
     array = np.array([5])
