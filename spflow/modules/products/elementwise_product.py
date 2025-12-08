@@ -175,7 +175,12 @@ class ElementwiseProduct(BaseProduct):
         """
         if self.input_is_split:
             num_splits = self.num_splits
-            return mask.repeat((1, num_splits)).unsqueeze(-1)
+            if isinstance(self.inputs[0], SplitHalves):
+                return mask.repeat((1, num_splits)).unsqueeze(-1)
+            elif isinstance(self.inputs[0], SplitAlternate):
+                return mask.repeat_interleave(num_splits, dim=1).unsqueeze(-1)
+            else:
+                raise NotImplementedError("Other Split types are not implemented yet.")
         else:
             num_splits = len(self.inputs)
             return mask.unsqueeze(-1).repeat(1, 1, num_splits)
