@@ -2,6 +2,7 @@ import logging
 
 import torch
 from torch import Tensor
+from torch.utils.data import DataLoader
 
 from spflow.modules.base import Module
 from spflow.utils.cache import Cache
@@ -65,5 +66,63 @@ def expectation_maximization(
             break
 
         prev_avg_ll = avg_ll
+
+    return torch.stack(ll_history)
+
+
+def expectation_maximization_batched(
+    module: Module,
+    dataloader: DataLoader,
+    num_epochs: int = 1,
+    verbose: bool = False,
+) -> Tensor:
+    """Runs expectation-maximization over multiple epochs using mini-batches.
+
+    Args:
+        module: Module to perform EM optimization on.
+        dataloader: Dataloader yielding batches of input data tensors.
+        num_epochs: Number of epochs to iterate over the dataloader.
+        verbose: Whether to print the average log-likelihood per epoch.
+
+    Returns:
+        One-dimensional tensor containing the average log-likelihood for each epoch.
+    """
+    ll_history = []
+
+    for epoch in range(num_epochs):
+        epoch_ll = None
+        num_samples = 0
+
+        for batch in dataloader:
+            batch_data = batch[0] if isinstance(batch, (list, tuple)) else batch
+            cache = Cache()
+
+            module_lls = module.log_likelihood(batch_data, cache=cache)
+            acc_ll = module_lls.sum()
+
+            if epoch_ll is None:
+                epoch_ll = torch.zeros((), device=module_lls.device, dtype=module_lls.dtype)
+
+            epoch_ll = epoch_ll + acc_ll.detach()
+            num_samples += batch_data.shape[0]
+
+            for lls in cache["log_likelihood"].values():
+                if torch.is_tensor(lls) and lls.requires_grad:
+                    lls.retain_grad()
+
+            if acc_ll.requires_grad:
+                acc_ll.backward(retain_graph=True)
+
+            module.expectation_maximization(batch_data, cache=cache)
+
+        if epoch_ll is None or num_samples == 0:
+            avg_ll = torch.tensor(float("nan"))
+        else:
+            avg_ll = epoch_ll / num_samples
+
+        ll_history.append(avg_ll)
+
+        if verbose:
+            logger.info(f"Epoch {epoch}: Average log-likelihood: {avg_ll}")
 
     return torch.stack(ll_history)

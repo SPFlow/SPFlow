@@ -15,6 +15,7 @@ from torch import Tensor
 from spflow.exceptions import StructureError
 from spflow.meta.data import Scope
 from spflow.modules.base import Module
+from spflow.modules.ops.cat import Cat
 from spflow.modules.products.base_product import BaseProduct
 from spflow.modules.products.product import Product
 from spflow.utils.cache import Cache, cached
@@ -46,6 +47,11 @@ class Factorize(BaseProduct):
             depth: Depth parameter (output features = 2^depth).
             num_repetitions: Number of parallel randomizations.
         """
+        if isinstance(inputs, list):
+            if len(inputs) > 1:
+                inputs = [Cat(inputs=inputs, dim=1)]
+        else:
+            inputs = [inputs]
         super().__init__(inputs=inputs)
 
         self.depth = depth
