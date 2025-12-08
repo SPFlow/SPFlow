@@ -231,6 +231,40 @@ def test_excess_features_for_depth():
     num_reps = 5
     leaf = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_reps)
 
-    # This should work fine: depth=2 requires 2^2 = 4 features, and we have 10
     factorize = Factorize(inputs=[leaf], depth=2, num_repetitions=num_reps)
     assert factorize.out_features == 4
+
+
+def test_factorize_list_input():
+    """Test that Factorize handles list of modules by concatenating them."""
+    out_features = 4
+    num_reps = 1
+    # Create two leaves, each with 2 features
+    leaf1 = make_normal_leaf(out_features=2, out_channels=1, num_repetitions=num_reps)
+    leaf2 = make_normal_leaf(out_features=2, out_channels=1, num_repetitions=num_reps)
+    
+    # Ensure they have disjoint scopes (required for Cat on dim=1)
+    # Actually make_normal_leaf usually creates default scope 0..n-1.
+    # We need to manually set scopes.
+    leaf1.scope = Scope([0, 1])
+    leaf2.scope = Scope([2, 3])
+    
+    # Pass list of modules
+    factorize = Factorize(inputs=[leaf1, leaf2], depth=2, num_repetitions=num_reps)
+    
+    # Check if it concatenated correctly
+    # Concatenation of 2 features + 2 features = 4 features.
+    # Depth=2 => 2^2 = 4 output features.
+    assert factorize.out_features == 4
+    
+    # Check if inputs is wrapped Cat module
+    # self.inputs is ModuleList, so [0] is the input module
+    from spflow.modules.ops.cat import Cat
+    assert isinstance(factorize.inputs[0], Cat)
+    assert len(factorize.inputs[0].inputs) == 2
+    
+    # Test execution (log likelihood)
+    data = make_normal_data(out_features=4)
+    ll = factorize.log_likelihood(data)
+    assert ll.shape == (data.shape[0], 4, 1, 1) # (batch, out_features, channels, repetitions)
+

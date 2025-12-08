@@ -402,6 +402,7 @@ class Sum(Module):
     def expectation_maximization(
         self,
         data: Tensor,
+        bias_correction: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """Perform expectation-maximization step.
@@ -409,6 +410,7 @@ class Sum(Module):
         Args:
             data: Input data tensor.
             cache: Optional cache dictionary with log-likelihoods.
+            bias_correction: Whether to apply bias correction.
 
         Raises:
             ValueError: If required log-likelihoods are not found in cache.
@@ -442,7 +444,7 @@ class Sum(Module):
             self.log_weights = log_expectations
 
         # Recursively call EM on inputs
-        self.inputs.expectation_maximization(data, cache=cache)
+        self.inputs.expectation_maximization(data, cache=cache, bias_correction=bias_correction)
 
     def maximum_likelihood_estimation(
         self,
