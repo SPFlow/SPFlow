@@ -131,17 +131,19 @@ class Product(Module):
     def expectation_maximization(
         self,
         data: Tensor,
+        bias_correction: bool = True,
         cache: Cache | None = None,
     ) -> None:
         """EM step (delegates to input, no learnable parameters).
 
         Args:
             data: Input data tensor for EM step.
+            bias_correction: Whether to apply bias correction. Defaults to True.
             cache: Optional cache for storing intermediate results.
         """
 
         # Product has no learnable parameters, delegate to input
-        self.inputs.expectation_maximization(data, cache=cache)
+        self.inputs.expectation_maximization(data, cache=cache, bias_correction=bias_correction)
 
     def maximum_likelihood_estimation(
         self,
