@@ -37,6 +37,7 @@ class OuterProduct(BaseProduct):
             num_splits: Number of splits for input operations.
         """
         super().__init__(inputs=inputs)
+        self.check_shapes()
 
         if len(self.inputs) == 1:
             if num_splits is None or num_splits <= 1:
@@ -57,13 +58,9 @@ class OuterProduct(BaseProduct):
             name="unraveled_channel_indices",
             tensor=torch.tensor(unraveled_channel_indices),
         )
-        self.check_shapes()
 
-    def check_shapes(self, inputs=None):
+    def check_shapes(self):
         """Check if input shapes are compatible for outer product.
-
-        Args:
-            inputs: Input modules to check shapes for. If None, uses self.inputs.
 
         Returns:
             bool: True if shapes are compatible, False if no shapes to check.
@@ -71,15 +68,12 @@ class OuterProduct(BaseProduct):
         Raises:
             ValueError: If input shapes are not broadcastable.
         """
-        if inputs is None:
-            inputs = self.inputs
-
         if self.input_is_split:
-            if self.num_splits != inputs[0].num_splits:
+            if self.num_splits != self.inputs[0].num_splits:
                 raise ValueError("num_splits must be the same for all inputs")
-            shapes = inputs[0].get_out_shapes((self.out_features, self.out_channels))
+            shapes = self.inputs[0].get_out_shapes((self.out_features, self.out_channels))
         else:
-            shapes = [(inp.out_features, inp.out_channels) for inp in inputs]
+            shapes = [(inp.out_features, inp.out_channels) for inp in self.inputs]
 
         if not shapes:
             return False  # No shapes to check

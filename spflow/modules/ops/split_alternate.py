@@ -55,7 +55,7 @@ class SplitAlternate(Split):
                         Shape: (num_features_per_split, num_splits, num_repetitions)
 
         """
-        scopes = self.inputs[0].feature_to_scope
+        scopes = self.inputs.feature_to_scope
         num_scopes_per_chunk = len(scopes) // self.num_splits
         out = []
         for r in range(self.num_repetitions):
@@ -82,7 +82,7 @@ class SplitAlternate(Split):
         """
 
         # get log likelihoods for all inputs
-        lls = self.inputs[0].log_likelihood(data, cache=cache)
+        lls = self.inputs.log_likelihood(data, cache=cache)
 
         # For computational speed up hard code the loglikelihoods for most common cases: Num splits = 2 and 3
         # For general cases, we use the split masks to get the log likelihoods for each split

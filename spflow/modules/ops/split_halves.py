@@ -29,7 +29,7 @@ class SplitHalves(Split):
 
     @property
     def feature_to_scope(self) -> np.ndarray:
-        scopes = self.inputs[0].feature_to_scope
+        scopes = self.inputs.feature_to_scope
         num_scopes_per_chunk = len(scopes) // self.num_splits
         out = []
         for r in range(self.num_repetitions):
@@ -59,8 +59,8 @@ class SplitHalves(Split):
         """
 
         # get log likelihoods for all inputs
-        lls = self.inputs[0].log_likelihood(data, cache=cache)
+        lls = self.inputs.log_likelihood(data, cache=cache)
 
-        lls_split = lls.split(self.inputs[0].out_features // self.num_splits, dim=self.dim)
+        lls_split = lls.split(self.inputs.out_features // self.num_splits, dim=self.dim)
 
         return list(lls_split)

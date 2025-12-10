@@ -70,8 +70,6 @@ class Sum(Module):
             out_channels=out_channels,
             num_repetitions=num_repetitions,
         )
-        if num_repetitions is None:
-            num_repetitions = 1
 
         # ========== 3. CONFIGURATION VALIDATION ==========
         if out_channels is None or out_channels < 1:

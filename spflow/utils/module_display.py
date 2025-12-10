@@ -181,20 +181,41 @@ def _get_module_children(module: Module) -> list[tuple[str, Module]]:
     """
     children = []
 
-    # Check for direct inputs attribute
-    if hasattr(module, "inputs"):
+    # Check for input attribute (unified for all modules now)
+    if hasattr(module, "inputs") and module.inputs is not None:
         inputs = module.inputs
-        if isinstance(inputs, Module):
-            # Skip Cat wrapper, get its children
+        
+        # Handle ModuleList (Cat, ElementwiseSum, BaseProduct)
+        # We need to check for ModuleList/list first because ModuleList IS a Module
+        if hasattr(inputs, "__iter__") and not isinstance(inputs, (tuple, list)) and inputs.__class__.__name__ == "ModuleList":
+            # It's an nn.ModuleList
+             for i, child in enumerate(inputs):
+                if isinstance(child, Module):
+                    children.append((f"input[{i}]", child))
+        
+        # Handle regular list (just in case, though usually wrapped in ModuleList)
+        elif isinstance(inputs, list):
+             for i, child in enumerate(inputs):
+                if isinstance(child, Module):
+                    children.append((f"input[{i}]", child))
+
+        # Handle single Module (Product, Sum, Split, etc)
+        elif isinstance(inputs, Module):
+            # Skip Cat wrapper if it's a single input to something that unwraps it?
+            # Actually, Cat itself now uses .input = ModuleList.
+            # If we have Product -> Cat -> [A, B], product.input is Cat.
+            # If we want to skip Cat wrapper similar to original logic:
             if inputs.__class__.__name__ == "Cat" and hasattr(inputs, "inputs"):
                 cat_inputs = inputs.inputs
+                # Recursively extract from Cat if it's a ModuleList
                 if hasattr(cat_inputs, "__iter__"):
                     for i, child in enumerate(cat_inputs):
-                        if isinstance(child, Module):
-                            children.append((f"inputs[{i}]", child))
-                else:
-                    if isinstance(inputs, Module):
-                        children.append(("inputs", inputs))
+                         if isinstance(child, Module):
+                            children.append((f"input[{i}]", child))
+                else: 
+                     # Single input to Cat?
+                     if isinstance(cat_inputs, Module):
+                         children.append(("inputs", cat_inputs))
             else:
                 children.append(("inputs", inputs))
 

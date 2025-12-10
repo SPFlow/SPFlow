@@ -130,14 +130,21 @@ class Cat(Module):
 
         if self.dim == 1:
             # When concatenating features (dim=1), we need to split the sampling context
-            # for each input module based on which features belong to that module
+            # for each input module based on which INTERNAL feature indices belong to that module.
+            # 
+            # IMPORTANT: sampling_ctx.channel_index and mask are indexed by internal feature
+            # position (0, 1, 2, ..., total_features-1), NOT by scope indices. Each module's
+            # features occupy a contiguous range in the concatenated output.
             channel_index_per_module = []
             mask_per_module = []
+            feature_offset = 0
             for module in self.inputs:
-                # Get the query variables for this module (same across all repetitions)
-                query = module.scope.query
-                channel_index_per_module.append(sampling_ctx.channel_index[:, query])
-                mask_per_module.append(sampling_ctx.mask[:, query])
+                # Get the internal feature indices for this module (contiguous range)
+                num_features = module.out_features
+                feature_indices = list(range(feature_offset, feature_offset + num_features))
+                channel_index_per_module.append(sampling_ctx.channel_index[:, feature_indices])
+                mask_per_module.append(sampling_ctx.mask[:, feature_indices])
+                feature_offset += num_features
 
         elif self.dim == 2:
             # Concatenation happens at out_channels
