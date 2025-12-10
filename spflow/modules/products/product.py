@@ -42,6 +42,18 @@ class Product(Module):
         self.scope = self.inputs.scope
         self.num_repetitions = self.inputs.num_repetitions
 
+        self._infer_shapes()
+
+    def _infer_shapes(self) -> None:
+        """Compute and set input/output shapes for Product module."""
+        from spflow.modules.module_shape import ModuleShape
+
+        self._input_shape = self.inputs.output_shape
+        self._output_shape = ModuleShape(
+            1, self.inputs.out_channels, self.num_repetitions
+        )
+
+
     @property
     def out_channels(self) -> int:
         return self.inputs.out_channels

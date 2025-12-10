@@ -76,6 +76,9 @@ class BaseProduct(Module, ABC):
         # Join all input scopes to create combined scope
         self.scope = Scope.join_all([inp.scope for inp in self.inputs])
 
+        # Note: _infer_shapes() not called here because subclasses must implement it
+
+
     @abstractmethod
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         """Map output channel indices to input channel indices.

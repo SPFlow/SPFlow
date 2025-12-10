@@ -51,6 +51,14 @@ class Wrapper(Module, ABC):
         self.num_repetitions = module.num_repetitions
         self.scope = module.scope
 
+        self._infer_shapes()
+
+    def _infer_shapes(self) -> None:
+        """Delegate shape computation to wrapped module."""
+        self._input_shape = self.module.input_shape
+        self._output_shape = self.module.output_shape
+
+
     @property
     def out_features(self) -> int:
         """Returns the number of output features of the wrapped module.

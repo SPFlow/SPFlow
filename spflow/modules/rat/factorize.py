@@ -61,6 +61,18 @@ class Factorize(BaseProduct):
         )  # shape: [num_features_in, num_features_out, num_repetitions]
         self.register_buffer("indices", indices.to(torch.get_default_dtype()))
 
+        self._infer_shapes()
+
+    def _infer_shapes(self) -> None:
+        """Compute and set input/output shapes for Factorize."""
+        from spflow.modules.module_shape import ModuleShape
+
+        self._input_shape = self.inputs[0].output_shape
+        self._output_shape = ModuleShape(
+            self.out_features, self.out_channels, self.num_repetitions
+        )
+
+
     @property
     def out_channels(self) -> int:
         return self.inputs[0].out_channels

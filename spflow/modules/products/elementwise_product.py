@@ -65,6 +65,18 @@ class ElementwiseProduct(BaseProduct):
 
         self.check_shapes()
 
+        self._infer_shapes()
+
+    def _infer_shapes(self) -> None:
+        """Compute and set input/output shapes for ElementwiseProduct."""
+        from spflow.modules.module_shape import ModuleShape
+
+        self._input_shape = self.inputs[0].output_shape
+        self._output_shape = ModuleShape(
+            self.out_features, self.out_channels, self.num_repetitions
+        )
+
+
     def check_shapes(self):
         """Check if input shapes are compatible for broadcasting."""
         inputs = self.inputs

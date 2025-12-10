@@ -19,6 +19,8 @@ class DummyInput(Module):
         self.scope = Scope(list(range(out_features)))
         # Create feature_to_scope mapping as numpy array of Scope objects
         self._feature_to_scope = np.array([[Scope(i)] for i in range(out_features)], dtype=object)
+        self._infer_shapes()
+
 
     @property
     def feature_to_scope(self):
@@ -58,6 +60,13 @@ class DummyInput(Module):
 
     def marginalize(self, marg_rvs, prune=True, cache=None):
         return self
+
+    def _infer_shapes(self) -> None:
+        from spflow.modules.module_shape import ModuleShape
+        self._input_shape = ModuleShape(self._out_features, 1, 1)
+        self._output_shape = ModuleShape(self._out_features, self._out_channels, self._num_repetitions)
+
+
 
 
 def test_mixing_layer_initialization_validates():

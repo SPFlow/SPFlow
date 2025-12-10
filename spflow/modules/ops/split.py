@@ -54,6 +54,19 @@ class Split(Module, ABC):
         self.num_repetitions = self.inputs.num_repetitions
         self.scope = self.inputs.scope
 
+        # Note: _infer_shapes() not called here because subclasses may need
+        # to complete their initialization first
+
+    def _infer_shapes(self) -> None:
+        """Compute and set input/output shapes for Split module."""
+        from spflow.modules.module_shape import ModuleShape
+
+        self._input_shape = self.inputs.output_shape
+        self._output_shape = ModuleShape(
+            self.out_features, self.out_channels, self.num_repetitions
+        )
+
+
     @property
     def out_features(self) -> int:
         return self.inputs.out_features

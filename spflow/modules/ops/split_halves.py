@@ -24,6 +24,9 @@ class SplitHalves(Split):
         """
         super().__init__(inputs=inputs, dim=dim, num_splits=num_splits)
 
+        self._infer_shapes()
+
+
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, dim={self.dim}"
 

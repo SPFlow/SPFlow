@@ -112,6 +112,13 @@ class RatSPN(Module, Classifier):
             )
 
         self.create_spn()
+        self._infer_shapes()
+
+    def _infer_shapes(self) -> None:
+        """Delegate shape inference to the root node."""
+        self._input_shape = self.root_node.input_shape
+        self._output_shape = self.root_node.output_shape
+
 
     def create_spn(self):
         """Create the RAT-SPN architecture.

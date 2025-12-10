@@ -136,6 +136,18 @@ class ElementwiseSum(Module):
         # Set weights (converts to logits internally via property setter)
         self.weights = weights
 
+        self._infer_shapes()
+
+    def _infer_shapes(self) -> None:
+        """Compute and set input/output shapes for ElementwiseSum."""
+        from spflow.modules.module_shape import ModuleShape
+
+        self._input_shape = self.inputs[0].output_shape
+        self._output_shape = ModuleShape(
+            self._out_features, self._out_channels_total, self.num_repetitions
+        )
+
+
     @property
     def out_features(self) -> int:
         return self._out_features
