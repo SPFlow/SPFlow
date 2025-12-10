@@ -43,20 +43,24 @@ class Split(Module, ABC):
             num_splits: Number of parts to split into.
         """
         super().__init__()
-        self.inputs = nn.ModuleList([inputs])
+
+        if not isinstance(inputs, Module):
+            raise ValueError(f"'{self.__class__.__name__}' requires a single Module as input.")
+
+        self.inputs = inputs
 
         self.dim = dim
         self.num_splits = num_splits
-        self.num_repetitions = self.inputs[0].num_repetitions
-        self.scope = self.inputs[0].scope
+        self.num_repetitions = self.inputs.num_repetitions
+        self.scope = self.inputs.scope
 
     @property
     def out_features(self) -> int:
-        return self.inputs[0].out_features
+        return self.inputs.out_features
 
     @property
     def out_channels(self) -> int:
-        return self.inputs[0].out_channels
+        return self.inputs.out_channels
 
     def get_out_shapes(self, event_shape):
         """Get output shapes for each split based on input event shape.
@@ -114,11 +118,11 @@ class Split(Module, ABC):
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
         # Expand mask and channels to match input module shape
-        mask = sampling_ctx.mask.expand(data.shape[0], self.inputs[0].out_features)
-        channel_index = sampling_ctx.channel_index.expand(data.shape[0], self.inputs[0].out_features)
+        mask = sampling_ctx.mask.expand(data.shape[0], self.inputs.out_features)
+        channel_index = sampling_ctx.channel_index.expand(data.shape[0], self.inputs.out_features)
         sampling_ctx.update(channel_index=channel_index, mask=mask)
 
-        self.inputs[0].sample(
+        self.inputs.sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,
@@ -151,7 +155,7 @@ class Split(Module, ABC):
         if mutual_rvs:
             # marginalize child modules
 
-            marg_child_module = self.inputs[0].marginalize(marg_rvs, prune=prune, cache=cache)
+            marg_child_module = self.inputs.marginalize(marg_rvs, prune=prune, cache=cache)
 
             # if marginalized child is not None
             if marg_child_module:

@@ -255,6 +255,8 @@ def _build_graph(
     """
     from torch import nn
 
+    from spflow.modules.base import Module
+
     if visited is None:
         visited = set()
 
@@ -263,31 +265,43 @@ def _build_graph(
     # Check if this module should be skipped in the visualization
     if skip_ops and SKIP_OPS and isinstance(module, tuple(SKIP_OPS)) and parent_id is not None:
         # This is a pass-through module - skip it and connect its inputs directly to parent
-        if hasattr(module, "inputs"):
+        # Check for input attribute (unified)
+        if hasattr(module, "inputs") and module.inputs is not None:
             inputs = module.inputs
-            # Handle nn.ModuleList (from Cat module)
-            if isinstance(inputs, nn.ModuleList):
-                inputs = list(inputs)
-
-            if isinstance(inputs, list):
-                # Multiple inputs - recursively add each
-                for input_module in inputs:
+            
+            # Check for ModuleList (Cat, ElementwiseSum, BaseProduct)
+            if hasattr(inputs, "__iter__") and not isinstance(inputs, (tuple, list)) and inputs.__class__.__name__ == "ModuleList":
+                 # Convert to list for iteration
+                 inputs_list = list(inputs)
+                 for input_module in inputs_list:
                     child_id = _build_graph(
                         input_module, graph, show_scope, show_shape, show_params, visited, parent_id, skip_ops
                     )
-                    # Only add edge if child was actually added to graph (not skipped)
                     if child_id is not None:
                         edge = pydot.Edge(str(child_id), str(parent_id))
                         graph.add_edge(edge)
-            else:
-                # Single input - recursively add it
-                child_id = _build_graph(
+            
+            # Handle regular list (unlikely but possible)
+            elif isinstance(inputs, list):
+                 for input_module in inputs:
+                    child_id = _build_graph(
+                        input_module, graph, show_scope, show_shape, show_params, visited, parent_id, skip_ops
+                    )
+                    if child_id is not None:
+                        edge = pydot.Edge(str(child_id), str(parent_id))
+                        graph.add_edge(edge)
+
+            # Handle single Module
+            elif isinstance(inputs, Module):
+                 # Skip Cat wrapper check? Original code didn't skip nested Cat here, it recursed.
+                 # Just treat as single child.
+                 child_id = _build_graph(
                     inputs, graph, show_scope, show_shape, show_params, visited, parent_id, skip_ops
                 )
-                # Only add edge if child was actually added to graph (not skipped)
-                if child_id is not None:
+                 if child_id is not None:
                     edge = pydot.Edge(str(child_id), str(parent_id))
                     graph.add_edge(edge)
+                    
         return None  # Return None to indicate this module was skipped
 
     # Skip if already visited
@@ -311,32 +325,49 @@ def _build_graph(
     graph.add_node(node)
 
     # Traverse inputs if they exist
-    if hasattr(module, "inputs"):
+    # Check for input attribute (unified)
+    if hasattr(module, "inputs") and module.inputs is not None:
         inputs = module.inputs
-        # Handle nn.ModuleList (from Cat module)
-        if isinstance(inputs, nn.ModuleList):
-            inputs = list(inputs)
+        
+        # Check for ModuleList (Cat, ElementwiseSum, BaseProduct)
+        if hasattr(inputs, "__iter__") and not isinstance(inputs, (tuple, list)) and inputs.__class__.__name__ == "ModuleList":
+                # Convert to list for iteration
+                inputs_list = list(inputs)
+                for input_module in inputs_list:
+                    child_id = _build_graph(
+                        input_module,
+                        graph,
+                        show_scope,
+                        show_shape,
+                        show_params,
+                        visited,
+                        parent_id=node_id,
+                        skip_ops=skip_ops,
+                    )
+                    if child_id is not None:
+                        edge = pydot.Edge(str(child_id), str(node_id))
+                        graph.add_edge(edge)
+        
+        # Handle regular list
+        elif isinstance(inputs, list):
+                for input_module in inputs:
+                    child_id = _build_graph(
+                        input_module,
+                        graph,
+                        show_scope,
+                        show_shape,
+                        show_params,
+                        visited,
+                        parent_id=node_id,
+                        skip_ops=skip_ops,
+                    )
+                    if child_id is not None:
+                        edge = pydot.Edge(str(child_id), str(node_id))
+                        graph.add_edge(edge)
 
-        if isinstance(inputs, list):
-            # Multiple inputs
-            for input_module in inputs:
-                child_id = _build_graph(
-                    input_module,
-                    graph,
-                    show_scope,
-                    show_shape,
-                    show_params,
-                    visited,
-                    parent_id=node_id,
-                    skip_ops=skip_ops,
-                )
-                # Only add edge if child was actually added to graph (not skipped)
-                if child_id is not None:
-                    edge = pydot.Edge(str(child_id), str(node_id))
-                    graph.add_edge(edge)
-        else:
-            # Single input
-            child_id = _build_graph(
+        # Handle single Module
+        elif isinstance(inputs, Module):
+             child_id = _build_graph(
                 inputs,
                 graph,
                 show_scope,
@@ -346,8 +377,7 @@ def _build_graph(
                 parent_id=node_id,
                 skip_ops=skip_ops,
             )
-            # Only add edge if child was actually added to graph (not skipped)
-            if child_id is not None:
+             if child_id is not None:
                 edge = pydot.Edge(str(child_id), str(node_id))
                 graph.add_edge(edge)
 

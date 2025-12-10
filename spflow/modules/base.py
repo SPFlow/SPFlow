@@ -8,6 +8,7 @@ and scope management with PyTorch integration.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 
 import numpy as np
 import torch
@@ -27,14 +28,32 @@ class Module(nn.Module, ABC):
     sampling, and marginalization.
 
     Attributes:
-        inputs (nn.ModuleList): List of child modules in the circuit graph.
+        inputs (Module | None): Child module in the circuit graph. None for leaf modules.
         scope (Scope): Variable scope defining which random variables this module operates on.
     """
 
     def __init__(self) -> None:
-        """Initialize the SPFlow module with empty input list."""
+        """Initialize the module with no input."""
         super().__init__()
-        self.inputs: nn.ModuleList = nn.ModuleList()
+        # Don't set _input here - let the property return None if not set
+
+    @property
+    def inputs(self) -> Module | Iterable[Module]:
+        """Returns the input module, or None for leaf modules.
+
+        Returns:
+            Module | None: The child input module, or None if this is a leaf module.
+        """
+        return self._modules.get("inputs", None)
+
+    @inputs.setter
+    def inputs(self, value: Module) -> None:
+        """Set the input module.
+
+        Args:
+            value: The module to set as input.
+        """
+        self._modules["inputs"] = value
 
     @property
     @abstractmethod
@@ -225,6 +244,17 @@ class Module(nn.Module, ABC):
             cache=cache,
         )
 
+    def __input_is_a_list(self):
+        ok = False
+        if hasattr(self, "inputs") and self.inputs is not None:
+            inputs = self.inputs
+            if hasattr(inputs, "__iter__") and not isinstance(inputs, (tuple,
+                                                                       list)) and inputs.__class__.__name__ == "ModuleList":
+                ok = True
+            elif isinstance(inputs, list):
+                ok = True
+        return ok
+
     def expectation_maximization(
         self,
         data: Tensor,
@@ -241,8 +271,11 @@ class Module(nn.Module, ABC):
         if cache is None:
             cache = Cache()
 
-        for input_module in self.inputs:
-            input_module.expectation_maximization(data, cache=cache, bias_correction=bias_correction)
+        if self.__input_is_a_list():
+            for child in self.inputs:
+                child.expectation_maximization(data, cache=cache, bias_correction=bias_correction)
+        else:
+            self.inputs.expectation_maximization(data, cache=cache, bias_correction=bias_correction)
 
     def maximum_likelihood_estimation(
         self,
@@ -264,8 +297,17 @@ class Module(nn.Module, ABC):
         if cache is None:
             cache = Cache()
 
-        for input_module in self.inputs:
-            input_module.maximum_likelihood_estimation(
+        if self.__input_is_a_list():
+            for child in self.inputs:
+                child.maximum_likelihood_estimation(
+                    data,
+                    weights=weights,
+                    bias_correction=bias_correction,
+                    nan_strategy=nan_strategy,
+                    cache=cache,
+                )
+        else:
+            self.inputs.maximum_likelihood_estimation(
                 data,
                 weights=weights,
                 bias_correction=bias_correction,

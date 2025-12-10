@@ -69,16 +69,15 @@ def prune_sums(node):
             # call prune on the inputs if the children are not leaves modules
             if not isinstance(node.inputs, LeafModule):
                 prune_sums(node.inputs)
-    else:
-        # call prune on the inputs
+    elif isinstance(node, Product):
         if isinstance(node.inputs, Cat):
             prune_sums(node.inputs)
-        else:
-            if isinstance(node.inputs, torch.nn.ModuleList):
-                for child in node.inputs:
-                    # prune only if the child is not a leaves module
-                    if not isinstance(child, LeafModule):
-                        prune_sums(child)
+        elif node.inputs is not None and not isinstance(node.inputs, LeafModule):
+            prune_sums(node.inputs)
+    elif isinstance(node, Cat):
+        for child in node.inputs:
+            if not isinstance(child, LeafModule):
+                prune_sums(child)
 
 
 def adapt_product_inputs(inputs: list[Module], leaf_oc, sum_oc) -> list[Module]:

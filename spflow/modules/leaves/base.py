@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Callable
+from typing import Optional, Dict, Callable, Iterable
 
 import numpy as np
 import torch
@@ -51,6 +51,16 @@ class LeafModule(Module, ABC):
         self._event_shape = event_shape
         self.parameter_fn = parameter_fn
         self._validate_args = validate_args
+
+    @property
+    def inputs(self) -> Module | Iterable[Module]:
+        """Leaf modules do not have inputs."""
+        raise AttributeError("LeafModule does not have 'input' attribute -- this should not have been called.")
+
+    @inputs.setter
+    def inputs(self, value):
+        """Leaf modules do not have inputs."""
+        raise AttributeError("LeafModule does not have 'input' attribute -- this should not have been called.")
 
     @property
     def is_conditional(self):
