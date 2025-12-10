@@ -52,6 +52,10 @@ class LeafModule(Module, ABC):
         self.parameter_fn = parameter_fn
         self._validate_args = validate_args
 
+        # _infer_shapes can be called here since _event_shape is already set
+        self._infer_shapes()
+
+
     @property
     def inputs(self) -> Module | Iterable[Module]:
         """Leaf modules do not have inputs."""
@@ -235,6 +239,23 @@ class LeafModule(Module, ABC):
                 scopes[i, j] = Scope([self.scope.query[i]])
 
         return scopes
+
+    def _infer_shapes(self) -> None:
+        """Compute and set input/output shapes for leaf module.
+
+        For leaf modules:
+        - input_shape: (features, 1, 1) representing raw data input
+        - output_shape: derived from _event_shape (features, channels, repetitions)
+        """
+        from spflow.modules.module_shape import ModuleShape
+
+        features = self._event_shape[0]
+        channels = self._event_shape[1] if len(self._event_shape) > 1 else 1
+        repetitions = self._event_shape[2] if len(self._event_shape) > 2 else 1
+
+        self._input_shape = ModuleShape(features, 1, 1)
+        self._output_shape = ModuleShape(features, channels, repetitions)
+
 
     @property
     def device(self) -> torch.device:

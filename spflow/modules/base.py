@@ -35,7 +35,9 @@ class Module(nn.Module, ABC):
     def __init__(self) -> None:
         """Initialize the module with no input."""
         super().__init__()
-        # Don't set _input here - let the property return None if not set
+        # Shape attributes - set by _infer_shapes() in subclass __init__
+        self._input_shape: "ModuleShape | None" = None
+        self._output_shape: "ModuleShape | None" = None
 
     @property
     def inputs(self) -> Module | Iterable[Module]:
@@ -109,6 +111,48 @@ class Module(nn.Module, ABC):
                 each column to a repetition.
         """
         pass
+
+    @abstractmethod
+    def _infer_shapes(self) -> None:
+        """Compute and set _input_shape and _output_shape.
+
+        This method must be called at the end of each subclass's __init__ method
+        to set the private shape attributes based on the module's configuration.
+        """
+        pass
+
+    @property
+    def input_shape(self) -> "ModuleShape":
+        """Expected input tensor shape (features, channels, repetitions).
+
+        For leaf modules, returns the shape of data tensors: (features, 1, 1).
+
+        Returns:
+            ModuleShape: The expected input shape.
+        """
+        from spflow.modules.module_shape import ModuleShape
+
+        if self._input_shape is None:
+            raise RuntimeError(
+                f"{self.__class__.__name__}._infer_shapes() was not called in __init__"
+            )
+        return self._input_shape
+
+    @property
+    def output_shape(self) -> "ModuleShape":
+        """Output tensor shape (features, channels, repetitions).
+
+        Returns:
+            ModuleShape: The output shape produced by this module.
+        """
+        from spflow.modules.module_shape import ModuleShape
+
+        if self._output_shape is None:
+            raise RuntimeError(
+                f"{self.__class__.__name__}._infer_shapes() was not called in __init__"
+            )
+        return self._output_shape
+
 
     @property
     def device(self):

@@ -55,6 +55,10 @@ class MockModule(Module):
         """Method without @cached decorator."""
         return "original"
 
+    def _infer_shapes(self) -> None:
+        pass
+
+
 
 class StubModule(Module):
     """Stub module with configurable output for testing replace() with different module types."""
@@ -91,6 +95,10 @@ class StubModule(Module):
     def marginalize(self, marg_rvs, prune=True, cache=None):
         """Return marginalized version."""
         return self
+
+    def _infer_shapes(self) -> None:
+        pass
+
 
 
 class StubProduct(StubModule):

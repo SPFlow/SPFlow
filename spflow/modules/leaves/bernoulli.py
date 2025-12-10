@@ -58,6 +58,7 @@ class Bernoulli(LeafModule):
 
         self._logits = nn.Parameter(logits_tensor)
 
+
     @property
     def probs(self) -> Tensor:
         """Success probability in natural space (read via inverse projection of logits)."""

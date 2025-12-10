@@ -52,6 +52,19 @@ class Cat(Module):
         else:
             raise ValueError("Invalid dimension for concatenation.")
 
+        self._infer_shapes()
+
+    def _infer_shapes(self) -> None:
+        """Compute and set input/output shapes for Cat module."""
+        from spflow.modules.module_shape import ModuleShape
+
+        # Input shape is the first input's output shape
+        self._input_shape = self.inputs[0].output_shape
+        self._output_shape = ModuleShape(
+            self.out_features, self.out_channels, self.num_repetitions
+        )
+
+
     @property
     def out_features(self) -> int:
         if self.dim == 1:

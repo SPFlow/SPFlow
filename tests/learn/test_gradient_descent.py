@@ -67,6 +67,9 @@ class DummyModel(Module):
     def marginalize(self, marg_rvs: list[int], prune: bool = True, cache=None):
         return self
 
+    def _infer_shapes(self) -> None:
+        pass  # Dummy model doesn't need shape inference
+
 
 @pytest.fixture
 def model(device):
@@ -137,6 +140,9 @@ class ClassificationModel(Module, Classifier):
 
     def marginalize(self, marg_rvs: list[int], prune: bool = True, cache=None):
         return self
+
+    def _infer_shapes(self) -> None:
+        pass  # Classification dummy model doesn't need shape inference
 
 
 @pytest.fixture

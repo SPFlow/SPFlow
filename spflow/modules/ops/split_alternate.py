@@ -42,6 +42,9 @@ class SplitAlternate(Split):
         # Create masks for each split
         self.split_masks = [indices == i for i in range(num_splits)]
 
+        self._infer_shapes()
+
+
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, dim={self.dim}"
 
