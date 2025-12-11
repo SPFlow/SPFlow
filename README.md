@@ -105,16 +105,16 @@ log_likelihood_output = model.log_likelihood(data)
 
 print(f"Data shape: {data.shape}")
 print(f"Log-likelihood output shape: {log_likelihood_output.shape}")
-print(f"Log-likelihood - Mean: {log_likelihood_output.loc():.4f}, Std: {log_likelihood_output.scale():.4f}")
+print(f"Log-likelihood - Mean: {log_likelihood_output.mean():.4f}, Std: {log_likelihood_output.std():.4f}")
 print(f"Log-likelihood sample: {log_likelihood_output[0]}")
 ```
 
 Output:
 ```
 Data shape: torch.Size([100, 64])
-Log-likelihood output shape: torch.Size([100, 1, 1])
-Log-likelihood - Mean: -477.4794, Std: 131.2834
-Log-likelihood sample: tensor([[[-873.5844]]], grad_fn=<SliceBackward0>)
+Log-likelihood output shape: torch.Size([100, 1, 1, 1])
+Log-likelihood - Mean: -605.5274, Std: 163.2861
+Log-likelihood sample: tensor([[[-645.0172]]], grad_fn=<SelectBackward0>)
 ```
 
 ### Example 3: Structure Learning with LearnSPN
@@ -157,32 +157,32 @@ print(f"Log-likelihood sample: {log_likelihood_output[0]}")
 
 Output:
 ```
-used 4 iterations (0.0007s) to cluster 600 items into 2 clusters
+used 4 iterations (0.003s) to cluster 600 items into 2 clusters
 used 3 iterations (0.0003s) to cluster 398 items into 2 clusters
-Learned model structure: Sum [D=1, C=1] [weights: (1, 5, 1)] → scope: 0-4
-├─ Sum [D=1, C=1] [weights: (1, 8, 1)] → scope: 0-4
-│  ├─ Product [D=1, C=4] → scope: 0-4
-│  │  ├─ Normal [D=1, C=4] → scope: 0-0
-│  │  ├─ Normal [D=1, C=4] → scope: 1-1
-│  │  ├─ Normal [D=1, C=4] → scope: 2-2
-│  │  ├─ Normal [D=1, C=4] → scope: 3-3
-│  │  └─ Normal [D=1, C=4] → scope: 4-4
-│  └─ Product [D=1, C=4] → scope: 0-4
-│     ├─ Normal [D=1, C=4] → scope: 0-0
-│     ├─ Normal [D=1, C=4] → scope: 1-1
-│     ├─ Normal [D=1, C=4] → scope: 2-2
-│     ├─ Normal [D=1, C=4] → scope: 3-3
-│     └─ Normal [D=1, C=4] → scope: 4-4
-└─ Product [D=1, C=4] → scope: 0-4
-   ├─ Normal [D=1, C=4] → scope: 0-0
-   ├─ Normal [D=1, C=4] → scope: 1-1
-   ├─ Normal [D=1, C=4] → scope: 2-2
-   ├─ Normal [D=1, C=4] → scope: 3-3
-   └─ Normal [D=1, C=4] → scope: 4-4
+Learned model structure: Sum [D=1, C=1, R=1] [weights: (1, 5, 1, 1)] → scope: 0-4
+├─ Sum [D=1, C=1, R=1] [weights: (1, 8, 1, 1)] → scope: 0-4
+│  ├─ Product [D=1, C=4, R=1] → scope: 0-4
+│  │  ├─ Normal [D=1, C=4, R=1] → scope: 0-0
+│  │  ├─ Normal [D=1, C=4, R=1] → scope: 1-1
+│  │  ├─ Normal [D=1, C=4, R=1] → scope: 2-2
+│  │  ├─ Normal [D=1, C=4, R=1] → scope: 3-3
+│  │  └─ Normal [D=1, C=4, R=1] → scope: 4-4
+│  └─ Product [D=1, C=4, R=1] → scope: 0-4
+│     ├─ Normal [D=1, C=4, R=1] → scope: 0-0
+│     ├─ Normal [D=1, C=4, R=1] → scope: 1-1
+│     ├─ Normal [D=1, C=4, R=1] → scope: 2-2
+│     ├─ Normal [D=1, C=4, R=1] → scope: 3-3
+│     └─ Normal [D=1, C=4, R=1] → scope: 4-4
+└─ Product [D=1, C=4, R=1] → scope: 0-4
+   ├─ Normal [D=1, C=4, R=1] → scope: 0-0
+   ├─ Normal [D=1, C=4, R=1] → scope: 1-1
+   ├─ Normal [D=1, C=4, R=1] → scope: 2-2
+   ├─ Normal [D=1, C=4, R=1] → scope: 3-3
+   └─ Normal [D=1, C=4, R=1] → scope: 4-4
 Data shape: torch.Size([600, 5])
-Log-likelihood output shape: torch.Size([600, 1, 1])
-Log-likelihood - Mean: -8.1063, Std: 1.5230
-Log-likelihood sample: tensor([[-7.4175]], grad_fn=<SelectBackward0>)
+Log-likelihood output shape: torch.Size([600, 1, 1, 1])
+Log-likelihood - Mean: -8.1080, Std: 1.5001
+Log-likelihood sample: tensor([[[-7.4309]]], grad_fn=<SelectBackward0>)
 ```
 
 ### Example 4: Sampling from a Sum-Product Network
@@ -203,7 +203,7 @@ model = Sum(inputs=leaf_layer, out_channels=1)
 
 # Sample from the model
 n_samples = 2
-out_features = model.out_features
+out_features = model.out_shape.features
 evidence = torch.full((n_samples, out_features), torch.nan)  # No conditioning
 channel_index = torch.full((n_samples, out_features), 0, dtype=torch.int64)  # Sample from first channel
 mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
@@ -290,9 +290,11 @@ Restored log-likelihood: tensor([-1.2842, -2.8750, -7.2442], grad_fn=<ViewBackwa
 
 ``` python
 import torch
-from spflow.modules import Sum, Product
-from spflow.modules.leaf import Normal, Categorical
+from spflow.modules.sums import Sum
+from spflow.modules.products import Product
+from spflow.modules.leaves import Normal, Categorical
 from spflow.meta.data.scope import Scope
+from spflow.utils.visualization import visualize
 
 
 # Define feature indices: X=0, Z1=1, Z2=2
@@ -343,7 +345,7 @@ from spflow.utils.visualization import visualize
 
 # Create visualization with different layouts
 output_path = "/tmp/structure"
-visualize(root, output_path, show_scope=True, show_shape=True, show_params=True, format="vt")
+visualize(root, output_path, show_scope=True, show_shape=True, show_params=True, format="pdf")
 ```
 
 Output:
@@ -351,7 +353,7 @@ Output:
 <img src="res/structure.svg" height="400"/>
 
 
-**For comprehensive examples and tutorials**, see the [User Guide](guides/user_guide2.ipynb) and [Guides](guides/) directory.
+**For comprehensive examples and tutorials**, see the [User Guide](docs/source/guides/user_guide.ipynb) and the [Guides](docs/source/guides/) directory.
 
 ## Documentation
 

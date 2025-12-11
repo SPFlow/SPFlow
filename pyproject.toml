@@ -117,3 +117,5 @@ profile = "black"
 [tool.mypy]
 warn_return_any = true
 warn_unused_configs = true
+
+[tool.pyrefly]
