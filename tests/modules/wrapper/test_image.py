@@ -43,7 +43,7 @@ def test_log_likelihood(num_channel: int, num_reps):
     data = data.view(data.shape[0], num_channel, height, width)
     lls = module.log_likelihood(data)
     # Always expect 4D output
-    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
+    assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps)
     assert torch.isfinite(lls).all()
 
 

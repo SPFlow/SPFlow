@@ -5,7 +5,7 @@ import torch
 import numpy as np
 
 from spflow.meta import Scope
-from spflow.modules.leaves.base import LeafModule
+from spflow.modules.leaves.leaf import LeafModule
 from spflow.modules.ops.cat import Cat
 from spflow.utils.sampling_context import SamplingContext
 
@@ -58,7 +58,7 @@ class IndexLeaf(LeafModule):
         # Mode returns the scope indices themselves
         indices = torch.tensor(self.scope.query, dtype=torch.float32)
         # Shape: [out_features, out_channels, num_repetitions]
-        return indices.view(-1, 1, 1).expand(-1, self.out_channels, self.num_repetitions)
+        return indices.view(-1, 1, 1).expand(-1, self.out_shape.channels, self.out_shape.repetitions)
 
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
         """Override sample to return deterministic values based on scope indices."""

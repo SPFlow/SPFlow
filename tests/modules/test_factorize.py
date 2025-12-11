@@ -37,14 +37,14 @@ def test_log_likelihood(in_channels: int, out_features: int, num_reps, depth):
     if num_reps is None:
         assert lls.shape == (
             data.shape[0],
-            factorization_layer.out_features,
-            factorization_layer.out_channels,
+            factorization_layer.out_shape.features,
+            factorization_layer.out_shape.channels,
         )
     else:
         assert lls.shape == (
             data.shape[0],
-            factorization_layer.out_features,
-            factorization_layer.out_channels,
+            factorization_layer.out_shape.features,
+            factorization_layer.out_shape.channels,
             num_reps,
         )
 
@@ -58,9 +58,9 @@ def test_sample(in_channels: int, out_features: int, num_reps, depth):
 
     data = torch.full((n_samples, out_features), torch.nan)
     channel_index = torch.randint(
-        low=0, high=factorization_layer.out_channels, size=(n_samples, factorization_layer.out_features)
+        low=0, high=factorization_layer.out_shape.channels, size=(n_samples, factorization_layer.out_shape.features)
     )
-    mask = torch.full((n_samples, factorization_layer.out_features), True, dtype=torch.bool)
+    mask = torch.full((n_samples, factorization_layer.out_shape.features), True, dtype=torch.bool)
     if num_reps is not None:
         repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     else:
@@ -87,14 +87,14 @@ def test_feature_to_scope_basic():
     module = Factorize(inputs=[leaf], depth=1, num_repetitions=num_reps)
 
     # Force deterministic grouping: outputs are {0,1} and {2,3}
-    indices = torch.zeros(out_features, module.out_features, num_reps)
+    indices = torch.zeros(out_features, module.out_shape.features, num_reps)
     indices[0:2, 0, 0] = 1
     indices[2:4, 1, 0] = 1
     module.indices = indices
 
     feature_scopes = module.feature_to_scope
 
-    assert feature_scopes.shape == (module.out_features, num_reps)
+    assert feature_scopes.shape == (module.out_shape.features, num_reps)
     expected_scope_0 = Scope.join_all([leaf.feature_to_scope[0, 0], leaf.feature_to_scope[1, 0]])
     expected_scope_1 = Scope.join_all([leaf.feature_to_scope[2, 0], leaf.feature_to_scope[3, 0]])
     assert feature_scopes[0, 0] == expected_scope_0
@@ -110,7 +110,7 @@ def test_feature_to_scope_multiple_repetitions():
     module = Factorize(inputs=[leaf], depth=1, num_repetitions=num_reps)
 
     # rep 0: {0,1}, {2,3}; rep 1: {0,2}, {1,3}
-    indices = torch.zeros(out_features, module.out_features, num_reps)
+    indices = torch.zeros(out_features, module.out_shape.features, num_reps)
     indices[0:2, 0, 0] = 1
     indices[2:4, 1, 0] = 1
     indices[[0, 2], 0, 1] = 1
@@ -119,7 +119,7 @@ def test_feature_to_scope_multiple_repetitions():
 
     feature_scopes = module.feature_to_scope
 
-    assert feature_scopes.shape == (module.out_features, num_reps)
+    assert feature_scopes.shape == (module.out_shape.features, num_reps)
     expected_rep0 = [
         Scope.join_all([leaf.feature_to_scope[0, 0], leaf.feature_to_scope[1, 0]]),
         Scope.join_all([leaf.feature_to_scope[2, 0], leaf.feature_to_scope[3, 0]]),
@@ -187,7 +187,7 @@ def test_multidistribution_input():
     data = torch.cat((data_1, data_2), dim=1)
     lls = module.log_likelihood(data)
 
-    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
+    assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps)
 
     repetition_idx = torch.zeros((1,), dtype=torch.long)
     sampling_ctx = init_default_sampling_context(sampling_ctx=None, num_samples=1)
@@ -221,7 +221,7 @@ def test_exact_feature_count_for_depth():
 
     # This should work fine: depth=3 requires 2^3 = 8 features
     factorize = Factorize(inputs=[leaf], depth=3, num_repetitions=num_reps)
-    assert factorize.out_features == 8
+    assert factorize.out_shape.features == 8
 
 
 def test_excess_features_for_depth():
@@ -232,7 +232,7 @@ def test_excess_features_for_depth():
     leaf = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_reps)
 
     factorize = Factorize(inputs=[leaf], depth=2, num_repetitions=num_reps)
-    assert factorize.out_features == 4
+    assert factorize.out_shape.features == 4
 
 
 def test_factorize_list_input():
@@ -255,7 +255,7 @@ def test_factorize_list_input():
     # Check if it concatenated correctly
     # Concatenation of 2 features + 2 features = 4 features.
     # Depth=2 => 2^2 = 4 output features.
-    assert factorize.out_features == 4
+    assert factorize.out_shape.features == 4
     
     # Check if inputs is wrapped Cat module
     # self.inputs is ModuleList, so [0] is the input module

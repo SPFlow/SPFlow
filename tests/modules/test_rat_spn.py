@@ -106,11 +106,11 @@ def test_log_likelihood(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes,
     assert lls.ndim == 4, f"Expected 4D output, got {lls.ndim}D with shape {lls.shape}"
     assert lls.shape[0] == data.shape[0], f"Batch size mismatch: got {lls.shape[0]}, expected {data.shape[0]}"
     assert (
-        lls.shape[1] == module.out_features
-    ), f"Out_features mismatch: got {lls.shape[1]}, expected {module.out_features}"
+        lls.shape[1] == module.out_shape.features
+    ), f"Out_features mismatch: got {lls.shape[1]}, expected {module.out_shape.features}"
     assert (
-        lls.shape[2] == module.out_channels
-    ), f"Out_channels mismatch: got {lls.shape[2]}, expected {module.out_channels}"
+        lls.shape[2] == module.out_shape.channels
+    ), f"Out_channels mismatch: got {lls.shape[2]}, expected {module.out_shape.channels}"
     assert lls.shape[3] == 1, f"Num_reps mismatch: got {lls.shape[3]}, expected {1}"
 
 
@@ -131,10 +131,10 @@ def test_sample(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_p
         outer_product=outer_product,
         split_halves=split_halves,
     )
-    for i in range(module.out_channels):
+    for i in range(module.out_shape.channels):
         data = torch.full((n_samples, num_features), torch.nan)
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
-        mask = torch.full((n_samples, module.out_features), True)
+        channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features))
+        mask = torch.full((n_samples, module.out_shape.features), True)
         repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
@@ -182,8 +182,8 @@ def test_multidistribution_input(region_nodes, leaves, num_reps, root_nodes, out
 
     assert lls.shape == (
         data.shape[0],
-        model.out_features,
-        model.out_channels,
+        model.out_shape.features,
+        model.out_shape.channels,
         1,
     )  # num_reps is 1 after RAT SPN
 

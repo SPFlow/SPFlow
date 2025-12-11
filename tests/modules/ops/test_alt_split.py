@@ -49,8 +49,8 @@ def test_split_result(device, cls, out_channels: int, out_features: int, num_rep
     split = SplitAlternate(inputs=leaf, num_splits=2, dim=1)
     spn1 = ElementwiseProduct(inputs=split).to(device)
     spn2 = ElementwiseProduct(inputs=[leaf_half_1, leaf_half_2]).to(device)
-    assert spn1.out_channels == spn2.out_channels
-    assert spn1.out_features == spn2.out_features
+    assert spn1.out_shape.channels == spn2.out_shape.channels
+    assert spn1.out_shape.features == spn2.out_shape.features
     data = make_normal_data(out_features=num_features).to(device)
     ll_1 = spn1.log_likelihood(data)
     ll_2 = spn2.log_likelihood(data)

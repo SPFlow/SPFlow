@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from spflow.meta import Scope
-from spflow.modules.leaves.base import LeafModule
+from spflow.modules.leaves.leaf import LeafModule
 
 
 class DummyLeaf(LeafModule):

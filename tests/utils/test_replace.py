@@ -8,10 +8,11 @@ import torch
 from torch import nn
 
 from spflow.meta import Scope
-from spflow.modules.base import Module
+from spflow.modules.module import Module
 from spflow.utils.cache import Cache, cached
 from spflow.utils.replace import replace
-
+from spflow.modules.module_shape import ModuleShape
+from spflow.modules.module_shape import ModuleShape
 
 class MockModule(Module):
     """Simple mock module for testing replace functionality."""
@@ -21,16 +22,9 @@ class MockModule(Module):
         self._scope = Scope([0])
         self.name = name
         self.call_count = 0
+        self._out_shape = ModuleShape(1, 1, 1)
 
-    @property
-    def out_features(self) -> int:
-        """Return number of output features."""
-        return 1
 
-    @property
-    def out_channels(self) -> int:
-        """Return number of output channels."""
-        return 1
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -55,10 +49,6 @@ class MockModule(Module):
         """Method without @cached decorator."""
         return "original"
 
-    def _infer_shapes(self) -> None:
-        pass
-
-
 
 class StubModule(Module):
     """Stub module with configurable output for testing replace() with different module types."""
@@ -66,15 +56,8 @@ class StubModule(Module):
     def __init__(self, scope: Scope, out_channels: int = 1):
         super().__init__()
         self._scope = scope
-        self._out_channels = out_channels
-
-    @property
-    def out_features(self) -> int:
-        return len(self._scope.query)
-
-    @property
-    def out_channels(self) -> int:
-        return self._out_channels
+        self._out_channels_val = out_channels
+        self._out_shape = ModuleShape(len(self._scope.query), self._out_channels_val, 1)
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -86,7 +69,7 @@ class StubModule(Module):
         """Return fake log-likelihood with appropriate shape."""
         batch_size = data.shape[0]
         # Return zeros so replacements are visibly different
-        return torch.zeros(batch_size, self._out_channels, 1)
+        return torch.zeros(batch_size, self.out_shape.channels, 1)
 
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
         """Return fake samples."""
@@ -96,8 +79,6 @@ class StubModule(Module):
         """Return marginalized version."""
         return self
 
-    def _infer_shapes(self) -> None:
-        pass
 
 
 
@@ -154,7 +135,7 @@ class StubCat(StubModule):
         for inp in inputs:
             all_query.update(inp._scope.query)
         scope = Scope(sorted(all_query))
-        out_channels = sum(inp.out_channels for inp in inputs)
+        out_channels = sum(inp.out_shape.channels for inp in inputs)
         super().__init__(scope, out_channels)
         self.inputs = nn.ModuleList(inputs)
 

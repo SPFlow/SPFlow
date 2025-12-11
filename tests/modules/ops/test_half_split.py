@@ -40,8 +40,8 @@ def test_split_result(device, cls, out_channels: int, out_features: int, num_rep
     split = SplitHalves(inputs=leaf, num_splits=2, dim=1).to(device)
     spn1 = cls(inputs=split).to(device)
     spn2 = cls(inputs=[leaf_half_1, leaf_half_2]).to(device)
-    assert spn1.out_channels == spn2.out_channels
-    assert spn1.out_features == spn2.out_features
+    assert spn1.out_shape.channels == spn2.out_shape.channels
+    assert spn1.out_shape.features == spn2.out_shape.features
     data = make_normal_data(out_features=num_features).to(device)
     ll_1 = spn1.log_likelihood(data)
     ll_2 = spn2.log_likelihood(data)
@@ -50,10 +50,10 @@ def test_split_result(device, cls, out_channels: int, out_features: int, num_rep
     n_samples = 100
     num_inputs = 2
 
-    data1 = torch.full((n_samples, spn1.out_features * num_inputs), torch.nan).to(device)
-    data2 = torch.full((n_samples, spn1.out_features * num_inputs), torch.nan).to(device)
-    mask = torch.full((n_samples, spn1.out_features), True, dtype=torch.bool).to(device)
-    channel_index = torch.randint(low=0, high=spn1.out_channels, size=(n_samples, spn1.out_features)).to(
+    data1 = torch.full((n_samples, spn1.out_shape.features * num_inputs), torch.nan).to(device)
+    data2 = torch.full((n_samples, spn1.out_shape.features * num_inputs), torch.nan).to(device)
+    mask = torch.full((n_samples, spn1.out_shape.features), True, dtype=torch.bool).to(device)
+    channel_index = torch.randint(low=0, high=spn1.out_shape.channels, size=(n_samples, spn1.out_shape.features)).to(
         device
     )
     rep_index = torch.randint(low=0, high=num_repetitions, size=(n_samples,)).to(device)

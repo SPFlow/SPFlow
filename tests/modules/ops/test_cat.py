@@ -44,10 +44,10 @@ def test_log_likelihood(out_channels: int, out_features: int, num_reps, dim: int
         num_repetitions=num_reps,
         dim=dim,
     ).to(device)
-    data = make_normal_data(out_features=module.out_features).to(device)
+    data = make_normal_data(out_features=module.out_shape.features).to(device)
     lls = module.log_likelihood(data)
     # Always expect 4D output [batch, features, channels, num_reps]
-    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
+    assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps)
 
 
 @pytest.mark.parametrize("out_channels,out_features, num_reps, dim", params)
@@ -59,12 +59,12 @@ def test_sample(out_channels: int, out_features: int, num_reps, dim: int, device
         num_repetitions=num_reps,
         dim=dim,
     ).to(device)
-    for i in range(module.out_channels):
-        data = torch.full((n_samples, module.out_features), torch.nan).to(device)
+    for i in range(module.out_shape.channels):
+        data = torch.full((n_samples, module.out_shape.features), torch.nan).to(device)
         channel_index = torch.randint(
-            low=0, high=module.out_channels, size=(n_samples, module.out_features)
+            low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
         ).to(device)
-        mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool).to(device)
+        mask = torch.full((n_samples, module.out_shape.features), True, dtype=torch.bool).to(device)
         # Always set repetition_index since num_reps is never None
         repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
         sampling_ctx = SamplingContext(
@@ -84,7 +84,7 @@ def test_expectation_maximization(out_channels: int, out_features: int, num_reps
         num_repetitions=num_reps,
         dim=dim,
     ).to(device)
-    data = make_normal_data(out_features=module.out_features).to(device)
+    data = make_normal_data(out_features=module.out_shape.features).to(device)
     expectation_maximization(module, data, max_steps=10)
 
 
@@ -96,7 +96,7 @@ def test_gradient_descent_optimization(out_channels: int, out_features: int, num
         num_repetitions=num_reps,
         dim=dim,
     ).to(device)
-    data = make_normal_data(out_features=module.out_features).to(device)
+    data = make_normal_data(out_features=module.out_shape.features).to(device)
 
     dataset = torch.utils.data.TensorDataset(data)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
@@ -212,11 +212,11 @@ def test_marginalize(prune, out_channels: int, dim: int, marg_rvs: list[int], nu
     # Marginalize scope
     marginalized_module = module.marginalize(marg_rvs, prune=prune)
 
-    if len(marg_rvs) == module.out_features:
+    if len(marg_rvs) == module.out_shape.features:
         assert marginalized_module is None
         return
     else:
-        assert marginalized_module.out_features == module.out_features - len(marg_rvs)
+        assert marginalized_module.out_shape.features == module.out_shape.features - len(marg_rvs)
 
     # Scope query should not contain marginalized rv
     assert len(set(marginalized_module.scope.query).intersection(marg_rvs)) == 0
