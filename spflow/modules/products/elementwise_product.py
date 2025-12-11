@@ -5,7 +5,8 @@ import torch
 from torch import Tensor
 
 from spflow.meta.data import Scope
-from spflow.modules.base import Module
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.products.base_product import BaseProduct
@@ -52,30 +53,32 @@ class ElementwiseProduct(BaseProduct):
         """
         super().__init__(inputs=inputs)
 
-        # Check if all inputs either have equal number of out_channels or 1
-        if not all(inp.out_channels in (1, self._max_out_channels) for inp in self.inputs):
+        # Check if all inputs either have equal number of out_channels or 1 (using in_shape.channels set by BaseProduct)
+        if not all(inp.out_shape.channels in (1, self.in_shape.channels) for inp in self.inputs):
             raise ValueError(
-                f"Inputs must have equal number of channels or one of them must be '1', but were {[inp.out_channels for inp in self.inputs]}"
+                f"Inputs must have equal number of channels or one of them must be '1', but were {[inp.out_shape.channels for inp in self.inputs]}"
             )
 
-        self.num_repetitions = self.inputs[0].num_repetitions
+
 
         if self.num_splits is None:
             self.num_splits = num_splits
 
         self.check_shapes()
 
-        self._infer_shapes()
-
-    def _infer_shapes(self) -> None:
-        """Compute and set input/output shapes for ElementwiseProduct."""
-        from spflow.modules.module_shape import ModuleShape
-
-        self._input_shape = self.inputs[0].output_shape
-        self._output_shape = ModuleShape(
-            self.out_features, self.out_channels, self.num_repetitions
-        )
-
+        # Shape computation: compute out_shape based on elementwise product
+        input_features = self.inputs[0].out_shape.features
+        if input_features == 1:
+            out_features = 1
+        elif self.input_is_split:
+            out_features = int(input_features // self.num_splits)
+        else:
+            out_features = input_features
+        
+        # out_channels is max since one input can have single channel (broadcast)
+        out_channels = self.in_shape.channels
+        
+        self.out_shape = ModuleShape(out_features, out_channels, self.in_shape.repetitions)
 
     def check_shapes(self):
         """Check if input shapes are compatible for broadcasting."""
@@ -84,9 +87,15 @@ class ElementwiseProduct(BaseProduct):
         if self.input_is_split:
             if self.num_splits != inputs[0].num_splits:
                 raise ValueError("num_splits must be the same for all inputs")
-            shapes = inputs[0].get_out_shapes((self.out_features, self.out_channels))
+            out_f = self.inputs[0].out_shape.features
+            out_c = self.inputs[0].out_shape.channels
+            if out_f == 1:
+                out_f_computed = 1
+            else:
+                out_f_computed = int(out_f // self.num_splits)
+            shapes = inputs[0].get_out_shapes((out_f_computed, out_c))
         else:
-            shapes = [(inp.out_features, inp.out_channels) for inp in inputs]
+            shapes = [(inp.out_shape.features, inp.out_shape.channels) for inp in inputs]
 
         if not shapes:
             return False  # No shapes to check
@@ -118,23 +127,9 @@ class ElementwiseProduct(BaseProduct):
         raise ValueError(f"the shapes of the inputs {shapes} are not broadcastable")
 
     @property
-    def out_channels(self) -> int:
-        # Max since one of the inputs can also only have a single output channel which is then broadcasted
-        return self._max_out_channels
-
-    @property
-    def out_features(self) -> int:
-        if self.inputs[0].out_features == 1:
-            return 1
-        if self.input_is_split:
-            return int(self.inputs[0].out_features // self.num_splits)
-        else:
-            return self.inputs[0].out_features
-
-    @property
     def feature_to_scope(self) -> np.ndarray:
         out = []
-        for r in range(self.num_repetitions):
+        for r in range(self.out_shape.repetitions):
             if self.input_is_split:
                 scope_lists_r = self.inputs[0].feature_to_scope[
                     ..., r
@@ -155,11 +150,11 @@ class ElementwiseProduct(BaseProduct):
 
         return np.stack(out, axis=1)
 
-    def map_out_channels_to_in_channels(self, index: Tensor) -> Tensor:
+    def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         """Map output channel indices to input channel indices.
 
         Args:
-            index: Tensor of output channel indices to map.
+            output_ids: Tensor of output channel indices to map.
 
         Returns:
             Tensor: Mapped input channel indices.
@@ -167,14 +162,14 @@ class ElementwiseProduct(BaseProduct):
         if self.input_is_split:
             num_splits = self.num_splits
             if isinstance(self.inputs[0], SplitHalves):
-                return index.repeat((1, num_splits)).unsqueeze(-1)
+                return output_ids.repeat((1, num_splits)).unsqueeze(-1)
             elif isinstance(self.inputs[0], SplitAlternate):
-                return index.repeat_interleave(num_splits, dim=1).unsqueeze(-1)
+                return output_ids.repeat_interleave(num_splits, dim=1).unsqueeze(-1)
             else:
                 raise NotImplementedError("Other Split types are not implemented yet.")
         else:
             num_splits = len(self.inputs)
-            return index.unsqueeze(-1).repeat(1, 1, num_splits)
+            return output_ids.unsqueeze(-1).repeat(1, 1, num_splits)
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
         """Map output mask to input mask.
@@ -215,13 +210,14 @@ class ElementwiseProduct(BaseProduct):
         for i, ll in enumerate(lls):
             if ll.shape[2] == 1:
                 if ll.ndim == 4:
-                    lls[i] = ll.expand(-1, -1, self.out_channels, -1)
+                    lls[i] = ll.expand(-1, -1, self.out_shape.channels, -1)
                 else:
-                    lls[i] = ll.expand(-1, -1, self.out_channels)
+                    lls[i] = ll.expand(-1, -1, self.out_shape.channels)
 
         # Compute the elementwise sum of left and right split
         output = torch.sum(torch.stack(lls, dim=-1), dim=-1)
 
-        output = output.view(output.size(0), self.out_features, self.out_channels, self.num_repetitions)
+        output = output.view(output.size(0), self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions)
 
         return output
+

@@ -5,13 +5,14 @@ import torch
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError
-from spflow.modules.base import Module
+from spflow.modules.module import Module
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.modules.module_shape import ModuleShape
 
 
 class Sum(Module):
@@ -86,19 +87,20 @@ class Sum(Module):
         else:
             self.inputs = inputs
 
-        self.sum_dim = self._get_sum_dim()
-
-        # ========== 5. ATTRIBUTE INITIALIZATION ==========
-        self._out_features = self.inputs.out_features
-        self._in_channels_total = self.inputs.out_channels
-        self._out_channels_total = out_channels
-        self.num_repetitions = num_repetitions
-
-        self.weights_shape = self._get_weights_shape()
-
+        self.sum_dim = 1
         self.scope = self.inputs.scope
 
+        # ========== 5. SHAPE COMPUTATION (early, so shapes can be reused below) ==========
+        self.in_shape = self.inputs.out_shape
+        self.out_shape = ModuleShape(
+            features=self.in_shape.features,
+            channels=out_channels,
+            repetitions=num_repetitions
+        )
+
         # ========== 6. WEIGHT INITIALIZATION & PARAMETER REGISTRATION ==========
+        self.weights_shape = self._get_weights_shape()
+
         weights = self._initialize_weights(weights)
 
         # Register parameter for unnormalized log-probabilities
@@ -106,17 +108,6 @@ class Sum(Module):
 
         # Set weights (converts to logits internally via property setter)
         self.weights = weights
-
-        self._infer_shapes()
-
-    def _infer_shapes(self) -> None:
-        """Compute and set input/output shapes for Sum module."""
-        from spflow.modules.module_shape import ModuleShape
-
-        self._input_shape = self.inputs.output_shape
-        self._output_shape = ModuleShape(
-            self._out_features, self._out_channels_total, self.num_repetitions
-        )
 
 
     def _process_weights_parameter(
@@ -160,15 +151,13 @@ class Sum(Module):
 
         return weights, out_channels, num_repetitions
 
-    def _get_sum_dim(self) -> int:
-        return 1
 
-    def _get_weights_shape(self) -> tuple[int, ...]:
+    def _get_weights_shape(self) -> tuple[int, int, int, int]:
         return (
-            self._out_features,
-            self._in_channels_total,
-            self._out_channels_total,
-            self.num_repetitions,
+            self.in_shape.features,
+            self.in_shape.channels,
+            self.out_shape.channels,
+            self.out_shape.repetitions,
         )
 
     def _initialize_weights(self, weights: Tensor | None) -> Tensor:
@@ -180,14 +169,6 @@ class Sum(Module):
     @property
     def feature_to_scope(self) -> np.ndarray:
         return self.inputs.feature_to_scope
-
-    @property
-    def out_features(self) -> int:
-        return self._out_features
-
-    @property
-    def out_channels(self) -> int:
-        return self._out_channels_total
 
     @property
     def log_weights(self) -> Tensor:
@@ -293,7 +274,7 @@ class Sum(Module):
         output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)
 
         batch_size = output.shape[0]
-        result = output.view(batch_size, self.out_features, self.out_channels, self.num_repetitions)
+        result = output.view(batch_size, self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions)
 
         return result
 
@@ -347,7 +328,7 @@ class Sum(Module):
             logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
 
         else:
-            if self.num_repetitions > 1:
+            if self.out_shape.repetitions > 1:
                 raise ValueError(
                     "sampling_ctx.repetition_idx must be provided when sampling from a module with "
                     "num_repetitions > 1."
@@ -513,7 +494,7 @@ class Sum(Module):
             if marg_input:
                 # Apply mask to weights per-repetition
                 masked_weights_list = []
-                for r in range(self.num_repetitions):
+                for r in range(self.out_shape.repetitions):
                     feature_to_scope_r = self.inputs.feature_to_scope[:, r].copy()
                     # remove mutual_rvs from feature_to_scope list
                     for rv in mutual_rvs:

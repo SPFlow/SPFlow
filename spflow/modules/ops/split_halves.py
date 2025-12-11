@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from torch import Tensor
 
-from spflow.modules.base import Module
+from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache, cached
 
@@ -24,8 +24,6 @@ class SplitHalves(Split):
         """
         super().__init__(inputs=inputs, dim=dim, num_splits=num_splits)
 
-        self._infer_shapes()
-
 
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, dim={self.dim}"
@@ -35,7 +33,7 @@ class SplitHalves(Split):
         scopes = self.inputs.feature_to_scope
         num_scopes_per_chunk = len(scopes) // self.num_splits
         out = []
-        for r in range(self.num_repetitions):
+        for r in range(self.out_shape.repetitions):
             feature_to_scope_r = []
             for i in range(self.num_splits):
                 sub_scopes_r = scopes[i * num_scopes_per_chunk : (i + 1) * num_scopes_per_chunk, r]
@@ -64,6 +62,6 @@ class SplitHalves(Split):
         # get log likelihoods for all inputs
         lls = self.inputs.log_likelihood(data, cache=cache)
 
-        lls_split = lls.split(self.inputs.out_features // self.num_splits, dim=self.dim)
+        lls_split = lls.split(self.inputs.out_shape.features // self.num_splits, dim=self.dim)
 
         return list(lls_split)

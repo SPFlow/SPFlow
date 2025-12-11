@@ -5,7 +5,8 @@ import torch
 from torch import Tensor
 
 from spflow.meta.data import Scope
-from spflow.modules.base import Module
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
@@ -40,32 +41,17 @@ class Product(Module):
 
         # Scope of this product module is equal to the scope of its only input
         self.scope = self.inputs.scope
-        self.num_repetitions = self.inputs.num_repetitions
 
-        self._infer_shapes()
+        # Shape computation: in_shape = inputs.out_shape, out_shape has 1 feature
+        input_shape = self.inputs.out_shape
+        self.in_shape = input_shape
+        self.out_shape = ModuleShape(1, input_shape.channels, input_shape.repetitions)
 
-    def _infer_shapes(self) -> None:
-        """Compute and set input/output shapes for Product module."""
-        from spflow.modules.module_shape import ModuleShape
-
-        self._input_shape = self.inputs.output_shape
-        self._output_shape = ModuleShape(
-            1, self.inputs.out_channels, self.num_repetitions
-        )
-
-
-    @property
-    def out_channels(self) -> int:
-        return self.inputs.out_channels
-
-    @property
-    def out_features(self) -> int:
-        return 1
 
     @property
     def feature_to_scope(self) -> np.ndarray:
         out = []
-        for r in range(self.num_repetitions):
+        for r in range(self.out_shape.repetitions):
             joined_scope = Scope.join_all(self.inputs.feature_to_scope[:, r])
             out.append(np.array([[joined_scope]]))
         return np.concatenate(out, axis=1)
@@ -127,8 +113,8 @@ class Product(Module):
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
 
         # Expand mask and channels to match input module shape
-        mask = sampling_ctx.mask.expand(data.shape[0], self.inputs.out_features)
-        channel_index = sampling_ctx.channel_index.expand(data.shape[0], self.inputs.out_features)
+        mask = sampling_ctx.mask.expand(data.shape[0], self.inputs.out_shape.features)
+        channel_index = sampling_ctx.channel_index.expand(data.shape[0], self.inputs.out_shape.features)
         sampling_ctx.update(channel_index=channel_index, mask=mask)
 
         # Delegate to input module for actual sampling
@@ -220,7 +206,7 @@ class Product(Module):
         if marg_child is None:
             return None
 
-        elif prune and marg_child.out_features == 1:
+        elif prune and marg_child.out_shape.features == 1:
             return marg_child
         else:
             return Product(inputs=marg_child)

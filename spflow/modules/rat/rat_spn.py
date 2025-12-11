@@ -16,8 +16,8 @@ import torch
 
 from spflow.interfaces.classifier import Classifier
 from spflow.meta.data.scope import Scope
-from spflow.modules.base import Module
-from spflow.modules.leaves.base import LeafModule
+from spflow.modules.module import Module
+from spflow.modules.leaves.leaf import LeafModule
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.ops.split_halves import SplitHalves
 from spflow.modules.products.elementwise_product import ElementwiseProduct
@@ -86,7 +86,7 @@ class RatSPN(Module, Classifier):
         super().__init__()
         self.n_root_nodes = n_root_nodes
         self.n_region_nodes = n_region_nodes
-        self.n_leaf_nodes = leaf_modules[0].out_channels
+        self.n_leaf_nodes = leaf_modules[0].out_shape.channels
         self.leaf_modules = leaf_modules
         self.depth = depth
         self.num_repetitions = num_repetitions
@@ -112,12 +112,10 @@ class RatSPN(Module, Classifier):
             )
 
         self.create_spn()
-        self._infer_shapes()
-
-    def _infer_shapes(self) -> None:
-        """Delegate shape inference to the root node."""
-        self._input_shape = self.root_node.input_shape
-        self._output_shape = self.root_node.output_shape
+        
+        # Shape computation: delegate to root node
+        self.in_shape = self.root_node.in_shape
+        self.out_shape = self.root_node.out_shape
 
 
     def create_spn(self):
@@ -198,14 +196,6 @@ class RatSPN(Module, Classifier):
     @property
     def scopes_out(self) -> list[Scope]:
         return self.root_node.scopes_out
-
-    @property
-    def out_features(self) -> int:
-        return self.root_node.out_features
-
-    @property
-    def out_channels(self) -> int:
-        return self.root_node.out_channels
 
     @cached
     def log_likelihood(

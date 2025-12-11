@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Optional, Any
 
-from spflow.modules.base import Module
+from spflow.modules.module import Module
 
 # Tree view constants
 PREFIX_CHILD = "├─ "
@@ -146,8 +146,8 @@ def _format_node(module: Module, show_params: bool = True, show_scope: bool = Tr
     properties = []
 
     # Add key properties
-    properties.append(f"D={module.out_features}")
-    properties.append(f"C={module.out_channels}")
+    properties.append(f"D={module.out_shape.features}")
+    properties.append(f"C={module.out_shape.channels}")
 
     if hasattr(module, "num_repetitions"):
         properties.append(f"R={module.num_repetitions}")

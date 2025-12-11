@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from spflow.modules.base import Module
+from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache, cached
 
@@ -36,13 +36,11 @@ class SplitAlternate(Split):
         """
         super().__init__(inputs=inputs, dim=dim, num_splits=num_splits)
 
-        num_f = inputs.out_features
+        num_f = inputs.out_shape.features
         indices = torch.arange(num_f, device=inputs.device) % num_splits
 
         # Create masks for each split
         self.split_masks = [indices == i for i in range(num_splits)]
-
-        self._infer_shapes()
 
 
     def extra_repr(self) -> str:
@@ -61,7 +59,7 @@ class SplitAlternate(Split):
         scopes = self.inputs.feature_to_scope
         num_scopes_per_chunk = len(scopes) // self.num_splits
         out = []
-        for r in range(self.num_repetitions):
+        for r in range(self.out_shape.repetitions):
             feature_to_scope_r = []
             for i in range(self.num_splits):
                 sub_scopes_r = scopes[i :: self.num_splits, r]

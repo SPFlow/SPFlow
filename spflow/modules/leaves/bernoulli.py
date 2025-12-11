@@ -2,7 +2,7 @@ import torch
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterCombinationError
-from spflow.modules.leaves.base import LeafModule
+from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases
 from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 

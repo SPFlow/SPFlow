@@ -4,7 +4,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from spflow.modules.base import Module
+from spflow.modules.module import Module
 from spflow.utils.cache import Cache
 
 logger = logging.getLogger(__name__)

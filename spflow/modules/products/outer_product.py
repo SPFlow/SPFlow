@@ -7,7 +7,8 @@ import torch
 from torch import Tensor
 
 from spflow.meta.data import Scope
-from spflow.modules.base import Module
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_alternate import SplitAlternate
 from spflow.modules.ops.split_halves import SplitHalves
@@ -45,30 +46,36 @@ class OuterProduct(BaseProduct):
 
         self.num_splits = num_splits
 
-        # Store unraveled channel indices
+        # Store unraveled channel indices using in_shape.channels (set by BaseProduct)
         if self.input_is_split:
             unraveled_channel_indices = list(
-                product(*[list(range(self._max_out_channels)) for _ in range(self.num_splits)])
+                product(*[list(range(self.in_shape.channels)) for _ in range(self.num_splits)])
             )
         else:
             unraveled_channel_indices = list(
-                product(*[list(range(self._max_out_channels)) for _ in self.inputs])
+                product(*[list(range(self.in_shape.channels)) for _ in self.inputs])
             )
         self.register_buffer(
             name="unraveled_channel_indices",
             tensor=torch.tensor(unraveled_channel_indices),
         )
 
-        self._infer_shapes()
-
-    def _infer_shapes(self) -> None:
-        """Compute and set input/output shapes for OuterProduct."""
-        from spflow.modules.module_shape import ModuleShape
-
-        self._input_shape = self.inputs[0].output_shape
-        self._output_shape = ModuleShape(
-            self.out_features, self.out_channels, self.num_repetitions
-        )
+        # Shape computation: compute out_shape based on outer product of channels
+        input_features = self.inputs[0].out_shape.features
+        if self.input_is_split:
+            out_features = int(input_features // self.num_splits)
+        else:
+            out_features = input_features
+        
+        # Compute out_channels as product of input channels
+        ocs = 1
+        for inp in self.inputs:
+            ocs *= inp.out_shape.channels
+        if len(self.inputs) == 1:
+            ocs = ocs**self.num_splits
+        out_channels = ocs
+        
+        self.out_shape = ModuleShape(out_features, out_channels, self.in_shape.repetitions)
 
 
     def check_shapes(self):
@@ -80,12 +87,27 @@ class OuterProduct(BaseProduct):
         Raises:
             ValueError: If input shapes are not broadcastable.
         """
+        # Compute out_features locally
+        input_features = self.inputs[0].out_shape.features
+        if self.input_is_split:
+            out_features = int(input_features // self.num_splits)
+        else:
+            out_features = input_features
+        
+        # Compute out_channels as product of input channels
+        ocs = 1
+        for inp in self.inputs:
+            ocs *= inp.out_shape.channels
+        if len(self.inputs) == 1:
+            ocs = ocs**self.num_splits
+        out_channels = ocs
+
         if self.input_is_split:
             if self.num_splits != self.inputs[0].num_splits:
                 raise ValueError("num_splits must be the same for all inputs")
-            shapes = self.inputs[0].get_out_shapes((self.out_features, self.out_channels))
+            shapes = self.inputs[0].get_out_shapes((out_features, out_channels))
         else:
-            shapes = [(inp.out_features, inp.out_channels) for inp in self.inputs]
+            shapes = [(inp.out_shape.features, inp.out_shape.channels) for inp in self.inputs]
 
         if not shapes:
             return False  # No shapes to check
@@ -114,25 +136,9 @@ class OuterProduct(BaseProduct):
         raise ValueError(f"the shapes of the inputs {shapes} are not broadcastable")
 
     @property
-    def out_channels(self) -> int:
-        ocs = 1
-        for inp in self.inputs:
-            ocs *= inp.out_channels
-        if len(self.inputs) == 1:
-            ocs = ocs**self.num_splits
-        return ocs
-
-    @property
-    def out_features(self) -> int:
-        if self.input_is_split:
-            return int(self.inputs[0].out_features // self.num_splits)
-        else:
-            return self.inputs[0].out_features
-
-    @property
     def feature_to_scope(self) -> list[Scope]:
         out = []
-        for r in range(self.num_repetitions):
+        for r in range(self.out_shape.repetitions):
             if isinstance(self.inputs, Split):
                 scope_lists_r = self.inputs.feature_to_scope[
                     ..., r
@@ -169,7 +175,7 @@ class OuterProduct(BaseProduct):
             elif isinstance(self.inputs[0], SplitAlternate):
                 return (
                     self.unraveled_channel_indices[output_ids]
-                    .view(-1, self.inputs[0].out_features)
+                    .view(-1, self.inputs[0].out_shape.features)
                     .unsqueeze(-1)
                 )
             else:
@@ -199,7 +205,7 @@ class OuterProduct(BaseProduct):
                 return (
                     mask.unsqueeze(-1)
                     .repeat(1, 1, num_inputs)
-                    .view(-1, self.inputs[0].out_features)
+                    .view(-1, self.inputs[0].out_shape.features)
                     .unsqueeze(-1)
                 )
             else:
@@ -236,15 +242,15 @@ class OuterProduct(BaseProduct):
         for i in range(1, len(lls)):
             output = output.unsqueeze(3) + lls[i].unsqueeze(2)
             if output.ndim == 4:
-                output = output.view(output.size(0), self.out_features, -1)
+                output = output.view(output.size(0), self.out_shape.features, -1)
             elif output.ndim == 5:
-                output = output.view(output.size(0), self.out_features, -1, self.num_repetitions)
+                output = output.view(output.size(0), self.out_shape.features, -1, self.out_shape.repetitions)
             else:
                 raise ValueError("Invalid number of dimensions")
 
         # View as [b, n, m1 * m2, r]
-        if self.num_repetitions is None:
-            output = output.view(output.size(0), self.out_features, self.out_channels)
+        if self.out_shape.repetitions is None:
+            output = output.view(output.size(0), self.out_shape.features, self.out_shape.channels)
         else:
-            output = output.view(output.size(0), self.out_features, self.out_channels, self.num_repetitions)
+            output = output.view(output.size(0), self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions)
         return output
