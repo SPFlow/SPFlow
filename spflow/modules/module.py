@@ -17,6 +17,7 @@ from torch import Tensor, nn
 from spflow.meta.data.scope import Scope
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
+from spflow.modules.module_shape import ModuleShape
 
 
 class Module(nn.Module, ABC):
@@ -35,9 +36,9 @@ class Module(nn.Module, ABC):
     def __init__(self) -> None:
         """Initialize the module with no input."""
         super().__init__()
-        # Shape attributes - set by _infer_shapes() in subclass __init__
-        self._input_shape: "ModuleShape | None" = None
-        self._output_shape: "ModuleShape | None" = None
+        # Shape attributes - should be set by subclass __init__
+        self._in_shape: ModuleShape = None
+        self._out_shape: ModuleShape = None
 
     @property
     def inputs(self) -> Module | Iterable[Module]:
@@ -56,29 +57,6 @@ class Module(nn.Module, ABC):
             value: The module to set as input.
         """
         self._modules["inputs"] = value
-
-    @property
-    @abstractmethod
-    def out_features(self) -> int:
-        """Returns the number of output features of the module.
-
-        Returns:
-            int: Number of output features.
-        """
-        pass
-
-    @property
-    @abstractmethod
-    def out_channels(self) -> int:
-        """Number of output channels of the module.
-
-        Output channels represent parallel computations or multiple distributions
-        over the same scope.
-
-        Returns:
-            int: Number of output channels.
-        """
-        pass
 
     @property
     def scope(self) -> Scope:
@@ -112,17 +90,8 @@ class Module(nn.Module, ABC):
         """
         pass
 
-    @abstractmethod
-    def _infer_shapes(self) -> None:
-        """Compute and set _input_shape and _output_shape.
-
-        This method must be called at the end of each subclass's __init__ method
-        to set the private shape attributes based on the module's configuration.
-        """
-        pass
-
     @property
-    def input_shape(self) -> "ModuleShape":
+    def in_shape(self) -> ModuleShape:
         """Expected input tensor shape (features, channels, repetitions).
 
         For leaf modules, returns the shape of data tensors: (features, 1, 1).
@@ -130,28 +99,34 @@ class Module(nn.Module, ABC):
         Returns:
             ModuleShape: The expected input shape.
         """
-        from spflow.modules.module_shape import ModuleShape
+        return self._in_shape
 
-        if self._input_shape is None:
-            raise RuntimeError(
-                f"{self.__class__.__name__}._infer_shapes() was not called in __init__"
-            )
-        return self._input_shape
+    @in_shape.setter
+    def in_shape(self, value: ModuleShape) -> None:
+        """Set the input shape.
+
+        Args:
+            value: The ModuleShape to set as input shape.
+        """
+        self._in_shape = value
 
     @property
-    def output_shape(self) -> "ModuleShape":
+    def out_shape(self) -> ModuleShape:
         """Output tensor shape (features, channels, repetitions).
 
         Returns:
             ModuleShape: The output shape produced by this module.
         """
-        from spflow.modules.module_shape import ModuleShape
+        return self._out_shape
 
-        if self._output_shape is None:
-            raise RuntimeError(
-                f"{self.__class__.__name__}._infer_shapes() was not called in __init__"
-            )
-        return self._output_shape
+    @out_shape.setter
+    def out_shape(self, value: ModuleShape) -> None:
+        """Set the output shape.
+
+        Args:
+            value: The ModuleShape to set as output shape.
+        """
+        self._out_shape = value
 
 
     @property
@@ -395,7 +370,7 @@ class Module(nn.Module, ABC):
         return self.log_likelihood(data, cache=cache)
 
     def extra_repr(self) -> str:
-        return f"D={self.out_features}, C={self.out_channels}, R={self.num_repetitions}"
+        return f"D={self.out_shape.features}, C={self.out_shape.channels}, R={self.out_shape.repetitions}"
 
     def to_str(
         self,

@@ -8,7 +8,8 @@ import torch
 from torch import Tensor
 
 from spflow.meta.data.scope import Scope
-from spflow.modules.base import Module
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.leaves import apply_nan_strategy, parse_leaf_args
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
@@ -52,9 +53,13 @@ class LeafModule(Module, ABC):
         self.parameter_fn = parameter_fn
         self._validate_args = validate_args
 
-        # _infer_shapes can be called here since _event_shape is already set
-        self._infer_shapes()
+        # Shape computation from _event_shape
+        features = self._event_shape[0]
+        channels = self._event_shape[1] if len(self._event_shape) > 1 else 1
+        repetitions = self._event_shape[2] if len(self._event_shape) > 2 else 1
 
+        self.in_shape = ModuleShape(features, 1, 1)
+        self.out_shape = ModuleShape(features, channels, repetitions)
 
     @property
     def inputs(self) -> Module | Iterable[Module]:
@@ -117,6 +122,26 @@ class LeafModule(Module, ABC):
         """Returns the parameters of the distribution."""
         pass
 
+    @property
+    def mode(self) -> Tensor:
+        """Return distribution mode.
+
+        Returns:
+            Mode of the distribution.
+        """
+        return self.distribution.mode
+
+    def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
+        """Return parameters marginalized to specified indices.
+
+        Args:
+            indices: List of indices to marginalize to.
+
+        Returns:
+            Dictionary of marginalized parameters.
+        """
+        return {k: v[indices] for k, v in self.params().items()}
+
     def _mle_update_statistics(self, data: Tensor, weights: Tensor, bias_correction: bool) -> None:
         """Compute and set MLE parameter estimates.
 
@@ -125,9 +150,8 @@ class LeafModule(Module, ABC):
             weights: Weight tensor for each data point.
             bias_correction: Whether to apply bias correction to variance estimate.
         """
-        data = data.view(data.shape[0], self.out_features, 1, 1)  # Add channel and repetition dims
+        data = data.view(data.shape[0], self.out_shape.features, 1, 1)  # Add channel and repetition dims
         estimates = self._compute_parameter_estimates(data, weights, bias_correction)
-
         self._set_mle_parameters(estimates)
 
     @abstractmethod
@@ -166,26 +190,6 @@ class LeafModule(Module, ABC):
                 getattr(self, param_name).data = param_tensor
 
     @property
-    def mode(self) -> Tensor:
-        """Return distribution mode.
-
-        Returns:
-            Mode of the distribution.
-        """
-        return self.distribution.mode
-
-    def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
-        """Return parameters marginalized to specified indices.
-
-        Args:
-            indices: List of indices to marginalize to.
-
-        Returns:
-            Dictionary of marginalized parameters.
-        """
-        return {k: v[indices] for k, v in self.params().items()}
-
-    @property
     def event_shape(self) -> tuple[int, ...]:
         """Return event shape.
 
@@ -197,64 +201,17 @@ class LeafModule(Module, ABC):
         return self._event_shape
 
     @property
-    def out_features(self) -> int:
-        """Return number of output features.
-
-        Returns:
-            Number of output features.
-        """
-        return len(self.scope.query)
-
-    @property
-    def num_repetitions(self) -> int:
-        """Return number of repetitions.
-
-        Returns:
-            Number of repetitions (last dimension of event shape).
-        """
-        return self.event_shape[2]
-
-    @property
-    def out_channels(self) -> int:
-        """Return number of output channels.
-
-        Returns:
-            Number of output channels.
-        """
-        if len(self.event_shape) == 1:
-            return 1
-        else:
-            return self.event_shape[1]
-
-    @property
     def feature_to_scope(self) -> np.ndarray[Scope]:
         """Return list of scopes per feature.
 
         Returns:
             List of Scope objects, one per feature.
         """
-        scopes = np.empty((self.out_features, self.num_repetitions), dtype=Scope)
-        for i in range(self.out_features):
-            for j in range(self.num_repetitions):
+        scopes = np.empty((self.out_shape.features, self.out_shape.repetitions), dtype=Scope)
+        for i in range(self.out_shape.features):
+            for j in range(self.out_shape.repetitions):
                 scopes[i, j] = Scope([self.scope.query[i]])
-
         return scopes
-
-    def _infer_shapes(self) -> None:
-        """Compute and set input/output shapes for leaf module.
-
-        For leaf modules:
-        - input_shape: (features, 1, 1) representing raw data input
-        - output_shape: derived from _event_shape (features, channels, repetitions)
-        """
-        from spflow.modules.module_shape import ModuleShape
-
-        features = self._event_shape[0]
-        channels = self._event_shape[1] if len(self._event_shape) > 1 else 1
-        repetitions = self._event_shape[2] if len(self._event_shape) > 2 else 1
-
-        self._input_shape = ModuleShape(features, 1, 1)
-        self._output_shape = ModuleShape(features, channels, repetitions)
 
 
     @property
@@ -288,7 +245,7 @@ class LeafModule(Module, ABC):
         if len(target_shape) == 2:
             param_est = param_est.unsqueeze(1).repeat(
                 1,
-                self.out_channels,
+                self.out_shape.channels,
                 *([1] * (param_est.dim() - 1)),
             )
         elif len(target_shape) == 3:
@@ -297,8 +254,8 @@ class LeafModule(Module, ABC):
                 .unsqueeze(1)
                 .repeat(
                     1,
-                    self.out_channels,
-                    self.num_repetitions,
+                    self.out_shape.channels,
+                    self.out_shape.repetitions,
                     *([1] * (param_est.dim() - 1)),
                 )
             )
@@ -427,9 +384,9 @@ class LeafModule(Module, ABC):
         if weights is None:
             weights = torch.ones(
                 scoped_data.shape[0],
-                self.out_features,
-                self.out_channels,
-                self.num_repetitions,
+                self.out_shape.features,
+                self.out_shape.channels,
+                self.out_shape.repetitions,
                 device=self.device,
             )
 
@@ -510,7 +467,7 @@ class LeafModule(Module, ABC):
         n_samples = instance_mask.sum()  # count number of rows which have at least one true value
 
         if sampling_ctx.repetition_idx is None:
-            if self.num_repetitions > 1:
+            if self.out_shape.repetitions > 1:
                 raise ValueError(
                     "Repetition index must be provided in sampling context for leaves with multiple repetitions."
                 )
@@ -580,7 +537,7 @@ class LeafModule(Module, ABC):
                 f"Sample shape mismatch: got {samples.shape[0]}, expected {sampling_ctx.channel_index[instance_mask].shape[0]}"
             )
 
-        if self.out_channels == 1:
+        if self.out_shape.channels == 1:
             # If the output of the input module has a single channel, set the output_ids to zero since
             # this input was broadcasted to match the channel dimension of the other inputs
             sampling_ctx.channel_index.zero_()
