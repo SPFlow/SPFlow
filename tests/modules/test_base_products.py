@@ -51,7 +51,7 @@ def test_log_likelihood(cls, in_channels: int, out_features: int, num_reps):
     data = make_data(cls=DummyLeaf, out_features=out_features * len(module.inputs))
     lls = module.log_likelihood(data)
     # Always expect 4D output [batch, features, channels, num_reps]
-    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
+    assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps)
 
 
 @pytest.mark.parametrize(
@@ -81,7 +81,7 @@ def test_log_likelihood_broadcasting_channels(cls, out_features: int, num_reps):
     # Compute the log-likelihood
     lls = module.log_likelihood(data)
     # Always expect 4D output [batch, features, channels, num_reps]
-    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
+    assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps)
 
 
 @pytest.mark.parametrize(
@@ -95,8 +95,8 @@ def test_sample(cls, in_channels: int, out_features: int, num_reps):
     )
 
     data = torch.full((n_samples, out_features * len(module.inputs)), torch.nan)
-    mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool)
-    channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+    mask = torch.full((n_samples, module.out_shape.features), True, dtype=torch.bool)
+    channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features))
     # Always set repetition_index since num_reps is never None
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
@@ -130,8 +130,8 @@ def test_sample_two_inputs_broadcasting_channels(cls, out_features: int, num_rep
 
     n_samples = 5
     data = torch.full((n_samples, out_features * len(module.inputs)), torch.nan)
-    channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
-    mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool)
+    channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features))
+    mask = torch.full((n_samples, module.out_shape.features), True, dtype=torch.bool)
     # Always set repetition_index since num_reps is never None
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)

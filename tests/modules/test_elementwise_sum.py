@@ -31,8 +31,20 @@ def make_sum(
         elif weights.dim() == 2:
             weights = weights.unsqueeze(2).unsqueeze(3)
 
+    # Track num_repetitions for leaves separately from what we pass to ElementwiseSum
+    leaf_num_reps = num_repetitions
+    sum_num_reps = num_repetitions
+
     if weights is not None:
         out_features = weights.shape[0]
+        # Derive num_repetitions from weights for creating leaves (if valid 5D weights)
+        if weights.dim() == 5:
+            leaf_num_reps = weights.shape[4]
+        else:
+            # Invalid weights shape - use num_repetitions if provided, else default to 1
+            leaf_num_reps = num_repetitions if num_repetitions is not None else 1
+        # ElementwiseSum doesn't accept num_repetitions when weights is provided
+        sum_num_reps = None
 
     if scopes is None:
         scope_a = Scope(list(range(out_features)))
@@ -40,15 +52,15 @@ def make_sum(
     else:
         scope_a, scope_b = scopes
     inputs_a = make_leaf(
-        cls=DummyLeaf, out_channels=in_channels, scope=scope_a, num_repetitions=num_repetitions
+        cls=DummyLeaf, out_channels=in_channels, scope=scope_a, num_repetitions=leaf_num_reps
     )
     inputs_b = make_leaf(
-        cls=DummyLeaf, out_channels=in_channels, scope=scope_b, num_repetitions=num_repetitions
+        cls=DummyLeaf, out_channels=in_channels, scope=scope_b, num_repetitions=leaf_num_reps
     )
     inputs = [inputs_a, inputs_b]
 
     return ElementwiseSum(
-        out_channels=out_channels, inputs=inputs, weights=weights, num_repetitions=num_repetitions
+        out_channels=out_channels, inputs=inputs, weights=weights, num_repetitions=sum_num_reps
     )
 
 
@@ -66,7 +78,7 @@ def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, 
     data = make_normal_data(out_features=out_features)
     lls = module.log_likelihood(data)
     # Always expect 4D output [batch, features, channels, num_reps]
-    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
+    assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps)
 
 
 @pytest.mark.parametrize(
@@ -113,7 +125,7 @@ def test_log_likelihood_two_product_inputs(in_channels: int, out_channels: int, 
     data = make_normal_data(out_features=out_features)
     lls = module.log_likelihood(data)
     # Always expect 4D output [batch, features, channels, num_reps]
-    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
+    assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps)
 
 
 @pytest.mark.parametrize("out_channels", out_channels_values)
@@ -143,7 +155,7 @@ def test_log_likelihood_broadcasting_channels(out_channels: int):
     module = ElementwiseSum(out_channels=out_channels, inputs=inputs)
     data = make_normal_data(out_features=out_features)
     lls = module.log_likelihood(data)
-    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, module.num_repetitions)
+    assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, module.out_shape.repetitions)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
@@ -156,10 +168,10 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps
         num_repetitions=num_reps,
     )
 
-    for i in range(module.out_channels):
-        data = torch.full((n_samples, module.out_features), torch.nan)
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
-        mask = torch.full((n_samples, module.out_features), True)
+    for i in range(module.out_shape.channels):
+        data = torch.full((n_samples, module.out_shape.features), torch.nan)
+        channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features))
+        mask = torch.full((n_samples, module.out_shape.features), True)
         # Always set repetition_index since num_reps is never None
         repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         sampling_ctx = SamplingContext(
@@ -210,10 +222,10 @@ def test_sample_two_product_inputs(in_channels: int, out_channels: int, out_feat
 
     module = ElementwiseSum(out_channels=out_channels, inputs=inputs, num_repetitions=num_reps)
 
-    for i in range(module.out_channels):
+    for i in range(module.out_shape.channels):
         data = torch.full((n_samples, out_features), torch.nan)
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
-        mask = torch.full((n_samples, module.out_features), True)
+        channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features))
+        mask = torch.full((n_samples, module.out_shape.features), True)
         # Always set repetition_index since num_reps is never None
         repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         sampling_ctx = SamplingContext(
@@ -242,8 +254,8 @@ def test_sample_two_inputs_broadcasting_channels(out_channels: int):
 
     n_samples = 5
     data = torch.full((n_samples, out_features), torch.nan)
-    channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
-    mask = torch.full((n_samples, module.out_features), True)
+    channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features))
+    mask = torch.full((n_samples, module.out_shape.features), True)
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
     samples = module.sample(data=data, sampling_ctx=sampling_ctx)
 
@@ -266,16 +278,16 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
         num_repetitions=num_reps,
     )
 
-    for i in range(module.out_channels):
+    for i in range(module.out_shape.channels):
         # Create some data
-        data = torch.randn(n_samples, module.out_features)
+        data = torch.randn(n_samples, module.out_shape.features)
 
         # Set first three scopes to nan
         data[:, [0, 1, 2]] = torch.nan
 
         data_copy = data.clone()
 
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+        channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features))
         mask = torch.full(channel_index.shape, True)
         if num_reps is not None:
             repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
@@ -582,7 +594,7 @@ def test_feature_to_scope_with_product_inputs():
     assert np.array_equal(feature_scopes, prod1_scopes)
 
     # Product has same number of features as inputs (element-wise operation)
-    expected_features = prod1.out_features
+    expected_features = prod1.out_shape.features
     assert feature_scopes.shape == (expected_features, num_reps)
 
     # Validate all elements are Scope objects

@@ -63,7 +63,7 @@ class TestClassifier:
         assert hasattr(classifier, "predict")
         assert callable(getattr(classifier, "predict"))
 
-    def test_predict_proba_output_shape(self):
+    def test_predict_proba_out_shape(self):
         """Test that predict_proba returns correct output shape."""
         classifier = ConcreteClassifier()
         batch_size = 5
@@ -75,7 +75,7 @@ class TestClassifier:
         assert isinstance(probs, torch.Tensor)
         assert probs.shape[0] == batch_size
 
-    def test_predict_output_shape(self):
+    def test_predict_out_shape(self):
         """Test that predict returns correct output shape."""
         classifier = ConcreteClassifier()
         batch_size = 5

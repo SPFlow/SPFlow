@@ -41,15 +41,15 @@ def test_log_likelihood(
         split_type=split_type,
         num_reps=num_reps,
     ).to(device)
-    data = make_normal_data(out_features=module.out_features).to(device)
+    data = make_normal_data(out_features=module.out_shape.features).to(device)
     lls = module.log_likelihood(data)
     assert len(lls) == num_splits
     for ll in lls:
         # Always expect 4D output [batch, features, channels, num_reps]
         assert ll.shape == (
             data.shape[0],
-            module.out_features // num_splits,
-            module.out_channels,
+            module.out_shape.features // num_splits,
+            module.out_shape.channels,
             num_reps,
         )
 
@@ -67,12 +67,12 @@ def test_sample(
         split_type=split_type,
         num_reps=num_reps,
     ).to(device)
-    for i in range(module.out_channels):
-        data = torch.full((n_samples, module.out_features), torch.nan).to(device)
+    for i in range(module.out_shape.channels):
+        data = torch.full((n_samples, module.out_shape.features), torch.nan).to(device)
         channel_index = torch.randint(
-            low=0, high=module.out_channels, size=(n_samples, module.out_features)
+            low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
         ).to(device)
-        mask = torch.full((n_samples, module.out_features), True, dtype=torch.bool).to(device)
+        mask = torch.full((n_samples, module.out_shape.features), True, dtype=torch.bool).to(device)
         # Always set repetition_index since num_reps is never None
         repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
         sampling_ctx = SamplingContext(
@@ -271,8 +271,8 @@ def test_split_out_features_property():
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
     split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
 
-    assert split.out_features == leaf.out_features
-    assert split.out_features == 8
+    assert split.out_shape.features == leaf.out_shape.features
+    assert split.out_shape.features == 8
 
 
 def test_split_out_channels_property():
@@ -281,8 +281,8 @@ def test_split_out_channels_property():
     leaf = make_normal_leaf(scope, out_channels=5, num_repetitions=1)
     split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
 
-    assert split.out_channels == leaf.out_channels
-    assert split.out_channels == 5
+    assert split.out_shape.channels == leaf.out_shape.channels
+    assert split.out_shape.channels == 5
 
 
 def test_split_num_repetitions_inherited():
@@ -291,5 +291,5 @@ def test_split_num_repetitions_inherited():
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=4)
     split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
 
-    assert split.num_repetitions == leaf.num_repetitions
-    assert split.num_repetitions == 4
+    assert split.out_shape.repetitions == leaf.out_shape.repetitions
+    assert split.out_shape.repetitions == 4

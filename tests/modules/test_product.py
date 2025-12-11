@@ -29,14 +29,14 @@ def test_log_likelihood(in_channels: int, out_features: int, num_reps, device):
     data = make_normal_data(out_features=out_features)
     lls = product_layer.log_likelihood(data)
     # Always expect 4D output
-    assert lls.shape == (data.shape[0], 1, product_layer.out_channels, num_reps)
+    assert lls.shape == (data.shape[0], 1, product_layer.out_shape.channels, num_reps)
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps", params)
 def test_sample(in_channels: int, out_features: int, num_reps, device):
     n_samples = 10
     product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
-    for i in range(product_layer.out_channels):
+    for i in range(product_layer.out_shape.channels):
         data = torch.full((n_samples, out_features), torch.nan)
         channel_index = torch.full((n_samples, out_features), fill_value=i)
         mask = torch.full((n_samples, out_features), True, dtype=torch.bool)

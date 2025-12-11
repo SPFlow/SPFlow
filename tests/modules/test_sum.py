@@ -50,7 +50,7 @@ def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, 
     data = make_normal_data(out_features=out_features)
     lls = module.log_likelihood(data)
     # Always expect 4D output
-    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
+    assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps)
 
 
 @pytest.mark.parametrize(
@@ -77,7 +77,7 @@ def test_log_likelihood_product_inputs(in_channels: int, out_channels: int, out_
 
     data = make_normal_data(out_features=out_features)
     lls = module.log_likelihood(data)
-    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps)
+    assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
@@ -89,10 +89,10 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps
         out_features=out_features,
         num_repetitions=num_reps,
     )
-    for i in range(module.out_channels):
-        data = torch.full((n_samples, module.out_features), torch.nan)
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
-        mask = torch.full((n_samples, module.out_features), True)
+    for i in range(module.out_shape.channels):
+        data = torch.full((n_samples, module.out_shape.features), torch.nan)
+        channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features))
+        mask = torch.full((n_samples, module.out_shape.features), True)
         repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
@@ -126,10 +126,10 @@ def test_sample_product_inputs(in_channels: int, out_channels: int, out_features
 
     module = Sum(out_channels=out_channels, inputs=prod, num_repetitions=num_reps)
 
-    for i in range(module.out_channels):
+    for i in range(module.out_shape.channels):
         data = torch.full((n_samples, out_features), torch.nan)
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
-        mask = torch.full((n_samples, module.out_features), True)
+        channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features))
+        mask = torch.full((n_samples, module.out_shape.features), True)
         repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
@@ -154,16 +154,16 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
         num_repetitions=num_reps,
     )
 
-    for i in range(module.out_channels):
+    for i in range(module.out_shape.channels):
         # Create some data
-        data = torch.randn(n_samples, module.out_features)
+        data = torch.randn(n_samples, module.out_shape.features)
 
         # Set first three scopes to nan
         data[:, [0, 1, 2]] = torch.nan
 
         data_copy = data.clone()
 
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
+        channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features))
         mask = torch.full(channel_index.shape, True)
         repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         sampling_ctx = SamplingContext(
@@ -486,7 +486,7 @@ def test_feature_to_scope_with_product_input():
     assert np.array_equal(feature_scopes, prod_scopes)
 
     # Product has same number of features as inputs (element-wise operation)
-    expected_features = prod.out_features
+    expected_features = prod.out_shape.features
     assert feature_scopes.shape == (expected_features, num_reps)
 
     # Validate all elements are Scope objects

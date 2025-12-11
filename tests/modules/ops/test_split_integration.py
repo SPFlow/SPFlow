@@ -151,7 +151,7 @@ def test_split_with_outer_product(device):
 
     assert torch.isfinite(ll).all()
     # OuterProduct should increase channels
-    assert outer_prod.out_channels > split.out_channels
+    assert outer_prod.out_shape.channels > split.out_shape.channels
 
 
 def test_split_alternating_pattern_verification(device):

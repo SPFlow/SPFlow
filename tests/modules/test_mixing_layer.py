@@ -45,7 +45,7 @@ def test_log_likelihood(out_channels: int, out_features: int, num_reps):
     lls = module.log_likelihood(data)
 
     num_reps_after_mixing = 1
-    assert lls.shape == (data.shape[0], module.out_features, module.out_channels, num_reps_after_mixing)
+    assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps_after_mixing)
 
 
 @pytest.mark.parametrize("out_channels,out_features,num_reps", params)
@@ -57,10 +57,10 @@ def test_sample(out_channels: int, out_features: int, num_reps):
         out_features=out_features,
         num_repetitions=num_reps,
     )
-    for i in range(module.out_channels):
-        data = torch.full((n_samples, module.out_features), torch.nan)
-        channel_index = torch.randint(low=0, high=module.out_channels, size=(n_samples, module.out_features))
-        mask = torch.full((n_samples, module.out_features), True)
+    for i in range(module.out_shape.channels):
+        data = torch.full((n_samples, module.out_shape.features), torch.nan)
+        channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features))
+        mask = torch.full((n_samples, module.out_shape.features), True)
         repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index

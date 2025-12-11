@@ -3,7 +3,7 @@ from torch import Tensor, nn
 
 from spflow.meta import Scope
 from spflow.modules import leaves
-from spflow.modules.leaves.base import LeafModule
+from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.leaves import init_parameter
 
 
@@ -13,8 +13,8 @@ def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):
     assert lls.shape == (
         data.shape[0],
         len(module.scope.query),
-        module.out_channels,
-        module.num_repetitions,
+        module.out_shape.channels,
+        module.out_shape.repetitions,
     )
     assert torch.isfinite(lls).all()
 

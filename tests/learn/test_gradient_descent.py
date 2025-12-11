@@ -15,7 +15,7 @@ from spflow.learn.gradient_descent import (
     train_gradient_descent,
 )
 from spflow.meta import Scope
-from spflow.modules.base import Module
+from spflow.modules.module import Module
 
 
 # Define a DummyModel class for testing
@@ -67,9 +67,6 @@ class DummyModel(Module):
     def marginalize(self, marg_rvs: list[int], prune: bool = True, cache=None):
         return self
 
-    def _infer_shapes(self) -> None:
-        pass  # Dummy model doesn't need shape inference
-
 
 @pytest.fixture
 def model(device):
@@ -95,11 +92,11 @@ class ClassificationModel(Module, Classifier):
 
     @property
     def feature_to_scope(self) -> np.ndarray:
-        return np.array([Scope([idx]) for idx in range(self.out_features)]).view(-1, 1)
+        return np.array([Scope([idx]) for idx in range(self.out_shape.features)]).view(-1, 1)
 
     @property
     def out_channels(self) -> int:
-        return self.linear.out_features
+        return self.linear.out_shape.features
 
     @property
     def out_features(self) -> int:
@@ -140,9 +137,6 @@ class ClassificationModel(Module, Classifier):
 
     def marginalize(self, marg_rvs: list[int], prune: bool = True, cache=None):
         return self
-
-    def _infer_shapes(self) -> None:
-        pass  # Classification dummy model doesn't need shape inference
 
 
 @pytest.fixture

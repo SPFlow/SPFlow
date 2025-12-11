@@ -4,8 +4,9 @@ import torch
 
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta import Scope
-from spflow.modules.base import Module
+from spflow.modules.module import Module
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
+from spflow.modules.module_shape import ModuleShape
 
 
 class DummyInput(Module):
@@ -13,13 +14,11 @@ class DummyInput(Module):
 
     def __init__(self, out_channels: int = 2, num_repetitions: int = 2, out_features: int = 1):
         super().__init__()
-        self._out_channels = out_channels
-        self._num_repetitions = num_repetitions
-        self._out_features = out_features
         self.scope = Scope(list(range(out_features)))
         # Create feature_to_scope mapping as numpy array of Scope objects
         self._feature_to_scope = np.array([[Scope(i)] for i in range(out_features)], dtype=object)
-        self._infer_shapes()
+        self._in_shape = ModuleShape(out_features, 1, 1)
+        self._out_shape = ModuleShape(out_features, out_channels, num_repetitions)
 
 
     @property
@@ -34,15 +33,11 @@ class DummyInput(Module):
     def out_channels(self) -> int:
         return self._out_channels
 
-    @property
-    def num_repetitions(self) -> int:
-        return self._num_repetitions
-
     def log_likelihood(self, data, cache=None):
         batch = data.shape[0]
         # Shape matches expected (B, F, OC, R) orientation used in MixingLayer.
         return torch.zeros(
-            batch, self.out_features, self.out_channels, self.num_repetitions, device=data.device
+            batch, self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions, device=data.device
         )
 
     def sample(self, *args, **kwargs):
@@ -61,11 +56,6 @@ class DummyInput(Module):
     def marginalize(self, marg_rvs, prune=True, cache=None):
         return self
 
-    def _infer_shapes(self) -> None:
-        from spflow.modules.module_shape import ModuleShape
-        self._input_shape = ModuleShape(self._out_features, 1, 1)
-        self._output_shape = ModuleShape(self._out_features, self._out_channels, self._num_repetitions)
-
 
 
 
@@ -73,9 +63,9 @@ def test_mixing_layer_initialization_validates():
     inputs = DummyInput(out_channels=2, num_repetitions=2)
     layer = RepetitionMixingLayer(inputs=inputs, out_channels=2, num_repetitions=2)
 
-    assert layer.out_channels == 2
-    assert layer.out_features == 1
-    assert layer.num_repetitions == 2
+    assert layer.out_shape.channels == 2
+    assert layer.out_shape.features == 1
+    assert layer.out_shape.repetitions == 2
 
 
 def test_mixing_layer_rejects_out_channel_mismatch():
@@ -95,7 +85,7 @@ def test_mixing_layer_log_likelihood_shape():
 
     ll = layer.log_likelihood(data)
 
-    assert ll.shape == (data.shape[0], layer.out_features, layer.out_channels, 1)
+    assert ll.shape == (data.shape[0], layer.out_shape.features, layer.out_shape.channels, 1)
     assert torch.isfinite(ll).all()
 
 
@@ -131,11 +121,11 @@ def test_mixing_layer_supports_multiple_features():
     inputs = DummyInput(out_channels=1, num_repetitions=1, out_features=2)
     layer = RepetitionMixingLayer(inputs=inputs, out_channels=1, num_repetitions=1)
 
-    data = torch.randn(3, inputs.out_features)
+    data = torch.randn(3, inputs.out_shape.features)
     ll = layer.log_likelihood(data)
 
-    assert layer.out_features == inputs.out_features
-    assert ll.shape == (data.shape[0], inputs.out_features, layer.out_channels, 1)
+    assert layer.out_shape.features == inputs.out_shape.features
+    assert ll.shape == (data.shape[0], inputs.out_shape.features, layer.out_shape.channels, 1)
 
 
 def test_mixing_layer_conflicting_weights_and_out_channels():

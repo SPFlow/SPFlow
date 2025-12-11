@@ -27,7 +27,7 @@ import torch
 from torch import Tensor
 
 from spflow.meta.data import Scope
-from spflow.modules.leaves.base import LeafModule
+from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.sampling_context import SamplingContext
 
 
