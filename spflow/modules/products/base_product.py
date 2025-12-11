@@ -7,7 +7,8 @@ from torch import Tensor, nn
 
 from spflow.exceptions import ScopeError
 from spflow.meta.data import Scope
-from spflow.modules.base import Module
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.split_halves import Split
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
@@ -55,7 +56,7 @@ class BaseProduct(Module, ABC):
         else:
             self.input_is_split = False
             # Determine num_splits from first input's features
-            if inputs[0].out_features == 1:
+            if inputs[0].out_shape.features == 1:
                 self.num_splits = 1
             else:
                 self.num_splits = None
@@ -69,14 +70,16 @@ class BaseProduct(Module, ABC):
         self.inputs = nn.ModuleList(inputs)
 
         # ========== 5. ATTRIBUTE INITIALIZATION ==========
-        # Calculate derived attributes
-        self._max_out_channels = max(inp.out_channels for inp in self.inputs)
-        self.num_repetitions = self.inputs[0].num_repetitions
-
         # Join all input scopes to create combined scope
         self.scope = Scope.join_all([inp.scope for inp in self.inputs])
 
-        # Note: _infer_shapes() not called here because subclasses must implement it
+        # Set in_shape early so subclasses can use in_shape.channels
+        # in_channels = max channels across all inputs (for broadcasting)
+        in_channels = max(inp.out_shape.channels for inp in self.inputs)
+        self.in_shape = ModuleShape(
+            self.inputs[0].out_shape.features, in_channels, self.inputs[0].out_shape.repetitions
+        )
+        # Note: out_shape must be set by subclasses
 
 
     @abstractmethod

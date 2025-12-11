@@ -11,8 +11,8 @@ from fast_pytorch_kmeans import KMeans
 from networkx import connected_components as ccnp, from_numpy_array
 
 from spflow.meta.data.scope import Scope
-from spflow.modules.base import Module
-from spflow.modules.leaves.base import LeafModule
+from spflow.modules.module import Module
+from spflow.modules.leaves.leaf import LeafModule
 from spflow.modules.ops.cat import Cat
 from spflow.modules.products import Product
 from spflow.modules.sums import Sum
@@ -84,7 +84,7 @@ def adapt_product_inputs(inputs: list[Module], leaf_oc, sum_oc) -> list[Module]:
     ref_oc = leaf_oc if leaf_oc > sum_oc else sum_oc
     output_modules = []
     for m in inputs:
-        if m.out_channels < ref_oc:
+        if m.out_shape.channels < ref_oc:
             sum_module = Sum(inputs=m, out_channels=ref_oc)
             output_modules.append(sum_module)
         else:
@@ -288,7 +288,7 @@ def learn_spn(
             scope_inter = s.intersection(leaf_scope)
             if len(scope_inter) > 0:
                 leaf_layer = leaf_module.__class__(
-                    scope=Scope(sorted(scope_inter)), out_channels=leaf_module.out_channels
+                    scope=Scope(sorted(scope_inter)), out_channels=leaf_module.out_shape.channels
                 )
                 # estimate leaves node parameters from data
                 leaf_layer.maximum_likelihood_estimation(data)
@@ -336,7 +336,7 @@ def learn_spn(
                 )
                 product_inputs.append(sub_structure)
             leaf_oc = (
-                leaf_modules[0].out_channels if isinstance(leaf_modules, list) else leaf_modules.out_channels
+                leaf_modules[0].out_shape.channels if isinstance(leaf_modules, list) else leaf_modules.out_shape.channels
             )
             adapted_product_inputs = adapt_product_inputs(product_inputs, leaf_oc, out_channels)
             return Product(adapted_product_inputs)
@@ -390,7 +390,7 @@ def learn_spn(
 
                         weights_stack = []
                         for idx, child in enumerate(inputs_per_channel):
-                            out_c = child.out_channels
+                            out_c = child.out_shape.channels
                             weights_stack.append(weights[:, idx, :].repeat(out_c, 1) / out_c)
 
                         weights = (torch.cat(weights_stack)).unsqueeze(0).unsqueeze(-1)

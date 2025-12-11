@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, Callable, TypeVar
 from weakref import WeakKeyDictionary
 
 if TYPE_CHECKING:  # Avoid circular imports
-    from spflow.modules.base import Module
+    from spflow.modules.module import Module
 
 T = TypeVar("T")
 

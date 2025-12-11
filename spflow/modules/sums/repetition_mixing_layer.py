@@ -5,7 +5,7 @@ import torch
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError
-from spflow.modules.base import Module
+from spflow.modules.module import Module
 from spflow.modules.sums import Sum
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
@@ -35,16 +35,10 @@ class RepetitionMixingLayer(Sum):
         """
         super().__init__(inputs, out_channels, num_repetitions, weights)
 
-        if self.out_channels != self.inputs.out_channels:
+        if self.out_shape.channels != self.inputs.out_shape.channels:
             raise ValueError("out_channels must match the out_channels of the input module.")
 
-    @property
-    def out_features(self) -> int:
-        return self._out_features
-
-    @property
-    def out_channels(self) -> int:
-        return self._out_channels_total
+        self.sum_dim = 2
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -91,14 +85,11 @@ class RepetitionMixingLayer(Sum):
 
         return weights, out_channels, num_repetitions
 
-    def _get_sum_dim(self) -> int:
-        return 2
-
     def _get_weights_shape(self) -> tuple[int, int, int]:
         return (
-            self._out_features,
-            self._out_channels_total,
-            self.num_repetitions,
+            self.in_shape.features,
+            self.out_shape.channels,
+            self.out_shape.repetitions,
         )
 
     def sample(
@@ -202,7 +193,7 @@ class RepetitionMixingLayer(Sum):
 
         # Since modules always have R as last dimension, we need to set it to 1 as Mixing mixes over it
         num_repetitions_after_mixing = 1
-        return output.view(batch_size, self.out_features, self.out_channels, num_repetitions_after_mixing)
+        return output.view(batch_size, self.out_shape.features, self.out_shape.channels, num_repetitions_after_mixing)
 
     def expectation_maximization(
         self,

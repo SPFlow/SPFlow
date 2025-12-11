@@ -14,7 +14,8 @@ from typing import Any, Dict, Optional
 from torch import Tensor, nn
 
 from spflow.meta.data import Scope
-from spflow.modules.base import Module
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
 from spflow.utils.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
@@ -51,29 +52,15 @@ class Split(Module, ABC):
 
         self.dim = dim
         self.num_splits = num_splits
-        self.num_repetitions = self.inputs.num_repetitions
         self.scope = self.inputs.scope
 
-        # Note: _infer_shapes() not called here because subclasses may need
-        # to complete their initialization first
-
-    def _infer_shapes(self) -> None:
-        """Compute and set input/output shapes for Split module."""
-        from spflow.modules.module_shape import ModuleShape
-
-        self._input_shape = self.inputs.output_shape
-        self._output_shape = ModuleShape(
-            self.out_features, self.out_channels, self.num_repetitions
+        # Shape computation
+        in_shape = self.inputs.out_shape
+        self.in_shape = in_shape
+        self.out_shape = ModuleShape(
+            in_shape.features, in_shape.channels, in_shape.repetitions
         )
 
-
-    @property
-    def out_features(self) -> int:
-        return self.inputs.out_features
-
-    @property
-    def out_channels(self) -> int:
-        return self.inputs.out_channels
 
     def get_out_shapes(self, event_shape):
         """Get output shapes for each split based on input event shape.
@@ -131,8 +118,8 @@ class Split(Module, ABC):
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
         # Expand mask and channels to match input module shape
-        mask = sampling_ctx.mask.expand(data.shape[0], self.inputs.out_features)
-        channel_index = sampling_ctx.channel_index.expand(data.shape[0], self.inputs.out_features)
+        mask = sampling_ctx.mask.expand(data.shape[0], self.inputs.out_shape.features)
+        channel_index = sampling_ctx.channel_index.expand(data.shape[0], self.inputs.out_shape.features)
         sampling_ctx.update(channel_index=channel_index, mask=mask)
 
         self.inputs.sample(
@@ -172,7 +159,7 @@ class Split(Module, ABC):
 
             # if marginalized child is not None
             if marg_child_module:
-                if prune and marg_child_module.out_features == 1:
+                if prune and marg_child_module.out_shape.features == 1:
                     return marg_child_module
                 else:
                     return self.__class__(inputs=marg_child_module, dim=self.dim, num_splits=self.num_splits)

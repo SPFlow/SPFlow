@@ -28,9 +28,9 @@ except ImportError as e:
     ) from e
 
 if TYPE_CHECKING:
-    from spflow.modules.base import Module
+    from spflow.modules.module import Module
 
-from spflow.modules.leaves.base import LeafModule
+from spflow.modules.leaves.leaf import LeafModule
 from spflow.modules.ops.cat import Cat
 from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_alternate import SplitAlternate
@@ -255,7 +255,7 @@ def _build_graph(
     """
     from torch import nn
 
-    from spflow.modules.base import Module
+    from spflow.modules.module import Module
 
     if visited is None:
         visited = set()
@@ -471,9 +471,9 @@ def _get_module_label(
     if show_shape:
         # Specialized labels for different module types
         if class_name == "Sum":
-            c_in = module._in_channels_total
-            c_out = module._out_channels_total
-            d = module.out_features
+            c_in = module.in_shape.channels
+            c_out = module.out_shape.channels
+            d = module.out_shape.features
             label = f"D: {d}, C-in: {c_in}, C-out: {c_out}"
             if hasattr(module, "num_repetitions"):
                 label += f", R: {module.num_repetitions}"
@@ -481,31 +481,31 @@ def _get_module_label(
         elif class_name == "ElementwiseSum":
             c_per_in = module._in_channels_per_input
             c_out = module._num_sums
-            d = module.out_features
+            d = module.out_shape.features
             label = f"D: {d}, C-per-in: {c_per_in}, C-out: {c_out}"
             if hasattr(module, "num_repetitions"):
                 label += f", R: {module.num_repetitions}"
             label_parts.append(label)
         elif class_name == "MixingLayer":
             c_in = module._in_channels
-            c_out = module.out_channels
+            c_out = module.out_shape.channels
             label_parts.append(f"C-in: {c_in} (reps), C-out: {c_out}")
         elif class_name == "Product":
-            d = module.out_features
-            c = module.out_channels
+            d = module.out_shape.features
+            c = module.out_shape.channels
             label_parts.append(f"D: {d}, C: {c}")
         elif class_name == "ElementwiseProduct":
-            f = module.out_features
-            c = module.out_channels
+            f = module.out_shape.features
+            c = module.out_shape.channels
             label_parts.append(f"D: {f}, C: {c}")
         elif class_name == "OuterProduct":
             c_in = module._max_out_channels
-            c_out = module.out_channels
+            c_out = module.out_shape.channels
             label_parts.append(f"C-in: {c_in}, C-out: {c_out}")
         else:
             # For other modules, show out_features and out_channels
-            out_features = module.out_features
-            out_channels = module.out_channels
+            out_features = module.out_shape.features
+            out_channels = module.out_shape.channels
             label_parts.append(f"D: {out_features}, C: {out_channels}")
 
     # Add parameter count if requested (only if > 0 to avoid clutter for modules like Product)

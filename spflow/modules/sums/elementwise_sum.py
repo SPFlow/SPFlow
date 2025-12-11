@@ -8,7 +8,8 @@ from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterCombinationError, ScopeError
 from spflow.meta.data import Scope
-from spflow.modules.base import Module
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import (
     proj_convex_to_real,
@@ -33,16 +34,16 @@ class ElementwiseSum(Module):
         out_channels: int | None = None,
         weights: Tensor | None = None,
         num_repetitions: int | None = None,
-        sum_dim: int = 3,
     ) -> None:
         """Initialize elementwise sum module.
 
         Args:
             inputs: Input modules (same features, compatible channels).
-            out_channels: Number of output nodes per sum.
+            out_channels: Number of output nodes per sum. Note that this results in a total of
+                             out_channels * in_channels (input modules) output channels since we sum over the list of
+                             modules.
             weights: Initial weights (if None, randomly initialized).
             num_repetitions: Number of repetitions.
-            sum_dim: Dimension over which to sum.
         """
         super().__init__()
 
@@ -79,11 +80,11 @@ class ElementwiseSum(Module):
             )
 
         # Validate all inputs have the same number of features
-        if not all([module.out_features == inputs[0].out_features for module in inputs]):
+        if not all([module.out_shape.features == inputs[0].out_shape.features for module in inputs]):
             raise ValueError("All inputs must have the same number of features.")
 
         # Validate all inputs have compatible channels (same or 1 for broadcasting)
-        if not all([module.out_channels in (1, max(m.out_channels for m in inputs)) for module in inputs]):
+        if not all([module.out_shape.channels in (1, max(m.out_shape.channels for m in inputs)) for module in inputs]):
             raise ValueError(
                 "All inputs must have the same number of channels or 1 channel (in which case the "
                 "operation is broadcast)."
@@ -93,37 +94,51 @@ class ElementwiseSum(Module):
         if not Scope.all_equal([module.scope for module in inputs]):
             raise ScopeError("All input modules must have the same scope.")
 
+        # Validate for each repetition that modules have the same features_to_scope mapping
+        for rep in range(num_repetitions):
+            feature_to_scope = inputs[0].feature_to_scope[..., rep]
+            for module in inputs[1:]:
+                if not np.array_equal(
+                    feature_to_scope,
+                    module.feature_to_scope[..., rep]
+                ):
+                    raise ScopeError(
+                        "All input modules must have the same feature to scope mapping for each repetition."
+                    )
+
         # ========== 4. INPUT MODULE SETUP ==========
         self.inputs = nn.ModuleList(inputs)
-        self.sum_dim = sum_dim
+        self.sum_dim = 3
         self.scope = inputs[0].scope
 
-        # ========== 5. ATTRIBUTE INITIALIZATION ==========
-        self._out_features = self.inputs[0].out_features
-        self._num_sums = out_channels
-        self.num_repetitions = num_repetitions
-        self._num_inputs = len(inputs)
+        # ========== 5. SHAPE COMPUTATION (early, so shapes can be reused below) ==========
+        in_channels = max(module.out_shape.channels for module in self.inputs)
+        out_channels_total = out_channels * in_channels
+        self._num_sums = out_channels  # Store for use in sampling
 
-        # Compute channel dimensions and weights shape
-        self._in_channels_per_input = max([module.out_channels for module in self.inputs])
-        self._out_channels_total = self._num_sums * self._in_channels_per_input
+        self.in_shape = ModuleShape(
+            inputs[0].out_shape.features, in_channels, num_repetitions
+        )
+        self.out_shape = ModuleShape(
+            self.in_shape.features, out_channels_total, num_repetitions
+        )
 
+        # ========== 6. WEIGHT INITIALIZATION & PARAMETER REGISTRATION ==========
         self.weights_shape = (
-            self._out_features,
-            self._in_channels_per_input,
-            self._num_sums,
-            self._num_inputs,
-            self.num_repetitions,
+            self.in_shape.features,
+            self.in_shape.channels,
+            out_channels,
+            len(inputs),
+            self.out_shape.repetitions,
         )
 
         # Register unraveled channel indices for mapping flattened indices to (channel, sum) pairs
-        # E.g. for 3 in_channels_per_input and 2 sums: [0,1,2,3,4,5] -> [(0,0), (0,1), (0,2), (1,0), (1,1), (1,2)]
+        # E.g. for 3 in_channels and 2 out_channels: [0,1,2,3,4,5] -> [(0,0), (0,1), (0,2), (1,0), (1,1), (1,2)]
         unraveled_channel_indices = torch.tensor(
-            [(i, j) for i in range(self._in_channels_per_input) for j in range(self._num_sums)]
+            [(i, j) for i in range(self.in_shape.channels) for j in range(self._num_sums)]
         )
         self.register_buffer(name="unraveled_channel_indices", tensor=unraveled_channel_indices)
 
-        # ========== 6. WEIGHT INITIALIZATION & PARAMETER REGISTRATION ==========
         if weights is None:
             # Initialize weights randomly with small epsilon to avoid zeros
             weights = torch.rand(self.weights_shape) + 1e-08
@@ -135,26 +150,6 @@ class ElementwiseSum(Module):
 
         # Set weights (converts to logits internally via property setter)
         self.weights = weights
-
-        self._infer_shapes()
-
-    def _infer_shapes(self) -> None:
-        """Compute and set input/output shapes for ElementwiseSum."""
-        from spflow.modules.module_shape import ModuleShape
-
-        self._input_shape = self.inputs[0].output_shape
-        self._output_shape = ModuleShape(
-            self._out_features, self._out_channels_total, self.num_repetitions
-        )
-
-
-    @property
-    def out_features(self) -> int:
-        return self._out_features
-
-    @property
-    def out_channels(self) -> int:
-        return self._out_channels_total
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -304,7 +299,7 @@ class ElementwiseSum(Module):
             )
             logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
         else:
-            if self.num_repetitions > 1:
+            if self.out_shape.repetitions > 1:
                 raise ValueError(
                     "sampling_ctx.repetition_idx must be provided when sampling from a module with "
                     "num_repetitions > 1."
@@ -411,9 +406,9 @@ class ElementwiseSum(Module):
             )
 
             # Prepare for broadcasting
-            if inp.out_channels == 1 and self._in_channels_per_input > 1:
+            if inp.out_shape.channels == 1 and self.in_shape.channels > 1:
                 ll = ll.expand(
-                    data.shape[0], self.out_features, self._in_channels_per_input, self.num_repetitions
+                    data.shape[0], self.out_shape.features, self.in_shape.channels, self.out_shape.repetitions
                 )
 
             lls.append(ll)
@@ -430,7 +425,7 @@ class ElementwiseSum(Module):
 
         # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
         output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)
-        output = output.view(data.shape[0], self.out_features, self.out_channels, self.num_repetitions)
+        output = output.view(data.shape[0], self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions)
 
         return output
 
@@ -464,13 +459,13 @@ class ElementwiseSum(Module):
             # Get input channel indices
             s = (
                 module_lls.shape[0],
-                self.out_features,
-                self._in_channels_per_input,
+                self.out_shape.features,
+                self.in_shape.channels,
                 self._num_sums,
                 1,
             )
-            if self.num_repetitions is not None:
-                s = s + (self.num_repetitions,)
+            if self.out_shape.repetitions is not None:
+                s = s + (self.out_shape.repetitions,)
             log_grads = torch.log(module_lls.grad).view(s)
             module_lls = module_lls.view(s)
 

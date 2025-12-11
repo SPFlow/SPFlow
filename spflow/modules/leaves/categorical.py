@@ -3,7 +3,7 @@ from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data import Scope
-from spflow.modules.leaves.base import LeafModule
+from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.leaves import init_parameter
 from spflow.utils.projections import proj_convex_to_real, proj_real_to_convex
 

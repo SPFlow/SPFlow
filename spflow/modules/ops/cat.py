@@ -7,7 +7,8 @@ import torch
 from torch import Tensor, nn
 
 from spflow.meta.data import Scope
-from spflow.modules.base import Module
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import (
     SamplingContext,
@@ -26,11 +27,10 @@ class Cat(Module):
         super().__init__()
         self.inputs = nn.ModuleList(inputs)
         self.dim = dim
-        self.num_repetitions = self.inputs[0].num_repetitions
 
         if self.dim == 1:
             # Check if all inputs have the same number of channels
-            if not all([module.out_channels == self.inputs[0].out_channels for module in self.inputs]):
+            if not all([module.out_shape.channels == self.inputs[0].out_shape.channels for module in self.inputs]):
                 raise ValueError("All inputs must have the same number of channels.")
 
             # Check that all scopes are disjoint
@@ -42,7 +42,7 @@ class Cat(Module):
 
         elif self.dim == 2:
             # Check if all inputs have the same number of features and scopes
-            if not all([module.out_features == self.inputs[0].out_features for module in self.inputs]):
+            if not all([module.out_shape.features == self.inputs[0].out_shape.features for module in self.inputs]):
                 raise ValueError("All inputs must have the same number of features.")
             if not Scope.all_equal([module.scope for module in self.inputs]):
                 raise ValueError("All inputs must have the same scope.")
@@ -52,32 +52,20 @@ class Cat(Module):
         else:
             raise ValueError("Invalid dimension for concatenation.")
 
-        self._infer_shapes()
+        # Shape computation
+        self.in_shape = self.inputs[0].out_shape
 
-    def _infer_shapes(self) -> None:
-        """Compute and set input/output shapes for Cat module."""
-        from spflow.modules.module_shape import ModuleShape
+        if self.dim == 1:
+            out_features = sum([module.out_shape.features for module in self.inputs])
+            out_channels = self.inputs[0].out_shape.channels
+        else:  # dim == 2
+            out_features = self.inputs[0].out_shape.features
+            out_channels = sum([module.out_shape.channels for module in self.inputs])
 
-        # Input shape is the first input's output shape
-        self._input_shape = self.inputs[0].output_shape
-        self._output_shape = ModuleShape(
-            self.out_features, self.out_channels, self.num_repetitions
+        self.out_shape = ModuleShape(
+            out_features, out_channels, self.inputs[0].out_shape.repetitions
         )
 
-
-    @property
-    def out_features(self) -> int:
-        if self.dim == 1:
-            return sum([module.out_features for module in self.inputs])
-        else:
-            return self.inputs[0].out_features
-
-    @property
-    def out_channels(self) -> int:
-        if self.dim == 2:
-            return sum([module.out_channels for module in self.inputs])
-        else:
-            return self.inputs[0].out_channels
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -153,7 +141,7 @@ class Cat(Module):
             feature_offset = 0
             for module in self.inputs:
                 # Get the internal feature indices for this module (contiguous range)
-                num_features = module.out_features
+                num_features = module.out_shape.features
                 feature_indices = list(range(feature_offset, feature_offset + num_features))
                 channel_index_per_module.append(sampling_ctx.channel_index[:, feature_indices])
                 mask_per_module.append(sampling_ctx.mask[:, feature_indices])
@@ -166,7 +154,7 @@ class Cat(Module):
             mask_per_module = []
 
             # Get split assignments
-            split_size = self.out_channels // len(self.inputs)
+            split_size = self.out_shape.channels // len(self.inputs)
             split_assignment = sampling_ctx.channel_index // split_size
             for i, _ in enumerate(self.inputs):
                 oids = sampling_ctx.channel_index

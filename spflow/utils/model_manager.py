@@ -8,7 +8,7 @@ sharing, or deployment.
 import os
 import pickle
 
-from spflow.modules.base import Module
+from spflow.modules.module import Module
 
 try:
     from typing import TypeAlias

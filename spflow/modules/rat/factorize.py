@@ -14,7 +14,8 @@ from torch import Tensor
 
 from spflow.exceptions import StructureError
 from spflow.meta.data import Scope
-from spflow.modules.base import Module
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.modules.products.base_product import BaseProduct
 from spflow.modules.products.product import Product
@@ -55,31 +56,16 @@ class Factorize(BaseProduct):
         super().__init__(inputs=inputs)
 
         self.depth = depth
-        self.num_repetitions = num_repetitions
         indices = self._factorize(
             depth, num_repetitions
         )  # shape: [num_features_in, num_features_out, num_repetitions]
         self.register_buffer("indices", indices.to(torch.get_default_dtype()))
 
-        self._infer_shapes()
-
-    def _infer_shapes(self) -> None:
-        """Compute and set input/output shapes for Factorize."""
-        from spflow.modules.module_shape import ModuleShape
-
-        self._input_shape = self.inputs[0].output_shape
-        self._output_shape = ModuleShape(
-            self.out_features, self.out_channels, self.num_repetitions
+        # Shape computation
+        self.in_shape = self.inputs[0].out_shape
+        self.out_shape = ModuleShape(
+            2**self.depth, self.inputs[0].out_shape.channels, num_repetitions
         )
-
-
-    @property
-    def out_channels(self) -> int:
-        return self.inputs[0].out_channels
-
-    @property
-    def out_features(self) -> int:
-        return 2**self.depth
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -90,10 +76,10 @@ class Factorize(BaseProduct):
         # f2s_inputs shape: [num_features_in, num_repetitions]
         # f2s_outputs shape: [num_features_out, num_repetitions]
         indices = self.indices.detach().cpu().numpy()
-        out = np.empty((self.out_features, self.num_repetitions), dtype=Scope)
+        out = np.empty((self.out_shape.features, self.out_shape.repetitions), dtype=Scope)
 
-        for r in range(self.num_repetitions):
-            for o in range(self.out_features):
+        for r in range(self.out_shape.repetitions):
+            for o in range(self.out_shape.features):
                 mask = indices[:, o, r] > 0
                 scopes = f2s_inputs[mask, r]
                 out[o, r] = Scope.join_all(scopes)
@@ -266,7 +252,7 @@ class Factorize(BaseProduct):
             return None
 
         # Prune: if child has only one feature, factorization is redundant - return child directly
-        elif prune and marg_child.out_features == 1:
+        elif prune and marg_child.out_shape.features == 1:
             return marg_child
         else:
-            return Factorize(inputs=[marg_child], depth=self.depth, num_repetitions=self.num_repetitions)
+            return Factorize(inputs=[marg_child], depth=self.depth, num_repetitions=self.out_shape.repetitions)

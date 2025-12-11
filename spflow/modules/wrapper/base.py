@@ -11,7 +11,7 @@ from abc import ABC
 import numpy as np
 
 from spflow.meta.data import Scope
-from spflow.modules.base import Module
+from spflow.modules.module import Module
 
 
 class Wrapper(Module, ABC):
@@ -31,7 +31,6 @@ class Wrapper(Module, ABC):
 
     Attributes:
         module (Module): The wrapped SPFlow module.
-        num_repetitions (int): Number of repetitions inherited from wrapped module.
         scope (Scope): Variable scope inherited from wrapped module.
     """
 
@@ -48,38 +47,11 @@ class Wrapper(Module, ABC):
         """
         super().__init__()
         self.module = module
-        self.num_repetitions = module.num_repetitions
         self.scope = module.scope
 
-        self._infer_shapes()
-
-    def _infer_shapes(self) -> None:
-        """Delegate shape computation to wrapped module."""
-        self._input_shape = self.module.input_shape
-        self._output_shape = self.module.output_shape
-
-
-    @property
-    def out_features(self) -> int:
-        """Returns the number of output features of the wrapped module.
-
-        Delegates to the wrapped module's out_features property.
-
-        Returns:
-            int: Number of output features from the wrapped module.
-        """
-        return self.module.out_features
-
-    @property
-    def out_channels(self) -> int:
-        """Returns the number of output channels of the wrapped module.
-
-        Delegates to the wrapped module's out_channels property.
-
-        Returns:
-            int: Number of output channels from the wrapped module.
-        """
-        return self.module.out_channels
+        # Shape computation: delegate to wrapped module
+        self.in_shape = self.module.in_shape
+        self.out_shape = self.module.out_shape
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -114,4 +86,4 @@ class Wrapper(Module, ABC):
         Returns:
             str: String representation in format "D={out_features}, C={out_channels}, R={num_repetitions}".
         """
-        return f"D={self.out_features}, C={self.out_channels}, R={self.num_repetitions}"
+        return f"D={self.out_shape.features}, C={self.out_shape.channels}, R={self.out_shape.repetitions}"

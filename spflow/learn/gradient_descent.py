@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from spflow.interfaces.classifier import Classifier
-from spflow.modules.base import Module
+from spflow.modules.module import Module
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor, nn
 
-from spflow.modules.leaves.base import LeafModule
+from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.leaves import validate_all_or_none, init_parameter, _handle_mle_edge_cases
 
 

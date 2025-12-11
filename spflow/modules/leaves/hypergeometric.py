@@ -3,7 +3,7 @@ from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data import Scope
-from spflow.modules.leaves.base import LeafModule
+from spflow.modules.leaves.leaf import LeafModule
 
 
 class _HypergeometricDistribution:

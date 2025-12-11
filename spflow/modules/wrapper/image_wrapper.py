@@ -4,7 +4,7 @@ import torch
 from torch import Tensor
 
 from spflow.exceptions import ShapeError, StructureError
-from spflow.modules.base import Module
+from spflow.modules.module import Module
 from spflow.modules.wrapper.base import Wrapper
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
@@ -74,7 +74,7 @@ class ImageWrapper(Wrapper):
         self.width = width
         if len(module.scope.query) != height * width * num_channel:
             raise StructureError(
-                f"Module out_features {module.out_features} does not match the expected size "
+                f"Module out_features {module.out_shape.features} does not match the expected size "
                 f"{height * width * num_channel}."
             )
 
