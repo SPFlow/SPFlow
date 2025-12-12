@@ -26,3 +26,11 @@ Cache
 Utilities for caching intermediate computations to speed up inference.
 
 .. autoclass:: spflow.utils.cache.Cache
+
+ImageSamplingContext
+--------------------
+
+2D sampling context for image-based probabilistic circuits. Manages sampling
+state with explicit height and width dimensions for convolutional layers.
+
+.. autoclass:: spflow.utils.image_sampling_context.ImageSamplingContext

@@ -13,7 +13,9 @@ Quick Navigation
 
 - :doc:`Getting Started <getting_started>` — Installation and quick start guide
 - :doc:`User Guide <guides/user_guide>` — Comprehensive tutorials and examples
+- :doc:`Developer Guide <guides/dev_guide>` — Contributing and development setup
 - :doc:`API Reference <api/index>` — Complete API documentation
+- :doc:`FAQ <faq>` — Frequently asked questions
 
 .. toctree::
     :maxdepth: 2
@@ -21,7 +23,10 @@ Quick Navigation
 
     getting_started
     guides/user_guide
+    guides/dev_guide
     api/index
+    faq
+
 
 Indices and tables
 ==================

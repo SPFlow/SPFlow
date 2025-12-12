@@ -6,7 +6,7 @@ from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.modules.module import Module
-from spflow.modules.sums import Sum
+from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 

@@ -8,7 +8,7 @@ Module
 
 The abstract base class for all SPFlow modules. Every probabilistic circuit component inherits from this class.
 
-.. autoclass:: spflow.modules.base.Module
+.. autoclass:: spflow.modules.module.Module
 
 
 LeafModule
@@ -16,5 +16,5 @@ LeafModule
 
 Abstract base class for all probability distribution implementations at the leaves of the circuit.
 
-.. autoclass:: spflow.modules.leaves.base.LeafModule
+.. autoclass:: spflow.modules.leaves.leaf.LeafModule
 

@@ -1,5 +1,5 @@
 Learning and Training
-====================
+=====================
 
 Structure and parameter learning algorithms for probabilistic circuits.
 
@@ -11,7 +11,7 @@ Automatic structure learning using the LearnSPN algorithm based on Randomized De
 .. autofunction:: spflow.learn.learn_spn.learn_spn
 
 Parameter Learning: EM
----------------------
+----------------------
 
 Expectation-Maximization algorithm for parameter optimization.
 

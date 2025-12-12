@@ -10,9 +10,9 @@ The RAT-SPN class provides a fully automated architecture for building probabili
 
 .. autoclass:: spflow.modules.rat.RatSPN
 
-MixingLayer
------------
+RepetitionMixingLayer
+---------------------
 
 A specialized sum layer used as the first layer in RAT-SPN to sum over repetitions.
 
-.. autoclass:: spflow.modules.rat.MixingLayer
+.. autoclass:: spflow.modules.sums.RepetitionMixingLayer

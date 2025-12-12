@@ -16,7 +16,8 @@ class Binomial(LeafModule):
     and efficient inference through PyTorch's built-in distributions.
 
     The Binomial distribution models the number of successes in a fixed number
-    of independent Bernoulli trials, with probability mass function:
+    of independent Bernoulli trials, with probability mass function::
+
         P(X = k | n, p) = C(n, k) * p^k * (1-p)^(n-k)
 
     where n is the number of trials (fixed), p is the success probability (learnable,

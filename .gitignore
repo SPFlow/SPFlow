@@ -169,3 +169,5 @@ cython_debug/
 __MACOSX/
 
 uv.lock
+*ubyte
+*ubyte.gz

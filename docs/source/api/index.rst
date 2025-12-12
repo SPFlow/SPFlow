@@ -10,6 +10,7 @@ SPFlow provides a comprehensive set of modules for building and working with Pro
    base_modules
    sums
    products
+   conv
    leaves
    operations
    rat_spn
