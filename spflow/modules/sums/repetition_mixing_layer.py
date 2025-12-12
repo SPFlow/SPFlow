@@ -137,7 +137,10 @@ class RepetitionMixingLayer(Sum):
             # Compute log posterior by reweighing logits with input lls
             input_lls = cache["log_likelihood"][self.inputs]
             log_prior = logits
-            log_posterior = log_prior + input_lls.unsqueeze(3)
+            # Only unsqueeze if input_lls has fewer dims than log_prior
+            if input_lls.dim() < log_prior.dim():
+                input_lls = input_lls.unsqueeze(3)
+            log_posterior = log_prior + input_lls
             log_posterior = log_posterior.log_softmax(dim=3)
             logits = log_posterior
 
