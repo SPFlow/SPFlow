@@ -6,13 +6,13 @@ from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
-from spflow.modules.module_shape import ModuleShape
 
 
 class Sum(Module):
@@ -316,7 +316,7 @@ class Sum(Module):
                 sampling_ctx.channel_index.shape[0], -1, -1, -1, -1
             )  # shape [b , n_features , in_c, out_c, r]
 
-            indices = sampling_ctx.repetition_idx  # Shape (30000, 1)
+            indices = sampling_ctx.repetition_idx  # Shape (batch, features)
 
             # Use gather to select the correct repetition
             # Repeat indices to match the target dimension for gathering
@@ -367,6 +367,9 @@ class Sum(Module):
                 log_posterior = log_posterior.log_softmax(dim=2)
                 logits = log_posterior
             else:
+                # When no repetition_idx, squeeze the repetitions dimension of input_lls
+                if input_lls.dim() == 4 and input_lls.shape[-1] == 1:
+                    input_lls = input_lls.squeeze(-1)
                 log_prior = logits
                 log_posterior = log_prior + input_lls
                 log_posterior = log_posterior.log_softmax(dim=2)
@@ -375,10 +378,22 @@ class Sum(Module):
         # Sample from categorical distribution defined by weights to obtain indices into input channels
         if is_mpe:
             # Take the argmax of the logits to obtain the most probable index
-            sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
+            new_channel_index = torch.argmax(logits, dim=-1)
         else:
             # Sample from categorical distribution defined by weights to obtain indices into input channels
-            sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
+            new_channel_index = torch.distributions.Categorical(logits=logits).sample()
+
+        # Update sampling context with new channel indices
+        # If shape changes, expand the mask to match new channel_index shape
+        if new_channel_index.shape != sampling_ctx.mask.shape:
+            # Expand mask from (batch, 1) or (batch, old_features) to (batch, new_features)
+            new_mask = sampling_ctx.mask.expand_as(new_channel_index).contiguous()
+            if new_mask.shape != new_channel_index.shape:
+                # Fall back to creating a full True mask
+                new_mask = torch.ones(new_channel_index.shape, dtype=torch.bool, device=new_channel_index.device)
+            sampling_ctx.update(new_channel_index, new_mask)
+        else:
+            sampling_ctx.channel_index = new_channel_index
 
         # Sample from input module
         self.inputs.sample(
