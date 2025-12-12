@@ -6,4 +6,5 @@ for representing complex probability distributions through mixture modeling.
 """
 
 from .elementwise_sum import ElementwiseSum
+from .repetition_mixing_layer import RepetitionMixingLayer
 from .sum import Sum
