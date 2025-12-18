@@ -18,8 +18,10 @@ from .hypergeometric import Hypergeometric
 from .log_normal import LogNormal
 from .negative_binomial import NegativeBinomial
 from .normal import Normal
+from .piecewise_linear import PiecewiseLinear
 from .poisson import Poisson
 from .uniform import Uniform
 
 # TODO: Conditional leaves modules to be reimplemented later
 # from .cond_normal import CondNormal
+
