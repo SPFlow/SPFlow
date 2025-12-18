@@ -20,7 +20,7 @@ num_repetitions_values = [1, 3]
 layer_type_values = ["einsum", "linsum"]
 structure_values = ["top-down", "bottom-up"]
 
-# Parameter grid for construction/log-likelihood tests
+# Full parameter grid for construction/log-likelihood tests
 params_full = list(
     product(
         num_sums_values,
@@ -32,13 +32,9 @@ params_full = list(
     )
 )
 
-# Reduced params for sampling tests (skip known problematic combinations)
-# Sampling with num_repetitions=1 and bottom-up has edge cases
+# Sampling only supports top-down for now
 params_sampling = [
-    (num_sums, num_leaves, depth, num_reps, layer_type, structure)
-    for num_sums, num_leaves, depth, num_reps, layer_type, structure in params_full
-    if not (num_reps == 1 and structure == "bottom-up")  # Skip problematic combo
-    and not (structure == "bottom-up" and depth > 1)  # Skip complex bottom-up
+    p for p in params_full if p[5] == "top-down"  # structure is 6th element (index 5)
 ]
 
 
@@ -244,8 +240,8 @@ class TestEinetSampling:
         assert torch.isfinite(samples).all()
 
     @pytest.mark.parametrize("layer_type", layer_type_values)
-    def test_mpe_sampling_top_down(self, layer_type: str):
-        """Test MPE sampling with top-down structure."""
+    def test_mpe_sampling(self, layer_type: str):
+        """Test MPE sampling (top-down only)."""
         num_features = 4
         num_samples = 10
         leaf_modules = make_leaf_modules(num_features, 3, 2)
@@ -264,6 +260,22 @@ class TestEinetSampling:
 
         assert samples.shape == (num_samples, num_features)
         assert torch.isfinite(samples).all()
+
+    def test_bottom_up_sampling_not_implemented(self):
+        """Test that bottom-up sampling raises NotImplementedError."""
+        leaf_modules = make_leaf_modules(4, 3, 2)
+        model = Einet(
+            leaf_modules=leaf_modules,
+            num_classes=1,
+            num_sums=5,
+            num_leaves=3,
+            depth=1,
+            num_repetitions=2,
+            structure="bottom-up",
+        )
+
+        with pytest.raises(NotImplementedError, match="bottom-up"):
+            model.sample(num_samples=10)
 
 
 class TestEinetGradient:

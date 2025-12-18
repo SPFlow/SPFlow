@@ -253,19 +253,10 @@ class Einet(Module, Classifier):
         in_features = fac_layer.out_shape.features
 
         for i in range(self.depth):
-            # Input channels
-            if i == 0:
-                in_channels = self.num_leaves
-            else:
-                in_channels = self.num_sums
-
-            # Output channels
-            out_channels = self.num_sums
-
             # Create einsum/linsum layer
             current = LayerClass(
                 inputs=current,
-                out_channels=out_channels,
+                out_channels=self.num_sums,
                 num_repetitions=self.num_repetitions,
             )
 
@@ -280,10 +271,25 @@ class Einet(Module, Classifier):
                 num_repetitions=self.num_repetitions,
             )
 
-        # Final root sum to reduce features to 1
+        # Add sum layer to get features down to 1 if needed
         if current.out_shape.features > 1:
-            # Need a sum layer to combine all features
-            root = Sum(
+            current = Sum(
+                inputs=current,
+                out_channels=self.num_sums,
+                num_repetitions=self.num_repetitions,
+            )
+
+        # Add final sum layer to convert from num_sums to num_classes
+        if current.out_shape.channels != self.num_classes:
+            current = Sum(
+                inputs=current,
+                out_channels=self.num_classes,
+                num_repetitions=self.num_repetitions,
+            )
+
+        # Mix repetitions if we have multiple
+        if self.num_repetitions > 1:
+            root = RepetitionMixingLayer(
                 inputs=current,
                 out_channels=self.num_classes,
                 num_repetitions=self.num_repetitions,
@@ -291,19 +297,7 @@ class Einet(Module, Classifier):
         else:
             root = current
 
-        # Mix repetitions if we have multiple
-        if self.num_repetitions > 1:
-            root = RepetitionMixingLayer(
-                inputs=root,
-                out_channels=self.num_classes,
-                num_repetitions=self.num_repetitions,
-            )
-
-        # Final root sum if multiple classes
-        if self.num_classes > 1 and not isinstance(root, RepetitionMixingLayer):
-            self.root_node = Sum(inputs=root, out_channels=1, num_repetitions=1)
-        else:
-            self.root_node = root
+        self.root_node = root
 
         # Store layers for access
         self.factorize = fac_layer
@@ -403,7 +397,18 @@ class Einet(Module, Classifier):
 
         Returns:
             Sampled tensor.
+
+        Raises:
+            NotImplementedError: If structure is "bottom-up" (not yet supported).
         """
+        # Bottom-up sampling not yet supported due to shape propagation complexity
+        if self.structure == "bottom-up":
+            raise NotImplementedError(
+                "Sampling from bottom-up Einet structure is not yet implemented. "
+                "Use structure='top-down' for sampling, or use log_likelihood() which "
+                "works for both structures."
+            )
+
         # Handle num_samples case
         if data is None:
             if num_samples is None:
@@ -412,18 +417,30 @@ class Einet(Module, Classifier):
                 (num_samples, self.num_features), torch.nan, device=self.device
             )
 
+        batch_size = data.shape[0]
+
         # Initialize sampling context
-        if sampling_ctx is None and self.num_classes > 1:
-            sampling_ctx = init_default_sampling_context(
-                sampling_ctx, data.shape[0], data.device
-            )
+        if sampling_ctx is None:
+            sampling_ctx = init_default_sampling_context(None, batch_size, data.device)
+
+        # Always initialize repetition_idx (required by Factorize.sample())
+        if sampling_ctx.repetition_idx is None:
+            if self.num_repetitions == 1:
+                # Single repetition: use index 0 for all samples
+                sampling_ctx.repetition_idx = torch.zeros(
+                    batch_size, dtype=torch.long, device=data.device
+                )
+            # For num_repetitions > 1, RepetitionMixingLayer will set this
+
+        # Handle class sampling for multi-class models
+        if self.num_classes > 1:
             logits = self.root_node.logits
             if logits.shape != (1, self.num_classes, 1):
                 raise ValueError(
                     f"Expected logits shape (1, {self.num_classes}, 1), got {logits.shape}"
                 )
             logits = logits.squeeze(-1)
-            logits = logits.unsqueeze(0).expand(data.shape[0], -1, -1)
+            logits = logits.unsqueeze(0).expand(batch_size, -1, -1)
 
             if is_mpe:
                 sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
@@ -431,10 +448,6 @@ class Einet(Module, Classifier):
                 sampling_ctx.channel_index = torch.distributions.Categorical(
                     logits=logits
                 ).sample()
-        else:
-            sampling_ctx = init_default_sampling_context(
-                sampling_ctx, data.shape[0], data.device
-            )
 
         # Sample from appropriate root
         if self.num_classes > 1:
