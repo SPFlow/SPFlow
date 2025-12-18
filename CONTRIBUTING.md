@@ -243,6 +243,17 @@ cd docs && make clean
 
 The generated HTML will be available in `docs/build/index.html`.
 
+### Automatic Deployment
+
+Documentation is **automatically deployed** to [spflow.github.io](https://spflow.github.io) when changes are pushed to the `main` branch.
+
+The deployment process:
+1. The GitHub Actions workflow (`.github/workflows/docs.yaml`) builds the Sphinx docs
+2. Built docs are pushed to the [SPFlow/spflow.github.io](https://github.com/SPFlow/spflow.github.io) repository
+3. GitHub Pages serves the content at https://spflow.github.io
+
+No manual deployment is needed — just merge your documentation changes to `main`.
+
 ### Documentation Standards
 
 - All public modules, classes, and functions must have docstrings
