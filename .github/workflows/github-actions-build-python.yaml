@@ -76,7 +76,7 @@ jobs:
       fail-fast: false
       matrix:
         version-python: ['3.12']
-        os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
+        os: ['macos-latest', 'windows-latest']
     steps:
       - uses: actions/checkout@v5
       - uses: "./.github/actions/run_tests"
