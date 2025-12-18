@@ -229,6 +229,41 @@ class Module(nn.Module, ABC):
         """
         pass
 
+    def mpe(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
+    ) -> Tensor:
+        """Generate most probable explanation from the module's probability distribution.
+
+        This is a convenience method that calls sample with is_mpe=True.
+
+        Handles conditional sampling through evidence in data tensor.
+
+        Args:
+            num_samples (int | None, optional): Number of samples to generate. Defaults to 1.
+            data (Tensor | None, optional): Pre-allocated tensor with NaN values indicating
+                where to sample. If None, creates new tensor. Defaults to None.
+            cache (Cache | None, optional): Cache for intermediate computations. Defaults to None.
+            sampling_ctx (SamplingContext | None, optional): Context for routing samples
+                through the circuit. Defaults to None.
+
+        Returns:
+            Tensor: MPE values of shape (batch_size, num_features).
+
+        Raises:
+            ValueError: If sampling parameters are incompatible.
+        """
+        return self.sample(
+            num_samples=num_samples,
+            data=data,
+            is_mpe=True,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
+
     def sample_with_evidence(
         self,
         evidence: Tensor,
