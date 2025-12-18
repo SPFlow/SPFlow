@@ -16,6 +16,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.modules.conv.utils import expand_sampling_context, upsample_sampling_context
 
 
 class ProdConv(Module):
@@ -262,36 +263,30 @@ class ProdConv(Module):
         in_features = self.in_shape.features
         out_features = self.out_shape.features
 
-        channel_idx = sampling_ctx.channel_index
-        mask = sampling_ctx.mask
+        current_features = sampling_ctx.channel_index.shape[1]
 
         # If channel_index is smaller than in_features, expand it
-        if channel_idx.shape[1] < in_features:
-            if channel_idx.shape[1] == 1:
+        if current_features < in_features:
+            if current_features == 1:
                 # Broadcast single value to all input features
-                channel_idx = channel_idx.expand(-1, in_features)
-                mask = mask.expand(-1, in_features)
-            elif channel_idx.shape[1] == out_features:
+                expand_sampling_context(sampling_ctx, in_features)
+            elif current_features == out_features:
                 # Upsample from output to input resolution
-                out_h, out_w = self._output_h, self._output_w
-                in_h, in_w = self._input_h, self._input_w
-                kh, kw = self.kernel_size_h, self.kernel_size_w
-
-                channel_idx_spatial = channel_idx.view(batch_size, out_h, out_w)
-                channel_idx_upsampled = channel_idx_spatial.repeat_interleave(kh, dim=1)
-                channel_idx_upsampled = channel_idx_upsampled.repeat_interleave(kw, dim=2)
-                channel_idx = channel_idx_upsampled[:, :in_h, :in_w].contiguous().view(batch_size, in_features)
-
-                mask_spatial = mask.view(batch_size, out_h, out_w)
-                mask_upsampled = mask_spatial.repeat_interleave(kh, dim=1)
-                mask_upsampled = mask_upsampled.repeat_interleave(kw, dim=2)
-                mask = mask_upsampled[:, :in_h, :in_w].contiguous().view(batch_size, in_features)
+                upsample_sampling_context(
+                    sampling_ctx,
+                    current_height=self._output_h,
+                    current_width=self._output_w,
+                    scale_h=self.kernel_size_h,
+                    scale_w=self.kernel_size_w,
+                )
+                # Handle padding case: trim to actual input size
+                if sampling_ctx.channel_index.shape[1] > in_features:
+                    channel_idx = sampling_ctx.channel_index[:, :in_features].contiguous()
+                    mask = sampling_ctx.mask[:, :in_features].contiguous()
+                    sampling_ctx.update(channel_index=channel_idx, mask=mask)
             else:
                 # Just broadcast first element
-                channel_idx = channel_idx[:, :1].expand(-1, in_features)
-                mask = mask[:, :1].expand(-1, in_features)
-
-            sampling_ctx.update(channel_index=channel_idx, mask=mask)
+                expand_sampling_context(sampling_ctx, in_features)
 
         # Sample from input
         self.inputs.sample(
