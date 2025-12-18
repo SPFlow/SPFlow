@@ -5,5 +5,6 @@ a single efficient einsum operation for building binary tree structured circuits
 """
 
 from spflow.modules.einsum.einsum_layer import EinsumLayer
+from spflow.modules.einsum.linsum_layer import LinsumLayer
 
-__all__ = ["EinsumLayer"]
+__all__ = ["EinsumLayer", "LinsumLayer"]
