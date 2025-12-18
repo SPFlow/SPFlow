@@ -1,6 +1,0 @@
-﻿spn.structure.leaves.cltree.CLTree.create\_cltree\_leaf
-=======================================================
-
-.. currentmodule:: spn.structure.leaves.cltree.CLTree
-
-.. autofunction:: create_cltree_leaf

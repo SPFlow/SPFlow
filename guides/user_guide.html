@@ -1,0 +1,1513 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Developer Guide" href="dev_guide.html"><link rel="prev" title="Getting Started" href="../getting_started.html">
+
+    <!-- Generated with Sphinx 8.2.3 and Furo 2025.09.25 -->
+        <title>User Guide - SPFlow 1.0.0</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=580074bf" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  --color-brand-primary: #0066cc;
+  --color-brand-content: #0066cc;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-brand-primary: #4da6ff;
+  --color-brand-content: #4da6ff;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  --color-brand-primary: #4da6ff;
+  --color-brand-content: #4da6ff;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">SPFlow 1.0.0</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">SPFlow 1.0.0</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dev_guide.html">Developer Guide</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/index.html">API Documentation</a><input aria-label="Toggle navigation of API Documentation" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/base_modules.html">Base Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/module_shape.html">Module Shape</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/sums.html">Sum Modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/products.html">Product Modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/conv.html">Convolutional Modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/leaves.html">Leaf Modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/operations.html">Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/rat_spn.html">RAT-SPN Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/learning.html">Learning and Training</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/scope.html">Scope Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/utilities.html">Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/wrappers.html">Wrapper Modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/interfaces.html">Interfaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/exceptions.html">Exceptions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/guides/user_guide.ipynb.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="User-Guide">
+<h1>User Guide<a class="headerlink" href="#User-Guide" title="Link to this heading">¶</a></h1>
+<p>SPFlow is an open-source functional-oriented Python package for Probabilistic Circuits (PCs) with ready-to-use implementations for Sum-Product Networks (SPNs). PCs are a class of powerful deep probabilistic models - expressible as directed acyclic graphs - that allow for tractable querying. This library provides routines for creating, learning, manipulating and interacting with PCs and is highly extensible and customizable.</p>
+<section id="Create-Toy-Dataset">
+<h2>Create Toy Dataset<a class="headerlink" href="#Create-Toy-Dataset" title="Link to this heading">¶</a></h2>
+<p>To demonstrate and visualize the main features of the library, we first create a 2D toy dataset with three Gaussian clusters, corresponding to labels 0, 1, and 2. The dataset is created with an imbalance. Therefore, class 0 has 200 datapoints, class 1 400 datapoints and class 2 600 datapoints, for a total of 1,200 data points.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="c1"># --- 1. Define the parameters for our dataset ---</span>
+
+<span class="n">n_points_per_cluster</span> <span class="o">=</span> <span class="mi">200</span>
+
+<span class="n">means</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">],</span>  <span class="c1"># Cluster 0</span>
+    <span class="p">[</span><span class="o">-</span><span class="mf">3.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.0</span><span class="p">],</span>  <span class="c1"># Cluster 1</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.0</span><span class="p">]</span>  <span class="c1"># Cluster 2</span>
+<span class="p">])</span>
+
+<span class="n">stds</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span>
+    <span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">]</span>
+<span class="p">])</span>
+
+<span class="c1"># --- 2. Generate the data and labels ---</span>
+
+<span class="n">all_clusters</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">all_labels</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">means</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+    <span class="n">samples</span> <span class="o">=</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">n_points_per_cluster</span> <span class="o">*</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">stds</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">+</span> <span class="n">means</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">n_points_per_cluster</span> <span class="o">*</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),),</span> <span class="n">i</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>  <span class="c1"># label = cluster index</span>
+    <span class="n">all_clusters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
+    <span class="n">all_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+
+<span class="c1"># Concatenate all data and labels</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">all_clusters</span><span class="p">)</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">all_labels</span><span class="p">)</span>
+
+<span class="c1"># --- 3. Shuffle dataset and labels together ---</span>
+
+<span class="n">shuffled_indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">[</span><span class="n">shuffled_indices</span><span class="p">]</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="n">shuffled_indices</span><span class="p">]</span>
+
+<span class="c1"># --- 4. Display some info ---</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Dataset successfully created.&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of dataset: </span><span class="si">{</span><span class="n">dataset</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of labels: </span><span class="si">{</span><span class="n">labels</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;First 5 samples:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">dataset</span><span class="p">[:</span><span class="mi">5</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Corresponding labels:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">labels</span><span class="p">[:</span><span class="mi">5</span><span class="p">])</span>
+
+<span class="c1"># --- 5. Visualize the labeled dataset ---</span>
+
+<span class="n">data_np</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">labels_np</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_scatter</span><span class="p">(</span><span class="n">data_list</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">label_list</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="s2">&quot;yellow&quot;</span><span class="p">,</span> <span class="s2">&quot;green&quot;</span><span class="p">]</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">data_list</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data_list</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">label_list</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;viridis&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Cluster Label&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label_list</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Feature 1 (x-axis)&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Feature 2 (y-axis)&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+    <span class="c1">#plt.colorbar(label=&#39;Cluster Label&#39;)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+
+<span class="n">plot_scatter</span><span class="p">([</span><span class="n">data_np</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Generated 2D Toy Dataset (with Labels)&#39;</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">labels_np</span><span class="p">,</span> <span class="n">label_list</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Toy Data&#39;</span><span class="p">])</span>
+<br/><br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Dataset successfully created.
+Shape of dataset: torch.Size([1200, 2])
+Shape of labels: torch.Size([1200])
+First 5 samples:
+tensor([[-1.7400, -2.5935],
+        [-2.3852, -1.5250],
+        [-2.9825, -2.4469],
+        [ 2.7080, -2.3514],
+        [ 0.1788,  2.7683]])
+Corresponding labels:
+tensor([1, 1, 1, 2, 0])
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[1]</span><span class="ansi-green-fg">, line 80</span>
+<span class="ansi-green-fg">     75</span>     <span style="color: rgb(95,135,135)">#plt.colorbar(label=&#39;Cluster Label&#39;)</span>
+<span class="ansi-green-fg">     77</span>     plt.show()
+<span class="ansi-green-fg">---&gt; </span><span class="ansi-green-fg">80</span> <span class="ansi-yellow-bg">plot_scatter</span><span class="ansi-yellow-bg">(</span><span class="ansi-yellow-bg">[</span><span class="ansi-yellow-bg">data_np</span><span class="ansi-yellow-bg">]</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg">title</span><span class="ansi-yellow-bg">=</span><span class="ansi-yellow-fg ansi-yellow-bg">&#39;</span><span class="ansi-yellow-fg ansi-yellow-bg">Generated 2D Toy Dataset (with Labels)</span><span class="ansi-yellow-fg ansi-yellow-bg">&#39;</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg">labels</span><span class="ansi-yellow-bg">=</span><span class="ansi-yellow-bg">labels_np</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg">label_list</span><span class="ansi-yellow-bg">=</span><span class="ansi-yellow-bg">[</span><span class="ansi-yellow-fg ansi-yellow-bg">&#39;</span><span class="ansi-yellow-fg ansi-yellow-bg">Toy Data</span><span class="ansi-yellow-fg ansi-yellow-bg">&#39;</span><span class="ansi-yellow-bg">]</span><span class="ansi-yellow-bg">)</span>
+
+<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[1]</span><span class="ansi-green-fg">, line 58</span>, in <span class="ansi-cyan-fg">plot_scatter</span><span class="ansi-blue-fg">(data_list, title, labels, label_list)</span>
+<span class="ansi-green-fg">     56</span> <span class="ansi-bold" style="color: rgb(0,135,0)">def</span><span style="color: rgb(188,188,188)"> </span><span class="ansi-blue-fg">plot_scatter</span>(data_list, title=<span class="ansi-bold" style="color: rgb(0,135,0)">None</span>, labels=<span class="ansi-bold" style="color: rgb(0,135,0)">None</span>, label_list=<span class="ansi-bold" style="color: rgb(0,135,0)">None</span>):
+<span class="ansi-green-fg">     57</span>     colors = [<span class="ansi-yellow-fg">&#34;</span><span class="ansi-yellow-fg">blue</span><span class="ansi-yellow-fg">&#34;</span>, <span class="ansi-yellow-fg">&#34;</span><span class="ansi-yellow-fg">red</span><span class="ansi-yellow-fg">&#34;</span>, <span class="ansi-yellow-fg">&#34;</span><span class="ansi-yellow-fg">yellow</span><span class="ansi-yellow-fg">&#34;</span>, <span class="ansi-yellow-fg">&#34;</span><span class="ansi-yellow-fg">green</span><span class="ansi-yellow-fg">&#34;</span>]
+<span class="ansi-green-fg">---&gt; </span><span class="ansi-green-fg">58</span>     <span class="ansi-yellow-bg">plt</span>.figure(figsize=(<span class="ansi-green-fg">8</span>, <span class="ansi-green-fg">6</span>))
+<span class="ansi-green-fg">     59</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">for</span> idx, data <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> <span style="color: rgb(0,135,0)">enumerate</span>(data_list):
+<span class="ansi-green-fg">     60</span>         <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(0,135,0)">len</span>(data_list))
+
+<span class="ansi-red-fg">NameError</span>: name &#39;plt&#39; is not defined
+</pre></div></div>
+</div>
+</section>
+<section id="Model-Configuration">
+<h2>Model Configuration<a class="headerlink" href="#Model-Configuration" title="Link to this heading">¶</a></h2>
+<p>The circuits you create with this library are modular.</p>
+<p>All modules share the same base structure. Each module is defined by its number of output features and output channels. You can think of output features as the number of nodes with different scopes in one layer. You can think of output channels as how many times a node with the same scope is repeated in a layer. This structure lets you define simple nodes (with a shape of (1, 1)), node vectors along the feature (N, 1) or channel (1, M) dimension, or full leaf layers (N, M). In many cases, using
+layers instead of single nodes is much faster and more memory-efficient.</p>
+<p>Each module also has an input attribute that points to its input module. This lets you stack modules together in any order.</p>
+<p>Below, we will build a simple Sum-Product Network by stacking leaf, product, and sum layers.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spflow.modules.leaves</span><span class="w"> </span><span class="kn">import</span> <span class="n">Normal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spflow.modules.sums</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spflow.modules.products</span><span class="w"> </span><span class="kn">import</span> <span class="n">Product</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spflow.meta.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scope</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">display</span><span class="p">,</span> <span class="n">Image</span>
+
+<span class="n">scope</span> <span class="o">=</span> <span class="n">Scope</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+
+<span class="n">leaf_layer</span> <span class="o">=</span> <span class="n">Normal</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+<span class="n">product_layer</span> <span class="o">=</span> <span class="n">Product</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">leaf_layer</span><span class="p">)</span>
+<span class="n">spn</span> <span class="o">=</span> <span class="n">Sum</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">product_layer</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">spn</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Sum(
+  D=1, C=1, R=1, weights=(1, 6, 1, 1)
+  (inputs): Product(
+    D=1, C=6, R=1
+    (inputs): Normal(D=2, C=6, R=1)
+  )
+)
+</pre></div></div>
+</div>
+<p>Below is a visualization of the SPN defined above. The number of output channels of a sum or leaf layer is equivalent to the number of nodes in that layer. The number of nodes in a product layer is derived from the number of nodes in its input.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">display</span><span class="p">(</span><span class="n">Image</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;StandardSPN.png&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/guides_user_guide_6_0.png" src="../_images/guides_user_guide_6_0.png" />
+</div>
+</div>
+<p>Next, we can train the SPN, for example, using gradient descent. The library already provides a method for training an SPN with gradient descent. To do this, simply pass the module you want to train and the training parameters such as the number of epochs, learning rate, etc.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spflow.learn</span><span class="w"> </span><span class="kn">import</span> <span class="n">train_gradient_descent</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.utils.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataLoader</span><span class="p">,</span> <span class="n">TensorDataset</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+    <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> [</span><span class="si">%(levelname)s</span><span class="s2">] </span><span class="si">%(name)s</span><span class="s2">: </span><span class="si">%(message)s</span><span class="s2">&quot;</span>
+<span class="p">)</span>
+
+<span class="n">train_dataset</span> <span class="o">=</span> <span class="n">TensorDataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">dataloader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">train_gradient_descent</span><span class="p">(</span><span class="n">spn</span><span class="p">,</span> <span class="n">dataloader</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+2025-12-18 13:19:11,162 [INFO] spflow.learn.gradient_descent: Epoch [0/10]: Loss: 3.497948408126831
+2025-12-18 13:19:11,270 [INFO] spflow.learn.gradient_descent: Epoch [1/10]: Loss: 3.272120952606201
+2025-12-18 13:19:11,373 [INFO] spflow.learn.gradient_descent: Epoch [2/10]: Loss: 2.8933167457580566
+2025-12-18 13:19:11,477 [INFO] spflow.learn.gradient_descent: Epoch [3/10]: Loss: 2.844355344772339
+2025-12-18 13:19:11,581 [INFO] spflow.learn.gradient_descent: Epoch [4/10]: Loss: 2.855867862701416
+2025-12-18 13:19:11,685 [INFO] spflow.learn.gradient_descent: Epoch [5/10]: Loss: 2.6095309257507324
+2025-12-18 13:19:11,788 [INFO] spflow.learn.gradient_descent: Epoch [6/10]: Loss: 2.6061792373657227
+2025-12-18 13:19:11,894 [INFO] spflow.learn.gradient_descent: Epoch [7/10]: Loss: 2.6104846000671387
+2025-12-18 13:19:11,999 [INFO] spflow.learn.gradient_descent: Epoch [8/10]: Loss: 2.6126863956451416
+2025-12-18 13:19:12,105 [INFO] spflow.learn.gradient_descent: Epoch [9/10]: Loss: 2.6141695976257324
+</pre></div></div>
+</div>
+<p>Once the SPN is trained, we can perform queries such as inference and sampling. SPFlow uses internal dispatching so that a single query function can work across all module types. For example, the log_likelihood method shown below can be used for every SPN model encountered throughout this guide.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ll</span> <span class="o">=</span> <span class="n">spn</span><span class="o">.</span><span class="n">log_likelihood</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">ll</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+tensor([[[[-4.0438]]],
+
+
+        [[[-2.5970]]],
+
+
+        [[[-2.4703]]],
+
+
+        ...,
+
+
+        [[[-1.8760]]],
+
+
+        [[[-2.3992]]],
+
+
+        [[[-2.6501]]]], grad_fn=&lt;ViewBackward0&gt;)
+</pre></div></div>
+</div>
+<p>Finally, we can visualize the training results on our toy dataset.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><br/><br/><span></span><span class="n">data_np</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_contour</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">spn</span><span class="p">):</span>
+    <span class="c1"># Define the boundaries of the plot with a small padding</span>
+    <span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span> <span class="o">=</span> <span class="n">data_np</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">data_np</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span> <span class="o">=</span> <span class="n">data_np</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">data_np</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="c1"># Create a grid of points</span>
+    <span class="n">grid_resolution</span> <span class="o">=</span> <span class="mi">200</span>
+    <span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">),</span>
+                         <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span><span class="p">,</span> <span class="n">grid_resolution</span><span class="p">))</span>
+
+    <span class="c1"># Stack the grid points into a format our function can accept: [n_points, 2]</span>
+    <span class="n">grid_points</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">c_</span><span class="p">[</span><span class="n">xx</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">yy</span><span class="o">.</span><span class="n">ravel</span><span class="p">()],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">ll</span> <span class="o">=</span> <span class="n">spn</span><span class="o">.</span><span class="n">log_likelihood</span><span class="p">(</span><span class="n">grid_points</span><span class="p">)</span>
+    <span class="c1"># Reshape the LL values to match the grid shape for plotting</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="n">ll</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">xx</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="c1"># --- 6. Visualize the Data and Log-Likelihood Contours ---</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+
+    <span class="c1"># Plot the filled contour map of the log-likelihood</span>
+    <span class="c1"># Higher values (brighter colors) mean the model thinks data is more likely there</span>
+    <span class="n">contour</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">contourf</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+
+    <span class="c1"># Add a color bar to show the LL scale</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">contour</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Log-Likelihood $LL(\mathbf</span><span class="si">{x}</span><span class="s1">)$&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Overlay the scatter plot of the actual data points</span>
+    <span class="c1"># We make them semi-transparent and small to see the density and contours</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">data_np</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">data_np</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Add titles and labels</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;SPN Log-Likelihood Contours and Data&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Feature 1 (x-axis)&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Feature 2 (y-axis)&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>  <span class="c1"># Ensures the scaling is the same on both axes</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+
+<span class="n">plot_contour</span><span class="p">(</span><span class="n">data_np</span><span class="p">,</span> <span class="n">spn</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[6]</span><span class="ansi-green-fg">, line 44</span>
+<span class="ansi-green-fg">     40</span>     plt.axis(<span class="ansi-yellow-fg">&#39;</span><span class="ansi-yellow-fg">equal</span><span class="ansi-yellow-fg">&#39;</span>)  <span style="color: rgb(95,135,135)"># Ensures the scaling is the same on both axes</span>
+<span class="ansi-green-fg">     41</span>     plt.show()
+<span class="ansi-green-fg">---&gt; </span><span class="ansi-green-fg">44</span> <span class="ansi-yellow-bg">plot_contour</span><span class="ansi-yellow-bg">(</span><span class="ansi-yellow-bg">data_np</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg">spn</span><span class="ansi-yellow-bg">)</span>
+
+<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[6]</span><span class="ansi-green-fg">, line 11</span>, in <span class="ansi-cyan-fg">plot_contour</span><span class="ansi-blue-fg">(data, spn)</span>
+<span class="ansi-green-fg">      9</span> <span style="color: rgb(95,135,135)"># Create a grid of points</span>
+<span class="ansi-green-fg">     10</span> grid_resolution = <span class="ansi-green-fg">200</span>
+<span class="ansi-green-fg">---&gt; </span><span class="ansi-green-fg">11</span> xx, yy = <span class="ansi-yellow-bg">np</span>.meshgrid(np.linspace(x_min, x_max, grid_resolution),
+<span class="ansi-green-fg">     12</span>                      np.linspace(y_min, y_max, grid_resolution))
+<span class="ansi-green-fg">     14</span> <span style="color: rgb(95,135,135)"># Stack the grid points into a format our function can accept: [n_points, 2]</span>
+<span class="ansi-green-fg">     15</span> grid_points = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float32)
+
+<span class="ansi-red-fg">NameError</span>: name &#39;np&#39; is not defined
+</pre></div></div>
+</div>
+</section>
+<section id="Temporary-Method-Replacement">
+<h2>Temporary Method Replacement<a class="headerlink" href="#Temporary-Method-Replacement" title="Link to this heading">¶</a></h2>
+<p>SPFlow supports temporarily substituting module methods. For example, you can replace the sum operation in <code class="docutils literal notranslate"><span class="pre">Sum</span></code> with a custom implementation for a single call graph.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spflow.modules.sums</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spflow.modules.products</span><span class="w"> </span><span class="kn">import</span> <span class="n">Product</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spflow.modules.leaves</span><span class="w"> </span><span class="kn">import</span> <span class="n">Normal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spflow.meta</span><span class="w"> </span><span class="kn">import</span> <span class="n">Scope</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spflow.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
+
+<span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Create a probabilistic circuit: Product(Sum(Product(Normal)))</span>
+<span class="n">scope</span> <span class="o">=</span> <span class="n">Scope</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">normal</span> <span class="o">=</span> <span class="n">Normal</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">inner_product</span> <span class="o">=</span> <span class="n">Product</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">normal</span><span class="p">)</span>
+<span class="n">sum_module</span> <span class="o">=</span> <span class="n">Sum</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">inner_product</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">root_product</span> <span class="o">=</span> <span class="n">Product</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">sum_module</span><span class="p">)</span>
+
+<span class="c1"># Create test data</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># Normal inference</span>
+<span class="n">log_likelihood_original</span> <span class="o">=</span> <span class="n">root_product</span><span class="o">.</span><span class="n">log_likelihood</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Original log-likelihood: </span><span class="si">{</span><span class="n">log_likelihood_original</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Define a custom log_likelihood for Sum modules</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">max_ll</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">ll</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">log_likelihood</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">cache</span><span class="o">=</span><span class="n">cache</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">weighted_lls</span> <span class="o">=</span> <span class="n">ll</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">log_weights</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">weighted_lls</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sum_dim</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># Temporarily replace Sum.log_likelihood with custom implementation</span>
+<span class="k">with</span> <span class="n">replace</span><span class="p">(</span><span class="n">Sum</span><span class="o">.</span><span class="n">log_likelihood</span><span class="p">,</span> <span class="n">max_ll</span><span class="p">):</span>
+    <span class="n">log_likelihood_custom</span> <span class="o">=</span> <span class="n">root_product</span><span class="o">.</span><span class="n">log_likelihood</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Custom log-likelihood:   </span><span class="si">{</span><span class="n">log_likelihood_custom</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Original method is automatically restored</span>
+<span class="n">log_likelihood_restored</span> <span class="o">=</span> <span class="n">root_product</span><span class="o">.</span><span class="n">log_likelihood</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Restored log-likelihood: </span><span class="si">{</span><span class="n">log_likelihood_restored</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<br/><br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Original log-likelihood: tensor([-1.2842, -2.8750, -7.2442], grad_fn=&lt;ViewBackward0&gt;)
+Custom log-likelihood:   tensor([-1.4334, -3.5256, -7.9031], grad_fn=&lt;ViewBackward0&gt;)
+Restored log-likelihood: tensor([-1.2842, -2.8750, -7.2442], grad_fn=&lt;ViewBackward0&gt;)
+</pre></div></div>
+</div>
+</section>
+<section id="Automatic-Model-creation">
+<h2>Automatic Model creation<a class="headerlink" href="#Automatic-Model-creation" title="Link to this heading">¶</a></h2>
+<p>Besides creating an SPN manually by stacking layers, it is also possible to use algorithms to automatically construct the SPN architecture. This can make it easier to start using SPNs.</p>
+<section id="Rat-SPN">
+<h3>Rat-SPN<a class="headerlink" href="#Rat-SPN" title="Link to this heading">¶</a></h3>
+<p>The Rat-SPN algorithm builds a deep network structure by recursively partitioning the features (variables) into random subsets and alternating between sum and product layers. Below, we set up a Rat-SPN by defining its structure and parameters.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spflow.modules.rat.rat_spn</span><span class="w"> </span><span class="kn">import</span> <span class="n">RatSPN</span>
+
+<span class="n">depth</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">n_region_nodes</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">num_leaves</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">num_repetitions</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">n_root_nodes</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">num_feature</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="n">scope</span> <span class="o">=</span> <span class="n">Scope</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">num_feature</span><span class="p">)))</span>
+
+<span class="n">rat_leaf_layer</span> <span class="o">=</span> <span class="n">Normal</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">num_leaves</span><span class="p">,</span> <span class="n">num_repetitions</span><span class="o">=</span><span class="n">num_repetitions</span><span class="p">)</span>
+<span class="n">rat</span> <span class="o">=</span> <span class="n">RatSPN</span><span class="p">(</span>
+    <span class="n">leaf_modules</span><span class="o">=</span><span class="p">[</span><span class="n">rat_leaf_layer</span><span class="p">],</span>
+    <span class="n">n_root_nodes</span><span class="o">=</span><span class="n">n_root_nodes</span><span class="p">,</span>
+    <span class="n">n_region_nodes</span><span class="o">=</span><span class="n">n_region_nodes</span><span class="p">,</span>
+    <span class="n">num_repetitions</span><span class="o">=</span><span class="n">num_repetitions</span><span class="p">,</span>
+    <span class="n">depth</span><span class="o">=</span><span class="n">depth</span><span class="p">,</span>
+    <span class="n">outer_product</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">split_halves</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rat</span><span class="o">.</span><span class="n">to_str</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+RatSPN [D=1, C=1, R=2] → scope: 0-1
+└─ RepetitionMixingLayer [D=1, C=1] [weights: (1, 1, 2)] → scope: 0-1
+   └─ Sum [D=1, C=1] [weights: (1, 4, 1, 2)] → scope: 0-1
+      └─ OuterProduct [D=1, C=4] → scope: 0-1
+         └─ SplitHalves [D=2, C=2] → scope: 0-1
+            └─ Factorize [D=2, C=2] → scope: 0-1
+               └─ Normal [D=2, C=2] → scope: 0-1
+</pre></div></div>
+</div>
+<p>Here is a visualization of the architecture we just created.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">display</span><span class="p">(</span><span class="n">Image</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s1">&#39;Rat_SPN.png&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/guides_user_guide_19_0.png" src="../_images/guides_user_guide_19_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">ll</span> <span class="o">=</span> <span class="n">rat</span><span class="o">.</span><span class="n">log_likelihood</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+<span class="n">ll</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+tensor([[[[ -4.9695]]],
+
+
+        [[[ -6.3418]]],
+
+
+        [[[-10.5675]]],
+
+
+        ...,
+
+
+        [[[ -8.1549]]],
+
+
+        [[[ -6.3861]]],
+
+
+        [[[ -9.3209]]]], grad_fn=&lt;ViewBackward0&gt;)
+</pre></div></div>
+</div>
+<p>We can again train this model using the provided gradient descent method.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_gradient_descent</span><span class="p">(</span><span class="n">rat</span><span class="p">,</span> <span class="n">dataloader</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>To verify that the training worked properly, we can visualize the log-likelihoods of the trained model.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">data_np</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">plot_contour</span><span class="p">(</span><span class="n">data_np</span><span class="p">,</span> <span class="n">rat</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[12]</span><span class="ansi-green-fg">, line 2</span>
+<span class="ansi-green-fg">      1</span> data_np = dataset.cpu().numpy()
+<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span> <span class="ansi-yellow-bg">plot_contour</span><span class="ansi-yellow-bg">(</span><span class="ansi-yellow-bg">data_np</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg">rat</span><span class="ansi-yellow-bg">)</span>
+
+<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[6]</span><span class="ansi-green-fg">, line 11</span>, in <span class="ansi-cyan-fg">plot_contour</span><span class="ansi-blue-fg">(data, spn)</span>
+<span class="ansi-green-fg">      9</span> <span style="color: rgb(95,135,135)"># Create a grid of points</span>
+<span class="ansi-green-fg">     10</span> grid_resolution = <span class="ansi-green-fg">200</span>
+<span class="ansi-green-fg">---&gt; </span><span class="ansi-green-fg">11</span> xx, yy = <span class="ansi-yellow-bg">np</span>.meshgrid(np.linspace(x_min, x_max, grid_resolution),
+<span class="ansi-green-fg">     12</span>                      np.linspace(y_min, y_max, grid_resolution))
+<span class="ansi-green-fg">     14</span> <span style="color: rgb(95,135,135)"># Stack the grid points into a format our function can accept: [n_points, 2]</span>
+<span class="ansi-green-fg">     15</span> grid_points = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float32)
+
+<span class="ansi-red-fg">NameError</span>: name &#39;np&#39; is not defined
+</pre></div></div>
+</div>
+<p>Of course, computing log-likelihoods is not the only thing the model can do. Below is a visualization of samples drawn from the trained Rat-SPN.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">samples</span> <span class="o">=</span> <span class="n">spn</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_samples</span><span class="o">=</span><span class="mi">1500</span><span class="p">)</span>
+<span class="n">plot_scatter</span><span class="p">([</span><span class="n">data_np</span><span class="p">,</span> <span class="n">samples</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Generated 2D Toy Dataset&#39;</span><span class="p">,</span> <span class="n">label_list</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Original Data&#39;</span><span class="p">,</span> <span class="s1">&#39;Samples&#39;</span><span class="p">])</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
+<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[13]</span><span class="ansi-green-fg">, line 2</span>
+<span class="ansi-green-fg">      1</span> samples = spn.sample(num_samples=<span class="ansi-green-fg">1500</span>)
+<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span> <span class="ansi-yellow-bg">plot_scatter</span><span class="ansi-yellow-bg">(</span><span class="ansi-yellow-bg">[</span><span class="ansi-yellow-bg">data_np</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg">samples</span><span class="ansi-yellow-bg">]</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg">title</span><span class="ansi-yellow-bg">=</span><span class="ansi-yellow-fg ansi-yellow-bg">&#39;</span><span class="ansi-yellow-fg ansi-yellow-bg">Generated 2D Toy Dataset</span><span class="ansi-yellow-fg ansi-yellow-bg">&#39;</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-bg">label_list</span><span class="ansi-yellow-bg">=</span><span class="ansi-yellow-bg">[</span><span class="ansi-yellow-fg ansi-yellow-bg">&#39;</span><span class="ansi-yellow-fg ansi-yellow-bg">Original Data</span><span class="ansi-yellow-fg ansi-yellow-bg">&#39;</span><span class="ansi-yellow-bg">,</span><span class="ansi-yellow-bg"> </span><span class="ansi-yellow-fg ansi-yellow-bg">&#39;</span><span class="ansi-yellow-fg ansi-yellow-bg">Samples</span><span class="ansi-yellow-fg ansi-yellow-bg">&#39;</span><span class="ansi-yellow-bg">]</span><span class="ansi-yellow-bg">)</span>
+
+<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[1]</span><span class="ansi-green-fg">, line 58</span>, in <span class="ansi-cyan-fg">plot_scatter</span><span class="ansi-blue-fg">(data_list, title, labels, label_list)</span>
+<span class="ansi-green-fg">     56</span> <span class="ansi-bold" style="color: rgb(0,135,0)">def</span><span style="color: rgb(188,188,188)"> </span><span class="ansi-blue-fg">plot_scatter</span>(data_list, title=<span class="ansi-bold" style="color: rgb(0,135,0)">None</span>, labels=<span class="ansi-bold" style="color: rgb(0,135,0)">None</span>, label_list=<span class="ansi-bold" style="color: rgb(0,135,0)">None</span>):
+<span class="ansi-green-fg">     57</span>     colors = [<span class="ansi-yellow-fg">&#34;</span><span class="ansi-yellow-fg">blue</span><span class="ansi-yellow-fg">&#34;</span>, <span class="ansi-yellow-fg">&#34;</span><span class="ansi-yellow-fg">red</span><span class="ansi-yellow-fg">&#34;</span>, <span class="ansi-yellow-fg">&#34;</span><span class="ansi-yellow-fg">yellow</span><span class="ansi-yellow-fg">&#34;</span>, <span class="ansi-yellow-fg">&#34;</span><span class="ansi-yellow-fg">green</span><span class="ansi-yellow-fg">&#34;</span>]
+<span class="ansi-green-fg">---&gt; </span><span class="ansi-green-fg">58</span>     <span class="ansi-yellow-bg">plt</span>.figure(figsize=(<span class="ansi-green-fg">8</span>, <span class="ansi-green-fg">6</span>))
+<span class="ansi-green-fg">     59</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">for</span> idx, data <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> <span style="color: rgb(0,135,0)">enumerate</span>(data_list):
+<span class="ansi-green-fg">     60</span>         <span style="color: rgb(0,135,0)">print</span>(<span style="color: rgb(0,135,0)">len</span>(data_list))
+
+<span class="ansi-red-fg">NameError</span>: name &#39;plt&#39; is not defined
+</pre></div></div>
+</div>
+<p>Up to now, we have focused only on generation, without considering the labels of the training instances. Next, we will train a second Rat-SPN for classification.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+    <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> [</span><span class="si">%(levelname)s</span><span class="s2">] </span><span class="si">%(name)s</span><span class="s2">: </span><span class="si">%(message)s</span><span class="s2">&quot;</span>
+<span class="p">)</span>
+
+<span class="n">depth</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">n_region_nodes</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">num_leaves</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">num_repetitions</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">n_root_nodes</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">num_feature</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="n">scope</span> <span class="o">=</span> <span class="n">Scope</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">num_feature</span><span class="p">)))</span>
+
+<span class="n">rat_leaf_layer</span> <span class="o">=</span> <span class="n">Normal</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">num_leaves</span><span class="p">,</span> <span class="n">num_repetitions</span><span class="o">=</span><span class="n">num_repetitions</span><span class="p">)</span>
+<span class="n">rat_class</span> <span class="o">=</span> <span class="n">RatSPN</span><span class="p">(</span>
+    <span class="n">leaf_modules</span><span class="o">=</span><span class="p">[</span><span class="n">rat_leaf_layer</span><span class="p">],</span>
+    <span class="n">n_root_nodes</span><span class="o">=</span><span class="n">n_root_nodes</span><span class="p">,</span>
+    <span class="n">n_region_nodes</span><span class="o">=</span><span class="n">n_region_nodes</span><span class="p">,</span>
+    <span class="n">num_repetitions</span><span class="o">=</span><span class="n">num_repetitions</span><span class="p">,</span>
+    <span class="n">depth</span><span class="o">=</span><span class="n">depth</span><span class="p">,</span>
+    <span class="n">outer_product</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">split_halves</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">train_dataset</span> <span class="o">=</span> <span class="n">TensorDataset</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span> <span class="n">labels</span><span class="o">.</span><span class="n">clone</span><span class="p">())</span>
+
+<span class="n">dataloader_with_labels</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="n">train_gradient_descent</span><span class="p">(</span><span class="n">rat_class</span><span class="p">,</span> <span class="n">dataloader_with_labels</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">is_classification</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                       <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<br/><br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+2025-12-18 13:19:15,453 [INFO] spflow.learn.gradient_descent: Epoch [0/100]: Loss: 1.9292305707931519
+2025-12-18 13:19:15,740 [INFO] spflow.learn.gradient_descent: Epoch [1/100]: Loss: 1.8762462139129639
+2025-12-18 13:19:16,033 [INFO] spflow.learn.gradient_descent: Epoch [2/100]: Loss: 1.8916141986846924
+2025-12-18 13:19:16,320 [INFO] spflow.learn.gradient_descent: Epoch [3/100]: Loss: 1.8985373973846436
+2025-12-18 13:19:16,607 [INFO] spflow.learn.gradient_descent: Epoch [4/100]: Loss: 1.902440071105957
+2025-12-18 13:19:16,893 [INFO] spflow.learn.gradient_descent: Epoch [5/100]: Loss: 1.9052048921585083
+2025-12-18 13:19:17,182 [INFO] spflow.learn.gradient_descent: Epoch [6/100]: Loss: 1.9073669910430908
+2025-12-18 13:19:17,469 [INFO] spflow.learn.gradient_descent: Epoch [7/100]: Loss: 1.9091520309448242
+2025-12-18 13:19:17,758 [INFO] spflow.learn.gradient_descent: Epoch [8/100]: Loss: 1.9106664657592773
+2025-12-18 13:19:18,044 [INFO] spflow.learn.gradient_descent: Epoch [9/100]: Loss: 1.9119656085968018
+2025-12-18 13:19:18,330 [INFO] spflow.learn.gradient_descent: Epoch [10/100]: Loss: 1.9130791425704956
+2025-12-18 13:19:18,616 [INFO] spflow.learn.gradient_descent: Epoch [11/100]: Loss: 1.914021611213684
+2025-12-18 13:19:18,901 [INFO] spflow.learn.gradient_descent: Epoch [12/100]: Loss: 1.9147861003875732
+2025-12-18 13:19:19,189 [INFO] spflow.learn.gradient_descent: Epoch [13/100]: Loss: 1.91538405418396
+2025-12-18 13:19:19,477 [INFO] spflow.learn.gradient_descent: Epoch [14/100]: Loss: 1.916020154953003
+2025-12-18 13:19:19,763 [INFO] spflow.learn.gradient_descent: Epoch [15/100]: Loss: 1.9165748357772827
+2025-12-18 13:19:20,051 [INFO] spflow.learn.gradient_descent: Epoch [16/100]: Loss: 1.9170489311218262
+2025-12-18 13:19:20,337 [INFO] spflow.learn.gradient_descent: Epoch [17/100]: Loss: 1.9174473285675049
+2025-12-18 13:19:20,625 [INFO] spflow.learn.gradient_descent: Epoch [18/100]: Loss: 1.9177842140197754
+2025-12-18 13:19:20,912 [INFO] spflow.learn.gradient_descent: Epoch [19/100]: Loss: 1.9180707931518555
+2025-12-18 13:19:21,199 [INFO] spflow.learn.gradient_descent: Epoch [20/100]: Loss: 1.918315052986145
+2025-12-18 13:19:21,490 [INFO] spflow.learn.gradient_descent: Epoch [21/100]: Loss: 1.9185242652893066
+2025-12-18 13:19:21,776 [INFO] spflow.learn.gradient_descent: Epoch [22/100]: Loss: 1.918704628944397
+2025-12-18 13:19:22,062 [INFO] spflow.learn.gradient_descent: Epoch [23/100]: Loss: 1.9188623428344727
+2025-12-18 13:19:22,348 [INFO] spflow.learn.gradient_descent: Epoch [24/100]: Loss: 1.9189996719360352
+2025-12-18 13:19:22,637 [INFO] spflow.learn.gradient_descent: Epoch [25/100]: Loss: 1.919121503829956
+2025-12-18 13:19:22,924 [INFO] spflow.learn.gradient_descent: Epoch [26/100]: Loss: 1.91922926902771
+2025-12-18 13:19:23,212 [INFO] spflow.learn.gradient_descent: Epoch [27/100]: Loss: 1.919325351715088
+2025-12-18 13:19:23,499 [INFO] spflow.learn.gradient_descent: Epoch [28/100]: Loss: 1.91941237449646
+2025-12-18 13:19:23,785 [INFO] spflow.learn.gradient_descent: Epoch [29/100]: Loss: 1.919490933418274
+2025-12-18 13:19:24,075 [INFO] spflow.learn.gradient_descent: Epoch [30/100]: Loss: 1.919562578201294
+2025-12-18 13:19:24,362 [INFO] spflow.learn.gradient_descent: Epoch [31/100]: Loss: 1.9196280241012573
+2025-12-18 13:19:24,653 [INFO] spflow.learn.gradient_descent: Epoch [32/100]: Loss: 1.9196878671646118
+2025-12-18 13:19:24,940 [INFO] spflow.learn.gradient_descent: Epoch [33/100]: Loss: 1.9197437763214111
+2025-12-18 13:19:25,229 [INFO] spflow.learn.gradient_descent: Epoch [34/100]: Loss: 1.919795274734497
+2025-12-18 13:19:25,515 [INFO] spflow.learn.gradient_descent: Epoch [35/100]: Loss: 1.919843077659607
+2025-12-18 13:19:25,802 [INFO] spflow.learn.gradient_descent: Epoch [36/100]: Loss: 1.9198875427246094
+2025-12-18 13:19:26,089 [INFO] spflow.learn.gradient_descent: Epoch [37/100]: Loss: 1.919928789138794
+2025-12-18 13:19:26,375 [INFO] spflow.learn.gradient_descent: Epoch [38/100]: Loss: 1.9199680089950562
+2025-12-18 13:19:26,662 [INFO] spflow.learn.gradient_descent: Epoch [39/100]: Loss: 1.9200043678283691
+2025-12-18 13:19:26,950 [INFO] spflow.learn.gradient_descent: Epoch [40/100]: Loss: 1.920039415359497
+2025-12-18 13:19:27,239 [INFO] spflow.learn.gradient_descent: Epoch [41/100]: Loss: 1.9200717210769653
+2025-12-18 13:19:27,527 [INFO] spflow.learn.gradient_descent: Epoch [42/100]: Loss: 1.9201029539108276
+2025-12-18 13:19:27,813 [INFO] spflow.learn.gradient_descent: Epoch [43/100]: Loss: 1.9201319217681885
+2025-12-18 13:19:28,102 [INFO] spflow.learn.gradient_descent: Epoch [44/100]: Loss: 1.920159101486206
+2025-12-18 13:19:28,389 [INFO] spflow.learn.gradient_descent: Epoch [45/100]: Loss: 1.9201856851577759
+2025-12-18 13:19:28,676 [INFO] spflow.learn.gradient_descent: Epoch [46/100]: Loss: 1.9202109575271606
+2025-12-18 13:19:28,962 [INFO] spflow.learn.gradient_descent: Epoch [47/100]: Loss: 1.9202346801757812
+2025-12-18 13:19:29,248 [INFO] spflow.learn.gradient_descent: Epoch [48/100]: Loss: 1.920257806777954
+2025-12-18 13:19:29,533 [INFO] spflow.learn.gradient_descent: Epoch [49/100]: Loss: 1.9202786684036255
+2025-12-18 13:19:29,819 [INFO] spflow.learn.gradient_descent: Epoch [50/100]: Loss: 1.5981520414352417
+2025-12-18 13:19:30,106 [INFO] spflow.learn.gradient_descent: Epoch [51/100]: Loss: 1.5963629484176636
+2025-12-18 13:19:30,393 [INFO] spflow.learn.gradient_descent: Epoch [52/100]: Loss: 1.5963830947875977
+2025-12-18 13:19:30,680 [INFO] spflow.learn.gradient_descent: Epoch [53/100]: Loss: 1.5964782238006592
+2025-12-18 13:19:30,966 [INFO] spflow.learn.gradient_descent: Epoch [54/100]: Loss: 1.596571683883667
+2025-12-18 13:19:31,253 [INFO] spflow.learn.gradient_descent: Epoch [55/100]: Loss: 1.596657156944275
+2025-12-18 13:19:31,541 [INFO] spflow.learn.gradient_descent: Epoch [56/100]: Loss: 1.5967350006103516
+2025-12-18 13:19:31,829 [INFO] spflow.learn.gradient_descent: Epoch [57/100]: Loss: 1.5968071222305298
+2025-12-18 13:19:32,120 [INFO] spflow.learn.gradient_descent: Epoch [58/100]: Loss: 1.5968718528747559
+2025-12-18 13:19:32,407 [INFO] spflow.learn.gradient_descent: Epoch [59/100]: Loss: 1.5969306230545044
+2025-12-18 13:19:32,693 [INFO] spflow.learn.gradient_descent: Epoch [60/100]: Loss: 1.596983551979065
+2025-12-18 13:19:32,980 [INFO] spflow.learn.gradient_descent: Epoch [61/100]: Loss: 1.5970317125320435
+2025-12-18 13:19:33,267 [INFO] spflow.learn.gradient_descent: Epoch [62/100]: Loss: 1.5970739126205444
+2025-12-18 13:19:33,557 [INFO] spflow.learn.gradient_descent: Epoch [63/100]: Loss: 1.5971134901046753
+2025-12-18 13:19:33,843 [INFO] spflow.learn.gradient_descent: Epoch [64/100]: Loss: 1.597147822380066
+2025-12-18 13:19:34,134 [INFO] spflow.learn.gradient_descent: Epoch [65/100]: Loss: 1.5971784591674805
+2025-12-18 13:19:34,420 [INFO] spflow.learn.gradient_descent: Epoch [66/100]: Loss: 1.5972058773040771
+2025-12-18 13:19:34,706 [INFO] spflow.learn.gradient_descent: Epoch [67/100]: Loss: 1.5972309112548828
+2025-12-18 13:19:34,994 [INFO] spflow.learn.gradient_descent: Epoch [68/100]: Loss: 1.5972528457641602
+2025-12-18 13:19:35,280 [INFO] spflow.learn.gradient_descent: Epoch [69/100]: Loss: 1.597272276878357
+2025-12-18 13:19:35,566 [INFO] spflow.learn.gradient_descent: Epoch [70/100]: Loss: 1.5972894430160522
+2025-12-18 13:19:35,852 [INFO] spflow.learn.gradient_descent: Epoch [71/100]: Loss: 1.5973050594329834
+2025-12-18 13:19:36,140 [INFO] spflow.learn.gradient_descent: Epoch [72/100]: Loss: 1.5973188877105713
+2025-12-18 13:19:36,426 [INFO] spflow.learn.gradient_descent: Epoch [73/100]: Loss: 1.5973314046859741
+2025-12-18 13:19:36,713 [INFO] spflow.learn.gradient_descent: Epoch [74/100]: Loss: 1.597341537475586
+2025-12-18 13:19:37,002 [INFO] spflow.learn.gradient_descent: Epoch [75/100]: Loss: 1.603073239326477
+2025-12-18 13:19:37,291 [INFO] spflow.learn.gradient_descent: Epoch [76/100]: Loss: 1.6058807373046875
+2025-12-18 13:19:37,577 [INFO] spflow.learn.gradient_descent: Epoch [77/100]: Loss: 1.6077314615249634
+2025-12-18 13:19:37,862 [INFO] spflow.learn.gradient_descent: Epoch [78/100]: Loss: 1.6089743375778198
+2025-12-18 13:19:38,148 [INFO] spflow.learn.gradient_descent: Epoch [79/100]: Loss: 1.6098287105560303
+2025-12-18 13:19:38,431 [INFO] spflow.learn.gradient_descent: Epoch [80/100]: Loss: 1.61043381690979
+2025-12-18 13:19:38,713 [INFO] spflow.learn.gradient_descent: Epoch [81/100]: Loss: 1.6108754873275757
+2025-12-18 13:19:38,996 [INFO] spflow.learn.gradient_descent: Epoch [82/100]: Loss: 1.6112052202224731
+2025-12-18 13:19:39,280 [INFO] spflow.learn.gradient_descent: Epoch [83/100]: Loss: 1.6114591360092163
+2025-12-18 13:19:39,565 [INFO] spflow.learn.gradient_descent: Epoch [84/100]: Loss: 1.611655354499817
+2025-12-18 13:19:39,847 [INFO] spflow.learn.gradient_descent: Epoch [85/100]: Loss: 1.6118108034133911
+2025-12-18 13:19:40,133 [INFO] spflow.learn.gradient_descent: Epoch [86/100]: Loss: 1.6119352579116821
+2025-12-18 13:19:40,420 [INFO] spflow.learn.gradient_descent: Epoch [87/100]: Loss: 1.6120332479476929
+2025-12-18 13:19:40,707 [INFO] spflow.learn.gradient_descent: Epoch [88/100]: Loss: 1.6121128797531128
+2025-12-18 13:19:40,993 [INFO] spflow.learn.gradient_descent: Epoch [89/100]: Loss: 1.6121772527694702
+2025-12-18 13:19:41,276 [INFO] spflow.learn.gradient_descent: Epoch [90/100]: Loss: 1.612228512763977
+2025-12-18 13:19:41,559 [INFO] spflow.learn.gradient_descent: Epoch [91/100]: Loss: 1.612270474433899
+2025-12-18 13:19:41,847 [INFO] spflow.learn.gradient_descent: Epoch [92/100]: Loss: 1.6123045682907104
+2025-12-18 13:19:42,134 [INFO] spflow.learn.gradient_descent: Epoch [93/100]: Loss: 1.612332820892334
+2025-12-18 13:19:42,416 [INFO] spflow.learn.gradient_descent: Epoch [94/100]: Loss: 1.612354040145874
+2025-12-18 13:19:42,700 [INFO] spflow.learn.gradient_descent: Epoch [95/100]: Loss: 1.6123719215393066
+2025-12-18 13:19:42,981 [INFO] spflow.learn.gradient_descent: Epoch [96/100]: Loss: 1.612385630607605
+2025-12-18 13:19:43,263 [INFO] spflow.learn.gradient_descent: Epoch [97/100]: Loss: 1.612397313117981
+2025-12-18 13:19:43,545 [INFO] spflow.learn.gradient_descent: Epoch [98/100]: Loss: 1.6124058961868286
+2025-12-18 13:19:43,828 [INFO] spflow.learn.gradient_descent: Epoch [99/100]: Loss: 1.6124138832092285
+</pre></div></div>
+</div>
+<p>With this SPN, we can now draw samples based on its labels. Therefore, we use a sampling context. This sampling context can be passed to any sampling method. With the context, you can explicitly define from which output channel you want to sample or, for example, provide evidence. This allows advanced control over the sampling routine. In this case, the root layer has three output channels which correspond to the three classes. So being able to define from which output channel we want to sample
+means being able to choose from which class we want to sample.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spflow.utils.sampling_context</span><span class="w"> </span><span class="kn">import</span> <span class="n">SamplingContext</span>
+
+<span class="n">out_features</span> <span class="o">=</span> <span class="n">rat</span><span class="o">.</span><span class="n">out_features</span>
+<span class="n">num_features</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="n">evidence</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">200</span><span class="p">,</span> <span class="n">num_features</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+<span class="n">channel_index</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">200</span><span class="p">,</span> <span class="n">out_features</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+<span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">200</span><span class="p">,</span> <span class="n">out_features</span><span class="p">),</span> <span class="kc">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+<span class="n">sampling_ctx</span> <span class="o">=</span> <span class="n">SamplingContext</span><span class="p">(</span><span class="n">channel_index</span><span class="o">=</span><span class="n">channel_index</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span>
+<span class="n">samples_class0</span> <span class="o">=</span> <span class="n">rat_class</span><span class="o">.</span><span class="n">root_node</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">evidence</span><span class="p">,</span> <span class="n">sampling_ctx</span><span class="o">=</span><span class="n">sampling_ctx</span><span class="p">)</span>
+
+<span class="n">evidence</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">400</span><span class="p">,</span> <span class="n">num_features</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+<span class="n">channel_index</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">400</span><span class="p">,</span> <span class="n">out_features</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+<span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">400</span><span class="p">,</span> <span class="n">out_features</span><span class="p">),</span> <span class="kc">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+<span class="n">sampling_ctx</span> <span class="o">=</span> <span class="n">SamplingContext</span><span class="p">(</span><span class="n">channel_index</span><span class="o">=</span><span class="n">channel_index</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span>
+<span class="n">samples_class1</span> <span class="o">=</span> <span class="n">rat_class</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">evidence</span><span class="p">,</span> <span class="n">sampling_ctx</span><span class="o">=</span><span class="n">sampling_ctx</span><span class="p">)</span>
+
+<span class="n">evidence</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">600</span><span class="p">,</span> <span class="n">num_features</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+<span class="n">channel_index</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">600</span><span class="p">,</span> <span class="n">out_features</span><span class="p">),</span> <span class="mi">2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+<span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">600</span><span class="p">,</span> <span class="n">out_features</span><span class="p">),</span> <span class="kc">True</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+<span class="n">sampling_ctx</span> <span class="o">=</span> <span class="n">SamplingContext</span><span class="p">(</span><span class="n">channel_index</span><span class="o">=</span><span class="n">channel_index</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span>
+<span class="n">samples_class2</span> <span class="o">=</span> <span class="n">rat_class</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">evidence</span><span class="p">,</span> <span class="n">sampling_ctx</span><span class="o">=</span><span class="n">sampling_ctx</span><span class="p">)</span>
+
+<span class="n">plot_scatter</span><span class="p">([</span><span class="n">data_np</span><span class="p">,</span> <span class="n">samples_class0</span><span class="p">,</span> <span class="n">samples_class1</span><span class="p">,</span> <span class="n">samples_class2</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Class-Conditional Samples&#39;</span><span class="p">,</span>
+             <span class="n">label_list</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Original Data&#39;</span><span class="p">,</span> <span class="s1">&#39;Samples Class 0&#39;</span><span class="p">,</span> <span class="s1">&#39;Samples Class 1&#39;</span><span class="p">,</span> <span class="s1">&#39;Samples Class 2&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">AttributeError</span>                            Traceback (most recent call last)
+<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[15]</span><span class="ansi-green-fg">, line 3</span>
+<span class="ansi-green-fg">      1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">from</span><span style="color: rgb(188,188,188)"> </span><span class="ansi-blue-intense-fg ansi-bold">spflow</span><span class="ansi-blue-intense-fg ansi-bold">.</span><span class="ansi-blue-intense-fg ansi-bold">utils</span><span class="ansi-blue-intense-fg ansi-bold">.</span><span class="ansi-blue-intense-fg ansi-bold">sampling_context</span><span style="color: rgb(188,188,188)"> </span><span class="ansi-bold" style="color: rgb(0,135,0)">import</span> SamplingContext
+<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">3</span> out_features = <span class="ansi-yellow-bg">rat</span><span class="ansi-yellow-bg">.</span><span class="ansi-yellow-bg">out_features</span>
+<span class="ansi-green-fg">      4</span> num_features = <span class="ansi-green-fg">2</span>
+<span class="ansi-green-fg">      6</span> evidence = torch.full((<span class="ansi-green-fg">200</span>, num_features), torch.nan)
+
+<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/torch/nn/modules/module.py:1964</span>, in <span class="ansi-cyan-fg">Module.__getattr__</span><span class="ansi-blue-fg">(self, name)</span>
+<span class="ansi-green-fg">   1962</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> name <span class="ansi-bold" style="color: rgb(175,0,255)">in</span> modules:
+<span class="ansi-green-fg">   1963</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> modules[name]
+<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1964</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">AttributeError</span>(
+<span class="ansi-green-fg">   1965</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">&#34;</span><span class="ansi-yellow-fg">&#39;</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(<span style="color: rgb(0,135,0)">self</span>).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">&#39;</span><span class="ansi-yellow-fg"> object has no attribute </span><span class="ansi-yellow-fg">&#39;</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>name<span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">&#39;</span><span class="ansi-yellow-fg">&#34;</span>
+<span class="ansi-green-fg">   1966</span> )
+
+<span class="ansi-red-fg">AttributeError</span>: &#39;RatSPN&#39; object has no attribute &#39;out_features&#39;
+</pre></div></div>
+</div>
+<p>However, the model can of course also be used for classification. As an example, we visualize the trained decision boundaries of our model</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="c1"># --- Assuming your dataset and labels are already created as above ---</span>
+
+<span class="c1"># Let&#39;s assume you have an SPN model trained on this data:</span>
+<span class="c1"># For example:</span>
+<span class="c1"># spn = MySPNModel()</span>
+<span class="c1"># spn.fit(dataset, labels)</span>
+
+<span class="c1"># --- 1. Create a grid of points over the feature space ---</span>
+<span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dataset</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dataset</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
+
+<span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">x_min</span><span class="p">,</span> <span class="n">x_max</span><span class="p">,</span> <span class="mi">300</span><span class="p">),</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span><span class="p">,</span> <span class="mi">300</span><span class="p">),</span>
+    <span class="n">indexing</span><span class="o">=</span><span class="s1">&#39;xy&#39;</span>
+<span class="p">)</span>
+<span class="n">grid_points</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">xx</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">yy</span><span class="o">.</span><span class="n">flatten</span><span class="p">()],</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># --- 2. Get SPN predictions (probabilities or class scores) ---</span>
+<span class="c1"># Example: if your SPN returns class probabilities</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+    <span class="n">probs</span> <span class="o">=</span> <span class="n">rat_class</span><span class="o">.</span><span class="n">log_posterior</span><span class="p">(</span><span class="n">grid_points</span><span class="p">)</span>  <span class="c1"># shape: [N_grid, num_classes]</span>
+    <span class="n">preds</span> <span class="o">=</span> <span class="n">probs</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># --- 3. Reshape predictions to match the grid ---</span>
+<span class="n">Z</span> <span class="o">=</span> <span class="n">preds</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">xx</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+<span class="c1"># --- 4. Plot decision boundaries ---</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">contourf</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">levels</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">means</span><span class="p">),</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;viridis&quot;</span><span class="p">)</span>
+
+<span class="c1"># Plot the original data</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">dataset</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dataset</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;viridis&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;SPN Classification Boundaries&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;X₁&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;X₂&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+2025-12-18 13:19:45,808 [INFO] matplotlib.font_manager: Failed to extract font properties from /usr/share/fonts/truetype/noto/NotoColorEmoji.ttf: Can not load face (unknown file format; error code 0x2)
+2025-12-18 13:19:47,989 [INFO] matplotlib.font_manager: generated new fontManager
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/guides_user_guide_32_1.png" src="../_images/guides_user_guide_32_1.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="LearnSPN">
+<h2>LearnSPN<a class="headerlink" href="#LearnSPN" title="Link to this heading">¶</a></h2>
+<p>Instead of creating a random structure, we can also train the SPN structure using the LearnSPN.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spflow.learn.learn_spn</span><span class="w"> </span><span class="kn">import</span> <span class="n">learn_spn</span>
+
+<span class="n">scope</span> <span class="o">=</span> <span class="n">Scope</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">)))</span>
+<span class="n">normal_layer</span> <span class="o">=</span> <span class="n">Normal</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">learn_spn</span> <span class="o">=</span> <span class="n">learn_spn</span><span class="p">(</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+    <span class="n">leaf_modules</span><span class="o">=</span><span class="n">normal_layer</span><span class="p">,</span>
+    <span class="n">out_channels</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">min_instances_slice</span><span class="o">=</span><span class="mi">70</span><span class="p">,</span>
+    <span class="n">min_features_slice</span><span class="o">=</span><span class="mi">2</span>
+<span class="p">)</span>
+<span class="n">learn_spn</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+used 5 iterations (0.0011s) to cluster 1200 items into 2 clusters
+used 3 iterations (0.0006s) to cluster 600 items into 2 clusters
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/tmp/ipykernel_2442/568267606.py:6: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.detach().clone() or sourceTensor.detach().clone().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  torch.tensor(dataset, dtype=torch.float32),
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Sum(
+  D=1, C=1, R=1, weights=(1, 5, 1, 1)
+  (inputs): Cat(
+    D=1, C=5, R=1, dim=2
+    (inputs): ModuleList(
+      (0): Product(
+        D=1, C=4, R=1
+        (inputs): Cat(
+          D=2, C=4, R=1, dim=1
+          (inputs): ModuleList(
+            (0-1): 2 x Normal(D=1, C=4, R=1)
+          )
+        )
+      )
+      (1): Sum(
+        D=1, C=1, R=1, weights=(1, 8, 1, 1)
+        (inputs): Cat(
+          D=1, C=8, R=1, dim=2
+          (inputs): ModuleList(
+            (0-1): 2 x Product(
+              D=1, C=4, R=1
+              (inputs): Cat(
+                D=2, C=4, R=1, dim=1
+                (inputs): ModuleList(
+                  (0-1): 2 x Normal(D=1, C=4, R=1)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+)
+</pre></div></div>
+</div>
+<p>The trained SPN can now be used just like any other module</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">learn_spn_samples</span> <span class="o">=</span> <span class="n">spn</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_samples</span><span class="o">=</span><span class="mi">1500</span><span class="p">)</span>
+
+<span class="n">plot_scatter</span><span class="p">([</span><span class="n">data_np</span><span class="p">,</span> <span class="n">samples</span><span class="p">],</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Generated 2D Toy Dataset&#39;</span><span class="p">,</span> <span class="n">label_list</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Original Data&#39;</span><span class="p">,</span> <span class="s1">&#39;Samples&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+2
+(1200, 2)
+Original Data
+2
+torch.Size([1500, 2])
+Samples
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/guides_user_guide_36_1.png" src="../_images/guides_user_guide_36_1.png" />
+</div>
+</div>
+</section>
+<section id="Advanced-Queries">
+<h2>Advanced Queries<a class="headerlink" href="#Advanced-Queries" title="Link to this heading">¶</a></h2>
+<p>To showcase more advanced queries like conditional sampling and MPE (Most Probable Explanation) we take a look at a dataset with more features. Below, we load the digits dataset. This dataset contains 1797 8x8 images of digits 0 to 9.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn</span><span class="w"> </span><span class="kn">import</span> <span class="n">datasets</span>
+
+<span class="c1"># Load the digits dataset</span>
+<span class="n">digits</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">load_digits</span><span class="p">()</span>
+
+<span class="c1"># Display the last digit</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">digits</span><span class="o">.</span><span class="n">images</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cmap</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">gray_r</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s2">&quot;nearest&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">digits</span><span class="o">.</span><span class="n">data</span>  <span class="c1"># shape (1797, 64)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">digits</span><span class="o">.</span><span class="n">target</span>  <span class="c1"># shape (1797,)</span>
+
+<span class="n">X_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">y_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">TensorDataset</span><span class="p">(</span><span class="n">X_tensor</span><span class="p">,</span> <span class="n">y_tensor</span><span class="p">)</span>
+<span class="n">dataloader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">X_tensor</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">X_tensor</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">X_tensor</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/guides_user_guide_39_0.png" src="../_images/guides_user_guide_39_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+torch.Size([1797, 64])
+tensor(0.) tensor(16.)
+</pre></div></div>
+</div>
+<p>Again we create a Rat SPN, but this time we use a Binomial distribution for the leaf layer.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spflow.modules.leaves</span><span class="w"> </span><span class="kn">import</span> <span class="n">Binomial</span>
+
+<span class="n">depth</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">n_region_nodes</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">num_leaves</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">num_repetitions</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">n_root_nodes</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">num_feature</span> <span class="o">=</span> <span class="mi">64</span>
+<span class="n">n</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>  <span class="c1"># total count for binomial distribution</span>
+
+<span class="n">scope</span> <span class="o">=</span> <span class="n">Scope</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">num_feature</span><span class="p">)))</span>
+
+<span class="n">rat_leaf_layer</span> <span class="o">=</span> <span class="n">Binomial</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="n">scope</span><span class="p">,</span> <span class="n">total_count</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="n">num_leaves</span><span class="p">,</span> <span class="n">num_repetitions</span><span class="o">=</span><span class="n">num_repetitions</span><span class="p">)</span>
+<span class="n">rat</span> <span class="o">=</span> <span class="n">RatSPN</span><span class="p">(</span>
+    <span class="n">leaf_modules</span><span class="o">=</span><span class="p">[</span><span class="n">rat_leaf_layer</span><span class="p">],</span>
+    <span class="n">n_root_nodes</span><span class="o">=</span><span class="n">n_root_nodes</span><span class="p">,</span>
+    <span class="n">n_region_nodes</span><span class="o">=</span><span class="n">n_region_nodes</span><span class="p">,</span>
+    <span class="n">num_repetitions</span><span class="o">=</span><span class="n">num_repetitions</span><span class="p">,</span>
+    <span class="n">depth</span><span class="o">=</span><span class="n">depth</span><span class="p">,</span>
+    <span class="n">outer_product</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">split_halves</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rat</span><span class="o">.</span><span class="n">to_str</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+RatSPN [D=1, C=1, R=2] → scope: 0-63
+└─ RepetitionMixingLayer [D=1, C=1] [weights: (1, 1, 2)] → scope: 0-63
+   └─ Sum [D=1, C=1] [weights: (1, 25, 1, 2)] → scope: 0-63
+      └─ OuterProduct [D=1, C=25] → scope: 0-63
+         └─ SplitHalves [D=2, C=5] → scope: 0-63
+            └─ Sum [D=2, C=5] [weights: (2, 25, 5, 2)] → scope: 0-63
+               └─ OuterProduct [D=2, C=25] → scope: 0-63
+                  └─ SplitHalves [D=4, C=5] → scope: 0-63
+                     └─ Sum [D=4, C=5] [weights: (4, 25, 5, 2)] → scope: 0-63
+                        └─ OuterProduct [D=4, C=25] → scope: 0-63
+                           └─ SplitHalves [D=8, C=5] → scope: 0-63
+                              └─ Factorize [D=8, C=5] → scope: 0-63
+                                 └─ Binomial [D=64, C=5] → scope: 0-63
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">train_gradient_descent</span><span class="p">(</span><span class="n">rat</span><span class="p">,</span> <span class="n">dataloader</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Below is a visualization of some samples drawn from the Spn</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">samples</span> <span class="o">=</span> <span class="n">rat</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_samples</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">samples</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">samples</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>  <span class="c1"># reshape back to 2D</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s2">&quot;off&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+torch.Size([5, 64])
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/guides_user_guide_44_1.png" src="../_images/guides_user_guide_44_1.png" />
+</div>
+</div>
+<p>Now can show some more advanced queries. One of them is getting the MPE. It returns the most probable state of the probabilistic circuit. This is often helpful to generate more clear samples and a good indicator whether the model could learn the data or not, which is not always evident with regular samples.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[23]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">mpe</span> <span class="o">=</span> <span class="n">rat</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_samples</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">is_mpe</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">mpe</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/guides_user_guide_46_0.png" src="../_images/guides_user_guide_46_0.png" />
+</div>
+</div>
+<p>And at last we want to sample, given some evidence. In this example, the lower half of the image is given, and we want to sample the upper half given the lower half. This time, instead of explicitly defining a sampling context, we use the sample_with_evidence method. The method allows the user to just input the evidence and let the library internally handle the creation of the sampling context. This becomes handy if you have evidence but not multiple channel to sample from.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">evidence</span> <span class="o">=</span> <span class="n">X_tensor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">evidence</span><span class="p">[:</span><span class="mi">32</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nan</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">evidence</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">evidence</span> <span class="o">=</span> <span class="n">evidence</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">evidence</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="n">samples</span> <span class="o">=</span> <span class="n">rat</span><span class="o">.</span><span class="n">sample_with_evidence</span><span class="p">(</span><span class="n">evidence</span><span class="o">=</span><span class="n">evidence</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">samples</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/guides_user_guide_48_0.png" src="../_images/guides_user_guide_48_0.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+torch.Size([1, 64])
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/guides_user_guide_48_2.png" src="../_images/guides_user_guide_48_2.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="dev_guide.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Developer Guide</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="../getting_started.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Getting Started</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, SPFlow Contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">User Guide</a><ul>
+<li><a class="reference internal" href="#Create-Toy-Dataset">Create Toy Dataset</a></li>
+<li><a class="reference internal" href="#Model-Configuration">Model Configuration</a></li>
+<li><a class="reference internal" href="#Temporary-Method-Replacement">Temporary Method Replacement</a></li>
+<li><a class="reference internal" href="#Automatic-Model-creation">Automatic Model creation</a><ul>
+<li><a class="reference internal" href="#Rat-SPN">Rat-SPN</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#LearnSPN">LearnSPN</a></li>
+<li><a class="reference internal" href="#Advanced-Queries">Advanced Queries</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=8d563738"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    </body>
+</html>

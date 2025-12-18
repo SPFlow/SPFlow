@@ -1,6 +1,0 @@
-﻿spn.algorithms.Statistics.get\_structure\_stats
-===============================================
-
-.. currentmodule:: spn.algorithms.Statistics
-
-.. autofunction:: get_structure_stats

@@ -1,6 +1,0 @@
-﻿spn.io.Graphics.draw\_spn
-=========================
-
-.. currentmodule:: spn.io.Graphics
-
-.. autofunction:: draw_spn
