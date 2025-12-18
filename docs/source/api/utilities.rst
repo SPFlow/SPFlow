@@ -27,10 +27,9 @@ Utilities for caching intermediate computations to speed up inference.
 
 .. autoclass:: spflow.utils.cache.Cache
 
-ImageSamplingContext
---------------------
+Method Replacement
+------------------
 
-2D sampling context for image-based probabilistic circuits. Manages sampling
-state with explicit height and width dimensions for convolutional layers.
+Temporarily replace module methods for testing or experimentation.
 
-.. autoclass:: spflow.utils.image_sampling_context.ImageSamplingContext
+.. autofunction:: spflow.utils.replace.replace

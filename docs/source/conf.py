@@ -62,15 +62,7 @@ autodoc_default_options = {
     "member-order": "bysource",
     "undoc-members": True,
     "show-inheritance": True,
-    "inherited-members": False,  # Don't show inherited members to avoid duplicates
 }
-
-# Suppress duplicate object description warnings (caused by inherited properties)
-# The py:obj warnings occur when properties are documented in multiple classes
-suppress_warnings = [
-    "autodoc.duplicate_object",
-    "ref.python",  # Suppress Python reference warnings
-]
 
 # Intersphinx configuration - Link to external documentation
 intersphinx_mapping = {

@@ -8,6 +8,7 @@ SPFlow provides a comprehensive set of modules for building and working with Pro
    :maxdepth: 2
 
    base_modules
+   module_shape
    sums
    products
    conv
@@ -17,4 +18,7 @@ SPFlow provides a comprehensive set of modules for building and working with Pro
    learning
    scope
    utilities
+   wrappers
+   interfaces
    exceptions
+

@@ -27,6 +27,18 @@ If you use ``uv`` for package management::
 
     uv sync
 
+Prerequisites
+-------------
+
+- **Python 3.10+** with pip or uv
+- **PyTorch 2.0+** (will be installed automatically with SPFlow)
+- **Graphviz** (optional, for circuit visualization):
+
+  - macOS: ``brew install graphviz``
+  - Ubuntu/Debian: ``sudo apt-get install graphviz``
+  - Windows: Download from https://graphviz.org/download/
+
+
 Quick Start
 ===========
 
