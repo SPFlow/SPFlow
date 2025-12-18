@@ -40,22 +40,35 @@ def make_einsum_single_input(
 
 
 def make_einsum_two_inputs(
-    in_channels: int, out_channels: int, in_features: int, num_repetitions: int
+    in_channels: int, out_channels: int, in_features: int, num_repetitions: int,
+    left_channels: int | None = None, right_channels: int | None = None,
 ) -> EinsumLayer:
-    """Create EinsumLayer with two separate input modules."""
+    """Create EinsumLayer with two separate input modules.
+    
+    Args:
+        in_channels: Default channels for both inputs (used if left/right not specified).
+        out_channels: Number of output channels.
+        in_features: Number of features per input.
+        num_repetitions: Number of repetitions.
+        left_channels: Optional override for left input channels.
+        right_channels: Optional override for right input channels.
+    """
+    left_ch = left_channels if left_channels is not None else in_channels
+    right_ch = right_channels if right_channels is not None else in_channels
+    
     # Create left and right inputs with disjoint scopes
     left_scope = Scope(list(range(0, in_features)))
     right_scope = Scope(list(range(in_features, in_features * 2)))
 
     left_input = make_leaf(
         cls=DummyLeaf,
-        out_channels=in_channels,
+        out_channels=left_ch,
         scope=left_scope,
         num_repetitions=num_repetitions,
     )
     right_input = make_leaf(
         cls=DummyLeaf,
-        out_channels=in_channels,
+        out_channels=right_ch,
         scope=right_scope,
         num_repetitions=num_repetitions,
     )
@@ -117,12 +130,22 @@ class TestEinsumLayerConstruction:
         with pytest.raises(ValueError, match="at least 2"):
             EinsumLayer(inputs=inputs, out_channels=2)
 
-    def test_invalid_two_inputs_channel_mismatch(self):
-        """Test that mismatched channels raises error for two inputs."""
+    def test_two_inputs_asymmetric_channels(self):
+        """Test that different channel counts for left/right inputs work correctly."""
         left = make_leaf(cls=DummyLeaf, out_channels=2, scope=Scope([0, 1]), num_repetitions=1)
         right = make_leaf(cls=DummyLeaf, out_channels=3, scope=Scope([2, 3]), num_repetitions=1)
-        with pytest.raises(ValueError, match="same number of channels"):
-            EinsumLayer(inputs=[left, right], out_channels=2)
+        module = EinsumLayer(inputs=[left, right], out_channels=4)
+        
+        # Check weights shape has asymmetric channels
+        assert module.weights_shape == (2, 4, 1, 2, 3)  # (features, out_ch, reps, left_ch, right_ch)
+        assert module._left_channels == 2
+        assert module._right_channels == 3
+        
+        # Check log-likelihood works
+        data = torch.randn(10, 4)  # 4 features total (2 left + 2 right scopes)
+        lls = module.log_likelihood(data)
+        assert lls.shape == (10, 2, 4, 1)
+        assert torch.isfinite(lls).all()
 
     def test_invalid_two_inputs_overlapping_scope(self):
         """Test that overlapping scopes raises error."""
