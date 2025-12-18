@@ -1,6 +1,0 @@
-﻿spn.structure.Base.assign\_ids
-==============================
-
-.. currentmodule:: spn.structure.Base
-
-.. autofunction:: assign_ids

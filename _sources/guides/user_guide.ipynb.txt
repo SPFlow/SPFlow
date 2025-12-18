@@ -1,0 +1,833 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# User Guide\n",
+    "\n",
+    "SPFlow is an open-source functional-oriented Python package for Probabilistic Circuits (PCs) with ready-to-use implementations for Sum-Product Networks (SPNs). PCs are a class of powerful deep probabilistic models - expressible as directed acyclic graphs - that allow for tractable querying. This library provides routines for creating, learning, manipulating and interacting with PCs and is highly extensible and customizable."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Create Toy Dataset\n",
+    "\n",
+    "To demonstrate and visualize the main features of the library, we first create a 2D toy dataset with three Gaussian clusters, corresponding to labels 0, 1, and 2.\n",
+    "The dataset is created with an imbalance. Therefore, class 0 has 200 datapoints, class 1 400 datapoints and class 2 600 datapoints, for a total of 1,200 data points."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import torch\n",
+    "\n",
+    "# --- 1. Define the parameters for our dataset ---\n",
+    "\n",
+    "n_points_per_cluster = 200\n",
+    "\n",
+    "means = torch.tensor([\n",
+    "    [0.0, 3.0],  # Cluster 0\n",
+    "    [-3.0, -2.0],  # Cluster 1\n",
+    "    [3.0, -2.0]  # Cluster 2\n",
+    "])\n",
+    "\n",
+    "stds = torch.tensor([\n",
+    "    [0.6, 0.6],\n",
+    "    [0.8, 0.4],\n",
+    "    [0.5, 0.7]\n",
+    "])\n",
+    "\n",
+    "# --- 2. Generate the data and labels ---\n",
+    "\n",
+    "all_clusters = []\n",
+    "all_labels = []\n",
+    "\n",
+    "for i in range(means.shape[0]):\n",
+    "    samples = (torch.randn(n_points_per_cluster * (i + 1), 2) * stds[i]) + means[i]\n",
+    "    labels = torch.full((n_points_per_cluster * (i + 1),), i, dtype=torch.long)  # label = cluster index\n",
+    "    all_clusters.append(samples)\n",
+    "    all_labels.append(labels)\n",
+    "\n",
+    "# Concatenate all data and labels\n",
+    "dataset = torch.cat(all_clusters)\n",
+    "labels = torch.cat(all_labels)\n",
+    "\n",
+    "# --- 3. Shuffle dataset and labels together ---\n",
+    "\n",
+    "shuffled_indices = torch.randperm(dataset.shape[0])\n",
+    "dataset = dataset[shuffled_indices]\n",
+    "labels = labels[shuffled_indices]\n",
+    "\n",
+    "# --- 4. Display some info ---\n",
+    "\n",
+    "print(\"Dataset successfully created.\")\n",
+    "print(f\"Shape of dataset: {dataset.shape}\")\n",
+    "print(f\"Shape of labels: {labels.shape}\")\n",
+    "print(\"First 5 samples:\")\n",
+    "print(dataset[:5])\n",
+    "print(\"Corresponding labels:\")\n",
+    "print(labels[:5])\n",
+    "\n",
+    "# --- 5. Visualize the labeled dataset ---\n",
+    "\n",
+    "data_np = dataset.cpu().numpy()\n",
+    "labels_np = labels.cpu().numpy()\n",
+    "\n",
+    "\n",
+    "def plot_scatter(data_list, title=None, labels=None, label_list=None):\n",
+    "    colors = [\"blue\", \"red\", \"yellow\", \"green\"]\n",
+    "    plt.figure(figsize=(8, 6))\n",
+    "    for idx, data in enumerate(data_list):\n",
+    "        print(len(data_list))\n",
+    "        print(data.shape)\n",
+    "        print(label_list[idx])\n",
+    "        if labels is not None and len(data_list) == 1:\n",
+    "            plt.scatter(data[:, 0], data[:, 1], c=labels, cmap=\"viridis\", s=10, alpha=0.7)\n",
+    "            plt.colorbar(label='Cluster Label')\n",
+    "        else:\n",
+    "            plt.scatter(data[:, 0], data[:, 1], c=colors[idx], s=10, alpha=0.7, label=label_list[idx])\n",
+    "            plt.legend()\n",
+    "\n",
+    "    plt.title(title)\n",
+    "    plt.xlabel('Feature 1 (x-axis)')\n",
+    "    plt.ylabel('Feature 2 (y-axis)')\n",
+    "    plt.grid(True, linestyle='--', alpha=0.6)\n",
+    "    plt.axis('equal')\n",
+    "    #plt.colorbar(label='Cluster Label')\n",
+    "\n",
+    "    plt.show()\n",
+    "\n",
+    "\n",
+    "plot_scatter([data_np], title='Generated 2D Toy Dataset (with Labels)', labels=labels_np, label_list=['Toy Data'])\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Model Configuration\n",
+    "The circuits you create with this library are modular. \n",
+    "\n",
+    "All modules share the same base structure. Each module is defined by its number of output features and output channels. You can think of output features as the number of nodes with different scopes in one layer. You can think of output channels as how many times a node with the same scope is repeated in a layer. This structure lets you define simple nodes (with a shape of (1, 1)), node vectors along the feature (N, 1) or channel (1, M) dimension, or full leaf layers (N, M). In many cases, using layers instead of single nodes is much faster and more memory-efficient.\n",
+    "\n",
+    "Each module also has an input attribute that points to its input module. This lets you stack modules together in any order. \n",
+    "\n",
+    "Below, we will build a simple Sum-Product Network by stacking leaf, product, and sum layers."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from spflow.modules.leaves import Normal\n",
+    "from spflow.modules.sums import Sum\n",
+    "from spflow.modules.products import Product\n",
+    "from spflow.meta.data import Scope\n",
+    "from IPython.display import display, Image\n",
+    "\n",
+    "scope = Scope([0, 1])\n",
+    "\n",
+    "leaf_layer = Normal(scope=scope, out_channels=6)\n",
+    "product_layer = Product(inputs=leaf_layer)\n",
+    "spn = Sum(inputs=product_layer, out_channels=1)\n",
+    "spn"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Below is a visualization of the SPN defined above.\n",
+    "The number of output channels of a sum or leaf layer is equivalent to the number of nodes in that layer.\n",
+    "The number of nodes in a product layer is derived from the number of nodes in its input."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "display(Image(filename='StandardSPN.png'))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Next, we can train the SPN, for example, using gradient descent.\n",
+    "The library already provides a method for training an SPN with gradient descent.\n",
+    "To do this, simply pass the module you want to train and the training parameters such as the number of epochs, learning rate, etc.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from spflow.learn import train_gradient_descent\n",
+    "from torch.utils.data import DataLoader, TensorDataset\n",
+    "import logging\n",
+    "\n",
+    "logging.basicConfig(\n",
+    "    level=logging.INFO,\n",
+    "    format=\"%(asctime)s [%(levelname)s] %(name)s: %(message)s\"\n",
+    ")\n",
+    "\n",
+    "train_dataset = TensorDataset(dataset)\n",
+    "dataloader = DataLoader(train_dataset, batch_size=10)\n",
+    "train_gradient_descent(spn, dataloader, epochs=10, lr=0.1, verbose=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Once the SPN is trained, we can perform queries such as inference and sampling.\n",
+    "SPFlow uses internal dispatching so that a single query function can work across all module types.\n",
+    "For example, the log_likelihood method shown below can be used for every SPN model encountered throughout this guide."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ll = spn.log_likelihood(dataset)\n",
+    "ll"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Finally, we can visualize the training results on our toy dataset."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "\n",
+    "data_np = dataset.cpu().numpy()\n",
+    "\n",
+    "\n",
+    "def plot_contour(data, spn):\n",
+    "    # Define the boundaries of the plot with a small padding\n",
+    "    x_min, x_max = data_np[:, 0].min() - 1, data_np[:, 0].max() + 1\n",
+    "    y_min, y_max = data_np[:, 1].min() - 1, data_np[:, 1].max() + 1\n",
+    "\n",
+    "    # Create a grid of points\n",
+    "    grid_resolution = 200\n",
+    "    xx, yy = np.meshgrid(np.linspace(x_min, x_max, grid_resolution),\n",
+    "                         np.linspace(y_min, y_max, grid_resolution))\n",
+    "\n",
+    "    # Stack the grid points into a format our function can accept: [n_points, 2]\n",
+    "    grid_points = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float32)\n",
+    "    ll = spn.log_likelihood(grid_points)\n",
+    "    # Reshape the LL values to match the grid shape for plotting\n",
+    "    Z = ll.detach().cpu().numpy().reshape(xx.shape)\n",
+    "\n",
+    "    # --- 6. Visualize the Data and Log-Likelihood Contours ---\n",
+    "\n",
+    "    plt.figure(figsize=(10, 8))\n",
+    "\n",
+    "    # Plot the filled contour map of the log-likelihood\n",
+    "    # Higher values (brighter colors) mean the model thinks data is more likely there\n",
+    "    contour = plt.contourf(xx, yy, Z, levels=20, cmap='viridis', alpha=0.8)\n",
+    "\n",
+    "    # Add a color bar to show the LL scale\n",
+    "    plt.colorbar(contour, label='Log-Likelihood $LL(\\mathbf{x})$')\n",
+    "\n",
+    "    # Overlay the scatter plot of the actual data points\n",
+    "    # We make them semi-transparent and small to see the density and contours\n",
+    "    plt.scatter(data_np[:, 0], data_np[:, 1], s=5, alpha=0.3, c='blue')\n",
+    "\n",
+    "    # Add titles and labels\n",
+    "    plt.title('SPN Log-Likelihood Contours and Data')\n",
+    "    plt.xlabel('Feature 1 (x-axis)')\n",
+    "    plt.ylabel('Feature 2 (y-axis)')\n",
+    "    plt.grid(True, linestyle='--', alpha=0.3)\n",
+    "    plt.axis('equal')  # Ensures the scaling is the same on both axes\n",
+    "    plt.show()\n",
+    "\n",
+    "\n",
+    "plot_contour(data_np, spn)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Temporary Method Replacement\n",
+    "\n",
+    "SPFlow supports temporarily substituting module methods. For example, you can replace the sum operation in `Sum` with a custom implementation for a single call graph.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import torch\n",
+    "from spflow.modules.sums import Sum\n",
+    "from spflow.modules.products import Product\n",
+    "from spflow.modules.leaves import Normal\n",
+    "from spflow.meta import Scope\n",
+    "from spflow.utils import replace\n",
+    "\n",
+    "torch.manual_seed(1)\n",
+    "\n",
+    "# Create a probabilistic circuit: Product(Sum(Product(Normal)))\n",
+    "scope = Scope([0, 1])\n",
+    "normal = Normal(scope=scope, out_channels=4)\n",
+    "inner_product = Product(inputs=normal)\n",
+    "sum_module = Sum(inputs=inner_product, out_channels=1)\n",
+    "root_product = Product(inputs=sum_module)\n",
+    "\n",
+    "# Create test data\n",
+    "data = torch.randn(3, 2)\n",
+    "\n",
+    "# Normal inference\n",
+    "log_likelihood_original = root_product.log_likelihood(data).flatten()\n",
+    "print(f\"Original log-likelihood: {log_likelihood_original}\")\n",
+    "\n",
+    "# Define a custom log_likelihood for Sum modules\n",
+    "def max_ll(self, data, cache=None):\n",
+    "    ll = self.inputs.log_likelihood(data, cache=cache).unsqueeze(3)\n",
+    "    weighted_lls = ll + self.log_weights.unsqueeze(0)\n",
+    "    return torch.max(weighted_lls, dim=self.sum_dim + 1)[0]\n",
+    "\n",
+    "# Temporarily replace Sum.log_likelihood with custom implementation\n",
+    "with replace(Sum.log_likelihood, max_ll):\n",
+    "    log_likelihood_custom = root_product.log_likelihood(data).flatten()\n",
+    "    print(f\"Custom log-likelihood:   {log_likelihood_custom}\")\n",
+    "\n",
+    "# Original method is automatically restored\n",
+    "log_likelihood_restored = root_product.log_likelihood(data).flatten()\n",
+    "print(f\"Restored log-likelihood: {log_likelihood_restored}\")\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Automatic Model creation\n",
+    "Besides creating an SPN manually by stacking layers, it is also possible to use algorithms to automatically construct the SPN architecture. This can make it easier to start using SPNs."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "###  Rat-SPN\n",
+    "The Rat-SPN algorithm builds a deep network structure by recursively partitioning the features (variables) into random subsets and alternating between sum and product layers.\n",
+    "Below, we set up a Rat-SPN by defining its structure and parameters."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from spflow.modules.rat.rat_spn import RatSPN\n",
+    "\n",
+    "depth = 1\n",
+    "n_region_nodes = 3\n",
+    "num_leaves = 2\n",
+    "num_repetitions = 2\n",
+    "n_root_nodes = 1\n",
+    "num_feature = 2\n",
+    "\n",
+    "scope = Scope(list(range(0, num_feature)))\n",
+    "\n",
+    "rat_leaf_layer = Normal(scope=scope, out_channels=num_leaves, num_repetitions=num_repetitions)\n",
+    "rat = RatSPN(\n",
+    "    leaf_modules=[rat_leaf_layer],\n",
+    "    n_root_nodes=n_root_nodes,\n",
+    "    n_region_nodes=n_region_nodes,\n",
+    "    num_repetitions=num_repetitions,\n",
+    "    depth=depth,\n",
+    "    outer_product=True,\n",
+    "    split_halves=True,\n",
+    ")\n",
+    "print(rat.to_str())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Here is a visualization of the architecture we just created."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "display(Image(filename='Rat_SPN.png'))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ll = rat.log_likelihood(dataset)\n",
+    "ll"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "We can again train this model using the provided gradient descent method. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_gradient_descent(rat, dataloader, epochs=20, lr=0.1)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "To verify that the training worked properly, we can visualize the log-likelihoods of the trained model."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "data_np = dataset.cpu().numpy()\n",
+    "plot_contour(data_np, rat)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Of course, computing log-likelihoods is not the only thing the model can do.\n",
+    "Below is a visualization of samples drawn from the trained Rat-SPN."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "samples = spn.sample(num_samples=1500)\n",
+    "plot_scatter([data_np, samples], title='Generated 2D Toy Dataset', label_list=['Original Data', 'Samples'])\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Up to now, we have focused only on generation, without considering the labels of the training instances.\n",
+    "Next, we will train a second Rat-SPN for classification."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import logging\n",
+    "\n",
+    "logging.basicConfig(\n",
+    "    level=logging.INFO,\n",
+    "    format=\"%(asctime)s [%(levelname)s] %(name)s: %(message)s\"\n",
+    ")\n",
+    "\n",
+    "depth = 1\n",
+    "n_region_nodes = 3\n",
+    "num_leaves = 3\n",
+    "num_repetitions = 1\n",
+    "n_root_nodes = 3\n",
+    "num_feature = 2\n",
+    "\n",
+    "scope = Scope(list(range(0, num_feature)))\n",
+    "\n",
+    "rat_leaf_layer = Normal(scope=scope, out_channels=num_leaves, num_repetitions=num_repetitions)\n",
+    "rat_class = RatSPN(\n",
+    "    leaf_modules=[rat_leaf_layer],\n",
+    "    n_root_nodes=n_root_nodes,\n",
+    "    n_region_nodes=n_region_nodes,\n",
+    "    num_repetitions=num_repetitions,\n",
+    "    depth=depth,\n",
+    "    outer_product=True,\n",
+    "    split_halves=True,\n",
+    ")\n",
+    "train_dataset = TensorDataset(dataset.clone(), labels.clone())\n",
+    "\n",
+    "dataloader_with_labels = DataLoader(train_dataset, batch_size=10)\n",
+    "\n",
+    "train_gradient_descent(rat_class, dataloader_with_labels, epochs=100, lr=0.1, is_classification=True,\n",
+    "                       verbose=True)\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "With this SPN, we can now draw samples based on its labels. Therefore, we use a sampling context. This sampling context can be passed to any sampling method. With the context, you can explicitly define from which output channel you want to sample or, for example, provide evidence. This allows advanced control over the sampling routine. \n",
+    "In this case, the root layer has three output channels which correspond to the three classes. So being able to define from which output channel we want to sample means being able to choose from which class we want to sample. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from spflow.utils.sampling_context import SamplingContext\n",
+    "\n",
+    "out_features = rat.out_features\n",
+    "num_features = 2\n",
+    "\n",
+    "evidence = torch.full((200, num_features), torch.nan)\n",
+    "channel_index = torch.full((200, out_features), 0, dtype=torch.int64)\n",
+    "mask = torch.full((200, out_features), True, dtype=torch.bool)\n",
+    "sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)\n",
+    "samples_class0 = rat_class.root_node.inputs.sample(data=evidence, sampling_ctx=sampling_ctx)\n",
+    "\n",
+    "evidence = torch.full((400, num_features), torch.nan)\n",
+    "channel_index = torch.full((400, out_features), 1, dtype=torch.int64)\n",
+    "mask = torch.full((400, out_features), True, dtype=torch.bool)\n",
+    "sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)\n",
+    "samples_class1 = rat_class.sample(data=evidence, sampling_ctx=sampling_ctx)\n",
+    "\n",
+    "evidence = torch.full((600, num_features), torch.nan)\n",
+    "channel_index = torch.full((600, out_features), 2, dtype=torch.int64)\n",
+    "mask = torch.full((600, out_features), True, dtype=torch.bool)\n",
+    "sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)\n",
+    "samples_class2 = rat_class.sample(data=evidence, sampling_ctx=sampling_ctx)\n",
+    "\n",
+    "plot_scatter([data_np, samples_class0, samples_class1, samples_class2], title='Class-Conditional Samples',\n",
+    "             label_list=['Original Data', 'Samples Class 0', 'Samples Class 1', 'Samples Class 2'])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "However, the model can of course also be used for classification. As an example, we visualize the trained decision boundaries of our model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import torch\n",
+    "import matplotlib.pyplot as plt\n",
+    "import numpy as np\n",
+    "\n",
+    "# --- Assuming your dataset and labels are already created as above ---\n",
+    "\n",
+    "# Let's assume you have an SPN model trained on this data:\n",
+    "# For example:\n",
+    "# spn = MySPNModel()\n",
+    "# spn.fit(dataset, labels)\n",
+    "\n",
+    "# --- 1. Create a grid of points over the feature space ---\n",
+    "x_min, x_max = dataset[:, 0].min() - 1, dataset[:, 0].max() + 1\n",
+    "y_min, y_max = dataset[:, 1].min() - 1, dataset[:, 1].max() + 1\n",
+    "\n",
+    "xx, yy = torch.meshgrid(\n",
+    "    torch.linspace(x_min, x_max, 300),\n",
+    "    torch.linspace(y_min, y_max, 300),\n",
+    "    indexing='xy'\n",
+    ")\n",
+    "grid_points = torch.stack([xx.flatten(), yy.flatten()], dim=1)\n",
+    "\n",
+    "# --- 2. Get SPN predictions (probabilities or class scores) ---\n",
+    "# Example: if your SPN returns class probabilities\n",
+    "with torch.no_grad():\n",
+    "    probs = rat_class.log_posterior(grid_points)  # shape: [N_grid, num_classes]\n",
+    "    preds = probs.argmax(dim=-1)\n",
+    "\n",
+    "# --- 3. Reshape predictions to match the grid ---\n",
+    "Z = preds.reshape(xx.shape)\n",
+    "\n",
+    "# --- 4. Plot decision boundaries ---\n",
+    "plt.figure(figsize=(8, 6))\n",
+    "plt.contourf(xx, yy, Z, alpha=0.3, levels=len(means), cmap=\"viridis\")\n",
+    "\n",
+    "# Plot the original data\n",
+    "plt.scatter(dataset[:, 0], dataset[:, 1], c=labels, cmap=\"viridis\", s=10, edgecolor=\"k\")\n",
+    "\n",
+    "plt.title(\"SPN Classification Boundaries\")\n",
+    "plt.xlabel(\"X₁\")\n",
+    "plt.ylabel(\"X₂\")\n",
+    "plt.show()\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## LearnSPN\n",
+    "Instead of creating a random structure, we can also train the SPN structure using the LearnSPN. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from spflow.learn.learn_spn import learn_spn\n",
+    "\n",
+    "scope = Scope(list(range(2)))\n",
+    "normal_layer = Normal(scope=scope, out_channels=4)\n",
+    "learn_spn = learn_spn(\n",
+    "    torch.tensor(dataset, dtype=torch.float32),\n",
+    "    leaf_modules=normal_layer,\n",
+    "    out_channels=1,\n",
+    "    min_instances_slice=70,\n",
+    "    min_features_slice=2\n",
+    ")\n",
+    "learn_spn"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "The trained SPN can now be used just like any other module"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "learn_spn_samples = spn.sample(num_samples=1500)\n",
+    "\n",
+    "plot_scatter([data_np, samples], title='Generated 2D Toy Dataset', label_list=['Original Data', 'Samples'])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Advanced Queries"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "To showcase more advanced queries like conditional sampling and MPE (Most Probable Explanation) we take a look at a dataset with more features.\n",
+    "Below, we load the digits dataset. This dataset contains 1797 8x8 images of digits 0 to 9."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import matplotlib.pyplot as plt\n",
+    "\n",
+    "from sklearn import datasets\n",
+    "\n",
+    "# Load the digits dataset\n",
+    "digits = datasets.load_digits()\n",
+    "\n",
+    "# Display the last digit\n",
+    "plt.figure(1, figsize=(3, 3))\n",
+    "plt.imshow(digits.images[0], cmap=plt.cm.gray_r, interpolation=\"nearest\")\n",
+    "plt.show()\n",
+    "\n",
+    "X = digits.data  # shape (1797, 64)\n",
+    "y = digits.target  # shape (1797,)\n",
+    "\n",
+    "X_tensor = torch.tensor(X, dtype=torch.float32)\n",
+    "y_tensor = torch.tensor(y, dtype=torch.long)\n",
+    "\n",
+    "dataset = TensorDataset(X_tensor, y_tensor)\n",
+    "dataloader = DataLoader(dataset, batch_size=128, shuffle=True)\n",
+    "\n",
+    "print(X_tensor.shape)\n",
+    "print(X_tensor.min(), X_tensor.max())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Again we create a Rat SPN, but this time we use a Binomial distribution for the leaf layer. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from spflow.modules.leaves import Binomial\n",
+    "\n",
+    "depth = 3\n",
+    "n_region_nodes = 5\n",
+    "num_leaves = 5\n",
+    "num_repetitions = 2\n",
+    "n_root_nodes = 1\n",
+    "num_feature = 64\n",
+    "n = torch.tensor(16)  # total count for binomial distribution\n",
+    "\n",
+    "scope = Scope(list(range(0, num_feature)))\n",
+    "\n",
+    "rat_leaf_layer = Binomial(scope=scope, total_count=n, out_channels=num_leaves, num_repetitions=num_repetitions)\n",
+    "rat = RatSPN(\n",
+    "    leaf_modules=[rat_leaf_layer],\n",
+    "    n_root_nodes=n_root_nodes,\n",
+    "    n_region_nodes=n_region_nodes,\n",
+    "    num_repetitions=num_repetitions,\n",
+    "    depth=depth,\n",
+    "    outer_product=True,\n",
+    "    split_halves=True,\n",
+    ")\n",
+    "print(rat.to_str())"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "train_gradient_descent(rat, dataloader, epochs=20, lr=0.1)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Below is a visualization of some samples drawn from the Spn"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "samples = rat.sample(num_samples=5)\n",
+    "print(samples.shape)\n",
+    "\n",
+    "for i in range(5):\n",
+    "    img = samples[i].reshape(8, 8)  # reshape back to 2D\n",
+    "    plt.subplot(1, 5, i + 1)\n",
+    "    plt.imshow(img, cmap=\"gray\")\n",
+    "    plt.axis(\"off\")\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Now can show some more advanced queries. One of them is getting the MPE. It returns the most probable state of the probabilistic circuit. This is often helpful to generate more clear samples and a good indicator whether the model could learn the data or not, which is not always evident with regular samples."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "mpe = rat.sample(num_samples=1, is_mpe=True)\n",
+    "plt.imshow(mpe.reshape(8, 8), cmap=\"gray\")\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "And at last we want to sample, given some evidence. In this example, the lower half of the image is given, and we want to sample the upper half given the lower half. \n",
+    "This time, instead of explicitly defining a sampling context, we use the sample_with_evidence method. The method allows the user to just input the evidence and let the library internally handle the creation of the sampling context. This becomes handy if you have evidence but not multiple channel to sample from."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "evidence = X_tensor[0]\n",
+    "evidence[:32] = torch.nan\n",
+    "plt.imshow(evidence.reshape(8, 8), cmap=\"gray\")\n",
+    "plt.show()\n",
+    "evidence = evidence.unsqueeze(0)\n",
+    "print(evidence.shape)\n",
+    "samples = rat.sample_with_evidence(evidence=evidence)\n",
+    "plt.imshow(samples.reshape(8, 8), cmap=\"gray\")\n",
+    "plt.show()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.12.12"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
