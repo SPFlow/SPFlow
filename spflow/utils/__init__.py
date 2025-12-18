@@ -7,6 +7,9 @@ These utilities are designed to work seamlessly with the main SPFlow modules
 while maintaining clean separation of concerns.
 """
 
+from spflow.utils.domain import DataType, Domain
+from spflow.utils.histogram import get_bin_edges_torch
 from spflow.utils.replace import replace
 
-__all__ = ["replace"]
+__all__ = ["replace", "DataType", "Domain", "get_bin_edges_torch"]
+

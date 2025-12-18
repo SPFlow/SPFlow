@@ -92,3 +92,13 @@ Hypergeometric
 Hypergeometric distribution.
 
 .. autoclass:: spflow.modules.leaves.Hypergeometric
+
+Non-Parametric Distributions
+----------------------------
+
+PiecewiseLinear
+^^^^^^^^^^^^^^^
+
+Non-parametric distribution that approximates data using piecewise linear functions from histograms. Can handle both continuous and discrete data.
+
+.. autoclass:: spflow.modules.leaves.PiecewiseLinear
