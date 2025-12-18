@@ -25,9 +25,9 @@ from spflow.utils.sampling_context import SamplingContext, init_default_sampling
 class EinsumLayer(Module):
     """EinsumLayer combining product and sum operations efficiently.
 
-    Implements sum(product(x)) using einsum for binary tree structured circuits.
-    Takes pairs of adjacent features as left/right children, computes their
-    cross-product over channels, and sums with learned weights.
+    Implements sum(product(x)) using einsum for circuits with arbitrary tree
+    structure. Takes pairs of adjacent features as left/right children, computes
+    their cross-product over channels, and sums with learned weights.
 
     The LogEinsumExp trick is used for numerical stability in log-space.
 
@@ -35,9 +35,6 @@ class EinsumLayer(Module):
         logits (Parameter): Unnormalized log-weights for gradient optimization.
         unraveled_channel_indices (Tensor): Mapping from flat to (i,j) channel pairs.
     """
-
-    # Fixed binary tree structure
-    cardinality = 2
 
     def __init__(
         self,
@@ -54,7 +51,7 @@ class EinsumLayer(Module):
             out_channels: Number of output sum nodes per feature.
             num_repetitions: Number of repetitions. If None, inferred from inputs.
             weights: Optional initial weights tensor. If provided, must have shape
-                (out_features, out_channels, num_repetitions, in_channels, in_channels).
+                (out_features, out_channels, num_repetitions, left_channels, right_channels).
 
         Raises:
             ValueError: If inputs invalid, out_channels < 1, or weight shape mismatch.
@@ -69,12 +66,7 @@ class EinsumLayer(Module):
                 )
             self._two_inputs = True
             left_input, right_input = inputs
-            # Validate compatible shapes
-            if left_input.out_shape.channels != right_input.out_shape.channels:
-                raise ValueError(
-                    f"Left and right inputs must have same number of channels: "
-                    f"{left_input.out_shape.channels} != {right_input.out_shape.channels}"
-                )
+            # Validate compatible shapes (channels can differ for cross-product)
             if left_input.out_shape.features != right_input.out_shape.features:
                 raise ValueError(
                     f"Left and right inputs must have same number of features: "
@@ -90,7 +82,8 @@ class EinsumLayer(Module):
                 raise ValueError("Left and right input scopes must be disjoint.")
 
             self.inputs = nn.ModuleList([left_input, right_input])
-            in_channels = left_input.out_shape.channels
+            self._left_channels = left_input.out_shape.channels
+            self._right_channels = right_input.out_shape.channels
             in_features = left_input.out_shape.features
             if num_repetitions is None:
                 num_repetitions = left_input.out_shape.repetitions
@@ -111,7 +104,8 @@ class EinsumLayer(Module):
                 )
             # Wrap in SplitHalves for left/right access
             self.inputs = SplitHalves(inputs)
-            in_channels = inputs.out_shape.channels
+            self._left_channels = inputs.out_shape.channels
+            self._right_channels = inputs.out_shape.channels
             in_features = inputs.out_shape.features // 2
             if num_repetitions is None:
                 num_repetitions = inputs.out_shape.repetitions
@@ -122,8 +116,9 @@ class EinsumLayer(Module):
             raise ValueError(f"out_channels must be >= 1, got {out_channels}.")
 
         # ========== 3. SHAPE COMPUTATION ==========
-        self.in_channels = in_channels
-        self.in_shape = ModuleShape(in_features, in_channels, num_repetitions)
+        # Use max channels for in_shape (for informational purposes)
+        max_in_channels = max(self._left_channels, self._right_channels)
+        self.in_shape = ModuleShape(in_features, max_in_channels, num_repetitions)
         self.out_shape = ModuleShape(in_features, out_channels, num_repetitions)
 
         # ========== 4. WEIGHT INITIALIZATION ==========
@@ -131,15 +126,15 @@ class EinsumLayer(Module):
             self.out_shape.features,  # D_out
             self.out_shape.channels,  # O (output channels)
             self.out_shape.repetitions,  # R
-            self.in_channels,  # I (left input channels)
-            self.in_channels,  # J (right input channels)
+            self._left_channels,  # I (left input channels)
+            self._right_channels,  # J (right input channels)
         )
 
         # Create index mapping for sampling: flatten (i,j) -> idx and back
         self.register_buffer(
             "unraveled_channel_indices",
             torch.tensor(
-                [(i, j) for i in range(self.in_channels) for j in range(self.in_channels)]
+                [(i, j) for i in range(self._left_channels) for j in range(self._right_channels)]
             ),
         )
 
@@ -331,14 +326,14 @@ class EinsumLayer(Module):
         # Gather the correct output channel
         # Expand channel_idx to match logits dimensions
         idx = channel_idx.view(batch_size, self.out_shape.features, 1, 1, 1, 1)
-        idx = idx.expand(-1, -1, -1, self.out_shape.repetitions, self.in_channels, self.in_channels)
+        idx = idx.expand(-1, -1, -1, self.out_shape.repetitions, self._left_channels, self._right_channels)
         logits = logits.gather(dim=2, index=idx).squeeze(2)
         # logits shape: (B, D, R, I, J)
 
         # Select repetition if specified
         if sampling_ctx.repetition_idx is not None:
             rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1)
-            rep_idx = rep_idx.expand(-1, self.out_shape.features, -1, self.in_channels, self.in_channels)
+            rep_idx = rep_idx.expand(-1, self.out_shape.features, -1, self._left_channels, self._right_channels)
             logits = logits.gather(dim=2, index=rep_idx).squeeze(2)
             # logits shape: (B, D, I, J)
         else:
@@ -472,10 +467,7 @@ class EinsumLayer(Module):
             right_ll = right_ll.permute(0, 1, 4, 2, 3, 5).squeeze(-1)  # (B, D, R, 1, J)
 
             # Get gradients (how much each output contributed)
-            if module_lls.grad is None:
-                log_grads = torch.zeros_like(module_lls)
-            else:
-                log_grads = torch.log(module_lls.grad + 1e-10)
+            log_grads = torch.log(module_lls.grad + 1e-10)
 
             log_grads = log_grads.unsqueeze(-1).unsqueeze(-1)  # (B, D, O, R, 1, 1)
 
