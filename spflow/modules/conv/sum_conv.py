@@ -16,6 +16,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import proj_convex_to_real
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.modules.conv.utils import expand_sampling_context, upsample_sampling_context
 
 
 class SumConv(Module):
@@ -308,28 +309,19 @@ class SumConv(Module):
             )
 
         # Expand channel_index and mask to match input features if needed
-        if sampling_ctx.channel_index.shape[1] != num_features:
-            channel_idx = sampling_ctx.channel_index
-            if channel_idx.shape[1] == 1:
-                channel_idx = channel_idx.expand(-1, num_features)
+        current_features = sampling_ctx.channel_index.shape[1]
+        if current_features != num_features:
+            if current_features == 1:
+                expand_sampling_context(sampling_ctx, num_features)
             else:
-                # Repeat interleave to match spatial expansion by kernel size
-                # Parent has H/K x W/K features, we have H x W
-                channel_idx = channel_idx.view(batch_size, H // K, W // K)
-                channel_idx = torch.repeat_interleave(channel_idx, K, dim=1)
-                channel_idx = torch.repeat_interleave(channel_idx, K, dim=2)
-                channel_idx = channel_idx.view(batch_size, num_features)
-
-            mask = sampling_ctx.mask
-            if mask.shape[1] == 1:
-                mask = mask.expand(-1, num_features)
-            else:
-                mask = mask.view(batch_size, H // K, W // K)
-                mask = torch.repeat_interleave(mask, K, dim=1)
-                mask = torch.repeat_interleave(mask, K, dim=2)
-                mask = mask.view(batch_size, num_features)
-
-            sampling_ctx.update(channel_index=channel_idx, mask=mask)
+                # Upsample from parent spatial dims to input spatial dims
+                upsample_sampling_context(
+                    sampling_ctx,
+                    current_height=H // K,
+                    current_width=W // K,
+                    scale_h=K,
+                    scale_w=K,
+                )
 
         channel_idx = sampling_ctx.channel_index  # (batch, H*W)
 
