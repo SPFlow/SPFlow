@@ -30,6 +30,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[dev]
 
+      - name: Install Pandoc
+        run: sudo apt-get install -y pandoc
+
       - name: Build documentation
         run: |
           cd docs
