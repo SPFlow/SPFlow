@@ -44,4 +44,4 @@ jobs:
           deploy_key: ${{ secrets.DOCS_DEPLOY_KEY }}
           external_repository: SPFlow/spflow.github.io
           publish_dir: ./docs/build
-          publish_branch: main
+          publish_branch: main 
