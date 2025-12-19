@@ -116,7 +116,7 @@ class TestLinsumLayerEquivalence:
 
 
 class TestLinsumLayerSingleInputEquivalence:
-    """Test LinsumLayer single-input (SplitHalves) equivalence with Sum(ElementwiseProduct(SplitHalves))."""
+    """Test LinsumLayer single-input (SplitConsecutive) equivalence with Sum(ElementwiseProduct(SplitConsecutive))."""
     
     # Filter out configurations where in_channels > out_features // 2 
     # (causes ElementwiseProduct shape validation issues unrelated to LinsumLayer)
@@ -128,7 +128,7 @@ class TestLinsumLayerSingleInputEquivalence:
     def _create_single_input_models(self, in_channels, out_channels, in_features, num_reps):
         """Helper to create equivalent models with single input and sync weights."""
         # Create single input that will be split internally
-        from spflow.modules.ops.split_halves import SplitHalves
+        from spflow.modules.ops.split_consecutive import SplitConsecutive
         
         leaf = make_normal_leaf(
             scope=list(range(in_features)),
@@ -137,15 +137,15 @@ class TestLinsumLayerSingleInputEquivalence:
             num_repetitions=num_reps
         )
         
-        # Create LinsumLayer with single input (uses internal SplitHalves)
+        # Create LinsumLayer with single input (uses internal SplitConsecutive)
         linsum = LinsumLayer(
             inputs=leaf,
             out_channels=out_channels,
             num_repetitions=num_reps
         )
         
-        # Create Sum(ElementwiseProduct(SplitHalves)) Equivalent
-        split_layer = SplitHalves(leaf, dim=1, num_splits=2)
+        # Create Sum(ElementwiseProduct(SplitConsecutive)) Equivalent
+        split_layer = SplitConsecutive(leaf, dim=1, num_splits=2)
         prod_layer = ElementwiseProduct(inputs=split_layer, num_splits=2)
         sum_layer = Sum(
             inputs=prod_layer,

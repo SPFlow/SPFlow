@@ -33,8 +33,9 @@ if TYPE_CHECKING:
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.modules.ops.cat import Cat
 from spflow.modules.ops.split import Split
-from spflow.modules.ops.split_alternate import SplitAlternate
-from spflow.modules.ops.split_halves import SplitHalves
+from spflow.modules.ops.split_by_index import SplitByIndex
+from spflow.modules.ops.split_consecutive import SplitConsecutive
+from spflow.modules.ops.split_interleaved import SplitInterleaved
 
 
 class Color(str, Enum):
@@ -58,7 +59,7 @@ class Color(str, Enum):
 # Ops modules to skip in visualization (pass-through/helper modules)
 # When these modules are encountered, they are bypassed and their inputs are connected
 # directly to the parent module
-SKIP_OPS = {Cat, Split, SplitHalves, SplitAlternate}
+SKIP_OPS = {Cat, Split, SplitByIndex, SplitConsecutive, SplitInterleaved}
 
 
 def _format_param_count(count: int) -> str:
@@ -140,7 +141,7 @@ def visualize(
             - 'RL': Right to left
         node_shape: Shape of nodes. Common options: 'box' (default), 'circle', 'ellipse',
             'diamond', 'triangle', 'plaintext', 'record', 'Mrecord'.
-        skip_ops: Whether to skip ops modules in visualization (Cat, Split, SplitHalves, SplitAlternate).
+        skip_ops: Whether to skip ops modules in visualization (Cat, Split, SplitConsecutive, SplitInterleaved).
             These are pass-through modules that are bypassed and their inputs connected directly to parent.
             Defaults to True.
 
@@ -572,8 +573,9 @@ def _get_module_color(module: Module) -> str:
         "Cat": Color.PINK,
         # Operations - Split
         "Split": Color.PURPLE,
-        "SplitHalves": Color.PURPLE,
-        "SplitAlternate": Color.PURPLE,
+        "SplitByIndex": Color.PURPLE,
+        "SplitConsecutive": Color.PURPLE,
+        "SplitInterleaved": Color.PURPLE,
         # Operations - Factorize
         "Factorize": Color.BROWN,
         # RAT-SPN

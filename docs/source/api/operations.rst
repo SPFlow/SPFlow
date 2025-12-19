@@ -17,17 +17,31 @@ Abstract base class for feature splitting operations.
 
 .. autoclass:: spflow.modules.ops.split.Split
 
-SplitHalves
+SplitMode
+---------
+
+Factory class for creating split configurations.
+
+.. autoclass:: spflow.modules.ops.split.SplitMode
+   :members: consecutive, interleaved, by_index, create
+
+SplitConsecutive
 -----------
 
 Splits features into consecutive halves (or n parts).
 
-.. autoclass:: spflow.modules.ops.SplitHalves
+.. autoclass:: spflow.modules.ops.SplitConsecutive
 
-SplitAlternate
+SplitInterleaved
 --------------
 
 Splits features in alternating fashion.
 
-.. autoclass:: spflow.modules.ops.SplitAlternate
+.. autoclass:: spflow.modules.ops.SplitInterleaved
 
+SplitByIndex
+------------
+
+Splits features according to user-specified indices.
+
+.. autoclass:: spflow.modules.ops.SplitByIndex

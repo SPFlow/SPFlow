@@ -6,6 +6,7 @@ concatenation, splitting, and tensor manipulation operations.
 """
 
 from .cat import Cat
-from .split import Split
-from .split_alternate import SplitAlternate
-from .split_halves import SplitHalves
+from .split import Split, SplitMode
+from .split_by_index import SplitByIndex
+from .split_consecutive import SplitConsecutive
+from .split_interleaved import SplitInterleaved

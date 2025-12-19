@@ -6,8 +6,8 @@ import pytest
 import torch
 
 from spflow.meta import Scope
-from spflow.modules.ops import SplitAlternate
-from spflow.modules.ops import SplitHalves
+from spflow.modules.ops import SplitInterleaved
+from spflow.modules.ops import SplitConsecutive
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
@@ -15,13 +15,13 @@ out_channels_values = [1, 5]
 features_values_multiplier = [1, 6]
 num_splits = [2, 3]
 num_repetitions = [1, 7]
-split_type = [SplitHalves, SplitAlternate]
+split_type = [SplitConsecutive, SplitInterleaved]
 params = list(
     product(out_channels_values, features_values_multiplier, num_splits, split_type, num_repetitions)
 )
 
 
-def make_split(out_channels=3, out_features=3, num_splits=2, split_type=SplitHalves, num_reps=None):
+def make_split(out_channels=3, out_features=3, num_splits=2, split_type=SplitConsecutive, num_reps=None):
     scope = Scope(list(range(0, out_features)))
 
     inputs_a = make_normal_leaf(scope, out_channels=out_channels, num_repetitions=num_reps)
@@ -86,24 +86,24 @@ def test_sample(
 
 def test_split_inherits_scope_from_input():
     """Test that Split modules properly inherit scope from their input."""
-    # Test SplitHalves
+    # Test SplitConsecutive
     scope = Scope(list(range(0, 6)))
     input_leaf = make_normal_leaf(scope, out_channels=3)
-    split_halves = SplitHalves(inputs=input_leaf, num_splits=2, dim=1)
+    split_consecutive = SplitConsecutive(inputs=input_leaf, num_splits=2, dim=1)
 
     # Split should inherit the same scope as its input
-    assert split_halves.scope == input_leaf.scope
-    assert split_halves.scope.query == tuple(range(0, 6))
-    assert len(split_halves.scope.query) == 6
+    assert split_consecutive.scope == input_leaf.scope
+    assert split_consecutive.scope.query == tuple(range(0, 6))
+    assert len(split_consecutive.scope.query) == 6
 
-    # Test SplitAlternate
-    split_alternate = SplitAlternate(inputs=input_leaf, num_splits=3, dim=1)
-    assert split_alternate.scope == input_leaf.scope
-    assert split_alternate.scope.query == tuple(range(0, 6))
+    # Test SplitInterleaved
+    split_interleaved = SplitInterleaved(inputs=input_leaf, num_splits=3, dim=1)
+    assert split_interleaved.scope == input_leaf.scope
+    assert split_interleaved.scope.query == tuple(range(0, 6))
 
     # Verify scope is not empty (regression test for the bug)
-    assert not split_halves.scope.empty()
-    assert not split_alternate.scope.empty()
+    assert not split_consecutive.scope.empty()
+    assert not split_interleaved.scope.empty()
 
 
 # New tests for Phase 3 coverage improvement - Split base class
@@ -113,7 +113,7 @@ def test_split_get_out_shapes_basic():
     """Test get_out_shapes with standard input."""
     scope = Scope(list(range(0, 10)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
     event_shape = (10, 10)
     out_shapes = split.get_out_shapes(event_shape)
@@ -127,7 +127,7 @@ def test_split_get_out_shapes_uneven():
     """Test get_out_shapes with uneven division."""
     scope = Scope(list(range(0, 7)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitHalves(inputs=leaf, num_splits=3, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=3, dim=1)
 
     event_shape = (10, 7)
     out_shapes = split.get_out_shapes(event_shape)
@@ -145,7 +145,7 @@ def test_split_get_out_shapes_dim_zero():
     """Test get_out_shapes when splitting along batch dimension."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=0)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=0)
 
     event_shape = (10, 6)
     out_shapes = split.get_out_shapes(event_shape)
@@ -159,7 +159,7 @@ def test_split_get_out_shapes_single():
     """Test get_out_shapes for single group (num_splits=1)."""
     scope = Scope(list(range(0, 8)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitHalves(inputs=leaf, num_splits=1, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=1, dim=1)
 
     event_shape = (10, 8)
     out_shapes = split.get_out_shapes(event_shape)
@@ -175,7 +175,7 @@ def test_split_marginalize_some_features(device):
     """Test marginalize removes subset of features."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1).to(device)
 
     # Marginalize features [1, 3]
     marg_split = split.marginalize([1, 3], prune=False)
@@ -189,7 +189,7 @@ def test_split_marginalize_no_features():
     """Test marginalize with no features to remove."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
     # Marginalize features not in scope
     marg_split = split.marginalize([10, 11], prune=False)
@@ -203,7 +203,7 @@ def test_split_marginalize_preserves_scope():
     """Test marginalize preserves underlying scope structure."""
     scope = Scope(list(range(0, 8)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
     # Marginalize subset
     marg_split = split.marginalize([2, 3], prune=False)
@@ -217,7 +217,7 @@ def test_split_marginalize_all_features():
     """Test marginalize removes all features."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
     # Marginalize all features in scope
     marg_split = split.marginalize(list(range(0, 6)), prune=True)
@@ -230,7 +230,7 @@ def test_split_marginalize_with_prune():
     """Test marginalize with pruning enabled."""
     scope = Scope(list(range(0, 4)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
     # Marginalize most features, leaving only one
     marg_split = split.marginalize([0, 1, 2], prune=True)
@@ -243,7 +243,7 @@ def test_split_marginalize_preserves_num_splits():
     """Test that marginalization preserves num_splits."""
     scope = Scope(list(range(0, 10)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
     marg_split = split.marginalize([1, 2], prune=False)
 
@@ -251,7 +251,7 @@ def test_split_marginalize_preserves_num_splits():
     assert marg_split.num_splits == split.num_splits
 
 
-@pytest.mark.parametrize("split_type", [SplitHalves, SplitAlternate])
+@pytest.mark.parametrize("split_type", [SplitConsecutive, SplitInterleaved])
 def test_split_marginalize_different_types(split_type):
     """Test marginalization works for different split types."""
     scope = Scope(list(range(0, 8)))
@@ -269,7 +269,7 @@ def test_split_out_features_property():
     """Test out_features property returns correct value."""
     scope = Scope(list(range(0, 8)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
     assert split.out_shape.features == leaf.out_shape.features
     assert split.out_shape.features == 8
@@ -279,7 +279,7 @@ def test_split_out_channels_property():
     """Test out_channels property returns correct value."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=5, num_repetitions=1)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
     assert split.out_shape.channels == leaf.out_shape.channels
     assert split.out_shape.channels == 5
@@ -289,7 +289,7 @@ def test_split_num_repetitions_inherited():
     """Test that num_repetitions is inherited from input."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=4)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
     assert split.out_shape.repetitions == leaf.out_shape.repetitions
     assert split.out_shape.repetitions == 4

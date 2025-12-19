@@ -7,8 +7,9 @@ from torch import Tensor
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
-from spflow.modules.ops.split_alternate import SplitAlternate
-from spflow.modules.ops.split_halves import SplitHalves
+from spflow.modules.ops.split import Split, SplitMode
+from spflow.modules.ops.split_consecutive import SplitConsecutive
+from spflow.modules.ops.split_interleaved import SplitInterleaved
 from spflow.modules.products.base_product import BaseProduct
 from spflow.utils.cache import Cache, cached
 
@@ -24,6 +25,7 @@ class ElementwiseProduct(BaseProduct):
         self,
         inputs: Module | tuple[Module, Module] | list[Module],
         num_splits: int | None = 2,
+        split_mode: SplitMode | None = None,
     ) -> None:
         """Initialize elementwise product.
 
@@ -47,10 +49,21 @@ class ElementwiseProduct(BaseProduct):
                     inputs = ((3, 1), (1, 4))
                     output = (3, 4)  # broadcasted
 
+            num_splits: Number of splits when wrapping single input in Split.
+            split_mode: Optional split configuration for single input mode.
+                Use SplitMode.consecutive() or SplitMode.interleaved().
+                Defaults to SplitMode.consecutive(num_splits=num_splits) if not specified.
 
         Raises:
             ValueError: Invalid arguments.
         """
+        # Handle single non-Split input: wrap with split_mode
+        if isinstance(inputs, Module) and not isinstance(inputs, (list, tuple, Split)):
+            if split_mode is not None:
+                inputs = split_mode.create(inputs)
+            else:
+                inputs = SplitConsecutive(inputs, num_splits=num_splits)
+
         super().__init__(inputs=inputs)
 
         # Check if all inputs either have equal number of out_channels or 1 (using in_shape.channels set by BaseProduct)
@@ -58,8 +71,6 @@ class ElementwiseProduct(BaseProduct):
             raise ValueError(
                 f"Inputs must have equal number of channels or one of them must be '1', but were {[inp.out_shape.channels for inp in self.inputs]}"
             )
-
-
 
         if self.num_splits is None:
             self.num_splits = num_splits
@@ -161,9 +172,9 @@ class ElementwiseProduct(BaseProduct):
         """
         if self.input_is_split:
             num_splits = self.num_splits
-            if isinstance(self.inputs[0], SplitHalves):
+            if isinstance(self.inputs[0], SplitConsecutive):
                 return output_ids.repeat((1, num_splits)).unsqueeze(-1)
-            elif isinstance(self.inputs[0], SplitAlternate):
+            elif isinstance(self.inputs[0], SplitInterleaved):
                 return output_ids.repeat_interleave(num_splits, dim=1).unsqueeze(-1)
             else:
                 raise NotImplementedError("Other Split types are not implemented yet.")
@@ -182,9 +193,9 @@ class ElementwiseProduct(BaseProduct):
         """
         if self.input_is_split:
             num_splits = self.num_splits
-            if isinstance(self.inputs[0], SplitHalves):
+            if isinstance(self.inputs[0], SplitConsecutive):
                 return mask.repeat((1, num_splits)).unsqueeze(-1)
-            elif isinstance(self.inputs[0], SplitAlternate):
+            elif isinstance(self.inputs[0], SplitInterleaved):
                 return mask.repeat_interleave(num_splits, dim=1).unsqueeze(-1)
             else:
                 raise NotImplementedError("Other Split types are not implemented yet.")

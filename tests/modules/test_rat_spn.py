@@ -7,6 +7,7 @@ import torch
 from spflow.meta import Scope
 from spflow.modules import leaves
 from spflow.modules.leaves import Normal, Bernoulli
+from spflow.modules.ops import SplitMode
 from spflow.modules.rat import RatSPN
 from spflow.utils.sampling_context import SamplingContext
 from spflow.utils.sampling_context import init_default_sampling_context
@@ -18,7 +19,7 @@ num_leaves = [1, 6]
 num_repetitions = [1, 7]
 n_root_nodes = [1, 4]
 outer_product = [True, False]
-split_halves = [True, False]
+split_mode = [None, SplitMode.consecutive(), SplitMode.interleaved()]
 leaf_cls_values = [
     # leaves.Bernoulli,
     # leaves.Binomial,
@@ -42,7 +43,7 @@ params = list(
         num_repetitions,
         n_root_nodes,
         outer_product,
-        split_halves,
+        split_mode,
     )
 )
 
@@ -56,7 +57,7 @@ def make_rat_spn(
     n_root_nodes,
     num_features,
     outer_product,
-    split_halves,
+    split_mode,
 ):
     depth = depth
     n_region_nodes = n_region_nodes
@@ -76,15 +77,15 @@ def make_rat_spn(
         num_repetitions=num_repetitions,
         depth=depth,
         outer_product=outer_product,
-        split_halves=split_halves,
+        split_mode=split_mode,
     )
     return model
 
 
 @pytest.mark.parametrize(
-    "leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_product, split_halves ", params
+    "leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_product, split_mode ", params
 )
-def test_log_likelihood(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_product, split_halves):
+def test_log_likelihood(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_product, split_mode):
     num_features = 64
     module = make_rat_spn(
         leaf_cls=leaf_cls,
@@ -95,7 +96,7 @@ def test_log_likelihood(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes,
         n_root_nodes=root_nodes,
         num_features=num_features,
         outer_product=outer_product,
-        split_halves=split_halves,
+        split_mode=split_mode,
     )
     assert len(module.scope) == num_features
     data = make_data(cls=leaf_cls, out_features=num_features, n_samples=10)
@@ -115,9 +116,9 @@ def test_log_likelihood(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes,
 
 
 @pytest.mark.parametrize(
-    "leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_product, split_halves ", params
+    "leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_product, split_mode ", params
 )
-def test_sample(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_product, split_halves):
+def test_sample(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_product, split_mode):
     n_samples = 100
     num_features = 64
     module = make_rat_spn(
@@ -129,7 +130,7 @@ def test_sample(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_p
         n_root_nodes=root_nodes,
         num_features=num_features,
         outer_product=outer_product,
-        split_halves=split_halves,
+        split_mode=split_mode,
     )
     for i in range(module.out_shape.channels):
         data = torch.full((n_samples, num_features), torch.nan)
@@ -146,10 +147,10 @@ def test_sample(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_p
 
 
 @pytest.mark.parametrize(
-    "region_nodes, leaves, num_reps, root_nodes, outer_product, split_halves ",
-    list(product(n_region_nodes, num_leaves, num_repetitions, n_root_nodes, outer_product, split_halves)),
+    "region_nodes, leaves, num_reps, root_nodes, outer_product, split_mode ",
+    list(product(n_region_nodes, num_leaves, num_repetitions, n_root_nodes, outer_product, split_mode)),
 )
-def test_multidistribution_input(region_nodes, leaves, num_reps, root_nodes, outer_product, split_halves):
+def test_multidistribution_input(region_nodes, leaves, num_reps, root_nodes, outer_product, split_mode):
     out_features_1 = 8
     out_features_2 = 10
     depth = 2
@@ -175,7 +176,7 @@ def test_multidistribution_input(region_nodes, leaves, num_reps, root_nodes, out
         num_repetitions=num_reps,
         depth=depth,
         outer_product=outer_product,
-        split_halves=split_halves,
+        split_mode=split_mode,
     )
 
     lls = model.log_likelihood(data)
@@ -208,7 +209,7 @@ def test_rat_spn_feature_to_scope():
         num_repetitions=1,
         depth=1,
         outer_product=False,
-        split_halves=True,
+        split_mode=SplitMode.consecutive(),
     )
 
     # Get feature_to_scope from both RatSPN and root_node
@@ -239,7 +240,7 @@ def test_rat_spn_feature_to_scope_single_root_node():
         num_repetitions=1,
         depth=1,
         outer_product=False,
-        split_halves=False,
+        split_mode=SplitMode.interleaved(),
     )
 
     feature_scopes = model.feature_to_scope
@@ -269,7 +270,7 @@ def test_rat_spn_feature_to_scope_multiple_repetitions():
             num_repetitions=num_reps,
             depth=1,
             outer_product=False,
-            split_halves=True,
+            split_mode=SplitMode.consecutive(),
         )
 
         feature_scopes = model.feature_to_scope
@@ -285,7 +286,7 @@ def test_rat_spn_feature_to_scope_split_variants():
     num_features = 64
     leaf_cls = Normal
 
-    for use_split_halves in [True, False]:
+    for split_mode_val in [None, SplitMode.consecutive(), SplitMode.interleaved()]:
         leaf_layer = make_leaf(cls=leaf_cls, out_channels=3, out_features=num_features, num_repetitions=1)
 
         model = RatSPN(
@@ -295,7 +296,7 @@ def test_rat_spn_feature_to_scope_split_variants():
             num_repetitions=1,
             depth=1,
             outer_product=False,
-            split_halves=use_split_halves,
+            split_mode=split_mode_val,
         )
 
         feature_scopes = model.feature_to_scope

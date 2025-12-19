@@ -7,7 +7,7 @@ import pytest
 import torch
 
 from spflow.meta import Scope
-from spflow.modules.ops import SplitAlternate, SplitHalves
+from spflow.modules.ops import SplitInterleaved, SplitConsecutive
 from spflow.modules.products import ElementwiseProduct, OuterProduct
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
@@ -29,12 +29,12 @@ def test_split_operations_log_likelihood_consistency(device):
     leaf2 = make_normal_leaf(scope, mean=mean, std=std).to(device)
 
     # Create splits
-    split_halves = SplitHalves(inputs=leaf1, num_splits=2, dim=1).to(device)
-    split_alternate = SplitAlternate(inputs=leaf2, num_splits=2, dim=1).to(device)
+    split_consecutive = SplitConsecutive(inputs=leaf1, num_splits=2, dim=1).to(device)
+    split_interleaved = SplitInterleaved(inputs=leaf2, num_splits=2, dim=1).to(device)
 
     # Both should work with products
-    prod1 = ElementwiseProduct(inputs=split_halves).to(device)
-    prod2 = ElementwiseProduct(inputs=split_alternate).to(device)
+    prod1 = ElementwiseProduct(inputs=split_consecutive).to(device)
+    prod2 = ElementwiseProduct(inputs=split_interleaved).to(device)
 
     # Generate test data
     data = make_normal_data(out_features=num_features).to(device)
@@ -53,7 +53,7 @@ def test_split_operations_sampling(device):
     num_features = 8
     scope = Scope(list(range(0, num_features)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=2).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1).to(device)
 
     n_samples = 50
     data = torch.full((n_samples, num_features), torch.nan).to(device)
@@ -77,7 +77,7 @@ def test_split_operations_gradients(device):
     num_features = 6
     scope = Scope(list(range(0, num_features)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1).to(device)
 
     # Create product to get scalar output
     prod = ElementwiseProduct(inputs=split).to(device)
@@ -102,7 +102,7 @@ def test_split_operations_batched(device):
     num_features = 6
     scope = Scope(list(range(0, num_features)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1).to(device)
-    split = SplitAlternate(inputs=leaf, num_splits=3, dim=1).to(device)
+    split = SplitInterleaved(inputs=leaf, num_splits=3, dim=1).to(device)
 
     # Different batch sizes
     batch_sizes = [1, 10, 50]
@@ -141,7 +141,7 @@ def test_split_with_outer_product(device):
     num_features = 6
     scope = Scope(list(range(0, num_features)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1).to(device)
 
     # Use with outer product
     outer_prod = OuterProduct(inputs=split).to(device)
@@ -165,7 +165,7 @@ def test_split_alternating_pattern_verification(device):
     std = torch.ones(num_features, 1, 1) * 0.1
 
     leaf = make_normal_leaf(scope, mean=mean, std=std).to(device)
-    split = SplitAlternate(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1).to(device)
 
     # Get log likelihoods
     data = make_normal_data(out_features=num_features).to(device)
@@ -177,7 +177,7 @@ def test_split_alternating_pattern_verification(device):
     assert lls[1].shape[1] == 4
 
 
-def test_split_halves_pattern_verification(device):
+def test_split_consecutive_pattern_verification(device):
     """Verify halves split pattern is correct."""
     num_features = 8
     scope = Scope(list(range(0, num_features)))
@@ -188,7 +188,7 @@ def test_split_halves_pattern_verification(device):
     std = torch.ones(num_features, 1, 1) * 0.1
 
     leaf = make_normal_leaf(scope, mean=mean, std=std).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1).to(device)
 
     # Get log likelihoods
     data = make_normal_data(out_features=num_features).to(device)
@@ -200,7 +200,7 @@ def test_split_halves_pattern_verification(device):
     assert lls[1].shape[1] == 4
 
 
-@pytest.mark.parametrize("split_type", [SplitHalves, SplitAlternate])
+@pytest.mark.parametrize("split_type", [SplitConsecutive, SplitInterleaved])
 def test_split_sampling_mpe_mode(split_type, device):
     """Test sampling in MPE (Most Probable Explanation) mode."""
     num_features = 6
@@ -228,7 +228,7 @@ def test_split_consistent_results(device):
     num_features = 6
     scope = Scope(list(range(0, num_features)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1).to(device)
 
     data = make_normal_data(out_features=num_features).to(device)
 
@@ -249,12 +249,12 @@ def test_split_different_num_splits(num_splits, device):
     leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=1).to(device)
 
     # Test both split types
-    split_halves = SplitHalves(inputs=leaf, num_splits=num_splits, dim=1).to(device)
-    split_alt = SplitAlternate(inputs=leaf, num_splits=num_splits, dim=1).to(device)
+    split_consecutive = SplitConsecutive(inputs=leaf, num_splits=num_splits, dim=1).to(device)
+    split_alt = SplitInterleaved(inputs=leaf, num_splits=num_splits, dim=1).to(device)
 
     data = make_normal_data(out_features=num_features).to(device)
 
-    lls_halves = split_halves.log_likelihood(data)
+    lls_halves = split_consecutive.log_likelihood(data)
     lls_alt = split_alt.log_likelihood(data)
 
     assert len(lls_halves) == num_splits
@@ -265,7 +265,7 @@ def test_split_scope_inheritance(device):
     """Test scope is correctly inherited from input."""
     scope = Scope(list(range(0, 8)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1).to(device)
 
     # Split should inherit scope from leaf
     assert split.scope == leaf.scope
@@ -282,7 +282,7 @@ def test_split_with_partial_mask_sampling(device):
     num_features = 6
     scope = Scope(list(range(0, num_features)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1).to(device)
 
     n_samples = 10
     data = torch.full((n_samples, num_features), torch.nan).to(device)

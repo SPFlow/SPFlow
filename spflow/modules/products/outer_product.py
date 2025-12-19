@@ -9,9 +9,9 @@ from torch import Tensor
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
-from spflow.modules.ops.split import Split
-from spflow.modules.ops.split_alternate import SplitAlternate
-from spflow.modules.ops.split_halves import SplitHalves
+from spflow.modules.ops.split import Split, SplitMode
+from spflow.modules.ops.split_consecutive import SplitConsecutive
+from spflow.modules.ops.split_interleaved import SplitInterleaved
 from spflow.modules.products.base_product import BaseProduct
 from spflow.utils.cache import Cache, cached
 
@@ -30,13 +30,24 @@ class OuterProduct(BaseProduct):
         self,
         inputs: list[Module],
         num_splits: int | None = 2,
+        split_mode: SplitMode | None = None,
     ) -> None:
         """Initialize outer product.
 
         Args:
             inputs: Modules with pairwise disjoint scopes.
             num_splits: Number of splits for input operations.
+            split_mode: Optional split configuration for single input mode.
+                Use SplitMode.consecutive() or SplitMode.interleaved().
+                Defaults to SplitMode.consecutive(num_splits=num_splits) if not specified.
         """
+        # Handle single non-Split input: wrap with split_mode
+        if isinstance(inputs, Module) and not isinstance(inputs, (list, tuple, Split)):
+            if split_mode is not None:
+                inputs = split_mode.create(inputs)
+            else:
+                inputs = SplitConsecutive(inputs, num_splits=num_splits)
+
         super().__init__(inputs=inputs)
         self.check_shapes()
 
@@ -170,9 +181,9 @@ class OuterProduct(BaseProduct):
             NotImplementedError: If split type is not supported.
         """
         if self.input_is_split:
-            if isinstance(self.inputs[0], SplitHalves):
+            if isinstance(self.inputs[0], SplitConsecutive):
                 return self.unraveled_channel_indices[output_ids].permute(0, 2, 1).flatten(1, 2).unsqueeze(-1)
-            elif isinstance(self.inputs[0], SplitAlternate):
+            elif isinstance(self.inputs[0], SplitInterleaved):
                 return (
                     self.unraveled_channel_indices[output_ids]
                     .view(-1, self.inputs[0].out_shape.features)
@@ -197,11 +208,11 @@ class OuterProduct(BaseProduct):
         """
         num_inputs = len(self.inputs) if not self.input_is_split else self.num_splits
         if self.input_is_split:
-            if isinstance(self.inputs[0], SplitHalves):
+            if isinstance(self.inputs[0], SplitConsecutive):
                 return (
                     mask.unsqueeze(-1).repeat(1, 1, num_inputs).permute(0, 2, 1).flatten(1, 2).unsqueeze(-1)
                 )
-            elif isinstance(self.inputs[0], SplitAlternate):
+            elif isinstance(self.inputs[0], SplitInterleaved):
                 return (
                     mask.unsqueeze(-1)
                     .repeat(1, 1, num_inputs)

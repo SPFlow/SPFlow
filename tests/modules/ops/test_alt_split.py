@@ -5,8 +5,8 @@ import pytest
 import torch
 
 from spflow.meta import Scope
-from spflow.modules.ops import SplitAlternate
-from spflow.modules.ops import SplitHalves
+from spflow.modules.ops import SplitInterleaved
+from spflow.modules.ops import SplitConsecutive
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.products import OuterProduct
 from spflow.utils.sampling_context import SamplingContext
@@ -15,7 +15,7 @@ from tests.utils.leaves import make_normal_leaf, make_normal_data
 out_channels_values = [1, 6]
 features_values_multiplier = [1, 6]
 num_splits = [2, 3]
-split_type = [SplitHalves, SplitAlternate]
+split_type = [SplitConsecutive, SplitInterleaved]
 params = list(product(out_channels_values, features_values_multiplier, num_splits, split_type))
 
 
@@ -46,7 +46,7 @@ def test_split_result(device, cls, out_channels: int, out_features: int, num_rep
     leaf = make_normal_leaf(scope=scope, mean=mean, std=std)
     leaf_half_1 = make_normal_leaf(scope=scope_1, mean=mean_1, std=std_1)
     leaf_half_2 = make_normal_leaf(scope=scope_2, mean=mean_2, std=std_2)
-    split = SplitAlternate(inputs=leaf, num_splits=2, dim=1)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1)
     spn1 = ElementwiseProduct(inputs=split).to(device)
     spn2 = ElementwiseProduct(inputs=[leaf_half_1, leaf_half_2]).to(device)
     assert spn1.out_shape.channels == spn2.out_shape.channels
@@ -61,10 +61,10 @@ def test_split_result(device, cls, out_channels: int, out_features: int, num_rep
 
 
 def test_split_alternate_extra_repr():
-    """Test string representation of SplitAlternate."""
+    """Test string representation of SplitInterleaved."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitAlternate(inputs=leaf, num_splits=2, dim=1)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1)
 
     repr_str = split.extra_repr()
     assert isinstance(repr_str, str)
@@ -75,7 +75,7 @@ def test_split_alternate_feature_mapping():
     """Test feature_to_scope mapping delegates to input."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitAlternate(inputs=leaf, num_splits=2, dim=1)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1)
 
     # Split operations delegate to input's feature_to_scope
     feature_scopes = split.feature_to_scope
@@ -96,7 +96,7 @@ def test_split_alternate_num_splits_one(device):
     """Test with num_splits=1 (edge case - all features in one group)."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1).to(device)
-    split = SplitAlternate(inputs=leaf, num_splits=1, dim=1).to(device)
+    split = SplitInterleaved(inputs=leaf, num_splits=1, dim=1).to(device)
 
     data = make_normal_data(out_features=6).to(device)
     lls = split.log_likelihood(data)
@@ -109,7 +109,7 @@ def test_split_alternate_num_splits_two(device):
     """Test optimized path for num_splits=2."""
     scope = Scope(list(range(0, 8)))
     leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=1).to(device)
-    split = SplitAlternate(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1).to(device)
 
     data = make_normal_data(out_features=8).to(device)
     lls = split.log_likelihood(data)
@@ -125,7 +125,7 @@ def test_split_alternate_num_splits_three(device):
     """Test optimized path for num_splits=3."""
     scope = Scope(list(range(0, 9)))
     leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=1).to(device)
-    split = SplitAlternate(inputs=leaf, num_splits=3, dim=1).to(device)
+    split = SplitInterleaved(inputs=leaf, num_splits=3, dim=1).to(device)
 
     data = make_normal_data(out_features=9).to(device)
     lls = split.log_likelihood(data)
@@ -139,7 +139,7 @@ def test_split_alternate_num_splits_four(device):
     """Test general path for num_splits=4 (uses split_masks)."""
     scope = Scope(list(range(0, 12)))
     leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=1).to(device)
-    split = SplitAlternate(inputs=leaf, num_splits=4, dim=1).to(device)
+    split = SplitInterleaved(inputs=leaf, num_splits=4, dim=1).to(device)
 
     data = make_normal_data(out_features=12).to(device)
     lls = split.log_likelihood(data)
@@ -153,7 +153,7 @@ def test_split_alternate_consistency(device):
     """Test output shapes and values are consistent."""
     scope = Scope(list(range(0, 10)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=2).to(device)
-    split = SplitAlternate(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1).to(device)
 
     data = make_normal_data(out_features=10).to(device)
     lls1 = split.log_likelihood(data)
@@ -169,7 +169,7 @@ def test_split_alternate_sampling(device):
     """Test sampling works correctly with alternating splits."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=2).to(device)
-    split = SplitAlternate(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1).to(device)
 
     n_samples = 20
     data = torch.full((n_samples, 6), torch.nan).to(device)
@@ -190,7 +190,7 @@ def test_split_alternate_uneven_features(num_features, device):
     """Test alternating split with features that don't divide evenly."""
     scope = Scope(list(range(0, num_features)))
     leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=1).to(device)
-    split = SplitAlternate(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1).to(device)
 
     data = make_normal_data(out_features=num_features).to(device)
     lls = split.log_likelihood(data)
@@ -207,7 +207,7 @@ def test_split_alternate_masks_correctness(device):
     """Test that split_masks are constructed correctly."""
     scope = Scope(list(range(0, 8)))
     leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=1).to(device)
-    split = SplitAlternate(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1).to(device)
 
     # Check masks
     assert len(split.split_masks) == 2

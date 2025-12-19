@@ -18,8 +18,9 @@ from spflow.interfaces.classifier import Classifier
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.leaves.leaf import LeafModule
-from spflow.modules.ops.split_alternate import SplitAlternate
-from spflow.modules.ops.split_halves import SplitHalves
+from spflow.modules.ops.split import Split, SplitMode
+from spflow.modules.ops.split_consecutive import SplitConsecutive
+from spflow.modules.ops.split_interleaved import SplitInterleaved
 from spflow.modules.products.elementwise_product import ElementwiseProduct
 from spflow.modules.products.outer_product import OuterProduct
 from spflow.modules.rat.factorize import Factorize
@@ -59,7 +60,7 @@ class RatSPN(Module, Classifier):
         num_repetitions: int,
         depth: int,
         outer_product: bool | None = False,
-        split_halves: bool | None = True,
+        split_mode: SplitMode | None = None,
         num_splits: int | None = 2,
     ) -> None:
         """Initialize RAT-SPN with specified architecture parameters.
@@ -75,8 +76,9 @@ class RatSPN(Module, Classifier):
             depth (int): Number of partition/region layers.
             outer_product (bool | None, optional): Use outer product instead of
                 elementwise product for partitions. Defaults to False.
-            split_halves (bool | None, optional): Use SplitHalves instead of
-                SplitAlternate for splitting. Defaults to True.
+            split_mode (SplitMode | None, optional): Split configuration.
+                Use SplitMode.consecutive() or SplitMode.interleaved().
+                Defaults to SplitMode.consecutive(num_splits) if not specified.
             num_splits (int | None, optional): Number of splits in each partition.
                 Must be at least 2. Defaults to 2.
 
@@ -92,7 +94,7 @@ class RatSPN(Module, Classifier):
         self.num_repetitions = num_repetitions
         self.outer_product = outer_product
         self.num_splits = num_splits
-        self.split_halves = split_halves
+        self.split_mode = split_mode if split_mode is not None else SplitMode.consecutive(num_splits)
         self.scope = Scope.join_all([leaf.scope for leaf in leaf_modules])
 
         if n_root_nodes < 1:
@@ -136,16 +138,11 @@ class RatSPN(Module, Classifier):
         )
         depth = self.depth
         root = None
-        if self.split_halves:
-            Split = SplitHalves
-        else:
-            Split = SplitAlternate
 
         for i in range(depth):
             # Create the lowest layer with the factorized leaves modules as input
-            # if i == 0 and depth > 1:
             if i == 0:
-                out_prod = product_layer(inputs=Split(inputs=fac_layer, dim=1, num_splits=self.num_splits))
+                out_prod = product_layer(inputs=self.split_mode.create(fac_layer))
                 if depth == 1:
                     sum_layer = Sum(
                         inputs=out_prod, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions
@@ -158,17 +155,16 @@ class RatSPN(Module, Classifier):
                     )
                 root = sum_layer
 
-            # Special case for the last intermediate layer: sum layer has to have the same number of output channels
-            # as the root node
+            # Special case for the last intermediate layer
             elif i == depth - 1:
-                out_prod = product_layer(Split(inputs=root, dim=1, num_splits=self.num_splits))
+                out_prod = product_layer(self.split_mode.create(root))
                 sum_layer = Sum(
                     inputs=out_prod, out_channels=self.n_root_nodes, num_repetitions=self.num_repetitions
                 )
                 root = sum_layer
             # Create the intermediate layers
             else:
-                out_prod = product_layer(Split(inputs=root, dim=1, num_splits=self.num_splits))
+                out_prod = product_layer(self.split_mode.create(root))
                 sum_layer = Sum(
                     inputs=out_prod, out_channels=self.n_region_nodes, num_repetitions=self.num_repetitions
                 )
