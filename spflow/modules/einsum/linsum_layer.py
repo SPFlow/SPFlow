@@ -16,7 +16,8 @@ from torch import Tensor, nn
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
-from spflow.modules.ops.split_halves import SplitHalves
+from spflow.modules.ops.split import Split, SplitMode
+from spflow.modules.ops.split_consecutive import SplitConsecutive
 from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import proj_convex_to_real
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
@@ -42,6 +43,7 @@ class LinsumLayer(Module):
         out_channels: int,
         num_repetitions: int | None = None,
         weights: Tensor | None = None,
+        split_mode: SplitMode | None = None,
     ) -> None:
         """Initialize LinsumLayer.
 
@@ -53,6 +55,9 @@ class LinsumLayer(Module):
             num_repetitions: Number of repetitions. If None, inferred from inputs.
             weights: Optional initial weights tensor. If provided, must have shape
                 (out_features, out_channels, num_repetitions, in_channels).
+            split_mode: Optional split configuration for single input mode.
+                Use SplitMode.consecutive() or SplitMode.interleaved().
+                Defaults to SplitMode.consecutive(num_splits=2) if not specified.
 
         Raises:
             ValueError: If inputs invalid, out_channels < 1, or weight shape mismatch.
@@ -108,8 +113,14 @@ class LinsumLayer(Module):
                     f"LinsumLayer requires even number of input features for splitting, "
                     f"got {inputs.out_shape.features}."
                 )
-            # Wrap in SplitHalves for left/right access
-            self.inputs = SplitHalves(inputs)
+            # Use Split directly if already a split module, otherwise create from split_mode
+            if isinstance(inputs, Split):
+                self.inputs = inputs
+            elif split_mode is not None:
+                self.inputs = split_mode.create(inputs)
+            else:
+                # Default: consecutive split with 2 parts
+                self.inputs = SplitConsecutive(inputs)
             in_channels = inputs.out_shape.channels
             in_features = inputs.out_shape.features // 2
             if num_repetitions is None:
@@ -225,7 +236,7 @@ class LinsumLayer(Module):
             left_ll = self.inputs[0].log_likelihood(data, cache=cache)
             right_ll = self.inputs[1].log_likelihood(data, cache=cache)
         else:
-            # SplitHalves returns list of [left, right]
+            # SplitConsecutive returns list of [left, right]
             lls = self.inputs.log_likelihood(data, cache=cache)
             left_ll = lls[0]
             right_ll = lls[1]
@@ -387,24 +398,14 @@ class LinsumLayer(Module):
             right_ctx.channel_index = indices
             self.inputs[1].sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=right_ctx)
         else:
-            # Single input with SplitHalves - expand indices for both halves
-            num_features_out = self.out_shape.features
-            full_indices = torch.zeros(
-                batch_size, num_features_out * 2, dtype=torch.long, device=data.device
-            )
-            full_mask = torch.zeros(
-                batch_size, num_features_out * 2, dtype=torch.bool, device=data.device
-            )
-
-            # Interleave left and right indices (same index for linear combination)
-            full_indices[:, 0::2] = indices
-            full_indices[:, 1::2] = indices
-            full_mask[:, 0::2] = sampling_ctx.mask
-            full_mask[:, 1::2] = sampling_ctx.mask
+            # Single input with Split module - use generic merge_split_indices
+            # For LinsumLayer, both left and right use the same indices (linear combination)
+            full_indices = self.inputs.merge_split_indices(indices, indices)
+            full_mask = sampling_ctx.mask.repeat(1, 2)
 
             child_ctx = sampling_ctx.copy()
             child_ctx.update(channel_index=full_indices, mask=full_mask)
-            self.inputs.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=child_ctx)
+            self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=child_ctx)
 
         return data
 
