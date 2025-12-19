@@ -9,7 +9,7 @@ from spflow.exceptions import ScopeError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
-from spflow.modules.ops.split_halves import Split
+from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 

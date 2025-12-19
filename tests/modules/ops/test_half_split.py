@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from spflow.meta import Scope
-from spflow.modules.ops import SplitHalves
+from spflow.modules.ops import SplitConsecutive
 from spflow.modules.products import ElementwiseProduct, OuterProduct
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
@@ -37,7 +37,7 @@ def test_split_result(device, cls, out_channels: int, out_features: int, num_rep
     leaf_half_2 = make_normal_leaf(
         scope=scope_2, mean=mean[num_features // 2 :], std=std[num_features // 2 :]
     ).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1).to(device)
     spn1 = cls(inputs=split).to(device)
     spn2 = cls(inputs=[leaf_half_1, leaf_half_2]).to(device)
     assert spn1.out_shape.channels == spn2.out_shape.channels
@@ -69,22 +69,22 @@ def test_split_result(device, cls, out_channels: int, out_features: int, num_rep
 # New tests for Phase 3 coverage improvement
 
 
-def test_split_halves_extra_repr():
-    """Test string representation of SplitHalves."""
+def test_split_mode_extra_repr():
+    """Test string representation of SplitConsecutive."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=2)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
     repr_str = split.extra_repr()
     assert isinstance(repr_str, str)
     assert "dim=1" in repr_str
 
 
-def test_split_halves_feature_to_scope():
+def test_split_mode_feature_to_scope():
     """Test feature_to_scope property delegates to input."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
     # Split operations delegate to input's feature_to_scope
     feature_scopes = split.feature_to_scope
@@ -101,11 +101,11 @@ def test_split_halves_feature_to_scope():
 
 
 @pytest.mark.parametrize("num_features,num_splits", [(6, 2), (9, 3), (12, 3)])
-def test_split_halves_uneven_features(num_features, num_splits):
+def test_split_mode_uneven_features(num_features, num_splits):
     """Test with features that divide evenly (testing behavior is correct)."""
     scope = Scope(list(range(0, num_features)))
     leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=1)
-    split = SplitHalves(inputs=leaf, num_splits=num_splits, dim=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=num_splits, dim=1)
 
     # Test that splitting still works
     data = make_normal_data(out_features=num_features)
@@ -120,11 +120,11 @@ def test_split_halves_uneven_features(num_features, num_splits):
         assert ll.shape[0] == data.shape[0]  # batch size
 
 
-def test_split_halves_single_feature(device):
+def test_split_mode_single_feature(device):
     """Test with single feature (edge case)."""
     scope = Scope([0])
     leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=1).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=1, dim=1).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=1, dim=1).to(device)
 
     data = make_normal_data(out_features=1).to(device)
     lls = split.log_likelihood(data)
@@ -133,12 +133,12 @@ def test_split_halves_single_feature(device):
     assert lls[0].shape == (data.shape[0], 1, 2, 1)
 
 
-def test_split_halves_many_features(device):
+def test_split_mode_many_features(device):
     """Test with many features."""
     num_features = 20
     scope = Scope(list(range(0, num_features)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=2).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=4, dim=1).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=4, dim=1).to(device)
 
     data = make_normal_data(out_features=num_features).to(device)
     lls = split.log_likelihood(data)
@@ -149,11 +149,11 @@ def test_split_halves_many_features(device):
         assert ll.shape[1] == num_features // 4
 
 
-def test_split_halves_log_likelihood_consistency(device):
+def test_split_mode_log_likelihood_consistency(device):
     """Test log_likelihood produces consistent results."""
     scope = Scope(list(range(0, 10)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1).to(device)
 
     data = make_normal_data(out_features=10).to(device)
     lls1 = split.log_likelihood(data)
@@ -165,11 +165,11 @@ def test_split_halves_log_likelihood_consistency(device):
         assert torch.allclose(ll1, ll2)
 
 
-def test_split_halves_sampling_consistency(device):
+def test_split_mode_sampling_consistency(device):
     """Test sampling produces valid samples."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=2).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=1).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1).to(device)
 
     n_samples = 20
     data = torch.full((n_samples, 6), torch.nan).to(device)
@@ -186,11 +186,11 @@ def test_split_halves_sampling_consistency(device):
 
 
 @pytest.mark.parametrize("dim", [1, 2])
-def test_split_halves_different_dims(device, dim):
+def test_split_mode_different_dims(device, dim):
     """Test splitting along different dimensions."""
     scope = Scope(list(range(0, 6)))
     leaf = make_normal_leaf(scope, out_channels=4, num_repetitions=1).to(device)
-    split = SplitHalves(inputs=leaf, num_splits=2, dim=dim).to(device)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=dim).to(device)
 
     data = make_normal_data(out_features=6).to(device)
     lls = split.log_likelihood(data)

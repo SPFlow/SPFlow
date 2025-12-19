@@ -22,6 +22,127 @@ from spflow.utils.sampling_context import (
 )
 
 
+class SplitMode:
+    """Configuration for split operations.
+
+    Factory class for creating split configurations. Use the class methods
+    to create split configurations that can be passed to modules.
+
+    Example:
+        >>> layer = EinsumLayer(inputs=leaf, split_mode=SplitMode.interleaved(num_splits=3))
+        >>> layer = LinsumLayer(inputs=leaf, split_mode=SplitMode.consecutive(num_splits=2))
+        >>> layer = LinsumLayer(inputs=leaf, split_mode=SplitMode.by_index(indices=[[0,1], [2,3]]))
+    """
+
+    def __init__(self, split_type: str, num_splits: int = 2, indices: list[list[int]] | None = None):
+        """Initialize split mode configuration.
+
+        Args:
+            split_type: Type of split ('consecutive', 'interleaved', or 'by_index').
+            num_splits: Number of parts to split into.
+            indices: For 'by_index' type, the feature indices for each split.
+        """
+        if split_type not in ('consecutive', 'interleaved', 'by_index'):
+            raise ValueError(f"split_type must be 'consecutive', 'interleaved', or 'by_index', got '{split_type}'")
+        if split_type != 'by_index' and num_splits < 2:
+            raise ValueError(f"num_splits must be at least 2, got {num_splits}")
+        if split_type == 'by_index' and indices is None:
+            raise ValueError("indices must be provided for 'by_index' split type")
+
+        self._split_type = split_type
+        self._num_splits = num_splits
+        self._indices = indices
+
+    @property
+    def num_splits(self) -> int:
+        """Number of splits."""
+        return self._num_splits
+
+    @property
+    def split_type(self) -> str:
+        """Type of split ('consecutive', 'interleaved', or 'by_index')."""
+        return self._split_type
+
+    @property
+    def indices(self) -> list[list[int]] | None:
+        """Feature indices for 'by_index' split type."""
+        return self._indices
+
+    @classmethod
+    def consecutive(cls, num_splits: int = 2) -> "SplitMode":
+        """Create a consecutive split configuration.
+
+        Splits features into consecutive chunks: [0,1,2,3] -> [0,1], [2,3].
+
+        Args:
+            num_splits: Number of parts to split into.
+
+        Returns:
+            SplitMode configuration for consecutive splitting.
+        """
+        return cls('consecutive', num_splits)
+
+    @classmethod
+    def interleaved(cls, num_splits: int = 2) -> "SplitMode":
+        """Create an interleaved split configuration.
+
+        Splits features using modulo: [0,1,2,3] -> [0,2], [1,3].
+
+        Args:
+            num_splits: Number of parts to split into.
+
+        Returns:
+            SplitMode configuration for interleaved splitting.
+        """
+        return cls('interleaved', num_splits)
+
+    @classmethod
+    def by_index(cls, indices: list[list[int]]) -> "SplitMode":
+        """Create a split configuration with explicit feature indices.
+
+        Splits features according to specified indices. Each inner list
+        contains the feature indices for that split.
+
+        Example:
+            >>> SplitMode.by_index([[0, 1, 4], [2, 3, 5, 6, 7]])
+            # Creates 2 splits: features [0,1,4] and features [2,3,5,6,7]
+
+        Args:
+            indices: List of lists specifying feature indices for each split.
+                All features must be covered exactly once.
+
+        Returns:
+            SplitMode configuration for index-based splitting.
+        """
+        return cls('by_index', num_splits=len(indices), indices=indices)
+
+    def create(self, inputs: Module) -> "Split":
+        """Create a Split module with this configuration.
+
+        Args:
+            inputs: Input module to split.
+
+        Returns:
+            Split module configured according to this SplitMode.
+        """
+        # Import here to avoid circular imports
+        from spflow.modules.ops.split_consecutive import SplitConsecutive
+        from spflow.modules.ops.split_interleaved import SplitInterleaved
+        from spflow.modules.ops.split_by_index import SplitByIndex
+
+        if self._split_type == 'consecutive':
+            return SplitConsecutive(inputs, num_splits=self._num_splits)
+        elif self._split_type == 'interleaved':
+            return SplitInterleaved(inputs, num_splits=self._num_splits)
+        else:  # by_index
+            return SplitByIndex(inputs, indices=self._indices)
+
+    def __repr__(self) -> str:
+        if self._split_type == 'by_index':
+            return f"SplitMode.by_index(indices={self._indices})"
+        return f"SplitMode.{self._split_type}(num_splits={self._num_splits})"
+
+
 class Split(Module, ABC):
     """Abstract base class for tensor splitting operations.
 
@@ -89,6 +210,22 @@ class Split(Module, ABC):
     @property
     @abstractmethod
     def feature_to_scope(self) -> np.ndarray:
+        pass
+
+    @abstractmethod
+    def merge_split_indices(self, *split_indices: Tensor) -> Tensor:
+        """Merge per-split channel indices back to original feature layout.
+
+        This method takes channel indices for each split and combines them into
+        indices matching the original (unsplit) feature layout. Used by parent
+        modules (like EinsumLayer) during sampling.
+
+        Args:
+            *split_indices: Channel index tensors for each split, shape (batch, features_per_split).
+
+        Returns:
+            Merged indices matching the input module's feature layout, shape (batch, total_features).
+        """
         pass
 
     def sample(

@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 from spflow import log_likelihood, sample
 from spflow.meta.data import Scope
 from spflow.modules.leaves import Normal
+from spflow.modules.ops import SplitMode
 from spflow.modules.rat.rat_spn import RatSPN
 
 matplotlib.use('Agg')
@@ -150,7 +151,7 @@ def make_spn(device) -> RatSPN:
         num_repetitions=num_repetitions,
         depth=depth,
         outer_product=True,
-        split_halves=False,
+        split_mode=SplitMode.interleaved(),
     )
 
     model = model.to(device)
@@ -260,7 +261,7 @@ Spn Config:
     n_root_nodes = 2
     num_features = 28 ** 2
     outer_product = True
-    split_halves = True
+    split_mode = SplitMode.consecutive()
 
 Number of pytorch parameters:  1482250
 Number of training data points: 12665

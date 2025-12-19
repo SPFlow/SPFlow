@@ -7,6 +7,8 @@ import torch
 
 from spflow.meta import Scope
 from spflow.modules.einsum import EinsumLayer
+from spflow.modules.ops.split import Split
+from spflow.modules.ops.split_consecutive import SplitConsecutive
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data, DummyLeaf, make_leaf
@@ -413,3 +415,88 @@ class TestEinsumLayerExtraRepr:
 
         assert "weights=" in repr_str
         assert str(module.weights_shape) in repr_str
+
+
+class TestEinsumLayerSplitOptimization:
+    """Test that EinsumLayer reuses Split modules when passed directly."""
+
+    def test_split_input_not_wrapped(self):
+        """Test that passing a Split input doesn't create a nested wrapper."""
+        from spflow.modules.ops.split import Split
+
+        # Create a leaf and wrap it in SplitConsecutive
+        leaf = make_normal_leaf(out_features=4, out_channels=2, num_repetitions=1)
+        split_mode = SplitConsecutive(leaf)
+
+        # Create EinsumLayer with the SplitConsecutive input
+        einsum = EinsumLayer(inputs=split_mode, out_channels=3)
+
+        # The inputs should be the same Split object, not a new wrapper
+        assert einsum.inputs is split_mode
+        assert isinstance(einsum.inputs, Split)
+        assert not isinstance(einsum.inputs.inputs, Split)
+
+    def test_split_input_produces_same_output(self):
+        """Test that using SplitConsecutive directly produces same output as wrapping."""
+        torch.manual_seed(42)
+        leaf = make_normal_leaf(out_features=4, out_channels=2, num_repetitions=1)
+        data = make_normal_data(out_features=4)
+
+        # Create two EinsumLayers: one with leaf (will wrap), one with SplitConsecutive
+        split_mode = SplitConsecutive(leaf)
+        einsum_wrapped = EinsumLayer(inputs=leaf, out_channels=3)
+        einsum_direct = EinsumLayer(inputs=split_mode, out_channels=3)
+
+        # Set same weights
+        einsum_direct.logits.data = einsum_wrapped.logits.data.clone()
+
+        # Check log-likelihood is the same
+        lls_wrapped = einsum_wrapped.log_likelihood(data)
+        lls_direct = einsum_direct.log_likelihood(data)
+
+        assert torch.allclose(lls_wrapped, lls_direct)
+
+    def test_split_sampling_works(self):
+        """Test that sampling works correctly with SplitConsecutive input."""
+        leaf = make_normal_leaf(out_features=4, out_channels=2, num_repetitions=1)
+        split_mode = SplitConsecutive(leaf)
+        einsum = EinsumLayer(inputs=split_mode, out_channels=3)
+
+        num_samples = 20
+        data = torch.full((num_samples, 4), torch.nan)
+        channel_index = torch.zeros((num_samples, 2), dtype=torch.long)
+        mask = torch.ones((num_samples, 2), dtype=torch.bool)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
+
+        samples = einsum.sample(data=data, sampling_ctx=sampling_ctx)
+
+        assert samples.shape == (num_samples, 4)
+        assert torch.isfinite(samples).all()
+
+    def test_split_alternate_input_works(self):
+        """Test that SplitInterleaved also works as input."""
+        from spflow.modules.ops.split_interleaved import SplitInterleaved
+
+        leaf = make_normal_leaf(out_features=4, out_channels=2, num_repetitions=1)
+        split_alt = SplitInterleaved(leaf)
+        einsum = EinsumLayer(inputs=split_alt, out_channels=3)
+
+        # The inputs should be the SplitInterleaved object
+        assert einsum.inputs is split_alt
+        assert isinstance(einsum.inputs, Split)
+
+        # Test log-likelihood
+        data = make_normal_data(out_features=4)
+        lls = einsum.log_likelihood(data)
+        assert torch.isfinite(lls).all()
+
+        # Test sampling
+        num_samples = 20
+        sample_data = torch.full((num_samples, 4), torch.nan)
+        channel_index = torch.zeros((num_samples, 2), dtype=torch.long)
+        mask = torch.ones((num_samples, 2), dtype=torch.bool)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
+
+        samples = einsum.sample(data=sample_data, sampling_ctx=sampling_ctx)
+        assert samples.shape == (num_samples, 4)
+        assert torch.isfinite(samples).all()

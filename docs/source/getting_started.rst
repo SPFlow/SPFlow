@@ -101,14 +101,14 @@ SPFlow also supports a more compact, layered approach to building circuits using
     from spflow.modules.products import OuterProduct
     from spflow.modules.sums import Sum
     from spflow.modules.leaves import Normal
-    from spflow.modules.ops import SplitHalves
+    from spflow.modules.ops import SplitConsecutive
     from spflow.utils.visualization import visualize
 
     # Create a single Normal layer covering both variables
     x_layered = Normal(scope=[0, 1], out_channels=2)
 
-    # Use SplitHalves to automatically partition outputs, then OuterProduct to combine
-    prod_layered = OuterProduct(SplitHalves(x_layered), num_splits=2)
+    # Use SplitConsecutive to automatically partition outputs, then OuterProduct to combine
+    prod_layered = OuterProduct(SplitConsecutive(x_layered), num_splits=2)
 
     # Create a sum node over the outer products
     pc_layered = Sum(prod_layered, weights=[0.3, 0.1, 0.2, 0.4])
