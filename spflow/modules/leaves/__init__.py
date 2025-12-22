@@ -15,6 +15,7 @@ from .exponential import Exponential
 from .gamma import Gamma
 from .geometric import Geometric
 from .hypergeometric import Hypergeometric
+from .laplace import Laplace
 from .log_normal import LogNormal
 from .negative_binomial import NegativeBinomial
 from .normal import Normal
