@@ -446,19 +446,112 @@ def _format_scope_string(scopes: list[int]) -> str:
     return ", ".join(result)
 
 
+def _build_vis_label(
+    module: Module,
+    show_shape: bool = True,
+    show_params: bool = False,
+    show_scope: bool = False,
+) -> str:
+    """Build a visualization label for a module showing shape, params, and scope.
+
+    All labels (Out, In, Scope, Params) are right-aligned to the same width
+    for consistent display with monospace font.
+
+    Order: Out, In, Scope, Params
+
+    Args:
+        module: The module to generate a label for.
+        show_shape: Whether to include shape info (Out/In with D, C, R values).
+        show_params: Whether to include parameter count.
+        show_scope: Whether to include scope information.
+
+    Returns:
+        A multi-line label string with properly aligned information.
+    """
+    # Collect all labels we'll display to calculate max width
+    all_labels = []
+
+    # Shape labels (Out first, then In)
+    shapes = []
+    shape_labels = []
+    if show_shape:
+        # Out shape first
+        shapes.append((module.out_shape.features, module.out_shape.channels, module.out_shape.repetitions))
+        shape_labels.append("Out")
+        all_labels.append("Out")
+        # In shape second (if available)
+        if module.in_shape is not None:
+            shapes.append((module.in_shape.features, module.in_shape.channels, module.in_shape.repetitions))
+            shape_labels.append("In")
+            all_labels.append("In")
+
+    # Check scope (before params in the new order)
+    scope_str = ""
+    if show_scope:
+        scope_str = _format_scope_string(sorted(module.scope.query))
+        all_labels.append("Scope")
+
+    # Check params (last in the new order)
+    param_count = 0
+    if show_params:
+        param_count = _count_parameters(module)
+        if param_count > 0:
+            all_labels.append("Params")
+
+    # Calculate max label width across all labels
+    max_label_width = max(len(label) for label in all_labels) if all_labels else 0
+
+    lines = []
+
+    # Shape information (Out/In)
+    if show_shape and shapes:
+        # Calculate max width for each parameter value across all shapes
+        max_d_width = max(len(str(s[0])) for s in shapes)
+        max_c_width = max(len(str(s[1])) for s in shapes)
+        max_r_width = max(len(str(s[2])) for s in shapes)
+
+        # Build aligned shape lines
+        for label, (d, c, r) in zip(shape_labels, shapes):
+            # Right-align the label
+            padded_label = label.rjust(max_label_width)
+            # Left-pad each parameter value to align with the widest
+            d_str = str(d).ljust(max_d_width)
+            c_str = str(c).ljust(max_c_width)
+            r_str = str(r).ljust(max_r_width)
+            lines.append(f"{padded_label}: D={d_str} C={c_str} R={r_str}")
+
+    # Scope information (before params)
+    if show_scope:
+        padded_label = "Scope".rjust(max_label_width)
+        lines.append(f"{padded_label}: {scope_str}")
+
+    # Parameter count (last)
+    if show_params and param_count > 0:
+        formatted_count = _format_param_count(param_count)
+        padded_label = "Params".rjust(max_label_width)
+        lines.append(f"{padded_label}: {formatted_count}")
+
+    # Check for extra visualization info from the module
+    extra_info = module._extra_vis_info()
+    if extra_info is not None:
+        lines.append(extra_info)
+
+    return "\n".join(lines)
+
+
 def _get_module_label(
     module: Module, show_scope: bool = False, show_shape: bool = False, show_params: bool = False
 ) -> str:
     """Generate a label for a module node.
 
-    Uses HTML labels with bold module names for better visibility.
-    Delegates shape label generation to the module's get_vis_label() method,
-    allowing modules to customize their visualization labels.
+    Uses HTML labels with bold module names and monospace font for
+    proper alignment of shape, params, and scope information.
+    Uses HTML table with left-aligned cells to preserve alignment.
 
     Args:
         module: The module to generate a label for.
         show_scope: Whether to include scope information.
-        show_shape: Whether to include shape information (delegates to module.get_vis_label()).
+        show_shape: Whether to include shape information.
         show_params: Whether to include parameter count.
 
     Returns:
@@ -467,30 +560,31 @@ def _get_module_label(
     # Get the class name
     class_name = module.__class__.__name__
 
-    # Start with bold module name using HTML label
-    label_parts = [f"<B>{class_name}</B>"]
+    # Build HTML table with left-aligned cells for proper alignment
+    # Using a table structure ensures the text is left-aligned within the node
+    rows = []
 
-    # Add shape information if requested (delegates to module)
-    if show_shape:
-        vis_label = module._get_vis_label()
-        # Convert newlines to HTML line breaks for graphviz
-        vis_label = vis_label.replace("\n", "<br/>")
-        label_parts.append(vis_label)
+    # Module name row (bold, centered as header)
+    rows.append(f'<TR><TD ALIGN="CENTER"><font face="Courier"><B>{class_name}</B></font></TD></TR>')
 
-    # Add parameter count if requested (only if > 0 to avoid clutter for modules like Product)
-    if show_params:
-        param_count = _count_parameters(module)
-        if param_count > 0:
-            formatted_count = _format_param_count(param_count)
-            label_parts.append(f"Params: {formatted_count}")
+    # Build visualization label
+    if show_shape or show_params or show_scope:
+        vis_label = _build_vis_label(
+            module,
+            show_shape=show_shape,
+            show_params=show_params,
+            show_scope=show_scope,
+        )
+        if vis_label:
+            # Each line becomes a left-aligned table row
+            for line in vis_label.split("\n"):
+                rows.append(f'<TR><TD ALIGN="LEFT"><font face="Courier">{line}</font></TD></TR>')
 
-    # Add scope information if requested
-    if show_scope:
-        scope_str = _format_scope_string(sorted(module.scope.query))
-        label_parts.append(f"Scope: {scope_str}")
+    # Build table structure with no borders and minimal spacing
+    table = '<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0">' + "".join(rows) + "</TABLE>"
 
-    # Use <br/> for line breaks in HTML labels, and wrap entire label in angle brackets
-    return "<" + "<br/>".join(label_parts) + ">"
+    # Wrap in angle brackets for HTML label
+    return "<" + table + ">"
 
 
 def _get_module_color(module: Module) -> str:
