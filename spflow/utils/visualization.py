@@ -452,11 +452,13 @@ def _get_module_label(
     """Generate a label for a module node.
 
     Uses HTML labels with bold module names for better visibility.
+    Delegates shape label generation to the module's get_vis_label() method,
+    allowing modules to customize their visualization labels.
 
     Args:
         module: The module to generate a label for.
         show_scope: Whether to include scope information.
-        show_shape: Whether to include shape information (for Sum nodes: C-in and C-out, for others: F and C).
+        show_shape: Whether to include shape information (delegates to module.get_vis_label()).
         show_params: Whether to include parameter count.
 
     Returns:
@@ -468,46 +470,12 @@ def _get_module_label(
     # Start with bold module name using HTML label
     label_parts = [f"<B>{class_name}</B>"]
 
-    # Add shape information if requested
+    # Add shape information if requested (delegates to module)
     if show_shape:
-        # Specialized labels for different module types
-        if class_name == "Sum":
-            c_in = module.in_shape.channels
-            c_out = module.out_shape.channels
-            d = module.out_shape.features
-            label = f"D: {d}, C-in: {c_in}, C-out: {c_out}"
-            if hasattr(module, "num_repetitions"):
-                label += f", R: {module.num_repetitions}"
-            label_parts.append(label)
-        elif class_name == "ElementwiseSum":
-            c_per_in = module._in_channels_per_input
-            c_out = module._num_sums
-            d = module.out_shape.features
-            label = f"D: {d}, C-per-in: {c_per_in}, C-out: {c_out}"
-            if hasattr(module, "num_repetitions"):
-                label += f", R: {module.num_repetitions}"
-            label_parts.append(label)
-        elif class_name == "MixingLayer":
-            c_in = module._in_channels
-            c_out = module.out_shape.channels
-            label_parts.append(f"C-in: {c_in} (reps), C-out: {c_out}")
-        elif class_name == "Product":
-            d = module.out_shape.features
-            c = module.out_shape.channels
-            label_parts.append(f"D: {d}, C: {c}")
-        elif class_name == "ElementwiseProduct":
-            f = module.out_shape.features
-            c = module.out_shape.channels
-            label_parts.append(f"D: {f}, C: {c}")
-        elif class_name == "OuterProduct":
-            c_in = module._max_out_channels
-            c_out = module.out_shape.channels
-            label_parts.append(f"C-in: {c_in}, C-out: {c_out}")
-        else:
-            # For other modules, show out_features and out_channels
-            out_features = module.out_shape.features
-            out_channels = module.out_shape.channels
-            label_parts.append(f"D: {out_features}, C: {out_channels}")
+        vis_label = module._get_vis_label()
+        # Convert newlines to HTML line breaks for graphviz
+        vis_label = vis_label.replace("\n", "<br/>")
+        label_parts.append(vis_label)
 
     # Add parameter count if requested (only if > 0 to avoid clutter for modules like Product)
     if show_params:

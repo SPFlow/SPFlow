@@ -407,6 +407,43 @@ class Module(nn.Module, ABC):
     def extra_repr(self) -> str:
         return f"D={self.out_shape.features}, C={self.out_shape.channels}, R={self.out_shape.repetitions}"
 
+    def _get_vis_label(self) -> str:
+        """Generate a visualization label showing shape information.
+
+        This method creates a label string for graph visualization that displays
+        the module's input and output shape information on two lines. Subclasses
+        can override this method to provide custom visualization labels.
+
+        The default implementation shows two lines:
+        - In: D={features}, C={channels}, R={repetitions} (if in_shape available)
+        - Out: D={features}, C={channels}, R={repetitions}
+
+        Returns:
+            str: A two-line label string with input and output shape information.
+
+        Examples:
+            >>> leaf = Normal(scope=Scope([0, 1]), out_channels=2)
+            >>> leaf.get_vis_label()
+            'In: D=2, C=1, R=1\\nOut: D=2, C=2, R=1'
+            >>> sum_node = Sum(inputs=leaf, out_channels=3)
+            >>> sum_node.get_vis_label()
+            'In: D=2, C=2, R=1\\nOut: D=2, C=3, R=1'
+        """
+        lines = []
+
+        # Input shape line
+        if self.in_shape is not None:
+            lines.append(
+                f"In: D={self.in_shape.features}, C={self.in_shape.channels}, R={self.in_shape.repetitions}"
+            )
+
+        # Output shape line
+        lines.append(
+            f"Out: D={self.out_shape.features}, C={self.out_shape.channels}, R={self.out_shape.repetitions}"
+        )
+
+        return "\n".join(lines)
+
     def to_str(
         self,
         format: str = "tree",
