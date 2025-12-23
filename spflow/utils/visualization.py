@@ -627,10 +627,15 @@ def _get_module_color(module: Module) -> str:
         "Sum": Color.BLUE,
         "ElementwiseSum": Color.BLUE,
         "MixingLayer": Color.BLUE,
+        "LinsumLayer": Color.BLUE,
+        "EinsumLayer": Color.BLUE,
+        "SumConv": Color.BLUE,
         # Product modules
         "Product": Color.ORANGE,
         "ElementwiseProduct": Color.ORANGE,
         "OuterProduct": Color.ORANGE,
+        "ProdConv": Color.ORANGE,
+        "ConvPc": Color.ORANGE,
         # Operations - Cat
         "Cat": Color.PINK,
         # Operations - Split
