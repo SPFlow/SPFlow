@@ -12,7 +12,14 @@ from spflow.modules.ops.split_consecutive import SplitConsecutive
 from spflow.modules.ops.split_interleaved import SplitInterleaved
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
-from tests.utils.leaves import make_normal_leaf, make_normal_data, DummyLeaf, make_leaf
+from spflow.learn import expectation_maximization
+from tests.utils.leaves import (
+    make_normal_leaf,
+    make_normal_data,
+    DummyLeaf,
+    make_leaf,
+    CachingDummyInput,
+)
 
 
 # Test parameter combinations
@@ -505,3 +512,142 @@ class TestLinsumLayerSplitConsecutiveOptimization:
         samples = linsum.sample(data=sample_data, sampling_ctx=sampling_ctx)
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()
+
+
+class TestLinsumLayerExpectationMaximization:
+    """Test LinsumLayer expectation_maximization method."""
+
+    @pytest.mark.parametrize(
+        "in_channels,out_channels,in_features,num_reps",
+        product([2], [3], [4], [1, 2]),
+    )
+    def test_em_updates_weights_single_input(
+        self, in_channels: int, out_channels: int, in_features: int, num_reps: int
+    ):
+        """Test that EM updates weights with single input."""
+        module = make_linsum_single_input(in_channels, out_channels, in_features, num_reps)
+        data = make_normal_data(out_features=in_features, num_samples=50)
+
+        original_weights = module.weights.clone()
+
+        # Run EM via global function
+        ll_history = expectation_maximization(module, data, max_steps=5)
+
+        # Check weights changed
+        assert not torch.allclose(module.weights, original_weights)
+        # Check EM ran and produced finite log-likelihoods
+        assert len(ll_history) >= 1
+        assert torch.isfinite(ll_history).all()
+
+    @pytest.mark.parametrize(
+        "in_channels,out_channels,in_features,num_reps",
+        product([2], [3], [4], [1, 2]),
+    )
+    def test_em_weights_normalized_after_update_single_input(
+        self, in_channels: int, out_channels: int, in_features: int, num_reps: int
+    ):
+        """Test that weights remain normalized after EM with single input."""
+        module = make_linsum_single_input(in_channels, out_channels, in_features, num_reps)
+        data = make_normal_data(out_features=in_features, num_samples=50)
+
+        expectation_maximization(module, data, max_steps=3)
+
+        # Weights should sum to 1 over input channels
+        weights = module.weights
+        sums = weights.sum(dim=-1)
+        assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5)
+
+
+class TestLinsumLayerEMTwoInputs:
+    """Test LinsumLayer expectation_maximization with two inputs."""
+
+    def make_linsum_with_caching_inputs(
+        self, in_channels: int, out_channels: int, in_features: int, num_reps: int
+    ) -> LinsumLayer:
+        """Create LinsumLayer with CachingDummyInput modules."""
+        left_scope = Scope(list(range(0, in_features)))
+        right_scope = Scope(list(range(in_features, in_features * 2)))
+
+        left_input = CachingDummyInput(
+            out_channels=in_channels,
+            num_repetitions=num_reps,
+            out_features=in_features,
+            scope=left_scope,
+        )
+        right_input = CachingDummyInput(
+            out_channels=in_channels,
+            num_repetitions=num_reps,
+            out_features=in_features,
+            scope=right_scope,
+        )
+
+        return LinsumLayer(
+            inputs=[left_input, right_input],
+            out_channels=out_channels,
+            num_repetitions=num_reps,
+        )
+
+    @pytest.mark.parametrize(
+        "in_channels,out_channels,in_features,num_reps",
+        product([2], [3], [4], [1, 2]),
+    )
+    def test_em_updates_weights_two_inputs(
+        self, in_channels: int, out_channels: int, in_features: int, num_reps: int
+    ):
+        """Test that EM updates weights with two inputs."""
+        module = self.make_linsum_with_caching_inputs(
+            in_channels, out_channels, in_features, num_reps
+        )
+        total_features = in_features * 2
+        data = torch.randn(50, total_features)
+
+        original_weights = module.weights.clone()
+
+        # Run EM via global function
+        ll_history = expectation_maximization(module, data, max_steps=5)
+
+        # Check weights changed
+        assert not torch.allclose(module.weights, original_weights)
+        assert len(ll_history) >= 1
+        assert torch.isfinite(ll_history).all()
+
+    @pytest.mark.parametrize(
+        "in_channels,out_channels,in_features,num_reps",
+        product([2], [3], [4], [1, 2]),
+    )
+    def test_em_weights_normalized_two_inputs(
+        self, in_channels: int, out_channels: int, in_features: int, num_reps: int
+    ):
+        """Test that weights remain normalized after EM with two inputs."""
+        module = self.make_linsum_with_caching_inputs(
+            in_channels, out_channels, in_features, num_reps
+        )
+        total_features = in_features * 2
+        data = torch.randn(50, total_features)
+
+        expectation_maximization(module, data, max_steps=3)
+
+        # Weights should sum to 1 over input channels
+        weights = module.weights
+        sums = weights.sum(dim=-1)
+        assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5)
+
+    def test_em_raises_without_cache(self):
+        """Test that EM raises error when cache doesn't have module log-likelihoods."""
+        module = self.make_linsum_with_caching_inputs(2, 3, 4, 1)
+        data = torch.randn(10, 8)
+        cache = Cache()
+
+        with pytest.raises(ValueError, match="not in cache"):
+            module.expectation_maximization(data, cache=cache)
+
+    def test_two_inputs_flag_set_correctly(self):
+        """Test that _two_inputs flag is set correctly."""
+        # Single input
+        single_module = make_linsum_single_input(2, 3, 4, 1)
+        assert not single_module._two_inputs
+
+        # Two inputs
+        two_input_module = self.make_linsum_with_caching_inputs(2, 3, 4, 1)
+        assert two_input_module._two_inputs
+
