@@ -186,7 +186,7 @@ def _handle_mle_edge_cases(
     Returns:
         Processed parameter estimate with edge cases handled.
     """
-    eps = torch.tensor(1e-8, dtype=param_est.dtype, device=param_est.device)
+    base_eps = torch.tensor(1e-8, dtype=param_est.dtype, device=param_est.device)
 
     def _to_tensor(bound: float | Tensor | None) -> Tensor | None:
         """Convert bound to tensor with proper device and dtype.
@@ -206,28 +206,56 @@ def _handle_mle_edge_cases(
     lb_tensor = _to_tensor(lb)
     ub_tensor = _to_tensor(ub)
 
+    def _ulp_away(x: Tensor, direction: float) -> Tensor:
+        """Return the distance to the next representable float in a direction.
+
+        Args:
+            x: Input tensor.
+            direction: Use +inf for upward, -inf for downward.
+
+        Returns:
+            A non-negative tensor of per-element ULP distances.
+        """
+        target = torch.full_like(x, direction)
+        next_x = torch.nextafter(x, target)
+        return torch.abs(next_x - x)
+
+    def _effective_eps(bound: Tensor, direction: float) -> Tensor:
+        """Per-element epsilon that is at least base_eps and at least one ULP."""
+        return torch.maximum(base_eps, _ulp_away(bound, direction))
+
     nan_mask = torch.isnan(param_est)
     if nan_mask.any():
         param_est = param_est.clone()
-        param_est[nan_mask] = eps
+        param_est[nan_mask] = base_eps
 
     if lb_tensor is not None:
         below_mask = param_est <= lb_tensor
         if below_mask.any():
             param_est = param_est.clone()
-            param_est[below_mask] = lb_tensor[below_mask] + eps if lb_tensor.ndim else lb_tensor + eps
+            if lb_tensor.ndim:
+                eps_lb = _effective_eps(lb_tensor, float("inf"))
+                param_est[below_mask] = lb_tensor[below_mask] + eps_lb[below_mask]
+            else:
+                eps_lb = _effective_eps(lb_tensor, float("inf"))
+                param_est[below_mask] = lb_tensor + eps_lb
     else:
         zero_mask = torch.isclose(
             param_est, torch.tensor(0.0, device=param_est.device, dtype=param_est.dtype)
         )
         if zero_mask.any():
             param_est = param_est.clone()
-            param_est[zero_mask] = eps
+            param_est[zero_mask] = base_eps
 
     if ub_tensor is not None:
         above_mask = param_est >= ub_tensor
         if above_mask.any():
             param_est = param_est.clone()
-            param_est[above_mask] = ub_tensor[above_mask] - eps if ub_tensor.ndim else ub_tensor - eps
+            if ub_tensor.ndim:
+                eps_ub = _effective_eps(ub_tensor, -float("inf"))
+                param_est[above_mask] = ub_tensor[above_mask] - eps_ub[above_mask]
+            else:
+                eps_ub = _effective_eps(ub_tensor, -float("inf"))
+                param_est[above_mask] = ub_tensor - eps_ub
 
     return param_est

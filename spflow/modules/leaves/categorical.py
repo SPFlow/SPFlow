@@ -137,8 +137,7 @@ class Categorical(LeafModule):
         # Handle edge cases (NaN or invalid probabilities) before broadcasting
         # For categorical, we ensure probabilities sum to 1 and are non-negative
         p_est = torch.clamp(p_est, min=1e-10)  # Avoid zero probabilities
-        p_est = p_est / p_est.sum(dim=-1, keepdim=True)  # Renormalize
-        # TODO: check if this is the correct dim ^
+        p_est = p_est / p_est.sum(dim=-1, keepdim=True)  # Renormalize across categories
 
         return {"probs": p_est}
 
