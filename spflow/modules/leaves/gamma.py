@@ -108,6 +108,7 @@ class Gamma(LeafModule):
         """Compute raw MLE estimates for Gamma distribution (without broadcasting).
 
         Uses moment-matching equations to estimate parameters with optional bias correction.
+        Computation is done in double precision for numerical stability on CUDA.
 
         Args:
             data: Input data tensor.
@@ -117,6 +118,11 @@ class Gamma(LeafModule):
         Returns:
             Dictionary with 'concentration' and 'rate' estimates (shape: out_features).
         """
+        # Use double precision for moment-matching to avoid floating-point accumulation errors
+        original_dtype = data.dtype
+        data = data.double()
+        weights = weights.double()
+
         n_total = weights.sum(dim=0)
 
         data_log = data.log()
@@ -140,7 +146,10 @@ class Gamma(LeafModule):
         concentration_est = _handle_mle_edge_cases(concentration_est, lb=0.0)
         rate_est = _handle_mle_edge_cases(rate_est, lb=0.0)
 
-        return {"concentration": concentration_est, "rate": rate_est}
+        return {
+            "concentration": concentration_est.to(original_dtype),
+            "rate": rate_est.to(original_dtype),
+        }
 
     def _set_mle_parameters(self, params_dict: dict[str, Tensor]) -> None:
         """Set MLE-estimated parameters for Gamma distribution.
