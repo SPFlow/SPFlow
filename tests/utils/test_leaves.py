@@ -432,7 +432,7 @@ class TestHandleMleEdgeCases:
 
         # NaN should be replaced with eps (1e-8)
         assert not torch.isnan(result).any()
-        assert result[1] == pytest.approx(1e-8, abs=1e-9)
+        assert result[1].item() == pytest.approx(1e-8, abs=1e-9)
 
     def test_handle_mle_edge_cases_below_lower_bound(self, device):
         """Test _handle_mle_edge_cases with values below lower bound."""
@@ -441,8 +441,8 @@ class TestHandleMleEdgeCases:
         result = _handle_mle_edge_cases(param_est, lb=lb, ub=10.0)
 
         # Value below lb should be clamped to lb + eps
-        assert result[1] > lb
-        assert result[1] == pytest.approx(lb + 1e-8, abs=1e-9)
+        assert result[1].item() > lb
+        assert result[1].item() == pytest.approx(lb + 1e-8, abs=1e-9)
 
     def test_handle_mle_edge_cases_above_upper_bound(self, device):
         """Test _handle_mle_edge_cases with values above upper bound."""
@@ -451,8 +451,12 @@ class TestHandleMleEdgeCases:
         result = _handle_mle_edge_cases(param_est, lb=0.0, ub=ub)
 
         # Value above ub should be clamped to ub - eps
-        assert result[1] <= ub
-        assert result[1] == pytest.approx(ub - 1e-8, abs=1e-9)
+        assert result[1].item() < ub
+        ub_t = torch.tensor(ub, device=device, dtype=param_est.dtype)
+        base_eps = torch.tensor(1e-8, device=device, dtype=param_est.dtype)
+        ulp = torch.abs(torch.nextafter(ub_t, torch.full_like(ub_t, -float("inf"))) - ub_t)
+        expected = (ub_t - torch.maximum(base_eps, ulp)).item()
+        assert result[1].item() == pytest.approx(expected, abs=1e-12)
 
     def test_handle_mle_edge_cases_at_lower_bound(self, device):
         """Test _handle_mle_edge_cases with values at lower bound."""
@@ -478,8 +482,8 @@ class TestHandleMleEdgeCases:
         result = _handle_mle_edge_cases(param_est, lb=None, ub=None)
 
         # Zero should be replaced with eps when no lower bound
-        assert result[1] > 0
-        assert result[1] == pytest.approx(1e-8, abs=1e-9)
+        assert result[1].item() > 0
+        assert result[1].item() == pytest.approx(1e-8, abs=1e-9)
 
     def test_handle_mle_edge_cases_tensor_bounds(self, device):
         """Test _handle_mle_edge_cases with tensor bounds."""
@@ -568,7 +572,7 @@ class TestLeafUtilsEdgeCases:
         assert not torch.isnan(result).any()
         assert torch.all(result > 0)
         assert torch.all(result <= 10.0)
-        assert result[2] == pytest.approx(5.0, abs=1e-6)  # 5 is in bounds
+        assert result[2].item() == pytest.approx(5.0, abs=1e-6)  # 5 is in bounds
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     def test_handle_mle_dtype_preservation(self, device, dtype):
