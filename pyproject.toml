@@ -82,8 +82,8 @@ dev = [
 [tool.pytest.ini_options]
 addopts = "--color=yes --doctest-modules"
 testpaths = [
-    # for the doctests:
-    # "spflow",  # TODO: Add for doctests and for detecting broken yet unimported modules
+    # for the doctests and for detecting broken yet unimported modules:
+    "spflow",
     # for the actual tests:
     "tests",
 ]

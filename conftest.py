@@ -59,3 +59,27 @@ def auto_reset_dtype():
     original_dtype = torch.get_default_dtype()
     yield
     torch.set_default_dtype(original_dtype)
+
+
+@pytest.fixture(autouse=True)
+def add_imports(doctest_namespace):
+    """Add common modules to doctest namespace."""
+    import spflow
+    from spflow.meta import Scope
+    from spflow.modules.leaves import Normal, Categorical
+    from spflow.modules.sums import Sum
+    from spflow.modules.einsum import EinsumLayer, LinsumLayer
+    from spflow.modules.ops.split import SplitMode
+
+    doctest_namespace["spflow"] = spflow
+    doctest_namespace["torch"] = torch
+    doctest_namespace["Scope"] = Scope
+    doctest_namespace["Normal"] = Normal
+    doctest_namespace["Categorical"] = Categorical
+    doctest_namespace["Sum"] = Sum
+    doctest_namespace["EinsumLayer"] = EinsumLayer
+    doctest_namespace["LinsumLayer"] = LinsumLayer
+    doctest_namespace["SplitMode"] = SplitMode
+
+    # Common objects
+    doctest_namespace["leaf"] = Normal(scope=Scope([0, 1, 2, 3]), out_channels=2)
