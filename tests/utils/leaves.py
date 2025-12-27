@@ -1,10 +1,83 @@
+import numpy as np
 import torch
 from torch import Tensor, nn
 
 from spflow.meta import Scope
 from spflow.modules import leaves
 from spflow.modules.leaves.leaf import LeafModule
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
+from spflow.utils.cache import cached
 from spflow.utils.leaves import init_parameter
+
+
+class CachingDummyInput(Module):
+    """Dummy input module that properly caches log_likelihood for EM testing.
+
+    This module is designed for testing expectation maximization (EM) algorithms.
+    It creates random log-likelihood outputs that require gradients for EM
+    calculations to work correctly.
+    """
+
+    def __init__(
+        self,
+        out_channels: int = 2,
+        num_repetitions: int = 1,
+        out_features: int = 2,
+        scope: Scope | None = None,
+    ):
+        """Initialize the CachingDummyInput module.
+
+        Args:
+            out_channels: Number of output channels.
+            num_repetitions: Number of repetitions.
+            out_features: Number of output features.
+            scope: Scope of the module. If None, defaults to range(out_features).
+        """
+        super().__init__()
+        if scope is None:
+            scope = Scope(list(range(out_features)))
+        self.scope = scope
+        self._out_shape = ModuleShape(len(scope.query), out_channels, num_repetitions)
+        self._in_shape = ModuleShape(len(scope.query), 1, 1)
+
+    @property
+    def feature_to_scope(self):
+        """Return feature to scope mapping."""
+        return np.array(
+            [[Scope([i])] * self.out_shape.repetitions for i in self.scope.query],
+            dtype=object,
+        )
+
+    @cached
+    def log_likelihood(self, data, cache=None):
+        """Compute log likelihood with caching support."""
+        batch = data.shape[0]
+        result = torch.randn(
+            batch,
+            self.out_shape.features,
+            self.out_shape.channels,
+            self.out_shape.repetitions,
+            device=data.device,
+            requires_grad=True,
+        )
+        return result
+
+    def sample(self, *args, **kwargs):
+        """Return sample data."""
+        data = kwargs.get("data")
+        if data is None:
+            data = torch.full((1, len(self.scope.query)), torch.nan, device=self.device)
+        data[:, self.scope.query] = 0.0
+        return data
+
+    def expectation_maximization(self, data, bias_correction=True, cache=None):
+        """No-op for EM since this is a dummy module."""
+        return None
+
+    def marginalize(self, marg_rvs, prune=True, cache=None):
+        """Return self for marginalization."""
+        return self
 
 
 def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):
@@ -343,6 +416,8 @@ def get_param_constraints(distribution_class) -> dict[str, str]:
     elif distribution_class == leaves.Hypergeometric:
         # Hypergeometric has no trainable parameters (n, N, K are all fixed)
         return {}
+    elif distribution_class == leaves.Laplace:
+        return {"loc": Constraint.NONE, "scale": Constraint.POSITIVE}
     elif distribution_class == leaves.LogNormal:
         return {"loc": Constraint.NONE, "scale": Constraint.POSITIVE}
     elif distribution_class == leaves.NegativeBinomial:
