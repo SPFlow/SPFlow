@@ -54,8 +54,16 @@ def module_to_str(
         >>> leaves = Normal(scope=Scope([0, 1]), out_channels=2)
         >>> sum_node = Sum(inputs=leaves, out_channels=3)
         >>> print(module_to_str(sum_node))  # Tree format (default)
+        Sum [D=2, C=3] [weights: (2, 2, 3, 1)] → scope: 0-1
+        └─ Normal [D=2, C=2] → scope: 0-1
         >>> print(module_to_str(sum_node, format="pytorch"))  # PyTorch format
+        Sum(
+          D=2, C=3, R=1, weights=(2, 2, 3, 1)
+          (inputs): Normal(D=2, C=2, R=1)
+        )
         >>> print(module_to_str(sum_node, max_depth=2))  # Limit depth
+        Sum [D=2, C=3] [weights: (2, 2, 3, 1)] → scope: 0-1
+        └─ Normal [D=2, C=2] → scope: 0-1
     """
     if format == "pytorch":
         return repr(module)
