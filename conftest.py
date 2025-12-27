@@ -4,23 +4,35 @@ import shutil
 import pytest
 import torch
 
-USE_GPU = True
-
-
 def has_graphviz_dot():
     """Check if the graphviz 'dot' binary is available on the system."""
     return shutil.which("dot") is not None
 
 
+def _get_test_device() -> str:
+    """Get the test device from SPFLOW_TEST_DEVICE environment variable.
+
+    Supports:
+        - 'cpu': Use CPU
+        - 'cuda' or 'cuda:<id>': Use specific CUDA device
+        - 'auto': Use CUDA if available, otherwise CPU (default)
+
+    Returns:
+        Device string suitable for torch.device().
+    """
+    device = os.getenv("SPFLOW_TEST_DEVICE", "auto")
+    if device == "auto":
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    assert device == "cpu" or "cuda" in device, (
+        "SPFLOW_TEST_DEVICE must be 'cpu', 'cuda', 'cuda:<id>', or 'auto'"
+    )
+    return device
+
+
 @pytest.fixture(scope="session")
 def device():
-    if USE_GPU and torch.cuda.is_available():
-        device = torch.device("cuda")
-        print("Using GPU")
-    else:
-        device = torch.device("cpu")
-        print("Using CPU")
-    return device
+    """Fixture providing the test device as a torch.device object."""
+    return torch.device(_get_test_device())
 
 
 @pytest.fixture(
@@ -39,9 +51,8 @@ def auto_set_test_seed():
     autouse=True,
 )
 def auto_set_test_device():
-    device = os.getenv("SPFLOW_TEST_DEVICE", "cpu")
-    assert device == "cpu" or "cuda" in device, "SPFLOW_TEST_DEVICE must be 'cpu' or 'cuda' or 'cuda:<id>'"
-    torch.set_default_device(device)
+    """Automatically set the default PyTorch device for each test."""
+    torch.set_default_device(_get_test_device())
     yield
 
 
