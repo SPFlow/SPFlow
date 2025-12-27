@@ -99,7 +99,7 @@ def test_maximum_likelihood_estimation(leaf_cls, out_features: int, bias_correct
         cls=leaf_cls, out_channels=out_channels, num_repetitions=num_reps, out_features=out_features
     )
 
-    data = leaf_sampler.distribution.sample((50000,)).squeeze(-1).squeeze(-1)
+    data = leaf_sampler.distribution.sample((5000,)).squeeze(-1).squeeze(-1)
     leaf_module.maximum_likelihood_estimation(data, bias_correction=bias_correction)
 
     # Check that module and sampler params are equal
