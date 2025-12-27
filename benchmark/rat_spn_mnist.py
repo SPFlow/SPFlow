@@ -169,14 +169,17 @@ def run_torch(n_epochs=100, batch_size=256):
     """
     from torch import optim
 
-    device = os.getenv("SPFLOW_TEST_DEVICE", "cpu")
-    assert device == "cpu" or "cuda" in device, "SPFLOW_TEST_DEVICE must be 'cpu' or 'cuda' or 'cuda:<id>'"
-
-    if device == "cuda":
-        use_cuda = True
-        torch.backends.cudnn.benchmark = True
+    device = os.getenv("SPFLOW_TEST_DEVICE", "auto")
+    if device == "auto":
+        device = "cuda" if torch.cuda.is_available() else "cpu"
     else:
-        use_cuda = False
+        assert device == "cpu" or "cuda" in device, (
+            "SPFLOW_TEST_DEVICE must be 'cpu', 'cuda', 'cuda:<id>', or 'auto'"
+        )
+
+    use_cuda = "cuda" in device
+    if use_cuda:
+        torch.backends.cudnn.benchmark = True
     device = torch.device(device)
 
     model = make_spn(device)
