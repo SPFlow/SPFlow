@@ -29,9 +29,9 @@ class SplitMode:
     to create split configurations that can be passed to modules.
 
     Example:
-        >>> layer = EinsumLayer(inputs=leaf, split_mode=SplitMode.interleaved(num_splits=3))
-        >>> layer = LinsumLayer(inputs=leaf, split_mode=SplitMode.consecutive(num_splits=2))
-        >>> layer = LinsumLayer(inputs=leaf, split_mode=SplitMode.by_index(indices=[[0,1], [2,3]]))
+        >>> layer = EinsumLayer(inputs=leaf, num_repetitions=3, out_channels=10, split_mode=SplitMode.interleaved(num_splits=3))
+        >>> layer = LinsumLayer(inputs=leaf, out_channels=10, split_mode=SplitMode.consecutive(num_splits=2))
+        >>> layer = LinsumLayer(inputs=leaf, out_channels=10, split_mode=SplitMode.by_index(indices=[[0,1], [2,3]]))
     """
 
     def __init__(self, split_type: str, num_splits: int = 2, indices: list[list[int]] | None = None):
@@ -105,8 +105,8 @@ class SplitMode:
 
         Example:
             >>> SplitMode.by_index([[0, 1, 4], [2, 3, 5, 6, 7]])
-            # Creates 2 splits: features [0,1,4] and features [2,3,5,6,7]
-
+            SplitMode.by_index(indices=[[0, 1, 4], [2, 3, 5, 6, 7]])
+    
         Args:
             indices: List of lists specifying feature indices for each split.
                 All features must be covered exactly once.

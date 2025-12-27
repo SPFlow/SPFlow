@@ -453,8 +453,16 @@ class Module(nn.Module, ABC):
             >>> leaves = Normal(scope=Scope([0, 1]), out_channels=2)
             >>> model = Sum(inputs=leaves, out_channels=3)
             >>> print(model.to_str())  # Tree view (default)
+            Sum [D=2, C=3] [weights: (2, 2, 3, 1)] → scope: 0-1
+            └─ Normal [D=2, C=2] → scope: 0-1
             >>> print(model.to_str(format="pytorch"))  # PyTorch format
+            Sum(
+              D=2, C=3, R=1, weights=(2, 2, 3, 1)
+              (inputs): Normal(D=2, C=2, R=1)
+            )
             >>> print(model.to_str(max_depth=2))  # Limit depth
+            Sum [D=2, C=3] [weights: (2, 2, 3, 1)] → scope: 0-1
+            └─ Normal [D=2, C=2] → scope: 0-1
         """
         from spflow.utils.module_display import module_to_str
 
