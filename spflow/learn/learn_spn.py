@@ -325,7 +325,6 @@ def learn_spn(
             for partition in partitions:
                 sub_structure = learn_spn(
                     data=data,
-                    # data=data[:,partition[0]],  # TODO: check if this is correct -> seems not necessary since scope is passed
                     leaf_modules=leaf_modules,
                     scope=Scope([scope.query[rv] for rv in partition[0]]),
                     out_channels=out_channels,
