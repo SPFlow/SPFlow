@@ -48,8 +48,15 @@ class Gamma(LeafModule):
 
         validate_all_or_none(concentration=concentration, rate=rate)
 
-        concentration = init_parameter(param=concentration, event_shape=self._event_shape, init=torch.rand)
-        rate = init_parameter(param=rate, event_shape=self._event_shape, init=torch.rand)
+        # Initialize parameters in well-behaved range [0.5, 5.0] to avoid
+        # extreme values that cause MLE instability
+        def init_gamma_param(shape):
+            return torch.rand(shape) * 4.5 + 0.5
+
+        concentration = init_parameter(
+            param=concentration, event_shape=self._event_shape, init=init_gamma_param
+        )
+        rate = init_parameter(param=rate, event_shape=self._event_shape, init=init_gamma_param)
 
         self.log_concentration = nn.Parameter(torch.log(concentration))
         self.log_rate = nn.Parameter(torch.log(rate))

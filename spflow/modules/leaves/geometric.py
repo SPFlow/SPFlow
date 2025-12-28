@@ -51,7 +51,12 @@ class Geometric(LeafModule):
             validate_args=validate_args,
         )
 
-        init_fn = torch.randn if logits is not None else torch.rand
+        # Initialize parameters in well-behaved range to avoid extreme values
+        def init_geometric_probs(shape):
+            """Initialize probs in [0.1, 0.9] range to avoid MLE instability."""
+            return torch.rand(shape) * 0.8 + 0.1
+
+        init_fn = torch.randn if logits is not None else init_geometric_probs
         init_value = init_parameter(param=param_source, event_shape=self.event_shape, init=init_fn)
 
         logits_tensor = init_value if logits is not None else proj_bounded_to_real(init_value, lb=0.0, ub=1.0)
