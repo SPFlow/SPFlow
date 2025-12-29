@@ -22,7 +22,6 @@ num_repetition_values = [1, 5]
     product(cls, out_channels_values, out_features_values, num_repetition_values),
 )
 def test_split_result(cls, out_channels: int, out_features: int, num_repetitions: int):
-    torch.manual_seed(0)
     out_channels = out_channels
     num_features = out_features
     scope = Scope(list(range(0, num_features)))

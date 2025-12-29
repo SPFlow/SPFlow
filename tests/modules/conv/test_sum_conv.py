@@ -165,10 +165,8 @@ class TestSumConvSample:
         leaf = make_normal_leaf(height, width, out_channels=in_channels)
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
-        torch.manual_seed(42)
         samples1 = module.sample(num_samples=5, is_mpe=True)
 
-        torch.manual_seed(42)
         samples2 = module.sample(num_samples=5, is_mpe=True)
 
         # MPE should give deterministic results (same selection)

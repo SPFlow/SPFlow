@@ -15,7 +15,6 @@ class TestPiecewiseLinearInitialization:
     @pytest.mark.parametrize("out_channels", [1, 3])
     def test_initialization_continuous(self, num_repetitions, out_channels):
         """Test initialization with continuous data."""
-        torch.manual_seed(42)
         scope = Scope([0, 1])
         leaf = PiecewiseLinear(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
 
@@ -37,7 +36,6 @@ class TestPiecewiseLinearInitialization:
 
     def test_initialization_discrete(self):
         """Test initialization with discrete data."""
-        torch.manual_seed(42)
         scope = Scope([0])
         leaf = PiecewiseLinear(scope=scope, out_channels=1, num_repetitions=1)
 
@@ -52,7 +50,6 @@ class TestPiecewiseLinearInitialization:
 
     def test_initialization_mixed(self):
         """Test initialization with mixed continuous and discrete data."""
-        torch.manual_seed(42)
         scope = Scope([0, 1])
         leaf = PiecewiseLinear(scope=scope, out_channels=1, num_repetitions=1)
 
@@ -86,7 +83,6 @@ class TestPiecewiseLinearInitialization:
 
     def test_reset(self):
         """Test reset functionality."""
-        torch.manual_seed(42)
         scope = Scope([0])
         leaf = PiecewiseLinear(scope=scope, out_channels=1)
 
@@ -109,7 +105,6 @@ class TestPiecewiseLinearLogLikelihood:
     @pytest.mark.parametrize("out_channels", [1, 3])
     def test_log_likelihood_shape(self, num_repetitions, out_channels):
         """Test that log-likelihood has correct output shape."""
-        torch.manual_seed(42)
         scope = Scope([0, 1])
         leaf = PiecewiseLinear(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
 
@@ -125,7 +120,6 @@ class TestPiecewiseLinearLogLikelihood:
 
     def test_log_likelihood_values(self):
         """Test that log-likelihoods are valid (finite)."""
-        torch.manual_seed(42)
         scope = Scope([0])
         leaf = PiecewiseLinear(scope=scope, out_channels=1, num_repetitions=1)
 
@@ -142,7 +136,6 @@ class TestPiecewiseLinearLogLikelihood:
 
     def test_log_likelihood_marginalization(self):
         """Test that NaN values are marginalized correctly."""
-        torch.manual_seed(42)
         scope = Scope([0, 1])
         leaf = PiecewiseLinear(scope=scope, out_channels=1, num_repetitions=1)
 
@@ -166,7 +159,6 @@ class TestPiecewiseLinearDist:
 
     def test_log_prob(self):
         """Test log_prob computation."""
-        torch.manual_seed(42)
         # Create a simple piecewise linear distribution
         xs = [[[[torch.tensor([-1.0, 0.0, 1.0, 2.0])]]]]  # [R][L][F][C]
         ys = [[[[torch.tensor([0.0, 0.5, 0.5, 0.0])]]]]
@@ -201,7 +193,6 @@ class TestPiecewiseLinearSampling:
     @pytest.mark.parametrize("out_channels", [1, 3])
     def test_sample_shape(self, num_repetitions, out_channels):
         """Test that sampled outputs have correct shape."""
-        torch.manual_seed(42)
         scope = Scope([0, 1])
         leaf = PiecewiseLinear(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
 

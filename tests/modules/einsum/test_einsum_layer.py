@@ -445,7 +445,6 @@ class TestEinsumLayerSplitOptimization:
 
     def test_split_input_produces_same_output(self):
         """Test that using SplitConsecutive directly produces same output as wrapping."""
-        torch.manual_seed(42)
         leaf = make_normal_leaf(out_features=4, out_channels=2, num_repetitions=1)
         data = make_normal_data(out_features=4)
 

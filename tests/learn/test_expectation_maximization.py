@@ -298,7 +298,6 @@ class TestExpectationMaximizationBatched:
             num_repetitions=1,
         )
         # Create data from a different distribution to ensure learning happens
-        torch.manual_seed(42)
         data = torch.randn(200, 2) * 2 + 1  # Different mean and std
         dataset = TensorDataset(data)
         dataloader = DataLoader(dataset, batch_size=50)

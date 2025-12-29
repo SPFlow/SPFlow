@@ -146,7 +146,6 @@ def classification_model() -> ClassificationModel:
 
 @pytest.fixture
 def classification_dataloader():
-    torch.manual_seed(0)
     features = torch.randn(12, 2)
     labels = torch.randint(0, 3, (12,))
     return DataLoader(TensorDataset(features, labels), batch_size=4)
@@ -275,7 +274,6 @@ def test_train_gradient_descent_classification_mode(classification_model, classi
 
 def test_train_gradient_descent_classification_with_validation(classification_model):
     """Training with validation dataloader should hit classification validation logic."""
-    torch.manual_seed(1)
     train_loader = DataLoader(
         TensorDataset(torch.randn(12, 2), torch.randint(0, 3, (12,))),
         batch_size=4,

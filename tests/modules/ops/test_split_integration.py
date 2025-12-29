@@ -21,7 +21,6 @@ def test_split_operations_log_likelihood_consistency():
     num_repetitions = 2
 
     # Create identical leaves for both split types
-    torch.manual_seed(42)
     mean = torch.randn(num_features, out_channels, num_repetitions)
     std = torch.rand(num_features, out_channels, num_repetitions) + 0.1
 
@@ -160,7 +159,6 @@ def test_split_alternating_pattern_verification():
     scope = Scope(list(range(0, num_features)))
 
     # Create leaf with known values
-    torch.manual_seed(123)
     mean = torch.arange(num_features).float().reshape(num_features, 1, 1)
     std = torch.ones(num_features, 1, 1) * 0.1
 
@@ -183,7 +181,6 @@ def test_split_consecutive_pattern_verification():
     scope = Scope(list(range(0, num_features)))
 
     # Create leaf with known values
-    torch.manual_seed(123)
     mean = torch.arange(num_features).float().reshape(num_features, 1, 1)
     std = torch.ones(num_features, 1, 1) * 0.1
 

@@ -127,7 +127,6 @@ class TestSplitByIndexLogLikelihood:
         scope = Scope(list(range(0, 4)))
 
         # Create leaf with known distinct values per feature
-        torch.manual_seed(42)
         mean = torch.arange(4).float().reshape(4, 1, 1)
         std = torch.ones(4, 1, 1) * 10.0
         leaf = make_normal_leaf(scope, mean=mean, std=std)

@@ -26,7 +26,6 @@ out_channels = 2
 
 
 def test_kmeans():
-    torch.manual_seed(0)
     # simulate cluster data
     # cluster = [torch.randn((100, 1))+ i*100.0 for i in range(num_cluster)]
 
@@ -90,7 +89,6 @@ def test_rdc():
     list(product([1,2], [1,2])),
 )
 def test_multiple_features(leaf_channel,sum_channel):
-    torch.manual_seed(0)
 
     # Create leaf layer with Gaussian distributions
     scope = Scope(list(range(5)))
@@ -98,7 +96,6 @@ def test_multiple_features(leaf_channel,sum_channel):
 
     # Learn SPN structure from data
     # Construct synthetic data for demonstration with five different clusters
-    torch.manual_seed(42)
     cluster_1 = torch.randn(200, 5) + torch.tensor([0, 0, 0, 0, 0])
     cluster_2 = torch.randn(200, 5) + torch.tensor([5, 5, 5, 5, 5])
     cluster_3 = torch.randn(200, 5) + torch.tensor([-5, -5, -5, -5, -5])
@@ -115,7 +112,6 @@ def test_multiple_features(leaf_channel,sum_channel):
 def test_make_moons():
     array = np.array([5])
     visualize = False
-    torch.manual_seed(0)
     X, y = make_moons(n_samples=1000, noise=0.1, random_state=42)
 
     scope = Scope(list(range(2)))

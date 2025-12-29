@@ -12,7 +12,6 @@ class TestRDCBasicFunctionality:
 
     def test_rdc_basic_2d(self):
         """Test rdc with simple 2D data."""
-        torch.manual_seed(42)
         # 100 samples, 2 features with some correlation
         x = torch.randn(100, 1)
         y = x + 0.5 * torch.randn(100, 1)
@@ -26,7 +25,6 @@ class TestRDCBasicFunctionality:
 
     def test_rdc_independent_features(self):
         """Test rdc with independent features."""
-        torch.manual_seed(42)
         # Two completely independent features
         x = torch.randn(100, 1)
         y = torch.randn(100, 1)
@@ -40,7 +38,6 @@ class TestRDCBasicFunctionality:
 
     def test_rdc_dependent_features(self):
         """Test rdc with dependent features."""
-        torch.manual_seed(42)
         # x and y = x^2 (nonlinear relationship)
         x = torch.randn(100, 1)
         y = x**2
@@ -54,7 +51,6 @@ class TestRDCBasicFunctionality:
 
     def test_rdc_identical_features(self):
         """Test rdc with identical features."""
-        torch.manual_seed(42)
         # x and y = x + small noise (strong linear dependence)
         x = torch.randn(100, 1)
         y = x + 0.01 * torch.randn(100, 1)
@@ -70,7 +66,6 @@ class TestRDCParameters:
 
     def test_rdc_with_n_equals_1(self):
         """Test rdc with n=1 (single run)."""
-        torch.manual_seed(42)
         x = torch.randn(100, 1)
         y = x + 0.5 * torch.randn(100, 1)
 
@@ -81,7 +76,6 @@ class TestRDCParameters:
 
     def test_rdc_with_n_greater_than_1(self):
         """Test rdc with n=5 (median of multiple runs)."""
-        torch.manual_seed(42)
         x = torch.randn(100, 1)
         y = x + 0.5 * torch.randn(100, 1)
 
@@ -92,7 +86,6 @@ class TestRDCParameters:
 
     def test_rdc_with_custom_k(self):
         """Test rdc with different k parameters."""
-        torch.manual_seed(42)
         x = torch.randn(100, 1)
         y = x + 0.5 * torch.randn(100, 1)
 
@@ -108,7 +101,6 @@ class TestRDCParameters:
 
     def test_rdc_with_custom_function(self):
         """Test rdc with custom function f."""
-        torch.manual_seed(42)
         x = torch.randn(100, 1)
         y = x + 0.5 * torch.randn(100, 1)
 
@@ -172,7 +164,6 @@ class TestCCALoop:
 
     def test_cca_loop_basic(self):
         """Test cca_loop with basic covariance matrix."""
-        torch.manual_seed(42)
         k = 10
 
         # Create a random covariance matrix
@@ -187,7 +178,6 @@ class TestCCALoop:
 
     def test_cca_loop_with_different_k(self):
         """Test cca_loop with different k values."""
-        torch.manual_seed(42)
 
         for k in [5, 10, 15]:
             fX = torch.randn(100, k)
@@ -204,7 +194,6 @@ class TestRDCNumPyVersion:
     def test_rdc_np_basic(self):
         """Test rdc_np with NumPy arrays."""
         np.random.seed(42)
-        torch.manual_seed(42)
 
         # NumPy arrays
         x = np.random.randn(100, 1)
@@ -245,7 +234,6 @@ class TestRDCEdgeCases:
 
     def test_rdc_1d_input(self):
         """Test rdc with 1D input (should be reshaped to 2D)."""
-        torch.manual_seed(42)
         x = torch.randn(100)
         y = x + 0.5 * torch.randn(100)
 
@@ -255,7 +243,6 @@ class TestRDCEdgeCases:
 
     def test_rdc_perfect_collinearity(self):
         """Test rdc with perfect collinearity."""
-        torch.manual_seed(42)
         x = torch.randn(100, 1)
         y = 2.0 * x + 0.01 * torch.randn(100, 1)  # near-perfect linear dependence
 
@@ -266,7 +253,6 @@ class TestRDCEdgeCases:
 
     def test_rdc_small_sample_size(self):
         """Test rdc with small sample size."""
-        torch.manual_seed(42)
         x = torch.randn(10, 1)
         y = x + 0.5 * torch.randn(10, 1)
 
@@ -277,7 +263,6 @@ class TestRDCEdgeCases:
 
     def test_rdc_multivariate(self):
         """Test rdc with multivariate data (single columns extracted)."""
-        torch.manual_seed(42)
         # RDC computes correlation between two sets of variables
         # Each should be treated as a single unit
         x = torch.randn(100, 1)
@@ -293,7 +278,6 @@ class TestRDCReproducibility:
 
     def test_rdc_multiple_runs_consistency(self):
         """Test rdc with n>1 gives reasonable results."""
-        torch.manual_seed(42)
         x = torch.randn(100, 1)
         y = x + 0.5 * torch.randn(100, 1)
 
@@ -310,7 +294,6 @@ class TestRDCNumericalStability:
 
     def test_rdc_binary_search_k_adjustment(self):
         """Test k adjustment logic in rdc."""
-        torch.manual_seed(42)
         # Large k might require adjustment
         x = torch.randn(50, 1)
         y = x + 0.5 * torch.randn(50, 1)
@@ -322,7 +305,6 @@ class TestRDCNumericalStability:
 
     def test_rdc_handles_complex_eigenvalues(self):
         """Test rdc handles complex eigenvalues gracefully."""
-        torch.manual_seed(42)
         # Create data that might produce complex eigenvalues
         x = torch.randn(100, 1)
         y = torch.randn(100, 1)
@@ -339,7 +321,6 @@ class TestRDCMathematicalProperties:
 
     def test_rdc_symmetry(self):
         """Test that rdc(x, y) ≈ rdc(y, x)."""
-        torch.manual_seed(42)
         x = torch.randn(100, 1)
         y = x + 0.5 * torch.randn(100, 1)
 
@@ -347,7 +328,6 @@ class TestRDCMathematicalProperties:
 
         # Note: Due to random projections, results won't be exactly equal
         # but should be in the same range
-        torch.manual_seed(42)
         result_yx = rdc(y, x, k=10, n=1)
 
         # Both should be valid
@@ -356,14 +336,12 @@ class TestRDCMathematicalProperties:
 
     def test_rdc_scale_invariance(self):
         """Test that rdc is scale invariant."""
-        torch.manual_seed(42)
         x = torch.randn(100, 1)
         y = x + 0.5 * torch.randn(100, 1)
 
         result1 = rdc(x, y, k=10, n=1)
 
         # Scale x and y
-        torch.manual_seed(42)
         result2 = rdc(x * 10, y * 10, k=10, n=1)
 
         # RDC uses copula transformation (ranking), so should be scale invariant
@@ -372,7 +350,6 @@ class TestRDCMathematicalProperties:
 
     def test_rdc_detects_nonlinear_relationships(self):
         """Test that rdc can detect various nonlinear relationships."""
-        torch.manual_seed(42)
         x = torch.randn(100, 1)
 
         # Various nonlinear relationships
@@ -395,7 +372,6 @@ class TestRDCDifferentDataTypes:
 
     def test_rdc_float32(self):
         """Test rdc with float32 data."""
-        torch.manual_seed(42)
         x = torch.randn(100, 1, dtype=torch.float32)
         y = x + 0.5 * torch.randn(100, 1, dtype=torch.float32)
 
@@ -405,7 +381,6 @@ class TestRDCDifferentDataTypes:
 
     def test_rdc_float64(self):
         """Test rdc with float64 data."""
-        torch.manual_seed(42)
         x = torch.randn(100, 1, dtype=torch.float64)
         y = x + 0.5 * torch.randn(100, 1, dtype=torch.float64)
 
@@ -419,7 +394,6 @@ class TestRDCLinAlgErrorHandling:
 
     def test_rdc_with_n_greater_1_handles_errors(self):
         """Test that rdc with n>1 handles LinAlgError gracefully."""
-        torch.manual_seed(42)
         x = torch.randn(100, 1)
         y = x + 0.5 * torch.randn(100, 1)
 

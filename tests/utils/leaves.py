@@ -134,7 +134,6 @@ def make_normal_leaf(
 
 
 def make_normal_data(mean=0.0, std=1.0, num_samples=10, out_features=2):
-    torch.manual_seed(0)
     return torch.randn(num_samples, out_features) * std + mean
 
 
