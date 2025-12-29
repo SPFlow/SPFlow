@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from spflow.exceptions import ShapeError
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -454,13 +455,17 @@ class LeafModule(Module, ABC):
 
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-        out_of_scope = list(filter(lambda x: x not in self.scope.query, range(data.shape[1])))
+        scope_cols = self._resolve_scope_columns(num_features=data.shape[1])
+        out_of_scope = [idx for idx in range(data.shape[1]) if idx not in scope_cols]
         marg_mask = torch.isnan(data)
         marg_mask[:, out_of_scope] = False
 
         # Mask that tells us which feature at which sample is relevant and should be sampled
         samples_mask = marg_mask
-        samples_mask[:, self.scope.query] &= sampling_ctx.mask
+        ctx_channel_index, ctx_mask = self._slice_sampling_context(
+            sampling_ctx=sampling_ctx, num_features=data.shape[1], scope_cols=scope_cols
+        )
+        samples_mask[:, scope_cols] &= ctx_mask
 
         # Count number of samples to draw
         instance_mask = samples_mask.sum(1) > 0
@@ -541,8 +546,9 @@ class LeafModule(Module, ABC):
             # If the output of the input module has a single channel, set the output_ids to zero since
             # this input was broadcasted to match the channel dimension of the other inputs
             sampling_ctx.channel_index.zero_()
+            ctx_channel_index = torch.zeros_like(ctx_channel_index)
 
-        c_idxs = sampling_ctx.channel_index[instance_mask].unsqueeze(-1)
+        c_idxs = ctx_channel_index[instance_mask].unsqueeze(-1)
 
         # Index the channel_index to get the correct samples for each scope
         samples = samples.gather(dim=2, index=c_idxs).squeeze(2)
@@ -559,7 +565,7 @@ class LeafModule(Module, ABC):
         row_indices = instance_mask.nonzero(as_tuple=True)[0]  # (n_instances,)
         
         # Create scope indices tensor
-        scope_idx = torch.tensor(self.scope.query, dtype=torch.long, device=data.device)
+        scope_idx = torch.tensor(scope_cols, dtype=torch.long, device=data.device)
         
         # Expand to create all (row, col) index pairs
         # rows: (n_instances, out_features) - row index repeated for each feature
@@ -568,12 +574,75 @@ class LeafModule(Module, ABC):
         cols = scope_idx.unsqueeze(0).expand(n_samples, -1)
         
         # Get mask subset for scope positions only
-        mask_subset = samples_mask[instance_mask][:, self.scope.query]  # (n_instances, out_features)
+        mask_subset = samples_mask[instance_mask][:, scope_cols]  # (n_instances, out_features)
         
         # Apply mask and flatten for single vectorized assignment
         data[rows[mask_subset], cols[mask_subset]] = samples[mask_subset].to(data.dtype)
 
         return data
+
+    def _resolve_scope_columns(self, num_features: int) -> list[int]:
+        """Resolve the column indices in `data` that correspond to this leaf's scope.
+
+        The sampling API can operate on either:
+        - "Global" feature tensors where columns are indexed by RV id.
+        - "Scoped" feature tensors where columns correspond exactly to this module's scope ordering.
+
+        Args:
+            num_features: Number of feature columns in the provided data tensor.
+
+        Returns:
+            List of column indices into the provided data tensor that correspond to `self.scope.query`.
+        """
+        query = list(self.scope.query)
+        if len(query) == 0:
+            return []
+
+        if all(0 <= rv < num_features for rv in query):
+            return query
+
+        if num_features == self.out_shape.features:
+            return list(range(num_features))
+
+        raise ShapeError(
+            f"Cannot map scope {self.scope} to data with {num_features} features; "
+            f"expected either all RV ids < {num_features} or a scoped tensor with {self.out_shape.features} features."
+        )
+
+    def _slice_sampling_context(
+        self, sampling_ctx: SamplingContext, num_features: int, scope_cols: list[int]
+    ) -> tuple[Tensor, Tensor]:
+        """Slice/expand sampling context tensors to align with this leaf's feature axis.
+
+        Args:
+            sampling_ctx: Sampling context provided to sampling.
+            num_features: Number of feature columns in the provided data tensor.
+            scope_cols: Column indices (into data) that correspond to this leaf's scope.
+
+        Returns:
+            Tuple of (channel_index, mask), both shaped (num_samples, len(scope_cols)).
+
+        Raises:
+            ShapeError: If the context tensors cannot be aligned to the leaf scope.
+        """
+        ctx_features = sampling_ctx.mask.shape[1]
+        scope_size = len(scope_cols)
+
+        if ctx_features == 1:
+            channel_index = sampling_ctx.channel_index.expand(-1, scope_size)
+            mask = sampling_ctx.mask.expand(-1, scope_size)
+            return channel_index, mask
+
+        if ctx_features == scope_size:
+            return sampling_ctx.channel_index, sampling_ctx.mask
+
+        if ctx_features == num_features:
+            return sampling_ctx.channel_index[:, scope_cols], sampling_ctx.mask[:, scope_cols]
+
+        raise ShapeError(
+            "SamplingContext feature dimension mismatch: "
+            f"got {ctx_features}, expected 1, {scope_size}, or {num_features}."
+        )
 
     def marginalize(
         self,

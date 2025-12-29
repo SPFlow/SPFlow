@@ -448,12 +448,39 @@ class TestScopeOrderInvariance:
     def test_non_contiguous_scope(self):
         """Test with non-contiguous scope indices (e.g., [0, 2, 5]).
 
-        NOTE: This test is disabled because the sampling implementation in
-        LeafModule.sample() has an issue with non-contiguous scopes where
-        the mask shape doesn't align with the scope query size.
-        This is a known limitation that should be addressed separately.
+        This verifies that sampling works even when the scope indices are not a
+        contiguous range, and that the SamplingContext's feature dimension can be
+        larger than the scope size.
         """
-        pytest.skip("Non-contiguous scope sampling has shape mismatch issues")
+        num_samples = 2
+        out_channels = 1
+        num_repetitions = 1
+
+        scope_query = [0, 2, 5]
+        scope = Scope(scope_query)
+        leaf = IndexLeaf(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
+
+        num_total_features = max(scope_query) + 1  # includes out-of-scope feature positions
+        data = torch.full((num_samples, num_total_features), float("nan"))
+        sampling_ctx = create_sampling_context(
+            num_samples=num_samples,
+            num_features=num_total_features,
+            out_channels=out_channels,
+            num_repetitions=num_repetitions,
+        )
+
+        samples = leaf.sample(data=data, sampling_ctx=sampling_ctx)
+
+        for scope_idx in scope_query:
+            torch.testing.assert_close(
+                samples[:, scope_idx],
+                torch.full((num_samples,), float(scope_idx)),
+                rtol=0.0,
+                atol=0.0,
+            )
+
+        for non_scope_idx in [idx for idx in range(num_total_features) if idx not in scope_query]:
+            assert torch.isnan(samples[:, non_scope_idx]).all()
 
     def test_partial_mask_sampling(self):
         """Test that partial masking works correctly with different scope orders."""
