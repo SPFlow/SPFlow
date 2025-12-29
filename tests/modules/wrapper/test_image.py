@@ -80,7 +80,25 @@ def test_expectation_maximization(
     data = make_data(cls=DummyLeaf, out_features=height * width * num_channel, n_samples=20)
     data = data.reshape(20, num_channel, height, width)
 
-    expectation_maximization(module, data, max_steps=10)
+    loc_before = module.module.inputs.inputs.loc.detach().clone()
+    scale_before = module.module.inputs.inputs.scale.detach().clone()
+
+    max_steps = 2
+    ll_history = expectation_maximization(module, data, max_steps=max_steps)
+    assert ll_history.ndim == 1
+    assert 1 <= ll_history.numel() <= max_steps
+    assert ll_history.isfinite().all()
+
+    assert not torch.equal(module.module.inputs.inputs.loc, loc_before)
+    assert not torch.equal(module.module.inputs.inputs.scale, scale_before)
+    torch.testing.assert_close(
+        module.module.inputs.inputs.loc,
+        torch.zeros_like(module.module.inputs.inputs.loc),
+    )
+    torch.testing.assert_close(
+        module.module.inputs.inputs.scale,
+        torch.ones_like(module.module.inputs.inputs.scale),
+    )
 
 
 @pytest.mark.parametrize(

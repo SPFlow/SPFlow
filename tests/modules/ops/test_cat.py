@@ -85,7 +85,20 @@ def test_expectation_maximization(out_channels: int, out_features: int, num_reps
         dim=dim,
     )
     data = make_normal_data(out_features=module.out_shape.features)
-    expectation_maximization(module, data, max_steps=10)
+    locs_before = [inp.loc.detach().clone() for inp in module.inputs]
+    scales_before = [inp.scale.detach().clone() for inp in module.inputs]
+
+    max_steps = 2
+    ll_history = expectation_maximization(module, data, max_steps=max_steps)
+    assert ll_history.ndim == 1
+    assert 1 <= ll_history.numel() <= max_steps
+    assert ll_history.isfinite().all()
+
+    for i, inp in enumerate(module.inputs):
+        assert not torch.equal(inp.loc, locs_before[i])
+        assert not torch.equal(inp.scale, scales_before[i])
+        torch.testing.assert_close(inp.loc, torch.zeros_like(inp.loc))
+        torch.testing.assert_close(inp.scale, torch.ones_like(inp.scale))
 
 
 @pytest.mark.parametrize("out_channels,out_features, num_reps, dim", params)
@@ -100,7 +113,13 @@ def test_gradient_descent_optimization(out_channels: int, out_features: int, num
 
     dataset = torch.utils.data.TensorDataset(data)
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
-    train_gradient_descent(module, data_loader, epochs=10)
+    loc_before = module.inputs[0].loc.detach().clone()
+    log_scale_before = module.inputs[0].log_scale.detach().clone()
+
+    train_gradient_descent(module, data_loader, epochs=1)
+
+    assert not torch.equal(module.inputs[0].loc, loc_before)
+    assert not torch.equal(module.inputs[0].log_scale, log_scale_before)
 
 
 def test_invalid_constructor_same_scope_dim1():

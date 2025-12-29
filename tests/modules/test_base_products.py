@@ -166,7 +166,20 @@ def test_expectation_maximization(cls, in_channels: int, out_features: int, num_
         cls=cls, out_features=out_features, in_channels=in_channels, num_repetitions=num_reps
     )
     data = make_data(cls=DummyLeaf, out_features=out_features * len(module.inputs))
-    expectation_maximization(module, data, max_steps=2)
+    locs_before = [inp.loc.detach().clone() for inp in module.inputs]
+    scales_before = [inp.scale.detach().clone() for inp in module.inputs]
+
+    max_steps = 2
+    ll_history = expectation_maximization(module, data, max_steps=max_steps)
+    assert ll_history.ndim == 1
+    assert 1 <= ll_history.numel() <= max_steps
+    assert ll_history.isfinite().all()
+
+    for i, inp in enumerate(module.inputs):
+        assert not torch.equal(inp.loc, locs_before[i])
+        assert not torch.equal(inp.scale, scales_before[i])
+        torch.testing.assert_close(inp.loc, torch.zeros_like(inp.loc))
+        torch.testing.assert_close(inp.scale, torch.ones_like(inp.scale))
 
 
 @pytest.mark.parametrize(
@@ -264,13 +277,13 @@ def test_elementwise_product_feature_to_scope():
         for r in range(num_reps):
             # Element-wise product joins corresponding features
             expected_scope = Scope.join_all([leaf_a.feature_to_scope[i, r], leaf_b.feature_to_scope[i, r]])
-            assert feature_scopes[i, r] == expected_scope, (
-                f"Feature {i}, Rep {r}: expected {expected_scope}, got {feature_scopes[i, r]}"
-            )
+            assert (
+                feature_scopes[i, r] == expected_scope
+            ), f"Feature {i}, Rep {r}: expected {expected_scope}, got {feature_scopes[i, r]}"
             # Each output feature should contain exactly 2 input features (one from each input)
-            assert len(feature_scopes[i, r].query) == 2, (
-                f"Feature {i}, Rep {r}: expected 2 features in scope, got {len(feature_scopes[i, r].query)}"
-            )
+            assert (
+                len(feature_scopes[i, r].query) == 2
+            ), f"Feature {i}, Rep {r}: expected 2 features in scope, got {len(feature_scopes[i, r].query)}"
 
 
 def test_elementwise_product_feature_to_scope_multiple_repetitions():
@@ -311,13 +324,13 @@ def test_elementwise_product_feature_to_scope_multiple_repetitions():
             expected_scope = Scope.join_all(
                 [leaf_a.feature_to_scope[i, r], leaf_b.feature_to_scope[i, r], leaf_c.feature_to_scope[i, r]]
             )
-            assert feature_scopes[i, r] == expected_scope, (
-                f"Feature {i}, Rep {r}: expected {expected_scope}, got {feature_scopes[i, r]}"
-            )
+            assert (
+                feature_scopes[i, r] == expected_scope
+            ), f"Feature {i}, Rep {r}: expected {expected_scope}, got {feature_scopes[i, r]}"
             # Each output feature should contain 3 input features (one from each input)
-            assert len(feature_scopes[i, r].query) == 3, (
-                f"Feature {i}, Rep {r}: expected 3 features in scope, got {len(feature_scopes[i, r].query)}"
-            )
+            assert (
+                len(feature_scopes[i, r].query) == 3
+            ), f"Feature {i}, Rep {r}: expected 3 features in scope, got {len(feature_scopes[i, r].query)}"
 
 
 def test_outer_product_feature_to_scope():
@@ -367,13 +380,13 @@ def test_outer_product_feature_to_scope():
 
         for i, (scope_a_elem, scope_b_elem) in enumerate(expected_combinations):
             expected_scope = Scope.join_all([scope_a_elem, scope_b_elem])
-            assert feature_scopes[i, r] == expected_scope, (
-                f"Feature {i}, Rep {r}: expected {expected_scope}, got {feature_scopes[i, r]}"
-            )
+            assert (
+                feature_scopes[i, r] == expected_scope
+            ), f"Feature {i}, Rep {r}: expected {expected_scope}, got {feature_scopes[i, r]}"
             # Each output feature should contain 2 input features (one from each input)
-            assert len(feature_scopes[i, r].query) == 2, (
-                f"Feature {i}, Rep {r}: expected 2 features in scope, got {len(feature_scopes[i, r].query)}"
-            )
+            assert (
+                len(feature_scopes[i, r].query) == 2
+            ), f"Feature {i}, Rep {r}: expected 2 features in scope, got {len(feature_scopes[i, r].query)}"
 
 
 def test_outer_product_feature_to_scope_multiple_repetitions():
@@ -425,10 +438,10 @@ def test_outer_product_feature_to_scope_multiple_repetitions():
 
         for i, (scope_a_elem, scope_b_elem, scope_c_elem) in enumerate(expected_combinations):
             expected_scope = Scope.join_all([scope_a_elem, scope_b_elem, scope_c_elem])
-            assert feature_scopes[i, r] == expected_scope, (
-                f"Feature {i}, Rep {r}: expected {expected_scope}, got {feature_scopes[i, r]}"
-            )
+            assert (
+                feature_scopes[i, r] == expected_scope
+            ), f"Feature {i}, Rep {r}: expected {expected_scope}, got {feature_scopes[i, r]}"
             # Each output feature should contain 3 input features (one from each input)
-            assert len(feature_scopes[i, r].query) == 3, (
-                f"Feature {i}, Rep {r}: expected 3 features in scope, got {len(feature_scopes[i, r].query)}"
-            )
+            assert (
+                len(feature_scopes[i, r].query) == 3
+            ), f"Feature {i}, Rep {r}: expected 3 features in scope, got {len(feature_scopes[i, r].query)}"

@@ -137,7 +137,9 @@ def test_log_likelihood_broadcasting_channels(out_channels: int):
         cls=DummyLeaf, out_channels=in_channels_a, scope=Scope(list(list(range(0, out_features // 2))))
     )
     inputs_a_1 = make_leaf(
-        cls=DummyLeaf, out_channels=in_channels_a, scope=Scope(list(list(range(out_features // 2, out_features))))
+        cls=DummyLeaf,
+        out_channels=in_channels_a,
+        scope=Scope(list(list(range(out_features // 2, out_features)))),
     )
     inputs = [inputs_a_0, inputs_a_1]
     prod_0 = ElementwiseProduct(inputs=inputs)
@@ -146,11 +148,15 @@ def test_log_likelihood_broadcasting_channels(out_channels: int):
         cls=DummyLeaf, out_channels=in_channels_b, scope=Scope(list(list(range(0, out_features // 2))))
     )
     inputs_b_1 = make_leaf(
-        cls=DummyLeaf, out_channels=in_channels_b, scope=Scope(list(list(range(out_features // 2, out_features))))
+        cls=DummyLeaf,
+        out_channels=in_channels_b,
+        scope=Scope(list(list(range(out_features // 2, out_features)))),
     )
 
     inputs_a_1 = make_leaf(
-        cls=DummyLeaf, out_channels=in_channels_a, scope=Scope(list(list(range(out_features // 2, out_features))))
+        cls=DummyLeaf,
+        out_channels=in_channels_a,
+        scope=Scope(list(list(range(out_features // 2, out_features)))),
     )
     inputs = [inputs_a_0, inputs_a_1]
     prod_0 = ElementwiseProduct(inputs=inputs)
@@ -159,7 +165,9 @@ def test_log_likelihood_broadcasting_channels(out_channels: int):
         cls=DummyLeaf, out_channels=in_channels_b, scope=Scope(list(list(range(0, out_features // 2))))
     )
     inputs_b_1 = make_leaf(
-        cls=DummyLeaf, out_channels=in_channels_b, scope=Scope(list(list(range(out_features // 2, out_features))))
+        cls=DummyLeaf,
+        out_channels=in_channels_b,
+        scope=Scope(list(list(range(out_features // 2, out_features)))),
     )
     inputs = [inputs_b_0, inputs_b_1]
     prod_1 = ElementwiseProduct(inputs=inputs)
@@ -355,7 +363,20 @@ def test_expectation_maximization(in_channels: int, out_channels: int, out_featu
         num_repetitions=num_reps,
     )
     data = make_normal_data(out_features=out_features)
-    expectation_maximization(module, data, max_steps=10)
+    locs_before = [inp.loc.detach().clone() for inp in module.inputs]
+    scales_before = [inp.scale.detach().clone() for inp in module.inputs]
+
+    max_steps = 2
+    ll_history = expectation_maximization(module, data, max_steps=max_steps)
+    assert ll_history.ndim == 1
+    assert 1 <= ll_history.numel() <= max_steps
+    assert ll_history.isfinite().all()
+
+    for i, inp in enumerate(module.inputs):
+        assert not torch.equal(inp.loc, locs_before[i])
+        assert not torch.equal(inp.scale, scales_before[i])
+        torch.testing.assert_close(inp.loc, torch.zeros_like(inp.loc))
+        torch.testing.assert_close(inp.scale, torch.ones_like(inp.scale))
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
@@ -435,16 +456,12 @@ def test_invalid_specification_of_out_channels_and_weights(
                     out_features=out_features, out_channels=out_channels_leaves, num_repetitions=num_reps
                 ),
             ],
-            )
+        )
 
     channels_a = max(2, in_channels)
     channels_b = channels_a + 1
-    input_a = make_normal_leaf(
-        out_features=out_features, out_channels=channels_a, num_repetitions=num_reps
-    )
-    input_b = make_normal_leaf(
-        out_features=out_features, out_channels=channels_b, num_repetitions=num_reps
-    )
+    input_a = make_normal_leaf(out_features=out_features, out_channels=channels_a, num_repetitions=num_reps)
+    input_b = make_normal_leaf(out_features=out_features, out_channels=channels_b, num_repetitions=num_reps)
     with pytest.raises(ShapeError, match="compatible channels"):
         ElementwiseSum(out_channels=out_channels, inputs=[input_a, input_b])
 

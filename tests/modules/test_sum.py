@@ -209,7 +209,19 @@ def test_expectation_maximization(in_channels: int, out_channels: int, out_featu
         num_repetitions=num_reps,
     )
     data = make_normal_data(out_features=out_features)
-    expectation_maximization(module, data, max_steps=10)
+    loc_before = module.inputs.loc.detach().clone()
+    scale_before = module.inputs.scale.detach().clone()
+
+    max_steps = 2
+    ll_history = expectation_maximization(module, data, max_steps=max_steps)
+    assert ll_history.ndim == 1
+    assert 1 <= ll_history.numel() <= max_steps
+    assert ll_history.isfinite().all()
+
+    assert not torch.equal(module.inputs.loc, loc_before)
+    assert not torch.equal(module.inputs.scale, scale_before)
+    torch.testing.assert_close(module.inputs.loc, torch.zeros_like(module.inputs.loc))
+    torch.testing.assert_close(module.inputs.scale, torch.ones_like(module.inputs.scale))
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
@@ -272,7 +284,9 @@ def test_invalid_out_channels_and_weights():
     weights = torch.ones((2, 2, 2, 1))
     weights /= weights.sum(dim=1, keepdim=True)
     inputs = make_normal_leaf(out_features=2, out_channels=2, num_repetitions=1)
-    with pytest.raises(InvalidParameterCombinationError, match="Cannot specify both 'out_channels' and 'weights'"):
+    with pytest.raises(
+        InvalidParameterCombinationError, match="Cannot specify both 'out_channels' and 'weights'"
+    ):
         Sum(out_channels=2, inputs=inputs, weights=weights)
 
 
