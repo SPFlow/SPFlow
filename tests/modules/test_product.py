@@ -62,7 +62,23 @@ def test_expectation_maximization(in_channels: int, out_features: int, num_reps)
 
 
 def test_constructor():
-    pass
+    in_channels = 3
+    out_features = 4
+    num_reps = 5
+
+    module = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
+
+    assert isinstance(module, Product)
+    assert tuple(module.scope.query) == tuple(range(out_features))
+    assert module.in_shape.features == out_features
+    assert module.out_shape.features == 1
+    assert module.out_shape.channels == in_channels
+    assert module.out_shape.repetitions == num_reps
+
+    data = make_normal_data(out_features=out_features)
+    lls = module.log_likelihood(data)
+    assert lls.shape == (data.shape[0], 1, in_channels, num_reps)
+    assert torch.isfinite(lls).all()
 
 
 @pytest.mark.parametrize(

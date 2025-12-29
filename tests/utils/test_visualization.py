@@ -30,19 +30,20 @@ def test_visualize_success(mock_pydot, simple_model, tmp_path):
     # Test different formats
     formats = ["png", "pdf", "svg", "dot", "plain", "canon"]
     for fmt in formats:
+        mock_graph.reset_mock()
         visualize(simple_model, output_path, format=fmt)
 
         # Verify write methods called
         if fmt == "png":
-            mock_graph.write_png.assert_called()
+            mock_graph.write_png.assert_called_with(f"{output_path}.png", prog="dot")
         elif fmt == "pdf":
-            mock_graph.write_pdf.assert_called()
+            mock_graph.write_pdf.assert_called_with(f"{output_path}.pdf", prog="dot")
         elif fmt == "svg":
-            mock_graph.write_svg.assert_called()
+            mock_graph.write_svg.assert_called_with(f"{output_path}.svg", prog="dot")
         elif fmt == "dot":
-            mock_graph.write_dot.assert_called()
+            mock_graph.write_dot.assert_called_with(f"{output_path}.dot", prog="dot")
         elif fmt == "plain":
-            mock_graph.write_plain.assert_called()
+            mock_graph.write_plain.assert_called_with(f"{output_path}.plain", prog="dot")
         elif fmt == "canon":
             mock_graph.write.assert_called_with(f"{output_path}.{fmt}", format="canon", prog="dot")
 
@@ -93,5 +94,6 @@ def test_visualize_engine_variants(mock_pydot, simple_model, tmp_path):
     output_path = str(tmp_path / "test_graph")
     visualize(simple_model, output_path, format="png", engine="dot-lr")
 
+    mock_pydot.Dot.assert_called_with(graph_type="digraph", rankdir="LR", dpi="300")
     # Should call write_png with prog="dot" (after internal conversion)
     mock_graph.write_png.assert_called_with(f"{output_path}.png", prog="dot")

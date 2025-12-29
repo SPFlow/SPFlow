@@ -24,4 +24,13 @@ def test_save_model(tmp_model_file, example_model):
 
 def test_load_model(tmp_model_file, example_model):
     save_model(example_model, tmp_model_file)
-    load_model(tmp_model_file)
+    loaded = load_model(tmp_model_file)
+
+    assert isinstance(loaded, type(example_model))
+    assert loaded.scope.query == example_model.scope.query
+    assert list(loaded.state_dict().keys()) == list(example_model.state_dict().keys())
+    for key, expected in example_model.state_dict().items():
+        torch.testing.assert_close(loaded.state_dict()[key], expected)
+
+    data = torch.randn(4, len(example_model.scope.query))
+    torch.testing.assert_close(loaded.log_likelihood(data), example_model.log_likelihood(data))

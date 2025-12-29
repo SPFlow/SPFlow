@@ -14,6 +14,7 @@ from spflow.learn import learn_spn
 from spflow.learn.learn_spn import cluster_by_kmeans, prune_sums
 from spflow.meta import Scope
 from spflow.modules.leaves import Normal
+from spflow.modules.module import Module
 from spflow.modules.ops import Cat
 from spflow.modules.products import Product
 from spflow.modules.sums import Sum
@@ -84,12 +85,12 @@ def test_rdc():
 
     assert len(partitions) == 4
 
+
 @pytest.mark.parametrize(
     "leaf_channel,sum_channel",
-    list(product([1,2], [1,2])),
+    list(product([1, 2], [1, 2])),
 )
-def test_multiple_features(leaf_channel,sum_channel):
-
+def test_multiple_features(leaf_channel, sum_channel):
     # Create leaf layer with Gaussian distributions
     scope = Scope(list(range(5)))
     leaf_layer = Normal(scope=scope, out_channels=leaf_channel)
@@ -106,8 +107,22 @@ def test_multiple_features(leaf_channel,sum_channel):
         data,
         leaf_modules=leaf_layer,
         out_channels=sum_channel,
-        min_instances_slice=100
+        min_instances_slice=100,
     )
+
+    assert isinstance(model, Module)
+    assert tuple(model.scope.query) == tuple(range(5))
+
+    batch = 8
+    lls = model.log_likelihood(data[:batch])
+    assert lls.shape == (
+        batch,
+        model.out_shape.features,
+        model.out_shape.channels,
+        model.out_shape.repetitions,
+    )
+    assert torch.isfinite(lls).all()
+
 
 def test_make_moons():
     array = np.array([5])
