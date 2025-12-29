@@ -3,7 +3,7 @@
 import torch
 import pytest
 
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
 def test_sampling_context_init_defaults():
@@ -15,6 +15,18 @@ def test_sampling_context_init_defaults():
     assert ctx.mask.dtype == torch.bool
     assert ctx.channel_index.dtype == torch.long
     assert ctx.samples_mask.tolist() == [True, True, True]
+
+
+def test_sampling_context_requires_num_samples_when_no_tensors_provided():
+    """SamplingContext requires num_samples if channel_index/mask are not provided."""
+    with pytest.raises(ValueError, match="num_samples must be provided"):
+        SamplingContext()
+
+
+def test_init_default_sampling_context_requires_num_samples():
+    """init_default_sampling_context requires num_samples when no context is provided."""
+    with pytest.raises(ValueError, match="num_samples must be provided"):
+        init_default_sampling_context(sampling_ctx=None, num_samples=None)
 
 
 def test_sampling_context_init_with_tensors():

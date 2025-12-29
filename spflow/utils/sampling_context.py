@@ -130,6 +130,10 @@ class SamplingContext:
             self.device = device
         else:
             # channel_index and mask are both None
+            if num_samples is None:
+                raise InvalidParameterError(
+                    "num_samples must be provided when channel_index and mask are None."
+                )
             self._mask = torch.full((num_samples, 1), True, dtype=torch.bool, device=device)
             self._channel_index = torch.zeros((num_samples, 1), dtype=torch.long, device=device)
             self.device = self.mask.device
