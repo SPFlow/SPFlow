@@ -226,10 +226,13 @@ def test_constructor_valid_params(leaf_cls, out_features: int, out_channels: int
     # Construct module B with parameters of module A is initialization
     module_b = leaf_cls(scope=module_a.scope, **module_a_param_dict)
 
-    # Check that the parameters are the same
-    for name, param in module_b.params().items():
-        assert torch.isfinite(param).all()
-        torch.testing.assert_close(param, module_a_param_dict[name], rtol=0.0, atol=0.0)
+    # Compare state_dicts instead of params() to avoid exp/log round-trip differences across platforms.
+    state_a = module_a.state_dict()
+    state_b = module_b.state_dict()
+    assert state_a.keys() == state_b.keys()
+    for name in state_a:
+        assert torch.isfinite(state_b[name]).all()
+        torch.testing.assert_close(state_b[name], state_a[name])
 
 
 @pytest.mark.parametrize(
