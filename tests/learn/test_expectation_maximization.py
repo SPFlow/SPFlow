@@ -77,7 +77,9 @@ class TestExpectationMaximization:
         # Check that at least some parameters changed (if they have gradients)
         any_changed = False
         for param_name, param in module.params().items():
-            if param.requires_grad and not torch.allclose(param, params_before[param_name]):
+            if param.requires_grad and not torch.allclose(
+                param, params_before[param_name], rtol=0.0, atol=0.0
+            ):
                 any_changed = True
                 break
 
@@ -119,9 +121,7 @@ class TestExpectationMaximizationBatched:
         dataloader = DataLoader(dataset, batch_size=10)
 
         num_epochs = 3
-        ll_history = expectation_maximization_batched(
-            module, dataloader, num_epochs=num_epochs
-        )
+        ll_history = expectation_maximization_batched(module, dataloader, num_epochs=num_epochs)
 
         # Check return shape: one entry per epoch
         assert ll_history.dim() == 1
@@ -131,9 +131,7 @@ class TestExpectationMaximizationBatched:
         assert torch.isfinite(ll_history).all()
 
     @pytest.mark.parametrize("leaf_cls,out_features,out_channels,num_reps", params)
-    def test_batched_em_changes_parameters(
-        self, leaf_cls, out_features, out_channels, num_reps
-    ):
+    def test_batched_em_changes_parameters(self, leaf_cls, out_features, out_channels, num_reps):
         """Test that batched EM updates module parameters."""
         module = make_leaf(
             cls=leaf_cls,
@@ -153,7 +151,9 @@ class TestExpectationMaximizationBatched:
         # Check that at least some parameters changed (if they have gradients)
         any_changed = False
         for param_name, param in module.params().items():
-            if param.requires_grad and not torch.allclose(param, params_before[param_name]):
+            if param.requires_grad and not torch.allclose(
+                param, params_before[param_name], rtol=0.0, atol=0.0
+            ):
                 any_changed = True
                 break
 
@@ -173,9 +173,7 @@ class TestExpectationMaximizationBatched:
         dataset = TensorDataset(data)
         dataloader = DataLoader(dataset, batch_size=batch_size)
 
-        ll_history = expectation_maximization_batched(
-            module, dataloader, num_epochs=2
-        )
+        ll_history = expectation_maximization_batched(module, dataloader, num_epochs=2)
 
         assert ll_history.shape[0] == 2
         assert torch.isfinite(ll_history).all()
@@ -193,9 +191,7 @@ class TestExpectationMaximizationBatched:
         dataset = TensorDataset(data)
         dataloader = DataLoader(dataset, batch_size=10)
 
-        ll_history = expectation_maximization_batched(
-            module, dataloader, num_epochs=num_epochs
-        )
+        ll_history = expectation_maximization_batched(module, dataloader, num_epochs=num_epochs)
 
         assert ll_history.shape[0] == num_epochs
         assert torch.isfinite(ll_history).all()
@@ -213,9 +209,7 @@ class TestExpectationMaximizationBatched:
         # Batch size larger than dataset -> single batch
         dataloader = DataLoader(dataset, batch_size=100)
 
-        ll_history = expectation_maximization_batched(
-            module, dataloader, num_epochs=3
-        )
+        ll_history = expectation_maximization_batched(module, dataloader, num_epochs=3)
 
         assert ll_history.shape[0] == 3
         assert torch.isfinite(ll_history).all()
@@ -233,9 +227,7 @@ class TestExpectationMaximizationBatched:
         dataset = TensorDataset(data)
         dataloader = DataLoader(dataset, batch_size=10)
 
-        ll_history = expectation_maximization_batched(
-            module, dataloader, num_epochs=2
-        )
+        ll_history = expectation_maximization_batched(module, dataloader, num_epochs=2)
 
         # Should return nan for each epoch since no data
         assert ll_history.shape[0] == 2
@@ -263,9 +255,7 @@ class TestExpectationMaximizationBatched:
 
         dataloader = RawTensorDataLoader(data, batch_size=10)
 
-        ll_history = expectation_maximization_batched(
-            module, dataloader, num_epochs=2
-        )
+        ll_history = expectation_maximization_batched(module, dataloader, num_epochs=2)
 
         assert ll_history.shape[0] == 2
         assert torch.isfinite(ll_history).all()
@@ -282,9 +272,7 @@ class TestExpectationMaximizationBatched:
         dataset = TensorDataset(data)
         dataloader = DataLoader(dataset, batch_size=10)
 
-        ll_history = expectation_maximization_batched(
-            module, dataloader, num_epochs=2
-        )
+        ll_history = expectation_maximization_batched(module, dataloader, num_epochs=2)
 
         assert ll_history.shape[0] == 2
         assert torch.isfinite(ll_history).all()
@@ -302,9 +290,7 @@ class TestExpectationMaximizationBatched:
         dataset = TensorDataset(data)
         dataloader = DataLoader(dataset, batch_size=50)
 
-        ll_history = expectation_maximization_batched(
-            module, dataloader, num_epochs=5
-        )
+        ll_history = expectation_maximization_batched(module, dataloader, num_epochs=5)
 
         # Later epochs should have similar or better (higher) LL than first epoch
         # Allow some tolerance since mini-batch updates can be noisy
@@ -349,9 +335,7 @@ class TestVerboseMode:
         dataset = TensorDataset(data)
         dataloader = DataLoader(dataset, batch_size=10)
 
-        expectation_maximization_batched(
-            module, dataloader, num_epochs=2, verbose=True
-        )
+        expectation_maximization_batched(module, dataloader, num_epochs=2, verbose=True)
 
         # Check that some logging occurred
         assert any("Epoch" in record.message for record in caplog.records)

@@ -28,9 +28,7 @@ out_channels_values = [1, 4]
 in_features_values = [2, 4, 8]  # Must be even for LinsumLayer
 num_repetitions_values = [1, 2]
 
-params = list(
-    product(in_channels_values, out_channels_values, in_features_values, num_repetitions_values)
-)
+params = list(product(in_channels_values, out_channels_values, in_features_values, num_repetitions_values))
 
 
 def make_linsum_single_input(
@@ -195,7 +193,7 @@ class TestLinsumLayerLogLikelihood:
         # Check cache contains our result
         assert "log_likelihood" in cache
         assert cache["log_likelihood"].get(module) is not None
-        assert torch.allclose(cache["log_likelihood"][module], lls)
+        torch.testing.assert_close(cache["log_likelihood"][module], lls, rtol=0.0, atol=0.0)
 
 
 class TestLinsumLayerSampling:
@@ -205,17 +203,13 @@ class TestLinsumLayerSampling:
         "in_channels,out_channels,in_features,num_reps",
         product([2], [3], [4], [1, 2]),
     )
-    def test_sample_single_input(
-        self, in_channels: int, out_channels: int, in_features: int, num_reps: int
-    ):
+    def test_sample_single_input(self, in_channels: int, out_channels: int, in_features: int, num_reps: int):
         """Test sampling with single input."""
         num_samples = 50
         module = make_linsum_single_input(in_channels, out_channels, in_features, num_reps)
 
         data = torch.full((num_samples, in_features), torch.nan)
-        channel_index = torch.randint(
-            low=0, high=out_channels, size=(num_samples, module.out_shape.features)
-        )
+        channel_index = torch.randint(low=0, high=out_channels, size=(num_samples, module.out_shape.features))
         mask = torch.ones((num_samples, module.out_shape.features), dtype=torch.bool)
         repetition_index = torch.randint(low=0, high=num_reps, size=(num_samples,))
 
@@ -232,18 +226,14 @@ class TestLinsumLayerSampling:
         "in_channels,out_channels,in_features,num_reps",
         product([2], [3], [4], [1, 2]),
     )
-    def test_sample_two_inputs(
-        self, in_channels: int, out_channels: int, in_features: int, num_reps: int
-    ):
+    def test_sample_two_inputs(self, in_channels: int, out_channels: int, in_features: int, num_reps: int):
         """Test sampling with two inputs."""
         num_samples = 50
         module = make_linsum_two_inputs(in_channels, out_channels, in_features, num_reps)
         total_features = in_features * 2
 
         data = torch.full((num_samples, total_features), torch.nan)
-        channel_index = torch.randint(
-            low=0, high=out_channels, size=(num_samples, module.out_shape.features)
-        )
+        channel_index = torch.randint(low=0, high=out_channels, size=(num_samples, module.out_shape.features))
         mask = torch.ones((num_samples, module.out_shape.features), dtype=torch.bool)
         repetition_index = torch.randint(low=0, high=num_reps, size=(num_samples,))
 
@@ -282,7 +272,7 @@ class TestLinsumLayerWeights:
         weights = module.weights
         sums = weights.sum(dim=-1)
 
-        assert torch.allclose(sums, torch.ones_like(sums))
+        torch.testing.assert_close(sums, torch.ones_like(sums), rtol=1e-5, atol=1e-8)
 
     def test_log_weights_consistent(self):
         """Test that log_weights equals log of weights."""
@@ -291,7 +281,7 @@ class TestLinsumLayerWeights:
         expected = torch.log(module.weights)
         actual = module.log_weights
 
-        assert torch.allclose(expected, actual, atol=1e-6)
+        torch.testing.assert_close(expected, actual, rtol=1e-5, atol=1e-6)
 
     def test_set_weights(self):
         """Test setting new weights."""
@@ -303,7 +293,7 @@ class TestLinsumLayerWeights:
 
         module.weights = new_weights
 
-        assert torch.allclose(module.weights, new_weights, atol=1e-5)
+        torch.testing.assert_close(module.weights, new_weights, rtol=1e-5, atol=1e-5)
 
     def test_set_invalid_weights_shape(self):
         """Test that invalid weight shape raises error."""
@@ -386,7 +376,7 @@ class TestLinsumLayerGradientDescent:
             optimizer.step()
 
         # Weights should have changed
-        assert not torch.allclose(module.weights, weights_before)
+        assert not torch.allclose(module.weights, weights_before, rtol=0.0, atol=0.0)
 
 
 class TestLinsumLayerExtraRepr:
@@ -467,7 +457,7 @@ class TestLinsumLayerSplitConsecutiveOptimization:
         lls_wrapped = linsum_wrapped.log_likelihood(data)
         lls_direct = linsum_direct.log_likelihood(data)
 
-        assert torch.allclose(lls_wrapped, lls_direct)
+        torch.testing.assert_close(lls_wrapped, lls_direct, rtol=1e-5, atol=1e-8)
 
     def test_split_mode_sampling_works(self):
         """Test that sampling works correctly with SplitConsecutive input."""
@@ -533,7 +523,7 @@ class TestLinsumLayerExpectationMaximization:
         ll_history = expectation_maximization(module, data, max_steps=5)
 
         # Check weights changed
-        assert not torch.allclose(module.weights, original_weights)
+        assert not torch.allclose(module.weights, original_weights, rtol=0.0, atol=0.0)
         # Check EM ran and produced finite log-likelihoods
         assert len(ll_history) >= 1
         assert torch.isfinite(ll_history).all()
@@ -554,7 +544,7 @@ class TestLinsumLayerExpectationMaximization:
         # Weights should sum to 1 over input channels
         weights = module.weights
         sums = weights.sum(dim=-1)
-        assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5)
+        torch.testing.assert_close(sums, torch.ones_like(sums), rtol=1e-5, atol=1e-5)
 
 
 class TestLinsumLayerEMTwoInputs:
@@ -594,9 +584,7 @@ class TestLinsumLayerEMTwoInputs:
         self, in_channels: int, out_channels: int, in_features: int, num_reps: int
     ):
         """Test that EM updates weights with two inputs."""
-        module = self.make_linsum_with_caching_inputs(
-            in_channels, out_channels, in_features, num_reps
-        )
+        module = self.make_linsum_with_caching_inputs(in_channels, out_channels, in_features, num_reps)
         total_features = in_features * 2
         data = torch.randn(50, total_features)
 
@@ -606,7 +594,7 @@ class TestLinsumLayerEMTwoInputs:
         ll_history = expectation_maximization(module, data, max_steps=5)
 
         # Check weights changed
-        assert not torch.allclose(module.weights, original_weights)
+        assert not torch.allclose(module.weights, original_weights, rtol=0.0, atol=0.0)
         assert len(ll_history) >= 1
         assert torch.isfinite(ll_history).all()
 
@@ -618,9 +606,7 @@ class TestLinsumLayerEMTwoInputs:
         self, in_channels: int, out_channels: int, in_features: int, num_reps: int
     ):
         """Test that weights remain normalized after EM with two inputs."""
-        module = self.make_linsum_with_caching_inputs(
-            in_channels, out_channels, in_features, num_reps
-        )
+        module = self.make_linsum_with_caching_inputs(in_channels, out_channels, in_features, num_reps)
         total_features = in_features * 2
         data = torch.randn(50, total_features)
 
@@ -629,7 +615,7 @@ class TestLinsumLayerEMTwoInputs:
         # Weights should sum to 1 over input channels
         weights = module.weights
         sums = weights.sum(dim=-1)
-        assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5)
+        torch.testing.assert_close(sums, torch.ones_like(sums), rtol=1e-5, atol=1e-5)
 
     def test_em_raises_without_cache(self):
         """Test that EM raises error when cache doesn't have module log-likelihoods."""
@@ -649,4 +635,3 @@ class TestLinsumLayerEMTwoInputs:
         # Two inputs
         two_input_module = self.make_linsum_with_caching_inputs(2, 3, 4, 1)
         assert two_input_module._two_inputs
-

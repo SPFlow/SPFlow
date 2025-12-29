@@ -235,7 +235,7 @@ def test_split_consistent_results():
 
     assert len(lls1) == len(lls2)
     for ll1, ll2 in zip(lls1, lls2):
-        assert torch.allclose(ll1, ll2)
+        torch.testing.assert_close(ll1, ll2, rtol=0.0, atol=0.0)
 
 
 @pytest.mark.parametrize("num_splits", [2, 3, 4])

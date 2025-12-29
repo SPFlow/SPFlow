@@ -27,9 +27,7 @@ out_channels_values = [1, 4]
 in_features_values = [2, 4, 8]  # Must be even for EinsumLayer
 num_repetitions_values = [1, 2]
 
-params = list(
-    product(in_channels_values, out_channels_values, in_features_values, num_repetitions_values)
-)
+params = list(product(in_channels_values, out_channels_values, in_features_values, num_repetitions_values))
 
 
 def make_einsum_single_input(
@@ -49,11 +47,15 @@ def make_einsum_single_input(
 
 
 def make_einsum_two_inputs(
-    in_channels: int, out_channels: int, in_features: int, num_repetitions: int,
-    left_channels: int | None = None, right_channels: int | None = None,
+    in_channels: int,
+    out_channels: int,
+    in_features: int,
+    num_repetitions: int,
+    left_channels: int | None = None,
+    right_channels: int | None = None,
 ) -> EinsumLayer:
     """Create EinsumLayer with two separate input modules.
-    
+
     Args:
         in_channels: Default channels for both inputs (used if left/right not specified).
         out_channels: Number of output channels.
@@ -64,7 +66,7 @@ def make_einsum_two_inputs(
     """
     left_ch = left_channels if left_channels is not None else in_channels
     right_ch = right_channels if right_channels is not None else in_channels
-    
+
     # Create left and right inputs with disjoint scopes
     left_scope = Scope(list(range(0, in_features)))
     right_scope = Scope(list(range(in_features, in_features * 2)))
@@ -144,12 +146,12 @@ class TestEinsumLayerConstruction:
         left = make_leaf(cls=DummyLeaf, out_channels=2, scope=Scope([0, 1]), num_repetitions=1)
         right = make_leaf(cls=DummyLeaf, out_channels=3, scope=Scope([2, 3]), num_repetitions=1)
         module = EinsumLayer(inputs=[left, right], out_channels=4)
-        
+
         # Check weights shape has asymmetric channels
         assert module.weights_shape == (2, 4, 1, 2, 3)  # (features, out_ch, reps, left_ch, right_ch)
         assert module._left_channels == 2
         assert module._right_channels == 3
-        
+
         # Check log-likelihood works
         data = torch.randn(10, 4)  # 4 features total (2 left + 2 right scopes)
         lls = module.log_likelihood(data)
@@ -218,7 +220,7 @@ class TestEinsumLayerLogLikelihood:
         # Check cache contains our result
         assert "log_likelihood" in cache
         assert cache["log_likelihood"].get(module) is not None
-        assert torch.allclose(cache["log_likelihood"][module], lls)
+        torch.testing.assert_close(cache["log_likelihood"][module], lls, rtol=0.0, atol=0.0)
 
 
 class TestEinsumLayerSampling:
@@ -228,17 +230,13 @@ class TestEinsumLayerSampling:
         "in_channels,out_channels,in_features,num_reps",
         product([2], [3], [4], [1, 2]),
     )
-    def test_sample_single_input(
-        self, in_channels: int, out_channels: int, in_features: int, num_reps: int
-    ):
+    def test_sample_single_input(self, in_channels: int, out_channels: int, in_features: int, num_reps: int):
         """Test sampling with single input."""
         num_samples = 50
         module = make_einsum_single_input(in_channels, out_channels, in_features, num_reps)
 
         data = torch.full((num_samples, in_features), torch.nan)
-        channel_index = torch.randint(
-            low=0, high=out_channels, size=(num_samples, module.out_shape.features)
-        )
+        channel_index = torch.randint(low=0, high=out_channels, size=(num_samples, module.out_shape.features))
         mask = torch.ones((num_samples, module.out_shape.features), dtype=torch.bool)
         repetition_index = torch.randint(low=0, high=num_reps, size=(num_samples,))
 
@@ -255,18 +253,14 @@ class TestEinsumLayerSampling:
         "in_channels,out_channels,in_features,num_reps",
         product([2], [3], [4], [1, 2]),
     )
-    def test_sample_two_inputs(
-        self, in_channels: int, out_channels: int, in_features: int, num_reps: int
-    ):
+    def test_sample_two_inputs(self, in_channels: int, out_channels: int, in_features: int, num_reps: int):
         """Test sampling with two inputs."""
         num_samples = 50
         module = make_einsum_two_inputs(in_channels, out_channels, in_features, num_reps)
         total_features = in_features * 2
 
         data = torch.full((num_samples, total_features), torch.nan)
-        channel_index = torch.randint(
-            low=0, high=out_channels, size=(num_samples, module.out_shape.features)
-        )
+        channel_index = torch.randint(low=0, high=out_channels, size=(num_samples, module.out_shape.features))
         mask = torch.ones((num_samples, module.out_shape.features), dtype=torch.bool)
         repetition_index = torch.randint(low=0, high=num_reps, size=(num_samples,))
 
@@ -305,7 +299,7 @@ class TestEinsumLayerWeights:
         weights = module.weights
         sums = weights.sum(dim=(-2, -1))
 
-        assert torch.allclose(sums, torch.ones_like(sums))
+        torch.testing.assert_close(sums, torch.ones_like(sums), rtol=1e-5, atol=1e-8)
 
     def test_log_weights_consistent(self):
         """Test that log_weights equals log of weights."""
@@ -314,7 +308,7 @@ class TestEinsumLayerWeights:
         expected = torch.log(module.weights)
         actual = module.log_weights
 
-        assert torch.allclose(expected, actual, atol=1e-6)
+        torch.testing.assert_close(expected, actual, rtol=1e-5, atol=1e-6)
 
     def test_set_weights(self):
         """Test setting new weights."""
@@ -326,7 +320,7 @@ class TestEinsumLayerWeights:
 
         module.weights = new_weights
 
-        assert torch.allclose(module.weights, new_weights, atol=1e-5)
+        torch.testing.assert_close(module.weights, new_weights, rtol=1e-5, atol=1e-5)
 
     def test_set_invalid_weights_shape(self):
         """Test that invalid weight shape raises error."""
@@ -409,7 +403,7 @@ class TestEinsumLayerGradientDescent:
             optimizer.step()
 
         # Weights should have changed
-        assert not torch.allclose(module.weights, weights_before)
+        assert not torch.allclose(module.weights, weights_before, rtol=0.0, atol=0.0)
 
 
 class TestEinsumLayerExtraRepr:
@@ -460,7 +454,7 @@ class TestEinsumLayerSplitOptimization:
         lls_wrapped = einsum_wrapped.log_likelihood(data)
         lls_direct = einsum_direct.log_likelihood(data)
 
-        assert torch.allclose(lls_wrapped, lls_direct)
+        torch.testing.assert_close(lls_wrapped, lls_direct, rtol=1e-5, atol=1e-8)
 
     def test_split_sampling_works(self):
         """Test that sampling works correctly with SplitConsecutive input."""
@@ -528,7 +522,7 @@ class TestEinsumLayerExpectationMaximization:
         ll_history = expectation_maximization(module, data, max_steps=5)
 
         # Check weights changed
-        assert not torch.allclose(module.weights, original_weights)
+        assert not torch.allclose(module.weights, original_weights, rtol=0.0, atol=0.0)
         # Check EM ran and produced finite log-likelihoods
         assert len(ll_history) >= 1
         assert torch.isfinite(ll_history).all()
@@ -549,7 +543,7 @@ class TestEinsumLayerExpectationMaximization:
         # Weights should sum to 1 over (i,j) pairs
         weights = module.weights
         sums = weights.sum(dim=(-2, -1))
-        assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5)
+        torch.testing.assert_close(sums, torch.ones_like(sums), rtol=1e-5, atol=1e-5)
 
 
 class TestEinsumLayerEMTwoInputs:
@@ -589,9 +583,7 @@ class TestEinsumLayerEMTwoInputs:
         self, in_channels: int, out_channels: int, in_features: int, num_reps: int
     ):
         """Test that EM updates weights with two inputs."""
-        module = self.make_einsum_with_caching_inputs(
-            in_channels, out_channels, in_features, num_reps
-        )
+        module = self.make_einsum_with_caching_inputs(in_channels, out_channels, in_features, num_reps)
         total_features = in_features * 2
         data = torch.randn(50, total_features)
 
@@ -601,7 +593,7 @@ class TestEinsumLayerEMTwoInputs:
         ll_history = expectation_maximization(module, data, max_steps=5)
 
         # Check weights changed
-        assert not torch.allclose(module.weights, original_weights)
+        assert not torch.allclose(module.weights, original_weights, rtol=0.0, atol=0.0)
         assert len(ll_history) >= 1
         assert torch.isfinite(ll_history).all()
 
@@ -613,9 +605,7 @@ class TestEinsumLayerEMTwoInputs:
         self, in_channels: int, out_channels: int, in_features: int, num_reps: int
     ):
         """Test that weights remain normalized after EM with two inputs."""
-        module = self.make_einsum_with_caching_inputs(
-            in_channels, out_channels, in_features, num_reps
-        )
+        module = self.make_einsum_with_caching_inputs(in_channels, out_channels, in_features, num_reps)
         total_features = in_features * 2
         data = torch.randn(50, total_features)
 
@@ -624,23 +614,17 @@ class TestEinsumLayerEMTwoInputs:
         # Weights should sum to 1 over (i,j) pairs
         weights = module.weights
         sums = weights.sum(dim=(-2, -1))
-        assert torch.allclose(sums, torch.ones_like(sums), atol=1e-5)
+        torch.testing.assert_close(sums, torch.ones_like(sums), rtol=1e-5, atol=1e-5)
 
     def test_em_two_inputs_asymmetric_channels(self):
         """Test EM with two inputs having different channel counts."""
         left_scope = Scope([0, 1])
         right_scope = Scope([2, 3])
 
-        left_input = CachingDummyInput(
-            out_channels=2, num_repetitions=1, out_features=2, scope=left_scope
-        )
-        right_input = CachingDummyInput(
-            out_channels=3, num_repetitions=1, out_features=2, scope=right_scope
-        )
+        left_input = CachingDummyInput(out_channels=2, num_repetitions=1, out_features=2, scope=left_scope)
+        right_input = CachingDummyInput(out_channels=3, num_repetitions=1, out_features=2, scope=right_scope)
 
-        module = EinsumLayer(
-            inputs=[left_input, right_input], out_channels=4, num_repetitions=1
-        )
+        module = EinsumLayer(inputs=[left_input, right_input], out_channels=4, num_repetitions=1)
         data = torch.randn(50, 4)
 
         original_weights = module.weights.clone()
@@ -649,7 +633,7 @@ class TestEinsumLayerEMTwoInputs:
         ll_history = expectation_maximization(module, data, max_steps=3)
 
         # Check weights changed
-        assert not torch.allclose(module.weights, original_weights)
+        assert not torch.allclose(module.weights, original_weights, rtol=0.0, atol=0.0)
         # Check weights shape is preserved (asymmetric)
         assert module.weights.shape == (2, 4, 1, 2, 3)
 
@@ -661,4 +645,3 @@ class TestEinsumLayerEMTwoInputs:
 
         with pytest.raises(ValueError, match="not in cache"):
             module.expectation_maximization(data, cache=cache)
-

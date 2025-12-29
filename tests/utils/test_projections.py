@@ -22,7 +22,7 @@ class TestConvexProjections:
 
         # Should be log of input
         expected = torch.log(x)
-        assert torch.allclose(result, expected)
+        torch.testing.assert_close(result, expected, rtol=1e-5, atol=1e-8)
 
     def test_proj_real_to_convex_basic(self):
         """Verify inverse projection from real to convex works."""
@@ -31,7 +31,8 @@ class TestConvexProjections:
         result = proj_real_to_convex(x)
 
         # Should sum to 1 along last dimension
-        assert torch.allclose(result.sum(dim=-1), torch.ones(1))
+        result_sum = result.sum(dim=-1)
+        torch.testing.assert_close(result_sum, torch.ones_like(result_sum), rtol=1e-5, atol=1e-8)
         # All values should be in [0, 1]
         assert torch.all(result >= 0)
         assert torch.all(result <= 1)
@@ -45,7 +46,7 @@ class TestConvexProjections:
         real = proj_convex_to_real(x)
         recovered = proj_real_to_convex(real)
 
-        assert torch.allclose(recovered, x, atol=1e-5)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-5)
 
     def test_proj_convex_at_boundaries(self):
         """Test behavior at convex boundaries."""
@@ -69,7 +70,7 @@ class TestBoundedProjectionsBothBounds:
 
         # Should use log((x-lb)/(ub-x)) formula
         expected = torch.log((x - lb) / (ub - x))
-        assert torch.allclose(result, expected)
+        torch.testing.assert_close(result, expected, rtol=1e-5, atol=1e-8)
 
     def test_proj_real_to_bounded_both_bounds(self):
         """Test proj_real_to_bounded (inverse of above)."""
@@ -79,7 +80,7 @@ class TestBoundedProjectionsBothBounds:
 
         # Should use sigmoid(x) * (ub - lb) + lb formula
         expected = torch.sigmoid(y_real) * (ub - lb) + lb
-        assert torch.allclose(result, expected)
+        torch.testing.assert_close(result, expected, rtol=1e-5, atol=1e-8)
 
         # Results should be in [lb, ub]
         assert torch.all(result >= lb)
@@ -95,7 +96,7 @@ class TestBoundedProjectionsBothBounds:
         y_real = proj_bounded_to_real(x, lb=lb, ub=ub)
         recovered = proj_real_to_bounded(y_real, lb=lb, ub=ub)
 
-        assert torch.allclose(recovered, x, atol=1e-5)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-5)
 
     def test_proj_bounded_at_boundaries(self):
         """Test projection behavior at boundary values."""
@@ -115,7 +116,7 @@ class TestBoundedProjectionsBothBounds:
         result = proj_bounded_to_real(x, lb=lb, ub=ub)
 
         # log((0-(-1))/(1-0)) = log(1) = 0
-        assert torch.allclose(result, torch.tensor([0.0]), atol=1e-6)
+        torch.testing.assert_close(result, torch.zeros_like(result), rtol=1e-5, atol=1e-6)
 
 
 class TestBoundedProjectionsLowerOnly:
@@ -129,7 +130,7 @@ class TestBoundedProjectionsLowerOnly:
 
         # Should use log(x - lb) formula
         expected = torch.log(x - lb)
-        assert torch.allclose(result, expected)
+        torch.testing.assert_close(result, expected, rtol=1e-5, atol=1e-8)
 
     def test_proj_real_to_bounded_lower_only(self):
         """Test proj_real_to_bounded with only lower bound."""
@@ -139,7 +140,7 @@ class TestBoundedProjectionsLowerOnly:
 
         # Should use exp(x) + lb formula
         expected = torch.exp(y_real) + lb
-        assert torch.allclose(result, expected)
+        torch.testing.assert_close(result, expected, rtol=1e-5, atol=1e-8)
 
         # Results should be >= lb
         assert torch.all(result >= lb)
@@ -154,7 +155,7 @@ class TestBoundedProjectionsLowerOnly:
         y_real = proj_bounded_to_real(x, lb=lb, ub=None)
         recovered = proj_real_to_bounded(y_real, lb=lb, ub=None)
 
-        assert torch.allclose(recovered, x, atol=1e-4)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-4)
 
     def test_proj_bounded_lower_at_boundary(self):
         """Test at lower boundary with lower bound only."""
@@ -174,7 +175,7 @@ class TestBoundedProjectionsLowerOnly:
 
         # log(1e6) ≈ 13.8
         expected = torch.log(x - lb)
-        assert torch.allclose(result, expected)
+        torch.testing.assert_close(result, expected, rtol=1e-5, atol=1e-8)
 
 
 class TestBoundedProjectionsUpperOnly:
@@ -188,7 +189,7 @@ class TestBoundedProjectionsUpperOnly:
 
         # Should use log(ub - x) formula
         expected = torch.log(ub - x)
-        assert torch.allclose(result, expected)
+        torch.testing.assert_close(result, expected, rtol=1e-5, atol=1e-8)
 
     def test_proj_real_to_bounded_upper_only(self):
         """Test proj_real_to_bounded with only upper bound."""
@@ -198,7 +199,7 @@ class TestBoundedProjectionsUpperOnly:
 
         # Should use -exp(x) + ub formula
         expected = -torch.exp(y_real) + ub
-        assert torch.allclose(result, expected)
+        torch.testing.assert_close(result, expected, rtol=1e-5, atol=1e-8)
 
         # Results should be <= ub
         assert torch.all(result <= ub)
@@ -213,7 +214,7 @@ class TestBoundedProjectionsUpperOnly:
         y_real = proj_bounded_to_real(x, lb=None, ub=ub)
         recovered = proj_real_to_bounded(y_real, lb=None, ub=ub)
 
-        assert torch.allclose(recovered, x, atol=1e-4)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-4)
 
     def test_proj_bounded_upper_at_boundary(self):
         """Test at upper boundary with upper bound only."""
@@ -233,7 +234,7 @@ class TestBoundedProjectionsUpperOnly:
 
         # log(0 - (-100)) = log(100) ≈ 4.6
         expected = torch.log(ub - x)
-        assert torch.allclose(result, expected)
+        torch.testing.assert_close(result, expected, rtol=1e-5, atol=1e-8)
 
 
 class TestBoundedProjectionsEdgeCases:
@@ -248,7 +249,7 @@ class TestBoundedProjectionsEdgeCases:
         result = proj_bounded_to_real(x, lb=lb, ub=ub)
         recovered = proj_real_to_bounded(result, lb=lb, ub=ub)
 
-        assert torch.allclose(recovered, x, atol=1e-5)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-5)
 
     def test_proj_bounded_tensor_bounds(self):
         """Test with tensor bound values."""
@@ -260,7 +261,7 @@ class TestBoundedProjectionsEdgeCases:
         result = proj_bounded_to_real(x, lb=lb, ub=ub)
         recovered = proj_real_to_bounded(result, lb=lb, ub=ub)
 
-        assert torch.allclose(recovered, x, atol=1e-5)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-5)
 
     def test_proj_bounded_broadcasted_bounds(self):
         """Test with broadcasting of bounds."""
@@ -271,7 +272,7 @@ class TestBoundedProjectionsEdgeCases:
         result = proj_bounded_to_real(x, lb=lb, ub=ub)
         recovered = proj_real_to_bounded(result, lb=lb, ub=ub)
 
-        assert torch.allclose(recovered, x, atol=1e-5)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-5)
 
     def test_proj_bounded_empty_tensor(self):
         """Test with empty tensor."""
@@ -290,7 +291,7 @@ class TestBoundedProjectionsEdgeCases:
         recovered = proj_real_to_bounded(result, lb=lb, ub=ub)
 
         # Should still work, though less numerically stable
-        assert torch.allclose(recovered, x, atol=1e-5)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-5)
 
 
 class TestBoundedProjectionsExtremeValues:
@@ -321,7 +322,7 @@ class TestBoundedProjectionsExtremeValues:
         result = proj_bounded_to_real(x, lb=lb, ub=ub)
         recovered = proj_real_to_bounded(result, lb=lb, ub=ub)
 
-        assert torch.allclose(recovered, x, atol=1e-5)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-5)
 
     def test_proj_real_to_bounded_extreme_inputs(self):
         """Test proj_real_to_bounded with extreme inputs."""
@@ -331,13 +332,13 @@ class TestBoundedProjectionsExtremeValues:
         y_real = torch.tensor([100.0])
         result = proj_real_to_bounded(y_real, lb=lb, ub=ub)
         # sigmoid(100) ≈ 1, so result ≈ ub
-        assert torch.allclose(result, torch.tensor([ub]), atol=1e-5)
+        torch.testing.assert_close(result, result.new_tensor([ub]), rtol=1e-5, atol=1e-5)
 
         # Very large negative value
         y_real = torch.tensor([-100.0])
         result = proj_real_to_bounded(y_real, lb=lb, ub=ub)
         # sigmoid(-100) ≈ 0, so result ≈ lb
-        assert torch.allclose(result, torch.tensor([lb]), atol=1e-5)
+        torch.testing.assert_close(result, result.new_tensor([lb]), rtol=1e-5, atol=1e-5)
 
 
 class TestBoundedProjectionsNumericalStability:
@@ -355,7 +356,7 @@ class TestBoundedProjectionsNumericalStability:
             current = proj_real_to_bounded(y_real, lb=lb, ub=ub)
 
         # Should have minimal error accumulation
-        assert torch.allclose(current, x, atol=1e-4)
+        torch.testing.assert_close(current, x, rtol=1e-5, atol=1e-4)
 
     @pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
     def test_proj_bounded_dtype_preservation(self, dtype):
@@ -378,7 +379,7 @@ class TestBoundedProjectionsNumericalStability:
         recovered = proj_real_to_bounded(y_real, lb=lb, ub=ub)
 
         # Should have very high accuracy
-        assert torch.allclose(recovered, x, atol=1e-12)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-12)
 
 
 class TestBoundedProjectionsWithGradients:
@@ -437,7 +438,7 @@ class TestBoundedProjectionsBatchedOperations:
         recovered = proj_real_to_bounded(y_real, lb=lb, ub=ub)
 
         assert recovered.shape == x.shape
-        assert torch.allclose(recovered, x, atol=1e-5)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-5)
 
     def test_proj_bounded_multidimensional(self):
         """Test with multidimensional tensors."""
@@ -449,7 +450,7 @@ class TestBoundedProjectionsBatchedOperations:
         recovered = proj_real_to_bounded(y_real, lb=lb, ub=ub)
 
         assert recovered.shape == x.shape
-        assert torch.allclose(recovered, x, atol=1e-5)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-5)
 
     def test_proj_bounded_per_feature_bounds(self):
         """Test with different bounds per feature."""
@@ -464,7 +465,7 @@ class TestBoundedProjectionsBatchedOperations:
         y_real = proj_bounded_to_real(x, lb=lb, ub=ub)
         recovered = proj_real_to_bounded(y_real, lb=lb, ub=ub)
 
-        assert torch.allclose(recovered, x, atol=1e-5)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-5)
 
 
 class TestBoundedProjectionsMixedBounds:
@@ -488,7 +489,7 @@ class TestBoundedProjectionsMixedBounds:
         y_real = proj_bounded_to_real(x, lb=lb, ub=ub)
         recovered = proj_real_to_bounded(y_real, lb=lb, ub=ub)
 
-        assert torch.allclose(recovered, x, atol=1e-5)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-5)
 
     def test_proj_bounded_asymmetric_bounds(self):
         """Test with asymmetric bounds."""
@@ -498,4 +499,4 @@ class TestBoundedProjectionsMixedBounds:
         y_real = proj_bounded_to_real(x, lb=lb, ub=ub)
         recovered = proj_real_to_bounded(y_real, lb=lb, ub=ub)
 
-        assert torch.allclose(recovered, x, atol=1e-5)
+        torch.testing.assert_close(recovered, x, rtol=1e-5, atol=1e-5)

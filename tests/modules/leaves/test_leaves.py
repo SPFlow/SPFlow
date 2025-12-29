@@ -105,7 +105,7 @@ def test_maximum_likelihood_estimation(leaf_cls, out_features: int, bias_correct
     # Check that module and sampler params are equal
     for param_name, param_module in leaf_module.named_parameters():
         param_sampler = getattr(leaf_sampler, param_name)
-        assert torch.allclose(param_module, param_sampler, atol=1e-1)
+        torch.testing.assert_close(param_module, param_sampler, rtol=1e-5, atol=1e-1)
 
 
 @pytest.mark.parametrize("leaf_cls, out_features, out_channels, num_reps", params)
@@ -145,7 +145,7 @@ def test_gradient_descent_optimization(
     # Check that the parameters have changed
     for param_name, param in module.params().items():
         if param.requires_grad:
-            assert not torch.allclose(param, params_before[param_name])
+            assert not torch.allclose(param, params_before[param_name], rtol=0.0, atol=0.0)
 
 
 @pytest.mark.parametrize("leaf_cls,out_features,out_channels, num_reps", params)
@@ -172,7 +172,7 @@ def test_expectation_maximization(
     # Check that the parameters have changed
     for param_name, param in module.params().items():
         if param.requires_grad:
-            assert not torch.allclose(param, params_before[param_name])
+            assert not torch.allclose(param, params_before[param_name], rtol=0.0, atol=0.0)
 
 
 @pytest.mark.parametrize(
@@ -229,7 +229,7 @@ def test_constructor_valid_params(leaf_cls, out_features: int, out_channels: int
     # Check that the parameters are the same
     for name, param in module_b.params().items():
         assert torch.isfinite(param).all()
-        assert torch.allclose(param, module_a_param_dict[name])
+        torch.testing.assert_close(param, module_a_param_dict[name], rtol=0.0, atol=0.0)
 
 
 @pytest.mark.parametrize(

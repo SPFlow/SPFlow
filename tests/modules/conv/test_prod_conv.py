@@ -52,7 +52,9 @@ class TestProdConvConstruction:
         """Test construction with padding."""
         height, width, kernel_h, kernel_w = hwk
         leaf = make_normal_leaf(height, width, out_channels=out_channels)
-        module = ProdConv(inputs=leaf, kernel_size_h=kernel_h, kernel_size_w=kernel_w, padding_h=1, padding_w=1)
+        module = ProdConv(
+            inputs=leaf, kernel_size_h=kernel_h, kernel_size_w=kernel_w, padding_h=1, padding_w=1
+        )
 
         assert module.padding_h == 1
         assert module.padding_w == 1
@@ -122,7 +124,7 @@ class TestProdConvLogLikelihood:
         expected_first = input_ll_spatial[0, 0:2, 0:2, 0, 0].sum()
         actual_first = ll[0, 0, 0, 0]
 
-        assert torch.allclose(actual_first, expected_first)
+        torch.testing.assert_close(actual_first, expected_first, rtol=0.0, atol=0.0)
 
     @pytest.mark.parametrize("out_channels,hwk", ll_params)
     def test_log_likelihood_finite(self, out_channels, hwk):

@@ -12,10 +12,10 @@ from spflow.utils.sampling_context import SamplingContext
 
 class IndexLeaf(LeafModule):
     """Deterministic leaf that outputs feature index for each query variable.
-    
+
     For testing scope order invariance: if scope.query = [7, 2, 5, 4],
     then samples[:, 0] = 7, samples[:, 1] = 2, samples[:, 2] = 5, samples[:, 3] = 4.
-    
+
     This allows us to easily verify that samples are placed at the correct
     data positions regardless of scope order.
     """
@@ -63,35 +63,35 @@ class IndexLeaf(LeafModule):
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
         """Override sample to return deterministic values based on scope indices."""
         from spflow.utils.sampling_context import init_default_sampling_context
-        
+
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
-        
+
         # Find which positions need sampling (NaN and in scope)
         out_of_scope = [x for x in range(data.shape[1]) if x not in self.scope.query]
         marg_mask = torch.isnan(data)
         marg_mask[:, out_of_scope] = False
-        
+
         samples_mask = marg_mask
         samples_mask[:, self.scope.query] &= sampling_ctx.mask
-        
+
         instance_mask = samples_mask.sum(1) > 0
         n_samples = instance_mask.sum()
-        
+
         if n_samples == 0:
             return data
-            
+
         if sampling_ctx.repetition_idx is None:
             sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long)
-        
+
         # Place scope indices at the correct positions
         # For each query variable in our scope, put its index value there
         for feat_idx, rv_idx in enumerate(self.scope.query):
             # Only fill where the mask is True for this position
             mask_for_rv = samples_mask[:, rv_idx]
             data[mask_for_rv, rv_idx] = float(rv_idx)
-        
+
         return data
 
 
@@ -104,34 +104,34 @@ class TestCatPermutedScope:
         num_features = 8
         out_channels = 1
         num_repetitions = 1
-        
+
         # Sequential scopes
         scope1 = [0, 1, 2, 3]
         scope2 = [4, 5, 6, 7]
-        
+
         leaf1 = IndexLeaf(scope=scope1, out_channels=out_channels, num_repetitions=num_repetitions)
         leaf2 = IndexLeaf(scope=scope2, out_channels=out_channels, num_repetitions=num_repetitions)
-        
+
         cat = Cat(inputs=[leaf1, leaf2], dim=1)
-        
+
         # Sample
         data = torch.full((num_samples, num_features), float("nan"))
         channel_index = torch.zeros(num_samples, num_features, dtype=torch.long)
         mask = torch.ones(num_samples, num_features, dtype=torch.bool)
         repetition_idx = torch.zeros(num_samples, dtype=torch.long)
-        
+
         sampling_ctx = SamplingContext(
             channel_index=channel_index,
             mask=mask,
             repetition_index=repetition_idx,
         )
-        
+
         samples = cat.sample(data=data, sampling_ctx=sampling_ctx)
-        
+
         # Expected: each position i should have value i
-        expected = torch.tensor([[0., 1., 2., 3., 4., 5., 6., 7.]] * num_samples)
-        
-        assert torch.allclose(samples, expected), f"Expected {expected}, got {samples}"
+        expected = torch.tensor([[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]] * num_samples)
+
+        assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), f"Expected {expected}, got {samples}"
 
     def test_cat_permuted_scope(self):
         """Test Cat.sample with permuted scope - the critical test case."""
@@ -139,42 +139,40 @@ class TestCatPermutedScope:
         num_features = 8
         out_channels = 1
         num_repetitions = 1
-        
+
         # Permuted scopes (like random evidence/query split)
         scope1 = [3, 1, 6, 0]  # Evidence-like (permuted)
         scope2 = [7, 2, 5, 4]  # Query-like (permuted)
-        
+
         leaf1 = IndexLeaf(scope=scope1, out_channels=out_channels, num_repetitions=num_repetitions)
         leaf2 = IndexLeaf(scope=scope2, out_channels=out_channels, num_repetitions=num_repetitions)
-        
+
         cat = Cat(inputs=[leaf1, leaf2], dim=1)
-        
+
         # Sample
         data = torch.full((num_samples, num_features), float("nan"))
         channel_index = torch.zeros(num_samples, num_features, dtype=torch.long)
         mask = torch.ones(num_samples, num_features, dtype=torch.bool)
         repetition_idx = torch.zeros(num_samples, dtype=torch.long)
-        
+
         sampling_ctx = SamplingContext(
             channel_index=channel_index,
             mask=mask,
             repetition_index=repetition_idx,
         )
-        
+
         samples = cat.sample(data=data, sampling_ctx=sampling_ctx)
-        
+
         # Expected: each position i should have value i (the RV index)
         # Position 0 -> value 0, Position 1 -> value 1, etc.
-        expected = torch.tensor([[0., 1., 2., 3., 4., 5., 6., 7.]] * num_samples)
-        
-        assert torch.allclose(samples, expected), (
+        expected = torch.tensor([[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]] * num_samples)
+
+        assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
             f"Expected each position i to have value i.\n"
             f"Expected: {expected[0].tolist()}\n"
             f"Got: {samples[0].tolist()}"
         )
 
 
-
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

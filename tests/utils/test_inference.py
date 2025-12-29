@@ -24,7 +24,8 @@ class TestLogPosterior:
         # With uniform prior, posterior should equal likelihood
         # (after normalization, which logsumexp handles)
         probs = torch.exp(result)
-        assert torch.allclose(probs.sum(dim=1), torch.ones(2), atol=1e-5)
+        probs_sum = probs.sum(dim=1)
+        torch.testing.assert_close(probs_sum, torch.ones_like(probs_sum), rtol=1e-5, atol=1e-5)
 
     def test_uniform_prior(self):
         """Test that uniform prior maintains likelihood proportions."""
@@ -36,7 +37,7 @@ class TestLogPosterior:
 
         # With uniform prior, posterior should equal normalized likelihood
         expected = torch.tensor([[0.8, 0.2]])
-        assert torch.allclose(probs, expected, atol=1e-5)
+        torch.testing.assert_close(probs, expected, rtol=1e-5, atol=1e-5)
 
     def test_non_uniform_prior(self):
         """Test posterior computation with non-uniform prior."""
@@ -50,7 +51,8 @@ class TestLogPosterior:
 
         # Posterior should reflect prior when likelihoods are equal
         assert probs[0, 0] > probs[0, 1]
-        assert torch.allclose(probs.sum(dim=1), torch.ones(1), atol=1e-5)
+        probs_sum = probs.sum(dim=1)
+        torch.testing.assert_close(probs_sum, torch.ones_like(probs_sum), rtol=1e-5, atol=1e-5)
 
     def test_multiple_samples(self):
         """Test with multiple samples in batch."""
@@ -65,7 +67,8 @@ class TestLogPosterior:
         assert result.shape == (batch_size, num_classes)
         # Each row should be a valid log probability (sums to 1 in probability space)
         probs = torch.exp(result)
-        assert torch.allclose(probs.sum(dim=1), torch.ones(batch_size), atol=1e-5)
+        probs_sum = probs.sum(dim=1)
+        torch.testing.assert_close(probs_sum, torch.ones_like(probs_sum), rtol=1e-5, atol=1e-5)
 
     def test_output_is_normalized(self):
         """Test that output probabilities sum to 1."""
@@ -76,7 +79,8 @@ class TestLogPosterior:
         probs = torch.exp(result)
 
         # Each sample's posterior should sum to 1
-        assert torch.allclose(probs.sum(dim=1), torch.ones(10), atol=1e-5)
+        probs_sum = probs.sum(dim=1)
+        torch.testing.assert_close(probs_sum, torch.ones_like(probs_sum), rtol=1e-5, atol=1e-5)
 
     def test_gradient_flow(self):
         """Test that gradients flow through the computation."""
@@ -98,7 +102,7 @@ class TestLogPosterior:
         result = log_posterior(log_likelihood, log_prior)
 
         # With single class, posterior is always 1.0 (log = 0.0)
-        assert torch.allclose(result, torch.zeros(2, 1), atol=1e-5)
+        torch.testing.assert_close(result, torch.zeros_like(result), rtol=0.0, atol=0.0)
 
     def test_numerical_stability(self):
         """Test numerical stability with extreme values."""
@@ -113,7 +117,8 @@ class TestLogPosterior:
 
         # Probabilities should still sum to 1 (use larger tolerance for extreme values)
         probs = torch.exp(result)
-        assert torch.allclose(probs.sum(dim=1), torch.ones(2), atol=1e-3)
+        probs_sum = probs.sum(dim=1)
+        torch.testing.assert_close(probs_sum, torch.ones_like(probs_sum), rtol=1e-5, atol=1e-3)
 
     @pytest.mark.parametrize(
         "batch_size,num_classes",
@@ -128,4 +133,5 @@ class TestLogPosterior:
 
         assert result.shape == (batch_size, num_classes)
         probs = torch.exp(result)
-        assert torch.allclose(probs.sum(dim=1), torch.ones(batch_size), atol=1e-5)
+        probs_sum = probs.sum(dim=1)
+        torch.testing.assert_close(probs_sum, torch.ones_like(probs_sum), rtol=1e-5, atol=1e-5)

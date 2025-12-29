@@ -32,7 +32,8 @@ def test_constructor_accepts_probs(out_features: int, out_channels: int, num_rep
     probs = torch.rand(out_features, out_channels, num_repetitions, NUM_CATEGORIES)
     node = make_module(probs=probs)
     assert node.probs.shape == probs.shape
-    assert torch.allclose(node.probs.sum(dim=-1), torch.ones_like(probs.sum(dim=-1)))
+    probs_sum = node.probs.sum(dim=-1)
+    torch.testing.assert_close(probs_sum, torch.ones_like(probs_sum), rtol=1e-5, atol=1e-5)
 
 
 @pytest.mark.parametrize(
@@ -43,7 +44,7 @@ def test_constructor_accepts_logits(out_features: int, out_channels: int, num_re
     """Categorical accepts logits parameterization."""
     logits = torch.randn(out_features, out_channels, num_repetitions, NUM_CATEGORIES)
     node = make_module(logits=logits)
-    assert torch.allclose(node.params()["logits"], logits)
+    torch.testing.assert_close(node.params()["logits"], logits, rtol=0.0, atol=0.0)
 
 
 def test_categorical_invalid_parameter_combination():

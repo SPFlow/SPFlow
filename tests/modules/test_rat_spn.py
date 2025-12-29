@@ -134,7 +134,9 @@ def test_sample(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_p
     )
     for i in range(module.out_shape.channels):
         data = torch.full((n_samples, num_features), torch.nan)
-        channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features))
+        channel_index = torch.randint(
+            low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
+        )
         mask = torch.full((n_samples, module.out_shape.features), True)
         repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         sampling_ctx = SamplingContext(

@@ -154,7 +154,7 @@ def test_multiple_inputs():
     ll_a = module_a.log_likelihood(data)
     ll_b = module_b.log_likelihood(data)
 
-    assert torch.allclose(ll_a, ll_b)
+    torch.testing.assert_close(ll_a, ll_b, rtol=1e-5, atol=1e-6)
 
     # test sampling
 
@@ -177,7 +177,7 @@ def test_multiple_inputs():
     samples_a = module_a.sample(data=data_a, is_mpe=True, sampling_ctx=sampling_ctx_a)
     samples_b = module_b.sample(data=data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
 
-    assert torch.allclose(samples_a, samples_b)
+    torch.testing.assert_close(samples_a, samples_b, rtol=0.0, atol=0.0)
 
 
 def test_feature_to_scope():

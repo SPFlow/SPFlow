@@ -126,9 +126,12 @@ class IndexLeaf(LeafModule):
 
         # Create scope indices tensor: each position i contains scope.query[i]
         # Shape: (out_features, out_channels, num_repetitions)
-        scope_indices = torch.tensor(
-            scope.query, dtype=torch.float32
-        ).view(-1, 1, 1).expand(len(scope.query), out_channels, num_repetitions).clone()
+        scope_indices = (
+            torch.tensor(scope.query, dtype=torch.float32)
+            .view(-1, 1, 1)
+            .expand(len(scope.query), out_channels, num_repetitions)
+            .clone()
+        )
         self.register_buffer("scope_indices", scope_indices)
 
     @property
@@ -158,8 +161,12 @@ class IndexLeaf(LeafModule):
 
 
 def create_sampling_context(
-    num_samples: int, num_features: int, out_channels: int = 1, num_repetitions: int = 1,
-    channel: int = 0, repetition: int = 0
+    num_samples: int,
+    num_features: int,
+    out_channels: int = 1,
+    num_repetitions: int = 1,
+    channel: int = 0,
+    repetition: int = 0,
 ) -> SamplingContext:
     """Create a sampling context for testing."""
     channel_index = torch.full((num_samples, num_features), channel, dtype=torch.long)
@@ -246,6 +253,8 @@ class TestScopeOrderInvariance:
             assert torch.allclose(
                 samples[:, scope_idx],
                 torch.full((num_samples,), expected_value),
+                rtol=0.0,
+                atol=0.0,
             ), (
                 f"For scope {scope_query}: data[{scope_idx}] should be {expected_value}, "
                 f"got {actual_value}"
@@ -268,7 +277,7 @@ class TestScopeOrderInvariance:
         num_total_features = 3
 
         # Expected result for ALL permutations
-        expected = torch.tensor([[0., 1., 2.]] * num_samples)
+        expected = torch.tensor([[0.0, 1.0, 2.0]] * num_samples)
 
         for perm in itertools.permutations(base_scope):
             scope = Scope(list(perm))
@@ -288,7 +297,7 @@ class TestScopeOrderInvariance:
 
             samples = leaf.sample(data=data, sampling_ctx=sampling_ctx)
 
-            assert torch.allclose(samples, expected), (
+            assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
                 f"For permutation {list(perm)}, expected {expected[0].tolist()}, "
                 f"got {samples[0].tolist()}"
             )
@@ -300,7 +309,7 @@ class TestScopeOrderInvariance:
         num_repetitions = 1
         num_total_features = 3
 
-        expected = torch.tensor([[0., 1., 2.]] * num_samples)
+        expected = torch.tensor([[0.0, 1.0, 2.0]] * num_samples)
 
         for perm in [[0, 1, 2], [2, 1, 0]]:
             scope = Scope(perm)
@@ -321,9 +330,8 @@ class TestScopeOrderInvariance:
 
             samples = leaf.sample(data=data, sampling_ctx=sampling_ctx)
 
-            assert torch.allclose(samples, expected), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, "
-                f"got {samples[0].tolist()}"
+            assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
+                f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
             )
 
     def test_scope_order_with_multiple_repetitions(self):
@@ -333,7 +341,7 @@ class TestScopeOrderInvariance:
         num_repetitions = 3
         num_total_features = 3
 
-        expected = torch.tensor([[0., 1., 2.]] * num_samples)
+        expected = torch.tensor([[0.0, 1.0, 2.0]] * num_samples)
 
         for perm in [[0, 1, 2], [1, 2, 0]]:
             scope = Scope(perm)
@@ -354,9 +362,8 @@ class TestScopeOrderInvariance:
 
             samples = leaf.sample(data=data, sampling_ctx=sampling_ctx)
 
-            assert torch.allclose(samples, expected), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, "
-                f"got {samples[0].tolist()}"
+            assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
+                f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
             )
 
     def test_log_likelihood_always_one(self):
@@ -367,7 +374,7 @@ class TestScopeOrderInvariance:
         data = torch.randn(5, 3)
         lls = leaf.log_likelihood(data)
 
-        assert torch.allclose(lls, torch.zeros_like(lls))
+        torch.testing.assert_close(lls, torch.zeros_like(lls), rtol=0.0, atol=0.0)
 
     def test_larger_scope_permutations(self):
         """Test with a larger scope (4 features) to ensure scalability."""
@@ -376,7 +383,7 @@ class TestScopeOrderInvariance:
         num_repetitions = 1
         num_total_features = 4
 
-        expected = torch.tensor([[0., 1., 2., 3.]] * num_samples)
+        expected = torch.tensor([[0.0, 1.0, 2.0, 3.0]] * num_samples)
 
         test_perms = [
             [0, 1, 2, 3],
@@ -403,9 +410,8 @@ class TestScopeOrderInvariance:
 
             samples = leaf.sample(data=data, sampling_ctx=sampling_ctx)
 
-            assert torch.allclose(samples, expected), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, "
-                f"got {samples[0].tolist()}"
+            assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
+                f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
             )
 
     def test_mpe_sampling_with_scope_permutations(self):
@@ -415,7 +421,7 @@ class TestScopeOrderInvariance:
         num_repetitions = 1
         num_total_features = 3
 
-        expected = torch.tensor([[0., 1., 2.]] * num_samples)
+        expected = torch.tensor([[0.0, 1.0, 2.0]] * num_samples)
 
         for perm in [[0, 1, 2], [2, 1, 0]]:
             scope = Scope(perm)
@@ -435,9 +441,8 @@ class TestScopeOrderInvariance:
 
             samples = leaf.sample(data=data, is_mpe=True, sampling_ctx=sampling_ctx)
 
-            assert torch.allclose(samples, expected), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, "
-                f"got {samples[0].tolist()}"
+            assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
+                f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
             )
 
     def test_non_contiguous_scope(self):
@@ -457,7 +462,7 @@ class TestScopeOrderInvariance:
         num_repetitions = 1
         num_total_features = 3
 
-        expected = torch.tensor([[0., 1., 2.]] * num_samples)
+        expected = torch.tensor([[0.0, 1.0, 2.0]] * num_samples)
 
         for perm in [[0, 1, 2], [2, 0, 1]]:
             scope = Scope(perm)
@@ -481,7 +486,6 @@ class TestScopeOrderInvariance:
 
             samples = leaf.sample(data=data, sampling_ctx=sampling_ctx)
 
-            assert torch.allclose(samples, expected), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, "
-                f"got {samples[0].tolist()}"
+            assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
+                f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
             )

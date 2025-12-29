@@ -206,4 +206,4 @@ class TestClassifier:
         # predict_proba returns [[0.1, 0.9], [0.8, 0.2], [0.6, 0.4]]
         # argmax gives [1, 0, 0]
         assert predictions.shape[0] == 3
-        assert torch.allclose(predictions, torch.tensor([1, 0, 0]))
+        torch.testing.assert_close(predictions, torch.tensor([1, 0, 0]), rtol=0.0, atol=0.0)

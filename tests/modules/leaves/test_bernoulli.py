@@ -29,7 +29,7 @@ def test_constructor_accepts_probs(out_features: int, out_channels: int, num_rep
     probs = torch.rand(out_features, out_channels, num_repetitions)
     node = make_module(probs=probs)
     assert node.probs.shape == probs.shape
-    assert torch.allclose(node.params()["logits"], node.logits)
+    torch.testing.assert_close(node.params()["logits"], node.logits, rtol=0.0, atol=0.0)
 
 
 @pytest.mark.parametrize(
@@ -40,7 +40,7 @@ def test_constructor_accepts_logits(out_features: int, out_channels: int, num_re
     logits = torch.randn(out_features, out_channels, num_repetitions)
     node = make_module(logits=logits)
     assert node.logits.shape == logits.shape
-    assert torch.allclose(node.params()["logits"], logits)
+    torch.testing.assert_close(node.params()["logits"], logits, rtol=0.0, atol=0.0)
 
 
 def test_bernoulli_invalid_parameter_combination():

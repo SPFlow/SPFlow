@@ -236,7 +236,7 @@ class TestProcessWeightsParameter:
             num_repetitions=None,
         )
         # Values should be the same, just reshaped
-        assert torch.allclose(weights.squeeze(), input_weights)
+        torch.testing.assert_close(weights.squeeze(), input_weights, rtol=0.0, atol=0.0)
 
     def test_2d_weight_values_preserved_after_reshape(self, layer):
         """Test that 2D weight values are preserved after reshaping."""
@@ -248,4 +248,4 @@ class TestProcessWeightsParameter:
             num_repetitions=None,
         )
         # Values should be the same, just with added dimension
-        assert torch.allclose(weights.squeeze(0), input_weights)
+        torch.testing.assert_close(weights.squeeze(0), input_weights, rtol=0.0, atol=0.0)

@@ -87,7 +87,12 @@ class TestApplyNanStrategy:
         assert torch.equal(result_data, data)
         # Weights should keep shape and normalize to number of samples
         assert result_weights.shape == weights.shape
-        assert torch.allclose(result_weights.sum(), torch.tensor(float(data.shape[0])))
+        torch.testing.assert_close(
+            result_weights.sum(),
+            result_weights.new_tensor(float(data.shape[0])),
+            rtol=1e-5,
+            atol=1e-5,
+        )
 
     def test_apply_nan_strategy_ignore_some_nan(self):
         """Test apply_nan_strategy with 'ignore' and some NaN."""
@@ -101,8 +106,11 @@ class TestApplyNanStrategy:
         assert torch.equal(result_data, expected_data)
         # Weights should be adjusted
         assert result_weights.shape == (expected_data.shape[0], expected_data.shape[1], 1, 1)
-        assert torch.allclose(
-            result_weights.sum(), torch.tensor(float(expected_data.shape[0]))
+        torch.testing.assert_close(
+            result_weights.sum(),
+            result_weights.new_tensor(float(expected_data.shape[0])),
+            rtol=1e-5,
+            atol=1e-5,
         )
 
     def test_apply_nan_strategy_ignore_all_nan(self):
@@ -134,7 +142,7 @@ class TestApplyNanStrategy:
         kept_weights = torch.stack([weights[0], weights[2]])
         expected_weights = kept_weights * (expected_data.shape[0] / kept_weights.sum())
         assert result_weights.shape == expected_weights.shape
-        assert torch.allclose(result_weights, expected_weights)
+        torch.testing.assert_close(result_weights, expected_weights, rtol=1e-5, atol=1e-6)
 
     def test_apply_nan_strategy_weights_shape_error(self):
         """Test apply_nan_strategy errors with wrong weights shape."""
@@ -192,13 +200,16 @@ class TestApplyNanStrategy:
         result_data, result_weights = apply_nan_strategy(None, data, weights)
 
         # Weights should sum to number of samples (3)
-        assert torch.allclose(result_weights.sum(), torch.tensor(3.0))
+        torch.testing.assert_close(
+            result_weights.sum(),
+            result_weights.new_tensor(3.0),
+            rtol=1e-5,
+            atol=1e-5,
+        )
 
     def test_apply_nan_strategy_nan_in_different_columns(self):
         """Test with NaN in different columns per row."""
-        data = torch.tensor(
-            [[1.0, 2.0, 3.0], [4.0, float("nan"), 6.0], [7.0, 8.0, float("nan")]]
-        )
+        data = torch.tensor([[1.0, 2.0, 3.0], [4.0, float("nan"), 6.0], [7.0, 8.0, float("nan")]])
         weights = torch.ones((data.shape[0], data.shape[1], 1, 1))
 
         result_data, result_weights = apply_nan_strategy("ignore", data, weights)

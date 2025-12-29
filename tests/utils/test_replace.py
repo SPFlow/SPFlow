@@ -14,6 +14,7 @@ from spflow.utils.replace import replace
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.module_shape import ModuleShape
 
+
 class MockModule(Module):
     """Simple mock module for testing replace functionality."""
 
@@ -23,8 +24,6 @@ class MockModule(Module):
         self.name = name
         self.call_count = 0
         self._out_shape = ModuleShape(1, 1, 1)
-
-
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -78,8 +77,6 @@ class StubModule(Module):
     def marginalize(self, marg_rvs, prune=True, cache=None):
         """Return marginalized version."""
         return self
-
-
 
 
 class StubProduct(StubModule):

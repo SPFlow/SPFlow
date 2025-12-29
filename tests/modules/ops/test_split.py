@@ -55,9 +55,7 @@ def test_log_likelihood(
 
 
 @pytest.mark.parametrize("out_channels,features_values_multiplier,num_splits,split_type,num_reps", params)
-def test_sample(
-    out_channels: int, features_values_multiplier: int, num_splits: int, split_type, num_reps
-):
+def test_sample(out_channels: int, features_values_multiplier: int, num_splits: int, split_type, num_reps):
     n_samples = 10
     out_channels = 3
     module = make_split(

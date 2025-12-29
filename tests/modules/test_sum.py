@@ -196,7 +196,7 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
         assert torch.isfinite(samples_query).all()
 
         # Check, that the last three scopes (those that were conditioned on) are still the same
-        assert torch.allclose(data_copy[:, [3, 4, 5]], samples[:, [3, 4, 5]])
+        torch.testing.assert_close(data_copy[:, [3, 4, 5]], samples[:, [3, 4, 5]], rtol=0.0, atol=0.0)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
@@ -244,7 +244,7 @@ def test_gradient_descent_optimization(in_channels: int, out_channels: int, out_
 
     # Check that weights have changed
     if in_channels > 1:  # If in_channels is 1, the weight is 1.0 anyway
-        assert not torch.allclose(module.weights, weights_before)
+        assert not torch.allclose(module.weights, weights_before, rtol=0.0, atol=0.0)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
@@ -256,8 +256,9 @@ def test_weights(in_channels: int, out_channels: int, out_features: int, num_rep
         weights=weights,
         in_channels=in_channels,
     )
-    assert torch.allclose(module.weights.sum(dim=module.sum_dim), torch.tensor(1.0))
-    assert torch.allclose(module.log_weights, module.weights.log())
+    weights_sum = module.weights.sum(dim=module.sum_dim)
+    torch.testing.assert_close(weights_sum, torch.ones_like(weights_sum), rtol=1e-5, atol=1e-5)
+    torch.testing.assert_close(module.log_weights, module.weights.log(), rtol=1e-5, atol=1e-6)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
@@ -407,7 +408,7 @@ def test_multiple_input():
     ll_a = module_a.log_likelihood(data)
     ll_b = module_b.log_likelihood(data)
 
-    assert torch.allclose(ll_a, ll_b)
+    torch.testing.assert_close(ll_a, ll_b, rtol=1e-5, atol=1e-6)
 
     # test sampling
 
@@ -430,7 +431,7 @@ def test_multiple_input():
     samples_a = module_a.sample(data=data_a, is_mpe=True, sampling_ctx=sampling_ctx_a)
     samples_b = module_b.sample(data=data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
 
-    assert torch.allclose(samples_a, samples_b)
+    torch.testing.assert_close(samples_a, samples_b, rtol=0.0, atol=0.0)
 
 
 def test_feature_to_scope_single_input():

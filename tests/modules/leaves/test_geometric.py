@@ -38,7 +38,7 @@ def test_constructor_accepts_probs(out_features: int, out_channels: int, num_rep
 def test_constructor_accepts_logits(out_features: int, out_channels: int, num_repetitions: int):
     logits = torch.randn(out_features, out_channels, num_repetitions)
     node = make_module(logits=logits)
-    assert torch.allclose(node.params()["logits"], logits)
+    torch.testing.assert_close(node.params()["logits"], logits, rtol=0.0, atol=0.0)
 
 
 def test_geometric_invalid_parameter_combination():

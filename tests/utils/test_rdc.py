@@ -120,7 +120,7 @@ class TestRankdataOrdinal:
 
         # [3, 1, 2] -> ranks [3, 1, 2] (1-indexed)
         expected = torch.tensor([3.0, 1.0, 2.0])
-        assert torch.allclose(result, expected)
+        torch.testing.assert_close(result, expected, rtol=0.0, atol=0.0)
 
     def test_rankdata_ordinal_duplicates(self):
         """Test rankdata_ordinal with duplicate values."""
@@ -148,7 +148,7 @@ class TestRankdataOrdinal:
         result = rankdata_ordinal(data)
 
         expected = torch.tensor([1.0, 2.0, 3.0, 4.0])
-        assert torch.allclose(result, expected)
+        torch.testing.assert_close(result, expected, rtol=0.0, atol=0.0)
 
     def test_rankdata_ordinal_sorted_descending(self):
         """Test rankdata_ordinal with sorted descending data."""
@@ -156,7 +156,7 @@ class TestRankdataOrdinal:
         result = rankdata_ordinal(data)
 
         expected = torch.tensor([4.0, 3.0, 2.0, 1.0])
-        assert torch.allclose(result, expected)
+        torch.testing.assert_close(result, expected, rtol=0.0, atol=0.0)
 
 
 class TestCCALoop:

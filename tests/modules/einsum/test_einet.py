@@ -33,9 +33,7 @@ params_full = list(
 )
 
 # Sampling only supports top-down for now
-params_sampling = [
-    p for p in params_full if p[5] == "top-down"  # structure is 6th element (index 5)
-]
+params_sampling = [p for p in params_full if p[5] == "top-down"]  # structure is 6th element (index 5)
 
 
 def make_leaf_modules(num_features: int, num_leaves: int, num_repetitions: int) -> list:
@@ -53,9 +51,7 @@ def make_leaf_modules(num_features: int, num_leaves: int, num_repetitions: int) 
 class TestEinetConstruction:
     """Test Einet construction with various parameter combinations."""
 
-    @pytest.mark.parametrize(
-        "num_sums,num_leaves,depth,num_reps,layer_type,structure", params_full
-    )
+    @pytest.mark.parametrize("num_sums,num_leaves,depth,num_reps,layer_type,structure", params_full)
     def test_parametrized_construction(
         self,
         num_sums: int,
@@ -149,9 +145,7 @@ class TestEinetConstruction:
 class TestEinetLogLikelihood:
     """Test Einet log-likelihood computation."""
 
-    @pytest.mark.parametrize(
-        "num_sums,num_leaves,depth,num_reps,layer_type,structure", params_full
-    )
+    @pytest.mark.parametrize("num_sums,num_leaves,depth,num_reps,layer_type,structure", params_full)
     def test_parametrized_log_likelihood(
         self,
         num_sums: int,
@@ -206,9 +200,7 @@ class TestEinetLogLikelihood:
 class TestEinetSampling:
     """Test Einet sampling."""
 
-    @pytest.mark.parametrize(
-        "num_sums,num_leaves,depth,num_reps,layer_type,structure", params_sampling
-    )
+    @pytest.mark.parametrize("num_sums,num_leaves,depth,num_reps,layer_type,structure", params_sampling)
     def test_parametrized_sampling(
         self,
         num_sums: int,
@@ -322,9 +314,7 @@ class TestEinetGradient:
         )
 
         # Get initial parameters
-        initial_params = {
-            name: param.clone() for name, param in model.named_parameters()
-        }
+        initial_params = {name: param.clone() for name, param in model.named_parameters()}
 
         optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
         data = torch.randn(50, 4)
@@ -339,7 +329,7 @@ class TestEinetGradient:
         # Check that some parameters changed
         changed = False
         for name, param in model.named_parameters():
-            if not torch.allclose(param, initial_params[name]):
+            if not torch.allclose(param, initial_params[name], rtol=0.0, atol=0.0):
                 changed = True
                 break
 

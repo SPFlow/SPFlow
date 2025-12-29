@@ -54,7 +54,7 @@ def test_constructor_accepts_probs(out_features: int, out_channels: int, num_rep
     n, p = make_params(out_features, out_channels, num_repetitions)
     node = make_module(n=n, p=p)
     assert node.probs.shape == p.shape
-    assert torch.allclose(node.params()["logits"], node.logits)
+    torch.testing.assert_close(node.params()["logits"], node.logits, rtol=0.0, atol=0.0)
 
 
 @pytest.mark.parametrize(
@@ -66,7 +66,7 @@ def test_constructor_accepts_logits(out_features: int, out_channels: int, num_re
     n, _ = make_params(out_features, out_channels, num_repetitions)
     logits = torch.randn(out_features, out_channels, num_repetitions)
     node = make_module(n=n, logits=logits)
-    assert torch.allclose(node.params()["logits"], logits)
+    torch.testing.assert_close(node.params()["logits"], logits, rtol=0.0, atol=0.0)
 
 
 @pytest.mark.parametrize(

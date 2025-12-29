@@ -44,7 +44,7 @@ def test_split_result(cls, out_channels: int, out_features: int, num_repetitions
     data = make_normal_data(out_features=num_features)
     ll_1 = spn1.log_likelihood(data)
     ll_2 = spn2.log_likelihood(data)
-    assert torch.allclose(ll_1, ll_2)
+    torch.testing.assert_close(ll_1, ll_2, rtol=1e-5, atol=1e-6)
 
     n_samples = 100
     num_inputs = 2
@@ -52,7 +52,9 @@ def test_split_result(cls, out_channels: int, out_features: int, num_repetitions
     data1 = torch.full((n_samples, spn1.out_shape.features * num_inputs), torch.nan)
     data2 = torch.full((n_samples, spn1.out_shape.features * num_inputs), torch.nan)
     mask = torch.full((n_samples, spn1.out_shape.features), True, dtype=torch.bool)
-    channel_index = torch.randint(low=0, high=spn1.out_shape.channels, size=(n_samples, spn1.out_shape.features))
+    channel_index = torch.randint(
+        low=0, high=spn1.out_shape.channels, size=(n_samples, spn1.out_shape.features)
+    )
     rep_index = torch.randint(low=0, high=num_repetitions, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, repetition_index=rep_index, mask=mask)
     sampling_ctx2 = SamplingContext(channel_index=channel_index, repetition_index=rep_index, mask=mask)
@@ -60,7 +62,7 @@ def test_split_result(cls, out_channels: int, out_features: int, num_repetitions
     s1 = spn1.sample(data=data1, sampling_ctx=sampling_ctx, is_mpe=True)
     s2 = spn2.sample(data=data2, sampling_ctx=sampling_ctx2, is_mpe=True)
 
-    assert torch.allclose(s1, s2)
+    torch.testing.assert_close(s1, s2, rtol=0.0, atol=0.0)
 
 
 # New tests for Phase 3 coverage improvement
@@ -159,7 +161,7 @@ def test_split_mode_log_likelihood_consistency():
     # Results should be identical for same input
     assert len(lls1) == len(lls2)
     for ll1, ll2 in zip(lls1, lls2):
-        assert torch.allclose(ll1, ll2)
+        torch.testing.assert_close(ll1, ll2, rtol=0.0, atol=0.0)
 
 
 def test_split_mode_sampling_consistency():

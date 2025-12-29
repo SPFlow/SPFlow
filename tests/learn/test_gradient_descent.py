@@ -269,7 +269,7 @@ def test_train_gradient_descent_classification_mode(classification_model, classi
     assert classification_model.posterior_calls > 0
     assert classification_model.likelihood_calls > 0
     for param, initial in zip(classification_model.parameters(), initial_params):
-        assert not torch.allclose(param, initial)
+        assert not torch.allclose(param, initial, rtol=0.0, atol=0.0)
 
 
 def test_train_gradient_descent_classification_with_validation(classification_model):

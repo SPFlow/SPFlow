@@ -48,7 +48,7 @@ class TestRepetitionMixingLayerEMBasic:
             layer.expectation_maximization(data, cache=cache)
 
         # Check weights changed (always possible since sum_dim sums over repetitions)
-        assert not torch.allclose(layer.weights, original_weights)
+        assert not torch.allclose(layer.weights, original_weights, rtol=0.0, atol=0.0)
 
     @pytest.mark.parametrize("in_channels", in_channels_values)
     @pytest.mark.parametrize("num_reps", num_repetitions_values)
@@ -70,7 +70,7 @@ class TestRepetitionMixingLayerEMBasic:
 
         # Check weights still sum to 1 over sum_dim (repetitions)
         weights_sum = layer.weights.sum(dim=layer.sum_dim)
-        assert torch.allclose(weights_sum, torch.ones_like(weights_sum), atol=1e-5)
+        torch.testing.assert_close(weights_sum, torch.ones_like(weights_sum), rtol=1e-5, atol=1e-5)
 
 
 class TestRepetitionMixingLayerEMErrors:

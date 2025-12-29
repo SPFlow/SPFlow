@@ -199,21 +199,19 @@ class TestPiecewiseLinearSampling:
         data = torch.randn(100, 2)
         domains = [Domain.continuous_inf_support(), Domain.continuous_inf_support()]
         leaf.initialize(data, domains)
-        
+
         # Manually set repetition index if needed (normally handled by SamplingContext)
         # However, for direct .sample() call on leaf, usually context is passed or default created
         # If repetitions > 1, we need to ensure repetition_idx is set in default context or manually
         # The sample method handles default context creation.
-        # But if repetitions > 1, the sample method implementation in PiecewiseLinear 
+        # But if repetitions > 1, the sample method implementation in PiecewiseLinear
         # raises ValueError if repetition_idx is None.
-        
+
         from spflow.utils.sampling_context import SamplingContext
+
         sampling_ctx = None
         if num_repetitions > 1:
-            sampling_ctx = SamplingContext(
-                 num_samples=10, 
-                 repetition_index=torch.zeros(10, dtype=torch.long)
-            )
+            sampling_ctx = SamplingContext(num_samples=10, repetition_index=torch.zeros(10, dtype=torch.long))
 
         # Create NaN tensor for sampling
         sample_data = torch.full((10, 2), float("nan"))

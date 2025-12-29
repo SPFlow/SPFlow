@@ -18,9 +18,21 @@ num_repetitions_values = [1, 3]
 use_sum_conv_values = [True, False]
 
 # Combined parameter lists
-construction_params = list(product(out_channels_values, height_width_values, depth_values, num_repetitions_values, use_sum_conv_values))
-ll_params = list(product(out_channels_values, height_width_values, depth_values, num_repetitions_values, use_sum_conv_values))
-sample_params = list(product(out_channels_values, height_width_values, depth_values, num_repetitions_values, use_sum_conv_values))
+construction_params = list(
+    product(
+        out_channels_values, height_width_values, depth_values, num_repetitions_values, use_sum_conv_values
+    )
+)
+ll_params = list(
+    product(
+        out_channels_values, height_width_values, depth_values, num_repetitions_values, use_sum_conv_values
+    )
+)
+sample_params = list(
+    product(
+        out_channels_values, height_width_values, depth_values, num_repetitions_values, use_sum_conv_values
+    )
+)
 
 
 def make_normal_leaf(height: int, width: int, out_channels: int, num_repetitions: int = 1):
@@ -38,7 +50,7 @@ class TestConvPcConstruction:
         """Test that ConvPc can be constructed with valid parameters."""
         height, width = hw
         # Skip invalid combinations where depth exceeds spatial dimensions
-        if height // (2 ** depth) < 1 or width // (2 ** depth) < 1:
+        if height // (2**depth) < 1 or width // (2**depth) < 1:
             pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
@@ -65,7 +77,7 @@ class TestConvPcConstruction:
         """Test that layers alternate ProdConv and SumConv via recursive inputs."""
         height, width = hw
         # Skip invalid combinations
-        if height // (2 ** depth) < 1 or width // (2 ** depth) < 1:
+        if height // (2**depth) < 1 or width // (2**depth) < 1:
             pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
@@ -120,7 +132,7 @@ class TestConvPcConstruction:
         """Test that output shape is scalar."""
         height, width = hw
         # Skip invalid combinations
-        if height // (2 ** depth) < 1 or width // (2 ** depth) < 1:
+        if height // (2**depth) < 1 or width // (2**depth) < 1:
             pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
@@ -148,7 +160,7 @@ class TestConvPcLogLikelihood:
         """Test that log_likelihood output has correct shape."""
         height, width = hw
         # Skip invalid combinations
-        if height // (2 ** depth) < 1 or width // (2 ** depth) < 1:
+        if height // (2**depth) < 1 or width // (2**depth) < 1:
             pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
@@ -180,7 +192,7 @@ class TestConvPcLogLikelihood:
         """Test that log_likelihood values are finite."""
         height, width = hw
         # Skip invalid combinations
-        if height // (2 ** depth) < 1 or width // (2 ** depth) < 1:
+        if height // (2**depth) < 1 or width // (2**depth) < 1:
             pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
@@ -204,7 +216,7 @@ class TestConvPcLogLikelihood:
         """Test that log_likelihood values are negative (proper probabilities)."""
         height, width = hw
         # Skip invalid combinations
-        if height // (2 ** depth) < 1 or width // (2 ** depth) < 1:
+        if height // (2**depth) < 1 or width // (2**depth) < 1:
             pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
@@ -232,7 +244,7 @@ class TestConvPcSample:
         """Test that samples have correct shape."""
         height, width = hw
         # Skip invalid combinations
-        if height // (2 ** depth) < 1 or width // (2 ** depth) < 1:
+        if height // (2**depth) < 1 or width // (2**depth) < 1:
             pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
@@ -256,7 +268,7 @@ class TestConvPcSample:
         """Test that samples are finite."""
         height, width = hw
         # Skip invalid combinations
-        if height // (2 ** depth) < 1 or width // (2 ** depth) < 1:
+        if height // (2**depth) < 1 or width // (2**depth) < 1:
             pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
@@ -278,7 +290,7 @@ class TestConvPcSample:
         """Test MPE sampling."""
         height, width = hw
         # Skip invalid combinations
-        if height // (2 ** depth) < 1 or width // (2 ** depth) < 1:
+        if height // (2**depth) < 1 or width // (2**depth) < 1:
             pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
@@ -304,7 +316,7 @@ class TestConvPcConditionalSample:
         """Test sampling with evidence."""
         height, width = hw
         # Skip invalid combinations
-        if height // (2 ** depth) < 1 or width // (2 ** depth) < 1:
+        if height // (2**depth) < 1 or width // (2**depth) < 1:
             pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
@@ -334,4 +346,10 @@ class TestConvPcConditionalSample:
         assert torch.isfinite(samples).all()
 
         # Observed values should be unchanged
-        assert torch.allclose(samples[:, :half_features], evidence_copy[:, :half_features], equal_nan=True)
+        torch.testing.assert_close(
+            samples[:, :half_features],
+            evidence_copy[:, :half_features],
+            rtol=0.0,
+            atol=0.0,
+            equal_nan=True,
+        )

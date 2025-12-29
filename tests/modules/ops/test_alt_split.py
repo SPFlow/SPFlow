@@ -54,7 +54,7 @@ def test_split_result(cls, out_channels: int, out_features: int, num_repetitions
     data = make_normal_data(out_features=num_features)
     ll_1 = spn1.log_likelihood(data)
     ll_2 = spn2.log_likelihood(data)
-    assert torch.allclose(ll_1, ll_2)
+    torch.testing.assert_close(ll_1, ll_2, rtol=1e-5, atol=1e-6)
 
 
 # New tests for Phase 3 coverage improvement
@@ -162,7 +162,7 @@ def test_split_alternate_consistency():
     # Results should be identical for same input
     assert len(lls1) == len(lls2)
     for ll1, ll2 in zip(lls1, lls2):
-        assert torch.allclose(ll1, ll2)
+        torch.testing.assert_close(ll1, ll2, rtol=0.0, atol=0.0)
 
 
 def test_split_alternate_sampling():

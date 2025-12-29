@@ -20,7 +20,6 @@ class DummyInput(Module):
         self._in_shape = ModuleShape(out_features, 1, 1)
         self._out_shape = ModuleShape(out_features, out_channels, num_repetitions)
 
-
     @property
     def feature_to_scope(self):
         return self._feature_to_scope
@@ -55,8 +54,6 @@ class DummyInput(Module):
 
     def marginalize(self, marg_rvs, prune=True, cache=None):
         return self
-
-
 
 
 def test_mixing_layer_initialization_validates():

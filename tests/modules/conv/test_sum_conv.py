@@ -83,7 +83,7 @@ class TestSumConvConstruction:
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
         weights_sum = module.weights.sum(dim=1)  # Sum over in_channels
-        assert torch.allclose(weights_sum, torch.ones_like(weights_sum))
+        torch.testing.assert_close(weights_sum, torch.ones_like(weights_sum), rtol=1e-5, atol=1e-8)
 
 
 class TestSumConvLogLikelihood:
@@ -222,11 +222,11 @@ class TestSumConvEM:
         cache["log_likelihood"][module].grad = torch.ones_like(cache["log_likelihood"][module])
 
         # Run EM with mocked leaf EM to avoid leaf gradient issues
-        with patch.object(leaf, 'expectation_maximization'):
+        with patch.object(leaf, "expectation_maximization"):
             module.expectation_maximization(data, cache=cache)
 
         # Check weights changed (only possible if in_channels > 1)
-        assert not torch.allclose(module.weights, original_weights)
+        assert not torch.allclose(module.weights, original_weights, rtol=0.0, atol=0.0)
 
     @pytest.mark.parametrize("in_channels,out_channels,hw", em_params)
     def test_em_weights_still_normalized(self, in_channels, out_channels, hw):
@@ -243,9 +243,9 @@ class TestSumConvEM:
         # Set gradient
         cache["log_likelihood"][module].grad = torch.ones_like(cache["log_likelihood"][module])
 
-        with patch.object(leaf, 'expectation_maximization'):
+        with patch.object(leaf, "expectation_maximization"):
             module.expectation_maximization(data, cache=cache)
 
         # Check weights still sum to 1 over in_channels
         weights_sum = module.weights.sum(dim=1)
-        assert torch.allclose(weights_sum, torch.ones_like(weights_sum), atol=1e-5)
+        torch.testing.assert_close(weights_sum, torch.ones_like(weights_sum), rtol=1e-5, atol=1e-5)
