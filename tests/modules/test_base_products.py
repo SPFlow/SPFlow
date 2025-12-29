@@ -187,7 +187,7 @@ def test_expectation_maximization(cls, in_channels: int, out_features: int, num_
     product(cls_values, in_channels_values, out_features_values, num_repetitions),
 )
 def test_invalid_non_disjoint_scopes(cls, in_channels: int, out_features: int, num_reps):
-    with pytest.raises(ScopeError):
+    with pytest.raises(ScopeError, match="disjoint"):
         make_module(
             cls=cls,
             out_features=out_features,
@@ -232,7 +232,7 @@ def test_broadcast(shape, label, product):
         current_num_features += out_features
 
     if not label:
-        with pytest.raises(ShapeError):
+        with pytest.raises(ShapeError, match="(not broadcastable|equal number of channels)"):
             product(inputs=leaf_layer)
     else:
         prod = product(inputs=leaf_layer)

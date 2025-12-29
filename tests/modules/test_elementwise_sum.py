@@ -427,7 +427,7 @@ def test_invalid_weights_unnormalized(in_channels: int, out_channels: int, out_f
 def test_invalid_weights_shape(in_channels: int, out_channels: int, out_features: int, num_reps):
     # Invalid shape: 6D instead of 5D
     weights = torch.rand((out_features, in_channels, out_channels, 2, num_reps, 2))
-    with pytest.raises(ShapeError):
+    with pytest.raises(ShapeError, match="must be a 5D tensor"):
         make_sum(weights=weights, in_channels=in_channels)
 
 
@@ -444,7 +444,7 @@ def test_invalid_specification_of_out_channels_and_weights(
 ):
     weights = torch.rand((out_features, in_channels, out_channels, 2, num_reps))
     weights = weights / weights.sum(dim=1, keepdim=True)
-    with pytest.raises(ShapeError):
+    with pytest.raises(ShapeError, match="Invalid shape for weights"):
         # Mismatched out_channels between weights and inputs
         out_channels_leaves = out_channels + 1
         ElementwiseSum(
@@ -485,7 +485,7 @@ def test_invalid_parameter_combination(in_channels: int, out_channels: int, out_
         weights = torch.rand((out_features, in_channels, out_channels)) + 1.0
     else:
         weights = torch.rand((out_features, in_channels, out_channels, num_reps)) + 1.0
-    with pytest.raises(InvalidParameterCombinationError):
+    with pytest.raises(InvalidParameterCombinationError, match="Cannot specify both 'out_channels' and 'weights'"):
         make_sum(
             weights=weights, out_channels=out_channels, in_channels=in_channels, num_repetitions=num_reps
         )

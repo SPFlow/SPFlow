@@ -128,7 +128,7 @@ def test_mixing_layer_supports_multiple_features():
 def test_mixing_layer_conflicting_weights_and_out_channels():
     inputs = DummyInput(out_channels=1, num_repetitions=1)
     weights = torch.ones((1, 1, 1))
-    with pytest.raises(InvalidParameterCombinationError):
+    with pytest.raises(InvalidParameterCombinationError, match="Cannot specify both 'out_channels' and 'weights'"):
         RepetitionMixingLayer(inputs=inputs, out_channels=2, num_repetitions=1, weights=weights)
 
 
