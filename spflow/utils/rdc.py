@@ -38,17 +38,21 @@ def rdc(x, y, f=torch.sin, k=20, s=1 / 6.0, n=1):
         y = y.reshape((-1, 1))
 
     # Copula Transformation
-    cx = torch.stack([rankdata_ordinal(xc) for xc in x.T], dim=1) / torch.prod(torch.tensor(x.shape))
-    cy = torch.stack([rankdata_ordinal(yc) for yc in y.T], dim=1) / torch.prod(torch.tensor(y.shape))
+    cx = torch.stack([rankdata_ordinal(xc) for xc in x.T], dim=1) / torch.prod(
+        x.new_tensor(x.shape, dtype=torch.float32)
+    )
+    cy = torch.stack([rankdata_ordinal(yc) for yc in y.T], dim=1) / torch.prod(
+        y.new_tensor(y.shape, dtype=torch.float32)
+    )
 
     # Add a vector of ones so that w.x + b is just a dot product
-    O = torch.ones(cx.shape[0], 1)
+    O = torch.ones(cx.shape[0], 1, device=cx.device, dtype=cx.dtype)
     X = torch.stack([cx, O], dim=1)
     Y = torch.stack([cy, O], dim=1)
 
     # Random linear projections
-    Rx = (s / X.shape[1]) * torch.randn(X.shape[1], k)
-    Ry = (s / Y.shape[1]) * torch.randn(Y.shape[1], k)
+    Rx = (s / X.shape[1]) * torch.randn(X.shape[1], k, device=X.device, dtype=X.dtype)
+    Ry = (s / Y.shape[1]) * torch.randn(Y.shape[1], k, device=Y.device, dtype=Y.dtype)
     X = torch.mm(X.squeeze(-1), Rx)
     Y = torch.mm(Y.squeeze(-1), Ry)
 
@@ -191,7 +195,7 @@ def rankdata_ordinal(x):
 
     # Create ranks array
     ranks = torch.empty_like(sorted_indices, dtype=torch.float)
-    ranks[sorted_indices] = torch.arange(1, len(x) + 1, dtype=torch.float)
+    ranks[sorted_indices] = torch.arange(1, len(x) + 1, dtype=torch.float, device=x.device)
 
     return ranks
 

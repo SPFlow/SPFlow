@@ -217,7 +217,7 @@ class Sum(Module):
             )
         if not torch.all(values > 0):
             raise InvalidWeightsError("Weights for 'Sum' must be all positive.")
-        if not torch.allclose(torch.sum(values, dim=self.sum_dim), torch.tensor(1.0)):
+        if not torch.allclose(torch.sum(values, dim=self.sum_dim), values.new_tensor(1.0)):
             raise InvalidWeightsError("Weights for 'Sum' must sum up to one.")
         self.logits.data = proj_convex_to_real(values)
 

@@ -48,7 +48,7 @@ def _hist_bin_sturges_torch(x: Tensor) -> Tensor:
     Returns:
         Estimated bin width.
     """
-    return _ptp_torch(x) / (torch.log2(torch.tensor(x.size(0), dtype=torch.float32)) + 1.0)
+    return _ptp_torch(x) / (torch.log2(x.new_tensor(x.size(0), dtype=torch.float32)) + 1.0)
 
 
 def _hist_bin_auto_torch(x: Tensor) -> Tensor:

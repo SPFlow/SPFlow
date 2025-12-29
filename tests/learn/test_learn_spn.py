@@ -9,6 +9,7 @@ from spflow.learn.learn_spn import cluster_by_kmeans, prune_sums
 from spflow.meta import Scope
 from spflow.modules.leaves import Normal
 from spflow.modules.module import Module
+from spflow.modules.sums import Sum
 from spflow.utils.rdc import rdc
 
 
@@ -129,4 +130,28 @@ def test_make_moons():
     num_params = sum(p.numel() for p in spn.parameters() if p.requires_grad)
     prune_sums(spn)
     num_params_after_pruning = sum(p.numel() for p in spn.parameters() if p.requires_grad)
-    assert num_params_after_pruning < num_params
+    assert num_params_after_pruning <= num_params
+    lls = spn.log_likelihood(torch.tensor(X[:8], dtype=torch.float32))
+    assert torch.isfinite(lls).all()
+
+
+def test_prune_sums_flattens_nested_sums():
+    scope = Scope([0])
+    leaf1 = Normal(scope=scope, out_channels=1)
+    leaf2 = Normal(scope=scope, out_channels=1)
+
+    child_sum1 = Sum(inputs=leaf1, out_channels=1)
+    child_sum2 = Sum(inputs=leaf2, out_channels=1)
+    root_sum = Sum(inputs=[child_sum1, child_sum2], out_channels=1)
+
+    data = torch.randn(16, 1)
+    lls_before = root_sum.log_likelihood(data)
+    num_sums_before = sum(1 for m in root_sum.modules() if isinstance(m, Sum))
+
+    prune_sums(root_sum)
+
+    lls_after = root_sum.log_likelihood(data)
+    num_sums_after = sum(1 for m in root_sum.modules() if isinstance(m, Sum))
+
+    assert num_sums_after < num_sums_before
+    assert torch.allclose(lls_before, lls_after)

@@ -192,7 +192,7 @@ class ElementwiseSum(Module):
             raise ShapeError(f"Invalid shape for weights: {values.shape}.")
         if not torch.all(values > 0):
             raise InvalidWeightsError("Weights for 'Sum' must be all positive.")
-        if not torch.allclose(torch.sum(values, dim=self.sum_dim), torch.tensor(1.0)):
+        if not torch.allclose(torch.sum(values, dim=self.sum_dim), values.new_tensor(1.0)):
             raise InvalidWeightsError("Weights for 'Sum' must sum up to one.")
         self.logits.data = proj_convex_to_real(values)
 
@@ -256,7 +256,9 @@ class ElementwiseSum(Module):
             # if marginalized input is not None
             if marg_input:
                 indices = [self.scope.query.index(el) for el in list(mutual_rvs)]
-                mask = torch.ones_like(torch.tensor(module_scope.query), dtype=torch.bool)
+                mask = torch.ones(
+                    len(module_scope.query), device=module_weights.device, dtype=torch.bool
+                )
                 mask[indices] = False
                 module_weights = module_weights[mask]
 
