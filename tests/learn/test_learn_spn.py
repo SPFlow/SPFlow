@@ -1,29 +1,15 @@
-from collections import deque
 from itertools import combinations, product
 import pytest
 
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from networkx import connected_components as ccnp, from_numpy_array
-from scipy.stats import multivariate_normal
-from sklearn.datasets import make_moons
 
 from spflow.learn import learn_spn
 from spflow.learn.learn_spn import cluster_by_kmeans, prune_sums
 from spflow.meta import Scope
 from spflow.modules.leaves import Normal
 from spflow.modules.module import Module
-from spflow.modules.ops import Cat
-from spflow.modules.products import Product
-from spflow.modules.sums import Sum
 from spflow.utils.rdc import rdc
-
-matplotlib.use("Agg")
-
-out_features = 5
-out_channels = 2
 
 
 def test_kmeans():
@@ -55,6 +41,8 @@ def make_rdc_data(n_samples=1000):
 
 
 def test_rdc():
+    from networkx import connected_components as ccnp, from_numpy_array
+
     # Generate synthetic data
     data = make_rdc_data()
     threshold = 0.3
@@ -125,8 +113,8 @@ def test_multiple_features(leaf_channel, sum_channel):
 
 
 def test_make_moons():
-    array = np.array([5])
-    visualize = False
+    from sklearn.datasets import make_moons
+
     X, y = make_moons(n_samples=1000, noise=0.1, random_state=42)
 
     scope = Scope(list(range(2)))
@@ -142,103 +130,3 @@ def test_make_moons():
     prune_sums(spn)
     num_params_after_pruning = sum(p.numel() for p in spn.parameters() if p.requires_grad)
     assert num_params_after_pruning < num_params
-
-    if visualize:
-        # Visualize the contours of the learned SPN
-        heatmap(spn, X, y)
-
-
-def plot_contours(mean, std):
-    x, y = np.mgrid[-10:10:0.05, -10:10:0.05]
-    pos = np.dstack((x, y))
-    rv = multivariate_normal(mean, np.diag(std**2))
-    plt.contour(x, y, rv.pdf(pos), levels=5, colors="black")
-
-
-def heatmap(spn, X, y):
-    torch.cuda.empty_cache()
-    spn
-    # Create a meshgrid of points over the feature space
-    x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
-    y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5
-    xx, yy = np.meshgrid(np.linspace(x_min, x_max, 200), np.linspace(y_min, y_max, 200))
-
-    # Flatten the grid so that you can pass it through the SPN
-    grid = np.c_[xx.ravel(), yy.ravel()]
-
-    # Assuming you have a trained SPN called `spn`
-    # Calculate the likelihoods (probabilities) for each point in the grid
-    probs = spn.log_likelihood(torch.tensor(grid, dtype=torch.float32))
-
-    # Reshape the probabilities back into a grid form
-    probs = probs[:, 0, 0].reshape(xx.shape).detach().numpy()
-
-    # Plotting the heatmap
-    plt.figure(figsize=(10, 8))
-
-    plt.contour(xx, yy, np.exp(probs), levels=10, cmap="viridis")
-
-    # Optionally, overlay the original data points
-    plt.scatter(X[:, 0], X[:, 1], c=y, cmap="RdBu", edgecolors="w", s=50, alpha=0.8)
-
-    plt.title("SPN Probability Heatmap")
-    plt.xlabel("Feature 1")
-    plt.ylabel("Feature 2")
-    plt.show()
-
-
-def analyze_spn(spn):
-    counts = {"Sum": 0, "Product": 0, "Cat": 0, "Leaf": 0}
-    leaves = []
-
-    def iterate_spn(spn):
-        if isinstance(spn, Sum):
-            counts["Sum"] += 1
-            iterate_spn(spn.inputs)
-        elif isinstance(spn, Product):
-            counts["Product"] += 1
-            iterate_spn(spn.inputs)
-        elif isinstance(spn, Cat):
-            counts["Cat"] += 1
-            for i in spn.inputs:
-                iterate_spn(i)
-        else:
-            leaves.append(spn)
-            counts["Leaf"] += 1
-            return
-
-    iterate_spn(spn)
-    print(counts)
-    return leaves
-
-
-def list_modules_by_depth(root):
-    if not root:
-        return []
-
-    # Initialize the queue with the root node, the list to store the result
-    result = []
-    queue = deque([root])
-
-    while queue:
-        # Start processing a new depth level
-        level_modules = []
-        level_size = len(queue)  # The number of nodes at this depth
-
-        for _ in range(level_size):
-            current_module = queue.popleft()
-            if not (
-                current_module.__class__.__name__ == "Cat"
-                or current_module.__class__.__name__ == "ModuleList"
-            ):
-                level_modules.append(current_module.__class__.__name__)
-
-            # Add children of the current module to the queue for the next level
-            for child in current_module.children():
-                queue.append(child)
-
-        # Append the list of modules at the current depth level to the result
-        if level_modules:
-            result.append(level_modules)
-
-    return result
