@@ -7,7 +7,7 @@ from spflow.modules import leaves
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
-from spflow.utils.cache import cached
+from spflow.utils.cache import Cache, cached
 from spflow.utils.leaves import init_parameter
 
 
@@ -70,11 +70,24 @@ class CachingDummyInput(Module):
         data[:, self.scope.query] = 0.0
         return data
 
-    def expectation_maximization(self, data, bias_correction=True, cache=None):
+    def expectation_maximization(
+        self, data: Tensor, bias_correction: bool = True, cache: Cache | None = None
+    ) -> None:
         """No-op for EM since this is a dummy module."""
         return None
 
-    def marginalize(self, marg_rvs, prune=True, cache=None):
+    def maximum_likelihood_estimation(
+        self,
+        data: Tensor,
+        weights: Tensor | None = None,
+        bias_correction: bool = True,
+        nan_strategy: str = "ignore",
+        cache: Cache | None = None,
+    ) -> None:
+        """No-op for MLE since this is a dummy module."""
+        return None
+
+    def marginalize(self, marg_rvs: list[int], prune: bool = True, cache: Cache | None = None):
         """Return self for marginalization."""
         return self
 
@@ -506,9 +519,7 @@ class DummyLeaf(LeafModule):
     @scale.setter
     def scale(self, value: Tensor) -> None:
         """Set standard deviation (stores as log_std, no validation after init)."""
-        self.log_scale.data = torch.log(
-            torch.as_tensor(value, dtype=self.log_scale.dtype)
-        )
+        self.log_scale.data = torch.log(torch.as_tensor(value, dtype=self.log_scale.dtype))
 
     @property
     def _supported_value(self):

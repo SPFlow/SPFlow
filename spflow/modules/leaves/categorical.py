@@ -20,12 +20,12 @@ class Categorical(LeafModule):
     def __init__(
         self,
         scope: Scope,
-        out_channels: int = None,
+        out_channels: int | None = None,
         num_repetitions: int = 1,
-        K: int | Tensor | None = None,
+        K: int | None = None,
         probs: Tensor | None = None,
         logits: Tensor | None = None,
-        parameter_fn: nn.Module = None,
+        parameter_fn: nn.Module | None = None,
         validate_args: bool | None = True,
     ):
         """Initialize Categorical distribution leaf module.
@@ -46,24 +46,29 @@ class Categorical(LeafModule):
                 "Either 'K' or one of probs/logits must be provided for Categorical distribution"
             )
 
+        if probs is not None and logits is not None:
+            raise InvalidParameterCombinationError("Categorical accepts either probs or logits, not both.")
+
         param_source = logits if logits is not None else probs
 
         if K is None and param_source is not None:
             # Infer K from the last dimension of p
-            K = param_source.shape[-1]
+            K = int(param_source.shape[-1])
+
+        assert K is not None, "K must be provided or inferred from params"
 
         super().__init__(
             scope=scope,
-            out_channels=out_channels,
+            out_channels=out_channels,  # type: ignore
             num_repetitions=num_repetitions,
             params=[param_source],
-            parameter_fn=parameter_fn,
+            parameter_fn=parameter_fn,  # type: ignore
             validate_args=validate_args,
         )
-        self.K = K
+        self.K: int = K
 
         # Initialize parameter with K categories
-        param_shape = (*self.event_shape, K)
+        param_shape = (*self._event_shape, K)
         init_value = init_parameter(
             param=param_source,
             event_shape=param_shape,

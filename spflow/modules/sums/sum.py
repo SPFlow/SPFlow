@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from spflow.exceptions import InvalidParameterCombinationError
+from spflow.exceptions import InvalidParameterCombinationError, ShapeError
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
@@ -61,16 +61,22 @@ class Sum(Module):
         if not inputs:
             raise ValueError("'Sum' requires at least one input to be specified.")
 
-        # Convert weights from list to tensor if needed
         if weights is not None and isinstance(weights, list):
             weights = torch.tensor(weights)
 
-        weights, out_channels, num_repetitions = self._process_weights_parameter(
+        weights, out_channels_inferred, num_repetitions_inferred = self._process_weights_parameter(
             inputs=inputs,
             weights=weights,
             out_channels=out_channels,
             num_repetitions=num_repetitions,
         )
+
+        # Use inferred values
+        out_channels = out_channels_inferred
+        if num_repetitions_inferred is not None:
+            num_repetitions = num_repetitions_inferred
+        if num_repetitions is None:
+            num_repetitions = 1
 
         # ========== 3. CONFIGURATION VALIDATION ==========
         if out_channels is None or out_channels < 1:
@@ -93,9 +99,7 @@ class Sum(Module):
         # ========== 5. SHAPE COMPUTATION (early, so shapes can be reused below) ==========
         self.in_shape = self.inputs.out_shape
         self.out_shape = ModuleShape(
-            features=self.in_shape.features,
-            channels=out_channels,
-            repetitions=num_repetitions
+            features=self.in_shape.features, channels=out_channels, repetitions=num_repetitions
         )
 
         # ========== 6. WEIGHT INITIALIZATION & PARAMETER REGISTRATION ==========
@@ -108,7 +112,6 @@ class Sum(Module):
 
         # Set weights (converts to logits internally via property setter)
         self.weights = weights
-
 
     def _process_weights_parameter(
         self,
@@ -135,7 +138,7 @@ class Sum(Module):
         elif weight_dim == 4:
             pass
         else:
-            raise ValueError(f"Weights for 'Sum' must be a 1D, 2D, 3D, or 4D tensor but was {weight_dim}D.")
+            raise ShapeError(f"Weights for 'Sum' must be a 1D, 2D, 3D, or 4D tensor but was {weight_dim}D.")
 
         inferred_num_repetitions = weights.shape[-1]
         if num_repetitions is not None and (
@@ -150,7 +153,6 @@ class Sum(Module):
         out_channels = weights.shape[2]
 
         return weights, out_channels, num_repetitions
-
 
     def _get_weights_shape(self) -> tuple[int, int, int, int]:
         return (
@@ -201,11 +203,11 @@ class Sum(Module):
             values: Tensor containing weights for each input and node.
 
         Raises:
-            ValueError: If weights have invalid shape, contain non-positive values,
-                or do not sum to one.
+            ShapeError: If weights have invalid shape.
+            ValueError: If weights contain non-positive values, or do not sum to one.
         """
         if values.shape != self.weights_shape:
-            raise ValueError(
+            raise ShapeError(
                 f"Invalid shape for weights: Was {values.shape} but expected {self.weights_shape}."
             )
         if not torch.all(values > 0):
@@ -274,7 +276,9 @@ class Sum(Module):
         output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)
 
         batch_size = output.shape[0]
-        result = output.view(batch_size, self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions)
+        result = output.view(
+            batch_size, self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions
+        )
 
         return result
 
@@ -390,7 +394,9 @@ class Sum(Module):
             new_mask = sampling_ctx.mask.expand_as(new_channel_index).contiguous()
             if new_mask.shape != new_channel_index.shape:
                 # Fall back to creating a full True mask
-                new_mask = torch.ones(new_channel_index.shape, dtype=torch.bool, device=new_channel_index.device)
+                new_mask = torch.ones(
+                    new_channel_index.shape, dtype=torch.bool, device=new_channel_index.device
+                )
             sampling_ctx.update(new_channel_index, new_mask)
         else:
             sampling_ctx.channel_index = new_channel_index

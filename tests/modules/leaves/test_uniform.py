@@ -47,23 +47,15 @@ def make_leaf(low, high) -> Uniform:
     "out_features,out_channels,num_repetitions",
     product(out_features_values, out_channels_values, num_repetition_values),
 )
-def test_uniform_constructor_missing_low(out_features: int, out_channels: int, num_repetitions: int):
-    """Test the constructor of a Uniform distribution with missing low bound."""
+def test_uniform_constructor_missing_params(out_features: int, out_channels: int, num_repetitions: int):
+    """Test the constructor of a Uniform distribution with missing parameters."""
     low, high = make_params(out_features, out_channels, num_repetitions)
-    with pytest.raises(InvalidParameterCombinationError):
-        scope = Scope(list(range(out_features)))
+    scope = Scope(list(range(out_features)))
+
+    with pytest.raises(InvalidParameterCombinationError, match="parameters are required"):
         Uniform(scope=scope, low=None, high=high)
 
-
-@pytest.mark.parametrize(
-    "out_features,out_channels,num_repetitions",
-    product(out_features_values, out_channels_values, num_repetition_values),
-)
-def test_uniform_constructor_missing_high(out_features: int, out_channels: int, num_repetitions: int):
-    """Test the constructor of a Uniform distribution with missing high bound."""
-    low, high = make_params(out_features, out_channels, num_repetitions)
-    with pytest.raises(InvalidParameterCombinationError):
-        scope = Scope(list(range(out_features)))
+    with pytest.raises(InvalidParameterCombinationError, match="parameters are required"):
         Uniform(scope=scope, low=low, high=None)
 
 
@@ -89,3 +81,12 @@ def test_uniform_constructor_low_greater_than_high(
     low, high = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
         make_leaf(low=high, high=low).distribution
+
+
+def test_uniform_non_finite_params():
+    """Test that Uniform raises ValueError when non-finite parameters are provided."""
+    scope = Scope([0])
+    low = torch.tensor([[[float("nan")]]])
+    high = torch.tensor([[[1.0]]])
+    with pytest.raises(ValueError, match="Parameter must be finite"):
+        Uniform(scope=scope, low=low, high=high)

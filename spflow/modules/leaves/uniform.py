@@ -25,7 +25,7 @@ class Uniform(LeafModule):
     def __init__(
         self,
         scope: Scope,
-        out_channels: int = None,
+        out_channels: int | None = None,
         num_repetitions: int = 1,
         low: Tensor | None = None,
         high: Tensor | None = None,
@@ -48,9 +48,12 @@ class Uniform(LeafModule):
                 "'low' and 'high' parameters are required for Uniform distribution"
             )
 
+        if not torch.isfinite(low).all() or not torch.isfinite(high).all():
+            raise ValueError("Parameter must be finite")
+
         super().__init__(
             scope=scope,
-            out_channels=out_channels,
+            out_channels=out_channels,  # type: ignore
             num_repetitions=num_repetitions,
             params=[low, high],
             validate_args=validate_args,

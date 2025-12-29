@@ -186,7 +186,7 @@ class Module(nn.Module, ABC):
 
         Args:
             data (Tensor): Input data of shape (batch_size, num_features).
-                NaN values indicate evidence for conditional computation.
+                NaN values indicate missing values to marginalize over.
             cache (Cache | None, optional): Cache for intermediate computations. Defaults to None.
 
         Returns:
@@ -376,10 +376,11 @@ class Module(nn.Module, ABC):
         prune: bool = True,
         cache: Cache | None = None,
     ) -> Module | None:
-        """Marginalize out specified random variables from the module.
+        """Structurally marginalize out specified random variables from the module.
 
-        Computes marginal distribution by integrating out the specified variables.
-        Essential for conditioning on evidence and computing marginal probabilities.
+        Computes a new module representing the marginal distribution by integrating out
+        the specified variables from the structure. For data-level marginalization,
+        use NaNs in ``log_likelihood`` inputs.
 
         Args:
             marg_rvs (list[int]): Random variable indices to marginalize out.

@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from spflow.exceptions import ShapeError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -68,7 +69,7 @@ class ElementwiseProduct(BaseProduct):
 
         # Check if all inputs either have equal number of out_channels or 1 (using in_shape.channels set by BaseProduct)
         if not all(inp.out_shape.channels in (1, self.in_shape.channels) for inp in self.inputs):
-            raise ValueError(
+            raise ShapeError(
                 f"Inputs must have equal number of channels or one of them must be '1', but were {[inp.out_shape.channels for inp in self.inputs]}"
             )
 
@@ -85,10 +86,10 @@ class ElementwiseProduct(BaseProduct):
             out_features = int(input_features // self.num_splits)
         else:
             out_features = input_features
-        
+
         # out_channels is max since one input can have single channel (broadcast)
         out_channels = self.in_shape.channels
-        
+
         self.out_shape = ModuleShape(out_features, out_channels, self.in_shape.repetitions)
 
     def check_shapes(self):
@@ -135,7 +136,7 @@ class ElementwiseProduct(BaseProduct):
             return True
 
         # If none of the conditions are satisfied
-        raise ValueError(f"the shapes of the inputs {shapes} are not broadcastable")
+        raise ShapeError(f"the shapes of the inputs {shapes} are not broadcastable")
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -233,7 +234,8 @@ class ElementwiseProduct(BaseProduct):
         # Compute the elementwise sum of left and right split
         output = torch.sum(torch.stack(lls, dim=-1), dim=-1)
 
-        output = output.view(output.size(0), self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions)
+        output = output.view(
+            output.size(0), self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions
+        )
 
         return output
-

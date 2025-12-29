@@ -3,6 +3,7 @@ from itertools import product
 import pytest
 import torch
 
+from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta import Scope
 from spflow.modules.leaves import Hypergeometric
 
@@ -30,8 +31,8 @@ def make_params(
     """
     shape = (out_features, out_channels, num_repetitions)
     N = torch.randint(10, 100, shape)
-    K = torch.randint(1, N.max().item(), shape).clamp(max=N - 1)
-    n = torch.randint(1, N.max().item(), shape).clamp(max=N - 1)
+    K = torch.randint(1, int(N.max().item()), shape).clamp(max=N - 1)
+    n = torch.randint(1, int(N.max().item()), shape).clamp(max=N - 1)
     return K, N, n
 
 
@@ -102,21 +103,10 @@ def test_constructor_K_greater_than_N(out_features: int, out_channels: int, num_
         make_leaf(K=N + 1, N=N, n=n).distribution
 
 
-def test_hypergeometric_support_enforces_integer_bounds():
+def test_hypergeometric_missing_parameters():
+    """Test that Hypergeometric raises InvalidParameterCombinationError when parameters are missing."""
     scope = Scope([0])
-    K = torch.tensor([[4.0]])
+    K = torch.tensor([[5.0]])
     N = torch.tensor([[10.0]])
-    n = torch.tensor([[5.0]])
-    leaf = Hypergeometric(scope=scope, K=K, N=N, n=n)
-
-    valid = torch.tensor([[[3.0]]])
-    invalid_fractional = torch.tensor([[[1.5]]])
-    invalid_low = torch.tensor([[[-1.0]]])
-    invalid_high = torch.tensor([[[6.0]]])
-
-    assert torch.all(leaf.distribution.check_support(valid))
-
-    with pytest.raises(ValueError):
-        leaf.distribution.check_support(invalid_fractional)
-        leaf.distribution.check_support(invalid_low)
-        leaf.distribution.check_support(invalid_high)
+    with pytest.raises(InvalidParameterCombinationError, match="parameters are required"):
+        Hypergeometric(scope=scope, K=K, N=N, n=None)

@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
-from spflow.exceptions import InvalidParameterCombinationError, ScopeError
+from spflow.exceptions import InvalidParameterCombinationError, ScopeError, ShapeError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -63,9 +63,21 @@ class ElementwiseSum(Module):
                     f"Cannot specify both 'num_repetitions' and 'weights' for 'Sum' module."
                 )
 
+            if weights.dim() != 5:
+                raise ShapeError(
+                    f"Weights for 'ElementwiseSum' must be a 5D tensor but was {weights.dim()}D."
+                )
+
             # Derive configuration from weights shape
             out_channels = weights.shape[2]
-            num_repetitions = weights.shape[4]
+            inferred_num_repetitions = weights.shape[4]
+
+            if num_repetitions is not None and num_repetitions != inferred_num_repetitions:
+                raise InvalidParameterCombinationError(
+                    f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. "
+                    f"Was {num_repetitions} but weights shape indicates {inferred_num_repetitions}."
+                )
+            num_repetitions = inferred_num_repetitions
         else:
             # Set defaults when weights not provided
             if out_channels is None:
@@ -81,13 +93,15 @@ class ElementwiseSum(Module):
 
         # Validate all inputs have the same number of features
         if not all([module.out_shape.features == inputs[0].out_shape.features for module in inputs]):
-            raise ValueError("All inputs must have the same number of features.")
+            raise ShapeError("All inputs must have the same number of features.")
 
         # Validate all inputs have compatible channels (same or 1 for broadcasting)
-        if not all([module.out_shape.channels in (1, max(m.out_shape.channels for m in inputs)) for module in inputs]):
-            raise ValueError(
-                "All inputs must have the same number of channels or 1 channel (in which case the "
-                "operation is broadcast)."
+        if not all(
+            [module.out_shape.channels in (1, max(m.out_shape.channels for m in inputs)) for module in inputs]
+        ):
+            raise ShapeError(
+                "All inputs must have compatible channels: same number of channels or 1 channel (in which "
+                "case the operation is broadcast)."
             )
 
         # Validate all input modules have the same scope
@@ -98,10 +112,7 @@ class ElementwiseSum(Module):
         for rep in range(num_repetitions):
             feature_to_scope = inputs[0].feature_to_scope[..., rep]
             for module in inputs[1:]:
-                if not np.array_equal(
-                    feature_to_scope,
-                    module.feature_to_scope[..., rep]
-                ):
+                if not np.array_equal(feature_to_scope, module.feature_to_scope[..., rep]):
                     raise ScopeError(
                         "All input modules must have the same feature to scope mapping for each repetition."
                     )
@@ -116,12 +127,8 @@ class ElementwiseSum(Module):
         out_channels_total = out_channels * in_channels
         self._num_sums = out_channels  # Store for use in sampling
 
-        self.in_shape = ModuleShape(
-            inputs[0].out_shape.features, in_channels, num_repetitions
-        )
-        self.out_shape = ModuleShape(
-            self.in_shape.features, out_channels_total, num_repetitions
-        )
+        self.in_shape = ModuleShape(inputs[0].out_shape.features, in_channels, num_repetitions)
+        self.out_shape = ModuleShape(self.in_shape.features, out_channels_total, num_repetitions)
 
         # ========== 6. WEIGHT INITIALIZATION & PARAMETER REGISTRATION ==========
         self.weights_shape = (
@@ -176,7 +183,7 @@ class ElementwiseSum(Module):
             values: Weight values to set.
         """
         if values.shape != self.weights_shape:
-            raise ValueError(f"Invalid shape for weights: {values.shape}.")
+            raise ShapeError(f"Invalid shape for weights: {values.shape}.")
         if not torch.all(values > 0):
             raise ValueError("Weights for 'Sum' must be all positive.")
         if not torch.allclose(torch.sum(values, dim=self.sum_dim), torch.tensor(1.0)):
@@ -425,7 +432,9 @@ class ElementwiseSum(Module):
 
         # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
         output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)
-        output = output.view(data.shape[0], self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions)
+        output = output.view(
+            data.shape[0], self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions
+        )
 
         return output
 
@@ -448,11 +457,18 @@ class ElementwiseSum(Module):
             # ----- expectation step -----
 
             # Get input LLs
-            input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
+            input_lls = []
+            for inp in self.inputs:
+                inp_ll = cache.get("log_likelihood", inp)
+                if inp_ll is None:
+                    raise ValueError("Input log-likelihoods not found in cache.")
+                input_lls.append(inp_ll)
             input_lls = torch.stack(input_lls, dim=3)
 
             # Get module lls
-            module_lls = cache["log_likelihood"][self]
+            module_lls = cache.get("log_likelihood", self)
+            if module_lls is None:
+                raise ValueError("Module log-likelihood not found in cache.")
 
             log_weights = self.log_weights.unsqueeze(0)
             input_lls = input_lls.unsqueeze(3)

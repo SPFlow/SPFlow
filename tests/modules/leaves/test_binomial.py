@@ -3,6 +3,7 @@ from itertools import product
 import pytest
 import torch
 
+from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta import Scope
 from spflow.modules.leaves.binomial import Binomial
 
@@ -38,6 +39,8 @@ def make_module(n, p=None, logits=None) -> Binomial:
         p: Probability of success in each trial.
     """
     tensor = p if p is not None else logits
+    if tensor is None:
+        raise ValueError("Either p or logits must be provided")
     scope = Scope(list(range(tensor.shape[0])))
     return Binomial(scope=scope, total_count=n, probs=p, logits=logits)
 
@@ -97,3 +100,21 @@ def test_constructor_n_negative(out_features: int, out_channels: int, num_repeti
     n, p = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
         make_module(n=torch.full_like(n, -1.0), p=p).distribution
+
+
+def test_binomial_invalid_parameter_combination():
+    """Test that Binomial raises InvalidParameterCombinationError when both probs and logits are given."""
+    scope = Scope([0])
+    n = torch.tensor([10])
+    probs = torch.tensor([0.5])
+    logits = torch.tensor([0.0])
+    with pytest.raises(InvalidParameterCombinationError, match="accepts either probs or logits, not both"):
+        Binomial(scope=scope, total_count=n, probs=probs, logits=logits)
+
+
+def test_binomial_missing_n():
+    """Test that Binomial raises InvalidParameterCombinationError when n is missing."""
+    scope = Scope([0])
+    probs = torch.tensor([0.5])
+    with pytest.raises(InvalidParameterCombinationError, match="'n' parameter is required"):
+        Binomial(scope=scope, total_count=None, probs=probs)

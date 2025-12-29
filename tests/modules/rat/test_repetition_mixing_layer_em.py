@@ -8,56 +8,9 @@ import torch
 
 from spflow.learn import expectation_maximization
 from spflow.meta import Scope
-from spflow.modules.module import Module
-from spflow.modules.module_shape import ModuleShape
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.utils.cache import Cache, cached
-
-
-class CachingDummyInput(Module):
-    """Dummy input module that properly caches log_likelihood for EM testing."""
-
-    def __init__(self, out_channels: int = 2, num_repetitions: int = 2, out_features: int = 1):
-        super().__init__()
-        self.scope = Scope(list(range(out_features)))
-        self._feature_to_scope = np.array(
-            [[Scope(i)] for i in range(out_features)], dtype=object
-        )
-        self._in_shape = ModuleShape(out_features, 1, 1)
-        self._out_shape = ModuleShape(out_features, out_channels, num_repetitions)
-
-    @property
-    def feature_to_scope(self):
-        return self._feature_to_scope
-
-    @cached
-    def log_likelihood(self, data, cache=None):
-        batch = data.shape[0]
-        # Return small negative values that require gradients for EM
-        result = torch.randn(
-            batch,
-            self.out_shape.features,
-            self.out_shape.channels,
-            self.out_shape.repetitions,
-            requires_grad=True,
-        )
-        return result
-
-    def sample(self, *args, **kwargs):
-        data = kwargs.get("data")
-        if data is None:
-            data = torch.full((1, len(self.scope.query)), torch.nan)
-        data[:, self.scope.query] = 0.0
-        return data
-
-    def expectation_maximization(self, data, cache=None):
-        return None
-
-    def maximum_likelihood_estimation(self, data, weights=None, cache=None):
-        return None
-
-    def marginalize(self, marg_rvs, prune=True, cache=None):
-        return self
+from tests.utils.leaves import CachingDummyInput
 
 
 # Test parameters
@@ -77,9 +30,7 @@ class TestRepetitionMixingLayerEMBasic:
         inputs = CachingDummyInput(
             out_channels=in_channels, num_repetitions=num_reps, out_features=out_features
         )
-        layer = RepetitionMixingLayer(
-            inputs=inputs, out_channels=in_channels, num_repetitions=num_reps
-        )
+        layer = RepetitionMixingLayer(inputs=inputs, out_channels=in_channels, num_repetitions=num_reps)
 
         # Store original weights
         original_weights = layer.weights.clone()
@@ -104,9 +55,7 @@ class TestRepetitionMixingLayerEMBasic:
     def test_em_weights_still_normalized(self, in_channels: int, num_reps: int):
         """Test that weights are still normalized after EM."""
         inputs = CachingDummyInput(out_channels=in_channels, num_repetitions=num_reps)
-        layer = RepetitionMixingLayer(
-            inputs=inputs, out_channels=in_channels, num_repetitions=num_reps
-        )
+        layer = RepetitionMixingLayer(inputs=inputs, out_channels=in_channels, num_repetitions=num_reps)
 
         # Run forward pass and EM
         data = torch.randn(50, 1)
@@ -195,9 +144,7 @@ class TestRepetitionMixingLayerEMIntegration:
     def test_em_via_global_function(self, in_channels: int, num_reps: int):
         """Test EM through the global expectation_maximization function."""
         inputs = CachingDummyInput(out_channels=in_channels, num_repetitions=num_reps)
-        layer = RepetitionMixingLayer(
-            inputs=inputs, out_channels=in_channels, num_repetitions=num_reps
-        )
+        layer = RepetitionMixingLayer(inputs=inputs, out_channels=in_channels, num_repetitions=num_reps)
 
         original_weights = layer.weights.clone()
 

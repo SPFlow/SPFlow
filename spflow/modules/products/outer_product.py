@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from spflow.exceptions import ShapeError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -77,7 +78,7 @@ class OuterProduct(BaseProduct):
             out_features = int(input_features // self.num_splits)
         else:
             out_features = input_features
-        
+
         # Compute out_channels as product of input channels
         ocs = 1
         for inp in self.inputs:
@@ -85,9 +86,8 @@ class OuterProduct(BaseProduct):
         if len(self.inputs) == 1:
             ocs = ocs**self.num_splits
         out_channels = ocs
-        
-        self.out_shape = ModuleShape(out_features, out_channels, self.in_shape.repetitions)
 
+        self.out_shape = ModuleShape(out_features, out_channels, self.in_shape.repetitions)
 
     def check_shapes(self):
         """Check if input shapes are compatible for outer product.
@@ -104,7 +104,7 @@ class OuterProduct(BaseProduct):
             out_features = int(input_features // self.num_splits)
         else:
             out_features = input_features
-        
+
         # Compute out_channels as product of input channels
         ocs = 1
         for inp in self.inputs:
@@ -144,7 +144,7 @@ class OuterProduct(BaseProduct):
             return True
 
         # If none of the conditions are satisfied
-        raise ValueError(f"the shapes of the inputs {shapes} are not broadcastable")
+        raise ShapeError(f"the shapes of the inputs {shapes} are not broadcastable")
 
     @property
     def feature_to_scope(self) -> list[Scope]:
@@ -263,5 +263,7 @@ class OuterProduct(BaseProduct):
         if self.out_shape.repetitions is None:
             output = output.view(output.size(0), self.out_shape.features, self.out_shape.channels)
         else:
-            output = output.view(output.size(0), self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions)
+            output = output.view(
+                output.size(0), self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions
+            )
         return output
