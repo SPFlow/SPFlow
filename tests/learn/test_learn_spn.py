@@ -60,7 +60,7 @@ def test_rdc():
     threshold = 0.3
 
     # Compute RDC
-    rdcs = torch.eye(data.shape[1], device=data.device)
+    rdcs = torch.eye(data.shape[1])
     for i, j in combinations(range(data.shape[1]), 2):
         r = rdc(data[:, i], data[:, j])
         rdcs[j][i] = rdcs[i][j] = r
@@ -76,7 +76,7 @@ def test_rdc():
     for i, c in enumerate(ccnp(fna_matrix)):
         partition_ids[list(c)] = i + 1
 
-    partition_ids.to(data.device)
+    partition_ids
 
     partitions = []
 
@@ -146,9 +146,7 @@ def plot_contours(mean, std):
 
 def heatmap(spn, X, y):
     torch.cuda.empty_cache()
-    torch.set_default_device("cpu")
-    device = torch.device("cpu")
-    spn.to(device)
+    spn
     # Create a meshgrid of points over the feature space
     x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
     y_min, y_max = X[:, 1].min() - 0.5, X[:, 1].max() + 0.5

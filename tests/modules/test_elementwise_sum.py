@@ -321,7 +321,7 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
-def test_expectation_maximization(in_channels: int, out_channels: int, out_features: int, num_reps, device):
+def test_expectation_maximization(in_channels: int, out_channels: int, out_features: int, num_reps):
     module = make_sum(
         in_channels=in_channels,
         out_channels=out_channels,
@@ -334,7 +334,7 @@ def test_expectation_maximization(in_channels: int, out_channels: int, out_featu
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
 def test_gradient_descent_optimization(
-    in_channels: int, out_channels: int, out_features: int, num_reps, device
+    in_channels: int, out_channels: int, out_features: int, num_reps
 ):
     module = make_sum(
         in_channels=in_channels,

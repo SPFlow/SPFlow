@@ -58,7 +58,6 @@ class CachingDummyInput(Module):
             self.out_shape.features,
             self.out_shape.channels,
             self.out_shape.repetitions,
-            device=data.device,
             requires_grad=True,
         )
         return result
@@ -67,7 +66,7 @@ class CachingDummyInput(Module):
         """Return sample data."""
         data = kwargs.get("data")
         if data is None:
-            data = torch.full((1, len(self.scope.query)), torch.nan, device=self.device)
+            data = torch.full((1, len(self.scope.query)), torch.nan)
         data[:, self.scope.query] = 0.0
         return data
 
@@ -509,7 +508,7 @@ class DummyLeaf(LeafModule):
     def scale(self, value: Tensor) -> None:
         """Set standard deviation (stores as log_std, no validation after init)."""
         self.log_scale.data = torch.log(
-            torch.as_tensor(value, dtype=self.log_scale.dtype, device=self.log_scale.device)
+            torch.as_tensor(value, dtype=self.log_scale.dtype)
         )
 
     @property

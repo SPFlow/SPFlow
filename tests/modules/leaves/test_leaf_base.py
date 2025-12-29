@@ -16,7 +16,7 @@ class SimpleParameterNet(nn.Module):
 
     def forward(self, evidence: torch.Tensor) -> dict[str, torch.Tensor]:
         self.calls += 1
-        loc = torch.full((evidence.shape[0], 1, 1, 1), self.value, device=evidence.device)
+        loc = torch.full((evidence.shape[0], 1, 1, 1), self.value)
         scale = torch.full_like(loc, 0.5)
         return {"loc": loc, "scale": scale}
 

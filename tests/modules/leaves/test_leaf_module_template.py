@@ -36,7 +36,7 @@ class DummyLeaf(LeafModule):
     def std(self, value: torch.Tensor) -> None:
         """Set standard deviation (stores as log_std, no validation after init)."""
         self.log_std.data = torch.log(
-            torch.as_tensor(value, dtype=self.log_std.dtype, device=self.log_std.device)
+            torch.as_tensor(value, dtype=self.log_std.dtype)
         )
 
     @property

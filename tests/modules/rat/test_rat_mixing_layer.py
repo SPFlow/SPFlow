@@ -37,13 +37,13 @@ class DummyInput(Module):
         batch = data.shape[0]
         # Shape matches expected (B, F, OC, R) orientation used in MixingLayer.
         return torch.zeros(
-            batch, self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions, device=data.device
+            batch, self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions
         )
 
     def sample(self, *args, **kwargs):
         data = kwargs.get("data")
         if data is None:
-            data = torch.full((1, len(self.scope.query)), torch.nan, device=self.device)
+            data = torch.full((1, len(self.scope.query)), torch.nan)
         data[:, self.scope.query] = 0.0
         return data
 

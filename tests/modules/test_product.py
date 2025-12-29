@@ -24,7 +24,7 @@ def make_product(in_channels=None, out_features=None, inputs=None, num_repetitio
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps", params)
-def test_log_likelihood(in_channels: int, out_features: int, num_reps, device):
+def test_log_likelihood(in_channels: int, out_features: int, num_reps):
     product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
     data = make_normal_data(out_features=out_features)
     lls = product_layer.log_likelihood(data)
@@ -33,7 +33,7 @@ def test_log_likelihood(in_channels: int, out_features: int, num_reps, device):
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps", params)
-def test_sample(in_channels: int, out_features: int, num_reps, device):
+def test_sample(in_channels: int, out_features: int, num_reps):
     n_samples = 10
     product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
     for i in range(product_layer.out_shape.channels):
@@ -54,7 +54,7 @@ def test_sample(in_channels: int, out_features: int, num_reps, device):
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps", params)
-def test_expectation_maximization(in_channels: int, out_features: int, num_reps, device):
+def test_expectation_maximization(in_channels: int, out_features: int, num_reps):
     product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
     data = make_normal_data(out_features=out_features)
     with torch.autograd.set_detect_anomaly(True):
@@ -74,7 +74,7 @@ def test_constructor():
         num_repetitions,
     ),
 )
-def test_marginalize(prune, in_channels: int, marg_rvs: list[int], num_reps, device):
+def test_marginalize(prune, in_channels: int, marg_rvs: list[int], num_reps):
     out_features = 3
     module = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
 

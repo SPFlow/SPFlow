@@ -35,14 +35,13 @@ def validate_all_or_none(**params: Any) -> bool:
 
 
 def apply_nan_strategy(
-    nan_strategy: str | None, scope_data: Tensor, device: torch.device, weights: Tensor | None
+    nan_strategy: str | None, scope_data: Tensor, weights: Tensor | None
 ) -> tuple[Tensor, Tensor]:
     """Apply NaN handling strategy for MLE.
 
     Args:
         nan_strategy: None (strict), 'ignore' (drop rows), or callable.
         scope_data: Data tensor.
-        device: Device for operations.
         weights: Optional sample weights.
 
     Returns:

@@ -31,7 +31,7 @@ def make_split(out_channels=3, out_features=3, num_splits=2, split_type=SplitCon
 
 @pytest.mark.parametrize("out_channels,features_values_multiplier,num_splits,split_type,num_reps", params)
 def test_log_likelihood(
-    out_channels: int, features_values_multiplier: int, num_splits: int, split_type, num_reps, device
+    out_channels: int, features_values_multiplier: int, num_splits: int, split_type, num_reps
 ):
     out_channels = 3
     module = make_split(
@@ -40,8 +40,8 @@ def test_log_likelihood(
         num_splits=num_splits,
         split_type=split_type,
         num_reps=num_reps,
-    ).to(device)
-    data = make_normal_data(out_features=module.out_shape.features).to(device)
+    )
+    data = make_normal_data(out_features=module.out_shape.features)
     lls = module.log_likelihood(data)
     assert len(lls) == num_splits
     for ll in lls:
@@ -56,7 +56,7 @@ def test_log_likelihood(
 
 @pytest.mark.parametrize("out_channels,features_values_multiplier,num_splits,split_type,num_reps", params)
 def test_sample(
-    out_channels: int, features_values_multiplier: int, num_splits: int, split_type, num_reps, device
+    out_channels: int, features_values_multiplier: int, num_splits: int, split_type, num_reps
 ):
     n_samples = 10
     out_channels = 3
@@ -66,15 +66,15 @@ def test_sample(
         num_splits=num_splits,
         split_type=split_type,
         num_reps=num_reps,
-    ).to(device)
+    )
     for i in range(module.out_shape.channels):
-        data = torch.full((n_samples, module.out_shape.features), torch.nan).to(device)
+        data = torch.full((n_samples, module.out_shape.features), torch.nan)
         channel_index = torch.randint(
             low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-        ).to(device)
-        mask = torch.full((n_samples, module.out_shape.features), True, dtype=torch.bool).to(device)
+        )
+        mask = torch.full((n_samples, module.out_shape.features), True, dtype=torch.bool)
         # Always set repetition_index since num_reps is never None
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,)).to(device)
+        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
@@ -171,11 +171,11 @@ def test_split_get_out_shapes_single():
 # Marginalization tests
 
 
-def test_split_marginalize_some_features(device):
+def test_split_marginalize_some_features():
     """Test marginalize removes subset of features."""
     scope = Scope(list(range(0, 6)))
-    leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1).to(device)
-    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1).to(device)
+    leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
+    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
     # Marginalize features [1, 3]
     marg_split = split.marginalize([1, 3], prune=False)

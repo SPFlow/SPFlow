@@ -29,11 +29,6 @@ def _get_test_device() -> str:
     return device
 
 
-@pytest.fixture(scope="session")
-def device():
-    """Fixture providing the test device as a torch.device object."""
-    return torch.device(_get_test_device())
-
 
 @pytest.fixture(
     scope="function",

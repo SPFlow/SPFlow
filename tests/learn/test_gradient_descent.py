@@ -69,13 +69,13 @@ class DummyModel(Module):
 
 
 @pytest.fixture
-def model(device):
-    return DummyModel().to(device)
+def model():
+    return DummyModel()
 
 
 @pytest.fixture
-def dataloader(device):
-    data = torch.randn(30, 1).to(device)
+def dataloader():
+    data = torch.randn(30, 1)
     dataset = TensorDataset(data)
     return DataLoader(dataset, batch_size=3)
 
@@ -140,19 +140,19 @@ class ClassificationModel(Module, Classifier):
 
 
 @pytest.fixture
-def classification_model(device) -> ClassificationModel:
-    return ClassificationModel().to(device)
+def classification_model() -> ClassificationModel:
+    return ClassificationModel()
 
 
 @pytest.fixture
-def classification_dataloader(device):
+def classification_dataloader():
     torch.manual_seed(0)
-    features = torch.randn(12, 2, device=device)
-    labels = torch.randint(0, 3, (12,), device=device)
+    features = torch.randn(12, 2)
+    labels = torch.randint(0, 3, (12,))
     return DataLoader(TensorDataset(features, labels), batch_size=4)
 
 
-def test_negative_log_likelihood_loss(model, dataloader, device):
+def test_negative_log_likelihood_loss(model, dataloader):
     data = next(iter(dataloader))[0]
     loss = negative_log_likelihood_loss(model, data)
     assert isinstance(loss, torch.Tensor)
@@ -273,15 +273,15 @@ def test_train_gradient_descent_classification_mode(classification_model, classi
         assert not torch.allclose(param, initial)
 
 
-def test_train_gradient_descent_classification_with_validation(classification_model, device):
+def test_train_gradient_descent_classification_with_validation(classification_model):
     """Training with validation dataloader should hit classification validation logic."""
     torch.manual_seed(1)
     train_loader = DataLoader(
-        TensorDataset(torch.randn(12, 2, device=device), torch.randint(0, 3, (12,), device=device)),
+        TensorDataset(torch.randn(12, 2), torch.randint(0, 3, (12,))),
         batch_size=4,
     )
     val_loader = DataLoader(
-        TensorDataset(torch.randn(8, 2, device=device), torch.randint(0, 3, (8,), device=device)),
+        TensorDataset(torch.randn(8, 2), torch.randint(0, 3, (8,))),
         batch_size=4,
     )
 

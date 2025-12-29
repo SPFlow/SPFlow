@@ -39,7 +39,6 @@ class CachingDummyInput(Module):
             self.out_shape.features,
             self.out_shape.channels,
             self.out_shape.repetitions,
-            device=data.device,
             requires_grad=True,
         )
         return result
@@ -47,7 +46,7 @@ class CachingDummyInput(Module):
     def sample(self, *args, **kwargs):
         data = kwargs.get("data")
         if data is None:
-            data = torch.full((1, len(self.scope.query)), torch.nan, device=self.device)
+            data = torch.full((1, len(self.scope.query)), torch.nan)
         data[:, self.scope.query] = 0.0
         return data
 

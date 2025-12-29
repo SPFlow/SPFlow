@@ -83,7 +83,7 @@ class IndexLeaf(LeafModule):
             return data
             
         if sampling_ctx.repetition_idx is None:
-            sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
+            sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long)
         
         # Place scope indices at the correct positions
         # For each query variable in our scope, put its index value there
