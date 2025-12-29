@@ -110,3 +110,27 @@ def test_hypergeometric_missing_parameters():
     N = torch.tensor([[10.0]])
     with pytest.raises(InvalidParameterCombinationError, match="parameters are required"):
         Hypergeometric(scope=scope, K=K, N=N, n=None)
+
+
+def test_hypergeometric_log_likelihood_handles_nans_without_broadcast_errors():
+    """Hypergeometric log_likelihood should marginalize NaNs without shape/broadcast issues."""
+    out_features, out_channels, num_repetitions = 3, 2, 4
+    shape = (out_features, out_channels, num_repetitions)
+    N = torch.full(shape, 20.0)
+    K = torch.full(shape, 7.0)
+    n = torch.full(shape, 5.0)
+    leaf = make_leaf(K=K, N=N, n=n)
+
+    data = torch.zeros(6, out_features)
+    data[2, 1] = torch.nan
+    data[4, 0] = torch.nan
+    original = data.clone()
+
+    log_prob = leaf.log_likelihood(data)
+
+    assert log_prob.shape == (data.shape[0], out_features, out_channels, num_repetitions)
+    torch.testing.assert_close(data, original, equal_nan=True)
+
+    marg_mask = torch.isnan(data).unsqueeze(2).unsqueeze(-1).expand_as(log_prob)
+    assert marg_mask.any()
+    torch.testing.assert_close(log_prob[marg_mask], torch.zeros_like(log_prob[marg_mask]))

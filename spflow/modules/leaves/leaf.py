@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Callable, Iterable
+from typing import Optional, Dict, Callable, Iterable, Union
 
 import numpy as np
 import torch
@@ -114,9 +114,75 @@ class LeafModule(Module, ABC):
 
     @property
     @abstractmethod
-    def _supported_value(self) -> float:
-        """Returns a value in the support of the distribution (for NaN imputation)."""
+    def _supported_value(self) -> Union[float, Tensor]:
+        """Return a value in the support of the distribution (for NaN imputation).
+
+        Implementations may return either a scalar float or a tensor.
+        If a tensor is returned, it must either be a scalar tensor or have a
+        leading feature dimension that matches ``len(self.scope.query)``.
+        """
         pass
+
+    def _supported_value_for_imputation(self, scoped_data: Tensor) -> Tensor:
+        """Return a tensor of supported values broadcastable to ``scoped_data``.
+
+        This helper normalizes leaf-specific ``_supported_value`` implementations
+        so that NaN imputation works for leaves whose parameters are stored with
+        additional channel/repetition dimensions.
+
+        Args:
+            scoped_data: 2D tensor of shape (batch, features) for the leaf scope.
+
+        Returns:
+            Tensor broadcasted to the shape of ``scoped_data``.
+
+        Raises:
+            ShapeError: If the leaf provides a tensor that cannot be aligned to features.
+        """
+        if scoped_data.dim() != 2:
+            raise ShapeError(
+                f"Expected scoped_data to be 2D (batch, features), got shape {tuple(scoped_data.shape)}."
+            )
+
+        supported_value = self._supported_value
+        if isinstance(supported_value, (float, int)):
+            return torch.full_like(scoped_data, float(supported_value))
+
+        if not isinstance(supported_value, Tensor):
+            raise TypeError(
+                f"{self.__class__.__name__}._supported_value must be a float or Tensor, got {type(supported_value)}."
+            )
+
+        supported_tensor = supported_value.to(device=scoped_data.device, dtype=scoped_data.dtype)
+        if supported_tensor.numel() == 1:
+            return supported_tensor.reshape(()).expand_as(scoped_data)
+
+        num_features = scoped_data.shape[1]
+        if supported_tensor.dim() == 1:
+            if supported_tensor.shape[0] != num_features:
+                raise ShapeError(
+                    f"{self.__class__.__name__}._supported_value has shape {tuple(supported_tensor.shape)}; "
+                    f"expected ({num_features},)."
+                )
+            return supported_tensor.unsqueeze(0).expand_as(scoped_data)
+
+        if supported_tensor.shape[0] != num_features:
+            raise ShapeError(
+                f"{self.__class__.__name__}._supported_value has shape {tuple(supported_tensor.shape)}; "
+                f"expected first dimension to match number of features ({num_features})."
+            )
+
+        feature_values = supported_tensor
+        while feature_values.dim() > 1:
+            feature_values = feature_values.select(dim=1, index=0)
+
+        if feature_values.shape != (num_features,):
+            raise ShapeError(
+                f"{self.__class__.__name__}._supported_value could not be reduced to per-feature values; "
+                f"got shape {tuple(feature_values.shape)}."
+            )
+
+        return feature_values.unsqueeze(0).expand_as(scoped_data)
 
     @abstractmethod
     def params(self) -> Dict[str, Tensor]:
@@ -316,7 +382,7 @@ class LeafModule(Module, ABC):
         if data.dim() != 2:
             raise ValueError(f"Data must be 2-dimensional (batch, num_features), got shape {data.shape}.")
         # get information relevant for the scope
-        data_q = data[:, self.scope.query]
+        data_q = data[:, self.scope.query].clone()
         if self.event_shape[0] != len(self.scope.query):
             raise RuntimeError(
                 f"event_shape mismatch for {self.__class__.__name__}: event_shape={self.event_shape}, scope_len={len(self.scope.query)}"
@@ -329,7 +395,8 @@ class LeafModule(Module, ABC):
         # If there are any marg_ids, set them to 0.0 to ensure that log_prob call is successful
         # and doesn't throw errors due to NaNs
         if has_marginalizations:
-            data_q[marg_mask] = self._supported_value
+            fill_values = self._supported_value_for_imputation(data_q)
+            data_q[marg_mask] = fill_values[marg_mask]
 
         # ----- log probabilities -----
 

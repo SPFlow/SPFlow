@@ -90,3 +90,26 @@ def test_uniform_non_finite_params():
     high = torch.tensor([[[1.0]]])
     with pytest.raises(ValueError, match="Parameter must be finite"):
         Uniform(scope=scope, low=low, high=high)
+
+
+def test_uniform_log_likelihood_handles_nans_without_broadcast_errors():
+    """Uniform log_likelihood should marginalize NaNs without shape/broadcast issues."""
+    out_features, out_channels, num_repetitions = 3, 2, 4
+    shape = (out_features, out_channels, num_repetitions)
+    low = torch.zeros(shape)
+    high = torch.ones(shape) * 2.0
+    leaf = make_leaf(low=low, high=high)
+
+    data = torch.rand(5, out_features)
+    data[1, 0] = torch.nan
+    data[3, 2] = torch.nan
+    original = data.clone()
+
+    log_prob = leaf.log_likelihood(data)
+
+    assert log_prob.shape == (data.shape[0], out_features, out_channels, num_repetitions)
+    torch.testing.assert_close(data, original, equal_nan=True)
+
+    marg_mask = torch.isnan(data).unsqueeze(2).unsqueeze(-1).expand_as(log_prob)
+    assert marg_mask.any()
+    torch.testing.assert_close(log_prob[marg_mask], torch.zeros_like(log_prob[marg_mask]))

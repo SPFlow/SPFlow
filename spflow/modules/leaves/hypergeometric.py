@@ -290,7 +290,8 @@ class Hypergeometric(LeafModule):
     @property
     def _supported_value(self):
         """Fallback value for unsupported data."""
-        return self.n + self.K - self.N
+        # Hypergeometric support lower bound is max(0, n + K - N).
+        return torch.maximum(self.n + self.K - self.N, torch.zeros_like(self.N))
 
     @property
     def _torch_distribution_class(self) -> type[_HypergeometricDistribution]:
