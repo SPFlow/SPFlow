@@ -335,7 +335,9 @@ def learn_spn(
                 )
                 product_inputs.append(sub_structure)
             leaf_oc = (
-                leaf_modules[0].out_shape.channels if isinstance(leaf_modules, list) else leaf_modules.out_shape.channels
+                leaf_modules[0].out_shape.channels
+                if isinstance(leaf_modules, list)
+                else leaf_modules.out_shape.channels
             )
             adapted_product_inputs = adapt_product_inputs(product_inputs, leaf_oc, out_channels)
             return Product(adapted_product_inputs)

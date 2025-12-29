@@ -67,8 +67,8 @@ class Uniform(LeafModule):
 
         self.low = low
         self.high = high
-        self.end_next = torch.nextafter(high, torch.tensor(float("inf"), device=high.device))
-        self._support_outside = torch.tensor(support_outside)
+        self.end_next = torch.nextafter(high, high.new_tensor(float("inf")))
+        self._support_outside = high.new_tensor(support_outside, dtype=torch.bool)
 
     @property
     def _supported_value(self):

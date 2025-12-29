@@ -303,7 +303,7 @@ class ImageWrapper(Wrapper):
         """
 
         marg_rvs = []
-        scope = torch.tensor(self.scope.query)
+        scope = torch.as_tensor(self.scope.query, dtype=torch.long)
 
         scope = self.to_image_format(scope, batch=False)
 

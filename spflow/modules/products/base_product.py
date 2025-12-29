@@ -81,7 +81,6 @@ class BaseProduct(Module, ABC):
         )
         # Note: out_shape must be set by subclasses
 
-
     @abstractmethod
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
         """Map output channel indices to input channel indices.

@@ -78,8 +78,6 @@ class Binomial(LeafModule):
 
         self._logits = nn.Parameter(logits_tensor)
 
-
-
     @property
     def total_count(self) -> Tensor:
         """Returns the number of trials."""

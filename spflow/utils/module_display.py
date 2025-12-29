@@ -192,18 +192,22 @@ def _get_module_children(module: Module) -> list[tuple[str, Module]]:
     # Check for input attribute (unified for all modules now)
     if hasattr(module, "inputs") and module.inputs is not None:
         inputs = module.inputs
-        
+
         # Handle ModuleList (Cat, ElementwiseSum, BaseProduct)
         # We need to check for ModuleList/list first because ModuleList IS a Module
-        if hasattr(inputs, "__iter__") and not isinstance(inputs, (tuple, list)) and inputs.__class__.__name__ == "ModuleList":
+        if (
+            hasattr(inputs, "__iter__")
+            and not isinstance(inputs, (tuple, list))
+            and inputs.__class__.__name__ == "ModuleList"
+        ):
             # It's an nn.ModuleList
-             for i, child in enumerate(inputs):
+            for i, child in enumerate(inputs):
                 if isinstance(child, Module):
                     children.append((f"input[{i}]", child))
-        
+
         # Handle regular list (just in case, though usually wrapped in ModuleList)
         elif isinstance(inputs, list):
-             for i, child in enumerate(inputs):
+            for i, child in enumerate(inputs):
                 if isinstance(child, Module):
                     children.append((f"input[{i}]", child))
 
@@ -218,12 +222,12 @@ def _get_module_children(module: Module) -> list[tuple[str, Module]]:
                 # Recursively extract from Cat if it's a ModuleList
                 if hasattr(cat_inputs, "__iter__"):
                     for i, child in enumerate(cat_inputs):
-                         if isinstance(child, Module):
+                        if isinstance(child, Module):
                             children.append((f"input[{i}]", child))
-                else: 
-                     # Single input to Cat?
-                     if isinstance(cat_inputs, Module):
-                         children.append(("inputs", cat_inputs))
+                else:
+                    # Single input to Cat?
+                    if isinstance(cat_inputs, Module):
+                        children.append(("inputs", cat_inputs))
             else:
                 children.append(("inputs", inputs))
 

@@ -352,4 +352,3 @@ class ProdConv(Module):
             padding_h=self.padding_h,
             padding_w=self.padding_w,
         )
-

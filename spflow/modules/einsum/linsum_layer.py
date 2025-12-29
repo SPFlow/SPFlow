@@ -153,9 +153,7 @@ class LinsumLayer(Module):
 
         # Validate weights shape
         if weights.shape != self.weights_shape:
-            raise ValueError(
-                f"Weight shape mismatch: expected {self.weights_shape}, got {weights.shape}"
-            )
+            raise ValueError(f"Weight shape mismatch: expected {self.weights_shape}, got {weights.shape}")
 
         # Register logits parameter
         self.logits = nn.Parameter(torch.zeros(self.weights_shape))
@@ -225,9 +223,7 @@ class LinsumLayer(Module):
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, weights={self.weights_shape}"
 
-    def _get_left_right_ll(
-        self, data: Tensor, cache: Cache | None = None
-    ) -> tuple[Tensor, Tensor]:
+    def _get_left_right_ll(self, data: Tensor, cache: Cache | None = None) -> tuple[Tensor, Tensor]:
         """Get log-likelihoods from left and right children.
 
         Returns:
@@ -340,9 +336,7 @@ class LinsumLayer(Module):
             # logits shape: (B, D, C)
         else:
             if self.out_shape.repetitions > 1:
-                raise ValueError(
-                    "repetition_idx must be provided when sampling with num_repetitions > 1"
-                )
+                raise ValueError("repetition_idx must be provided when sampling with num_repetitions > 1")
             logits = logits[:, :, 0, :]  # (B, D, C)
 
         # Condition on evidence if cache has log-likelihoods

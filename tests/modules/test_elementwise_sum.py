@@ -485,7 +485,9 @@ def test_invalid_parameter_combination(in_channels: int, out_channels: int, out_
         weights = torch.rand((out_features, in_channels, out_channels)) + 1.0
     else:
         weights = torch.rand((out_features, in_channels, out_channels, num_reps)) + 1.0
-    with pytest.raises(InvalidParameterCombinationError, match="Cannot specify both 'out_channels' and 'weights'"):
+    with pytest.raises(
+        InvalidParameterCombinationError, match="Cannot specify both 'out_channels' and 'weights'"
+    ):
         make_sum(
             weights=weights, out_channels=out_channels, in_channels=in_channels, num_repetitions=num_reps
         )

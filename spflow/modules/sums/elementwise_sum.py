@@ -148,7 +148,8 @@ class ElementwiseSum(Module):
         # Register unraveled channel indices for mapping flattened indices to (channel, sum) pairs
         # E.g. for 3 in_channels and 2 out_channels: [0,1,2,3,4,5] -> [(0,0), (0,1), (0,2), (1,0), (1,1), (1,2)]
         unraveled_channel_indices = torch.tensor(
-            [(i, j) for i in range(self.in_shape.channels) for j in range(self._num_sums)]
+            [(i, j) for i in range(self.in_shape.channels) for j in range(self._num_sums)],
+            dtype=torch.long,
         )
         self.register_buffer(name="unraveled_channel_indices", tensor=unraveled_channel_indices)
 
@@ -256,9 +257,7 @@ class ElementwiseSum(Module):
             # if marginalized input is not None
             if marg_input:
                 indices = [self.scope.query.index(el) for el in list(mutual_rvs)]
-                mask = torch.ones(
-                    len(module_scope.query), device=module_weights.device, dtype=torch.bool
-                )
+                mask = torch.ones(len(module_scope.query), device=module_weights.device, dtype=torch.bool)
                 mask[indices] = False
                 module_weights = module_weights[mask]
 

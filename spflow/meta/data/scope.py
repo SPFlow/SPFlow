@@ -8,6 +8,7 @@ from functools import reduce
 
 from spflow.exceptions import InvalidParameterError
 
+
 @dataclass(frozen=True)
 class Scope:
     """Scopes over random variables (RVs).
@@ -72,7 +73,9 @@ class Scope:
             raise InvalidParameterError("List of evidence variables for 'Scope' contains duplicates.")
 
         if not set(query).isdisjoint(evidence):
-            raise InvalidParameterError("Specified query and evidence variables for 'Scope' are not disjoint.")
+            raise InvalidParameterError(
+                "Specified query and evidence variables for 'Scope' are not disjoint."
+            )
 
         # Use object.__setattr__ because the instance is frozen
         object.__setattr__(self, "query", tuple(query))

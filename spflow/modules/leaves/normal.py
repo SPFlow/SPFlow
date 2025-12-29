@@ -50,7 +50,6 @@ class Normal(LeafModule):
         self.loc = nn.Parameter(loc)
         self.log_scale = nn.Parameter(torch.log(scale))
 
-
     @property
     def scale(self) -> Tensor:
         """Standard deviation in natural space (read via exp of log_std)."""

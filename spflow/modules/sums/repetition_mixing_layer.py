@@ -196,7 +196,9 @@ class RepetitionMixingLayer(Sum):
 
         # Since modules always have R as last dimension, we need to set it to 1 as Mixing mixes over it
         num_repetitions_after_mixing = 1
-        return output.view(batch_size, self.out_shape.features, self.out_shape.channels, num_repetitions_after_mixing)
+        return output.view(
+            batch_size, self.out_shape.features, self.out_shape.channels, num_repetitions_after_mixing
+        )
 
     def expectation_maximization(
         self,
@@ -221,12 +223,16 @@ class RepetitionMixingLayer(Sum):
             # Get input LLs from cache
             input_lls = cache["log_likelihood"].get(self.inputs)
             if input_lls is None:
-                raise MissingCacheError("Input log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError(
+                    "Input log-likelihoods not found in cache. Call log_likelihood first."
+                )
 
             # Get module lls from cache
             module_lls = cache["log_likelihood"].get(self)
             if module_lls is None:
-                raise MissingCacheError("Module log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError(
+                    "Module log-likelihoods not found in cache. Call log_likelihood first."
+                )
 
             log_weights = self.log_weights.unsqueeze(0)
             log_grads = torch.log(module_lls.grad)

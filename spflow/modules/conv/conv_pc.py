@@ -299,9 +299,7 @@ class ConvPc(Module):
         if data is None:
             if num_samples is None:
                 num_samples = 1
-            data = torch.full(
-                (num_samples, len(self.scope.query)), float("nan")
-            ).to(self.device)
+            data = torch.full((num_samples, len(self.scope.query)), float("nan")).to(self.device)
 
         # Delegate to root (RepetitionMixingLayer or Sum)
         # which handles channel/repetition sampling internally
@@ -313,7 +311,6 @@ class ConvPc(Module):
         )
 
         return data
-
 
     def expectation_maximization(
         self,
@@ -353,4 +350,3 @@ class ConvPc(Module):
         # For ConvPc, marginalization is complex due to the layered architecture
         # Delegate to root which handles it recursively
         return self.inputs.marginalize(marg_rvs, prune=prune, cache=cache)
-

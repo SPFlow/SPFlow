@@ -114,4 +114,3 @@ class Laplace(LeafModule):
         """
         self.loc.data = params_dict["loc"]
         self.scale = params_dict["scale"]
-

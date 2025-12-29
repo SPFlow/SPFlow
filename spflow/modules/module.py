@@ -128,7 +128,6 @@ class Module(nn.Module, ABC):
         """
         self._out_shape = value
 
-
     @property
     def device(self):
         """Device where the module's parameters are located.
@@ -302,8 +301,11 @@ class Module(nn.Module, ABC):
         ok = False
         if hasattr(self, "inputs") and self.inputs is not None:
             inputs = self.inputs
-            if hasattr(inputs, "__iter__") and not isinstance(inputs, (tuple,
-                                                                       list)) and inputs.__class__.__name__ == "ModuleList":
+            if (
+                hasattr(inputs, "__iter__")
+                and not isinstance(inputs, (tuple, list))
+                and inputs.__class__.__name__ == "ModuleList"
+            ):
                 ok = True
             elif isinstance(inputs, list):
                 ok = True

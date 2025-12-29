@@ -47,7 +47,6 @@ class Product(Module):
         self.in_shape = input_shape
         self.out_shape = ModuleShape(1, input_shape.channels, input_shape.repetitions)
 
-
     @property
     def feature_to_scope(self) -> np.ndarray:
         out = []

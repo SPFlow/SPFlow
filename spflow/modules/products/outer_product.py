@@ -69,7 +69,7 @@ class OuterProduct(BaseProduct):
             )
         self.register_buffer(
             name="unraveled_channel_indices",
-            tensor=torch.tensor(unraveled_channel_indices),
+            tensor=torch.tensor(unraveled_channel_indices, dtype=torch.long),
         )
 
         # Shape computation: compute out_shape based on outer product of channels

@@ -166,11 +166,13 @@ class Einet(Module, Classifier):
 
             # Create placeholder input with correct shape for layer construction
             # We'll connect them properly after building all layers
-            layers.append({
-                "in_features": in_features,
-                "in_channels": in_channels,
-                "out_channels": out_channels,
-            })
+            layers.append(
+                {
+                    "in_features": in_features,
+                    "in_channels": in_channels,
+                    "out_channels": out_channels,
+                }
+            )
 
         # Handle depth=0 case: single sum layer
         if self.depth == 0:
@@ -242,9 +244,7 @@ class Einet(Module, Classifier):
         )
 
         # Generate random permutations for each repetition
-        permutations = torch.empty(
-            (self.num_repetitions, self.num_features), dtype=torch.long
-        )
+        permutations = torch.empty((self.num_repetitions, self.num_features), dtype=torch.long)
         for r in range(self.num_repetitions):
             permutations[r] = torch.randperm(self.num_features)
         self.register_buffer("permutation", permutations)
@@ -416,9 +416,7 @@ class Einet(Module, Classifier):
         if data is None:
             if num_samples is None:
                 num_samples = 1
-            data = torch.full(
-                (num_samples, self.num_features), torch.nan, device=self.device
-            )
+            data = torch.full((num_samples, self.num_features), torch.nan, device=self.device)
 
         batch_size = data.shape[0]
 
@@ -430,9 +428,7 @@ class Einet(Module, Classifier):
         if sampling_ctx.repetition_idx is None:
             if self.num_repetitions == 1:
                 # Single repetition: use index 0 for all samples
-                sampling_ctx.repetition_idx = torch.zeros(
-                    batch_size, dtype=torch.long, device=data.device
-                )
+                sampling_ctx.repetition_idx = torch.zeros(batch_size, dtype=torch.long, device=data.device)
             # For num_repetitions > 1, RepetitionMixingLayer will set this
 
         # Handle class sampling for multi-class models
@@ -448,9 +444,7 @@ class Einet(Module, Classifier):
             if is_mpe:
                 sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
             else:
-                sampling_ctx.channel_index = torch.distributions.Categorical(
-                    logits=logits
-                ).sample()
+                sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
 
         # Sample from appropriate root
         if self.num_classes > 1:

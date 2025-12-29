@@ -251,7 +251,7 @@ class Hypergeometric(LeafModule):
         """Validate hypergeometric parameters."""
         if torch.any(N < 0) or not torch.all(torch.isfinite(N)):
             raise ValueError(f"Value of 'N' for 'Hypergeometric' must be greater of equal to 0, but was: {N}")
-        if not torch.all(torch.remainder(N, 1.0) == torch.tensor(0.0)):
+        if not torch.all(torch.remainder(N, 1.0) == N.new_tensor(0.0)):
             raise ValueError(
                 f"Value of 'N' for 'Hypergeometric' must be (equal to) an integer value, but was: {N}"
             )
@@ -260,7 +260,7 @@ class Hypergeometric(LeafModule):
             raise ValueError(
                 f"Values of 'K' for 'Hypergeometric' must be greater of equal to 0 and less or equal to 'N', but was: {K}"
             )
-        if not torch.all(torch.remainder(K, 1.0) == torch.tensor(0.0)):
+        if not torch.all(torch.remainder(K, 1.0) == K.new_tensor(0.0)):
             raise ValueError(
                 f"Values of 'K' for 'Hypergeometric' must be (equal to) an integer value, but was: {K}"
             )
@@ -269,7 +269,7 @@ class Hypergeometric(LeafModule):
             raise ValueError(
                 f"Value of 'n' for 'Hypergeometric' must be greater of equal to 0 and less or equal to 'N', but was: {n}"
             )
-        if not torch.all(torch.remainder(n, 1.0) == torch.tensor(0.0)):
+        if not torch.all(torch.remainder(n, 1.0) == n.new_tensor(0.0)):
             raise ValueError(
                 f"Value of 'n' for 'Hypergeometric' must be (equal to) an integer value, but was: {n}"
             )

@@ -12,4 +12,3 @@ from spflow.utils.histogram import get_bin_edges_torch
 from spflow.utils.replace import replace
 
 __all__ = ["replace", "DataType", "Domain", "get_bin_edges_torch"]
-

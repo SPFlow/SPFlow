@@ -67,7 +67,7 @@ class Sum(Module):
             raise ValueError("'Sum' requires at least one input to be specified.")
 
         if weights is not None and isinstance(weights, list):
-            weights = torch.tensor(weights)
+            weights = torch.as_tensor(weights, dtype=torch.get_default_dtype())
 
         weights, out_channels_inferred, num_repetitions_inferred = self._process_weights_parameter(
             inputs=inputs,
@@ -441,12 +441,16 @@ class Sum(Module):
             # Get input LLs from cache
             input_lls = cache["log_likelihood"].get(self.inputs)
             if input_lls is None:
-                raise MissingCacheError("Input log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError(
+                    "Input log-likelihoods not found in cache. Call log_likelihood first."
+                )
 
             # Get module lls from cache
             module_lls = cache["log_likelihood"].get(self)
             if module_lls is None:
-                raise MissingCacheError("Module log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError(
+                    "Module log-likelihoods not found in cache. Call log_likelihood first."
+                )
 
             log_weights = self.log_weights.unsqueeze(0)
             log_grads = torch.log(module_lls.grad).unsqueeze(2)

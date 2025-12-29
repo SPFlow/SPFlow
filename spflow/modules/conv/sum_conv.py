@@ -187,7 +187,7 @@ class SumConv(Module):
 
         # Infer spatial dimensions from num_features
         # Assume square spatial dimensions
-        H = W = int(num_features ** 0.5)
+        H = W = int(num_features**0.5)
         if H * W != num_features:
             raise ValueError(
                 f"SumConv requires square spatial dimensions. Got {num_features} features "
@@ -215,9 +215,7 @@ class SumConv(Module):
             return result
 
         if H % K != 0 or W % K != 0:
-            raise ValueError(
-                f"Spatial dims ({H}, {W}) must be divisible by kernel_size {K}"
-            )
+            raise ValueError(f"Spatial dims ({H}, {W}) must be divisible by kernel_size {K}")
 
         # Get log weights: (out_c, in_c, k, k, reps)
         log_weights = self.log_weights
@@ -254,7 +252,6 @@ class SumConv(Module):
         result = result.permute(0, 2, 1, 3)  # (batch, features, out_c, reps)
 
         return result
-
 
     def sample(
         self,
@@ -295,7 +292,7 @@ class SumConv(Module):
         num_features = self.in_shape.features
 
         # Infer spatial dimensions
-        H = W = int(num_features ** 0.5)
+        H = W = int(num_features**0.5)
         K = self.kernel_size
 
         if H * W != num_features:
@@ -305,9 +302,7 @@ class SumConv(Module):
             )
 
         if H % K != 0 or W % K != 0:
-            raise ValueError(
-                f"Spatial dims ({H}, {W}) must be divisible by kernel_size {K}"
-            )
+            raise ValueError(f"Spatial dims ({H}, {W}) must be divisible by kernel_size {K}")
 
         # Expand channel_index and mask to match input features if needed
         current_features = sampling_ctx.channel_index.shape[1]
@@ -344,9 +339,11 @@ class SumConv(Module):
 
         # Check for cached likelihoods (conditional sampling)
         input_lls = None
-        if (cache is not None
+        if (
+            cache is not None
             and "log_likelihood" in cache
-            and cache["log_likelihood"].get(self.inputs) is not None):
+            and cache["log_likelihood"].get(self.inputs) is not None
+        ):
             input_lls = cache["log_likelihood"][self.inputs]  # (batch, features, in_c, reps)
 
             # Select repetition
@@ -387,7 +384,9 @@ class SumConv(Module):
         k_flat = k_row * K + k_col  # (batch, H, W)
 
         # Expand for gathering: (batch, H, W, out_c, in_c)
-        k_flat_exp = k_flat.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, -1, self.out_shape.channels, self.in_channels)
+        k_flat_exp = (
+            k_flat.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, -1, self.out_shape.channels, self.in_channels)
+        )
         logits_per_pos_exp = logits_per_pos.unsqueeze(2).unsqueeze(3).expand(-1, -1, H, W, -1, -1)
         # (batch, K*K, H, W, out_c, in_c) -> swap dims for gather
         logits_per_pos_exp = logits_per_pos_exp.permute(0, 2, 3, 1, 4, 5)  # (batch, H, W, K*K, out_c, in_c)
@@ -463,11 +462,15 @@ class SumConv(Module):
             # Get cached log-likelihoods
             input_lls = cache["log_likelihood"].get(self.inputs)
             if input_lls is None:
-                raise MissingCacheError("Input log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError(
+                    "Input log-likelihoods not found in cache. Call log_likelihood first."
+                )
 
             module_lls = cache["log_likelihood"].get(self)
             if module_lls is None:
-                raise MissingCacheError("Module log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError(
+                    "Module log-likelihoods not found in cache. Call log_likelihood first."
+                )
 
             # input_lls shape: (batch, features, in_channels, reps)
             # module_lls shape: (batch, features, out_channels, reps)

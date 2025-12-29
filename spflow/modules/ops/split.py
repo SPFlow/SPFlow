@@ -83,7 +83,7 @@ class SplitMode:
         Returns:
             SplitMode configuration for consecutive splitting.
         """
-        return cls('consecutive', num_splits)
+        return cls("consecutive", num_splits)
 
     @classmethod
     def interleaved(cls, num_splits: int = 2) -> "SplitMode":
@@ -97,7 +97,7 @@ class SplitMode:
         Returns:
             SplitMode configuration for interleaved splitting.
         """
-        return cls('interleaved', num_splits)
+        return cls("interleaved", num_splits)
 
     @classmethod
     def by_index(cls, indices: list[list[int]]) -> "SplitMode":
@@ -109,7 +109,7 @@ class SplitMode:
         Example:
             >>> SplitMode.by_index([[0, 1, 4], [2, 3, 5, 6, 7]])
             SplitMode.by_index(indices=[[0, 1, 4], [2, 3, 5, 6, 7]])
-    
+
         Args:
             indices: List of lists specifying feature indices for each split.
                 All features must be covered exactly once.
@@ -117,7 +117,7 @@ class SplitMode:
         Returns:
             SplitMode configuration for index-based splitting.
         """
-        return cls('by_index', num_splits=len(indices), indices=indices)
+        return cls("by_index", num_splits=len(indices), indices=indices)
 
     def create(self, inputs: Module) -> "Split":
         """Create a Split module with this configuration.
@@ -133,15 +133,15 @@ class SplitMode:
         from spflow.modules.ops.split_interleaved import SplitInterleaved
         from spflow.modules.ops.split_by_index import SplitByIndex
 
-        if self._split_type == 'consecutive':
+        if self._split_type == "consecutive":
             return SplitConsecutive(inputs, num_splits=self._num_splits)
-        elif self._split_type == 'interleaved':
+        elif self._split_type == "interleaved":
             return SplitInterleaved(inputs, num_splits=self._num_splits)
         else:  # by_index
             return SplitByIndex(inputs, indices=self._indices)
 
     def __repr__(self) -> str:
-        if self._split_type == 'by_index':
+        if self._split_type == "by_index":
             return f"SplitMode.by_index(indices={self._indices})"
         return f"SplitMode.{self._split_type}(num_splits={self._num_splits})"
 
@@ -181,10 +181,7 @@ class Split(Module, ABC):
         # Shape computation
         in_shape = self.inputs.out_shape
         self.in_shape = in_shape
-        self.out_shape = ModuleShape(
-            in_shape.features, in_shape.channels, in_shape.repetitions
-        )
-
+        self.out_shape = ModuleShape(in_shape.features, in_shape.channels, in_shape.repetitions)
 
     def get_out_shapes(self, event_shape):
         """Get output shapes for each split based on input event shape.

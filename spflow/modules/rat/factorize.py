@@ -63,9 +63,7 @@ class Factorize(BaseProduct):
 
         # Shape computation
         self.in_shape = self.inputs[0].out_shape
-        self.out_shape = ModuleShape(
-            2**self.depth, self.inputs[0].out_shape.channels, num_repetitions
-        )
+        self.out_shape = ModuleShape(2**self.depth, self.inputs[0].out_shape.channels, num_repetitions)
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -255,4 +253,6 @@ class Factorize(BaseProduct):
         elif prune and marg_child.out_shape.features == 1:
             return marg_child
         else:
-            return Factorize(inputs=[marg_child], depth=self.depth, num_repetitions=self.out_shape.repetitions)
+            return Factorize(
+                inputs=[marg_child], depth=self.depth, num_repetitions=self.out_shape.repetitions
+            )

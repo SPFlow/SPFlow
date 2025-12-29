@@ -269,22 +269,26 @@ def _build_graph(
         # Check for input attribute (unified)
         if hasattr(module, "inputs") and module.inputs is not None:
             inputs = module.inputs
-            
+
             # Check for ModuleList (Cat, ElementwiseSum, BaseProduct)
-            if hasattr(inputs, "__iter__") and not isinstance(inputs, (tuple, list)) and inputs.__class__.__name__ == "ModuleList":
-                 # Convert to list for iteration
-                 inputs_list = list(inputs)
-                 for input_module in inputs_list:
+            if (
+                hasattr(inputs, "__iter__")
+                and not isinstance(inputs, (tuple, list))
+                and inputs.__class__.__name__ == "ModuleList"
+            ):
+                # Convert to list for iteration
+                inputs_list = list(inputs)
+                for input_module in inputs_list:
                     child_id = _build_graph(
                         input_module, graph, show_scope, show_shape, show_params, visited, parent_id, skip_ops
                     )
                     if child_id is not None:
                         edge = pydot.Edge(str(child_id), str(parent_id))
                         graph.add_edge(edge)
-            
+
             # Handle regular list (unlikely but possible)
             elif isinstance(inputs, list):
-                 for input_module in inputs:
+                for input_module in inputs:
                     child_id = _build_graph(
                         input_module, graph, show_scope, show_shape, show_params, visited, parent_id, skip_ops
                     )
@@ -294,15 +298,15 @@ def _build_graph(
 
             # Handle single Module
             elif isinstance(inputs, Module):
-                 # Skip Cat wrapper check? Original code didn't skip nested Cat here, it recursed.
-                 # Just treat as single child.
-                 child_id = _build_graph(
+                # Skip Cat wrapper check? Original code didn't skip nested Cat here, it recursed.
+                # Just treat as single child.
+                child_id = _build_graph(
                     inputs, graph, show_scope, show_shape, show_params, visited, parent_id, skip_ops
                 )
-                 if child_id is not None:
+                if child_id is not None:
                     edge = pydot.Edge(str(child_id), str(parent_id))
                     graph.add_edge(edge)
-                    
+
         return None  # Return None to indicate this module was skipped
 
     # Skip if already visited
@@ -329,46 +333,50 @@ def _build_graph(
     # Check for input attribute (unified)
     if hasattr(module, "inputs") and module.inputs is not None:
         inputs = module.inputs
-        
+
         # Check for ModuleList (Cat, ElementwiseSum, BaseProduct)
-        if hasattr(inputs, "__iter__") and not isinstance(inputs, (tuple, list)) and inputs.__class__.__name__ == "ModuleList":
-                # Convert to list for iteration
-                inputs_list = list(inputs)
-                for input_module in inputs_list:
-                    child_id = _build_graph(
-                        input_module,
-                        graph,
-                        show_scope,
-                        show_shape,
-                        show_params,
-                        visited,
-                        parent_id=node_id,
-                        skip_ops=skip_ops,
-                    )
-                    if child_id is not None:
-                        edge = pydot.Edge(str(child_id), str(node_id))
-                        graph.add_edge(edge)
-        
+        if (
+            hasattr(inputs, "__iter__")
+            and not isinstance(inputs, (tuple, list))
+            and inputs.__class__.__name__ == "ModuleList"
+        ):
+            # Convert to list for iteration
+            inputs_list = list(inputs)
+            for input_module in inputs_list:
+                child_id = _build_graph(
+                    input_module,
+                    graph,
+                    show_scope,
+                    show_shape,
+                    show_params,
+                    visited,
+                    parent_id=node_id,
+                    skip_ops=skip_ops,
+                )
+                if child_id is not None:
+                    edge = pydot.Edge(str(child_id), str(node_id))
+                    graph.add_edge(edge)
+
         # Handle regular list
         elif isinstance(inputs, list):
-                for input_module in inputs:
-                    child_id = _build_graph(
-                        input_module,
-                        graph,
-                        show_scope,
-                        show_shape,
-                        show_params,
-                        visited,
-                        parent_id=node_id,
-                        skip_ops=skip_ops,
-                    )
-                    if child_id is not None:
-                        edge = pydot.Edge(str(child_id), str(node_id))
-                        graph.add_edge(edge)
+            for input_module in inputs:
+                child_id = _build_graph(
+                    input_module,
+                    graph,
+                    show_scope,
+                    show_shape,
+                    show_params,
+                    visited,
+                    parent_id=node_id,
+                    skip_ops=skip_ops,
+                )
+                if child_id is not None:
+                    edge = pydot.Edge(str(child_id), str(node_id))
+                    graph.add_edge(edge)
 
         # Handle single Module
         elif isinstance(inputs, Module):
-             child_id = _build_graph(
+            child_id = _build_graph(
                 inputs,
                 graph,
                 show_scope,
@@ -378,7 +386,7 @@ def _build_graph(
                 parent_id=node_id,
                 skip_ops=skip_ops,
             )
-             if child_id is not None:
+            if child_id is not None:
                 edge = pydot.Edge(str(child_id), str(node_id))
                 graph.add_edge(edge)
 

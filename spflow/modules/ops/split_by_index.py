@@ -70,8 +70,7 @@ class SplitByIndex(Split):
 
         # Create gather indices for log_likelihood
         self._gather_indices = [
-            torch.tensor(idx_group, dtype=torch.long, device=inputs.device)
-            for idx_group in self._indices
+            torch.tensor(idx_group, dtype=torch.long, device=inputs.device) for idx_group in self._indices
         ]
 
     def _validate_indices(self) -> None:
@@ -86,9 +85,7 @@ class SplitByIndex(Split):
         # Check for out of bounds
         for idx in all_indices:
             if idx < 0 or idx >= num_features:
-                raise ValueError(
-                    f"Index {idx} is out of bounds for input with {num_features} features."
-                )
+                raise ValueError(f"Index {idx} is out of bounds for input with {num_features} features.")
 
         # Check for duplicates (overlapping)
         if len(all_indices) != len(set(all_indices)):
@@ -197,7 +194,9 @@ class SplitByIndex(Split):
         # Create output tensor
         batch_size = concat_indices.shape[0]
         num_features = self.inputs.out_shape.features
-        result = torch.zeros(batch_size, num_features, dtype=concat_indices.dtype, device=concat_indices.device)
+        result = torch.zeros(
+            batch_size, num_features, dtype=concat_indices.dtype, device=concat_indices.device
+        )
 
         # Scatter back to original positions
         for split_idx, idx_group in enumerate(self._indices):

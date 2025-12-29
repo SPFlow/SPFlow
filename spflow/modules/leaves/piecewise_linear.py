@@ -36,9 +36,7 @@ def pairwise(iterable):
     return zip(a, b)
 
 
-def interp(
-    x: Tensor, xp: Tensor, fp: Tensor, dim: int = -1, extrapolate: str = "constant"
-) -> Tensor:
+def interp(x: Tensor, xp: Tensor, fp: Tensor, dim: int = -1, extrapolate: str = "constant") -> Tensor:
     """One-dimensional linear interpolation between monotonically increasing sample points.
 
     Returns the one-dimensional piecewise linear interpolant to a function with
@@ -65,7 +63,7 @@ def interp(
 
     m = torch.diff(fp) / torch.diff(xp)  # slope
     b = fp[..., :-1] - m * xp[..., :-1]  # offset
-    
+
     # Ensure contiguous inputs for searchsorted
     xp = xp.contiguous()
     x = x.contiguous()
@@ -73,9 +71,7 @@ def interp(
 
     if extrapolate == "constant":
         # Pad m and b to get constant values outside of xp range
-        m = torch.cat(
-            [torch.zeros_like(m)[..., :1], m, torch.zeros_like(m)[..., :1]], dim=-1
-        )
+        m = torch.cat([torch.zeros_like(m)[..., :1], m, torch.zeros_like(m)[..., :1]], dim=-1)
         b = torch.cat([fp[..., :1], b, fp[..., -1:]], dim=-1)
     else:  # extrapolate == 'linear'
         indices = torch.clamp(indices - 1, 0, m.shape[-1] - 1)
@@ -170,9 +166,7 @@ class PiecewiseLinearDist:
                             # Sample from a categorical distribution
                             ys_i_wo_tails = ys_i[1:-1]  # Cut off the tail breaks
                             dist = torch.distributions.Categorical(probs=ys_i_wo_tails)
-                            samples[
-                                :, i_channel, i_feature, i_leaf, i_repetition
-                            ] = dist.sample(sample_shape)
+                            samples[:, i_channel, i_feature, i_leaf, i_repetition] = dist.sample(sample_shape)
                         elif self.domains[i_feature].data_type == DataType.CONTINUOUS:
                             # Compute the CDF for this piecewise function
                             cdf = self._compute_cdf(xs_i, ys_i)
@@ -195,13 +189,9 @@ class PiecewiseLinearDist:
                             slope = (x1 - x0) / (cdf1 - cdf0 + 1e-8)  # Avoid division by zero
 
                             # Compute the sampled value
-                            samples[:, i_channel, i_feature, i_leaf, i_repetition] = (
-                                x0 + slope * (u - cdf0)
-                            )
+                            samples[:, i_channel, i_feature, i_leaf, i_repetition] = x0 + slope * (u - cdf0)
                         else:
-                            raise ValueError(
-                                f"Unknown data type: {self.domains[i_feature].data_type}"
-                            )
+                            raise ValueError(f"Unknown data type: {self.domains[i_feature].data_type}")
 
         return samples
 
@@ -347,8 +337,7 @@ class PiecewiseLinear(LeafModule):
         """
         if not self.is_initialized:
             raise ValueError(
-                "PiecewiseLinear leaf has not been initialized. "
-                "Call initialize(data, domains) first."
+                "PiecewiseLinear leaf has not been initialized. " "Call initialize(data, domains) first."
             )
         return PiecewiseLinearDist(self.xs, self.ys, self.domains)  # type: ignore[arg-type]
 
@@ -368,13 +357,9 @@ class PiecewiseLinear(LeafModule):
         """
         return {"xs": self.xs, "ys": self.ys}
 
-    def _compute_parameter_estimates(
-        self, data: Tensor, weights: Tensor, bias_correction: bool
-    ) -> dict:
+    def _compute_parameter_estimates(self, data: Tensor, weights: Tensor, bias_correction: bool) -> dict:
         """Not implemented for PiecewiseLinear - use initialize() instead."""
-        raise NotImplementedError(
-            "PiecewiseLinear does not support MLE. Use initialize() instead."
-        )
+        raise NotImplementedError("PiecewiseLinear does not support MLE. Use initialize() instead.")
 
     def initialize(self, data: Tensor, domains: List[Domain]) -> None:
         """Initialize the piecewise linear distribution with data.
@@ -404,14 +389,10 @@ class PiecewiseLinear(LeafModule):
         # Validate input
         num_features = len(self.scope.query)
         if data.shape[1] != num_features:
-            raise ValueError(
-                f"Data has {data.shape[1]} features but scope has {num_features}"
-            )
+            raise ValueError(f"Data has {data.shape[1]} features but scope has {num_features}")
 
         if len(domains) != num_features:
-            raise ValueError(
-                f"Got {len(domains)} domains but scope has {num_features} features"
-            )
+            raise ValueError(f"Got {len(domains)} domains but scope has {num_features} features")
 
         self.domains = domains
         device = data.device
@@ -427,9 +408,7 @@ class PiecewiseLinear(LeafModule):
 
             # Cluster data into num_leaves clusters
             if num_leaves > 1:
-                kmeans = KMeans(
-                    n_clusters=num_leaves, mode="euclidean", verbose=0, init_method="random"
-                )
+                kmeans = KMeans(n_clusters=num_leaves, mode="euclidean", verbose=0, init_method="random")
                 kmeans.fit(data.float())
                 cluster_idxs = kmeans.max_sim(a=data.float(), b=kmeans.centroids)[1]
             else:
@@ -453,14 +432,12 @@ class PiecewiseLinear(LeafModule):
 
                     if self.domains[i_feature].data_type == DataType.DISCRETE:
                         # Edges are the discrete values
-                        mids = torch.tensor(
-                            self.domains[i_feature].values, device=device
-                        ).float()
+                        mids = torch.as_tensor(
+                            self.domains[i_feature].values, device=device, dtype=torch.float32
+                        )
 
                         # Add a break at the end
-                        breaks = torch.cat(
-                            [mids, torch.tensor([mids[-1] + 1], device=device)]
-                        )
+                        breaks = torch.cat([mids, mids[-1:].add(1)])
 
                         if data_subset.shape[0] == 0:
                             # If no data in cluster, use uniform
@@ -490,24 +467,18 @@ class PiecewiseLinear(LeafModule):
                                 data_subset.cpu(), bins=bins.cpu(), density=True
                             ).hist.to(device)
                         else:
-                            densities = torch.ones(len(bins) - 1, device=device) / (
-                                len(bins) - 1
-                            )
+                            densities = torch.ones(len(bins) - 1, device=device) / (len(bins) - 1)
                         breaks = bins
                         mids = ((breaks + torch.roll(breaks, shifts=-1, dims=0)) / 2)[:-1]
                     else:
-                        raise ValueError(
-                            f"Unknown data type: {domains[i_feature].data_type}"
-                        )
+                        raise ValueError(f"Unknown data type: {domains[i_feature].data_type}")
 
                     # Apply optional Laplace smoothing
                     if self.alpha > 0:
                         n_samples = data_subset.shape[0]
                         n_bins = len(breaks) - 1
                         counts = densities * n_samples
-                        densities = (counts + self.alpha) / (
-                            n_samples + n_bins * self.alpha
-                        )
+                        densities = (counts + self.alpha) / (n_samples + n_bins * self.alpha)
 
                     # Add tail breaks to start and end
                     if self.domains[i_feature].data_type == DataType.DISCRETE:
@@ -581,14 +552,11 @@ class PiecewiseLinear(LeafModule):
         """
         if not self.is_initialized:
             raise ValueError(
-                "PiecewiseLinear leaf has not been initialized. "
-                "Call initialize(data, domains) first."
+                "PiecewiseLinear leaf has not been initialized. " "Call initialize(data, domains) first."
             )
 
         if data.dim() != 2:
-            raise ValueError(
-                f"Data must be 2-dimensional (batch, num_features), got shape {data.shape}."
-            )
+            raise ValueError(f"Data must be 2-dimensional (batch, num_features), got shape {data.shape}.")
 
         # Get scope-relevant data
         data_q = data[:, self.scope.query]
@@ -639,17 +607,14 @@ class PiecewiseLinear(LeafModule):
         """
         if not self.is_initialized:
             raise ValueError(
-                "PiecewiseLinear leaf has not been initialized. "
-                "Call initialize(data, domains) first."
+                "PiecewiseLinear leaf has not been initialized. " "Call initialize(data, domains) first."
             )
 
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
-        out_of_scope = list(
-            filter(lambda x: x not in self.scope.query, range(data.shape[1]))
-        )
+        out_of_scope = list(filter(lambda x: x not in self.scope.query, range(data.shape[1])))
         marg_mask = torch.isnan(data)
         marg_mask[:, out_of_scope] = False
 
@@ -667,9 +632,7 @@ class PiecewiseLinear(LeafModule):
                     "Repetition index must be provided in sampling context for leaves with multiple repetitions."
                 )
             else:
-                sampling_ctx.repetition_idx = torch.zeros(
-                    data.shape[0], dtype=torch.long, device=data.device
-                )
+                sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
 
         dist = self.distribution
         n_samples_int = int(n_samples.item())

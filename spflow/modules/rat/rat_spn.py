@@ -117,11 +117,10 @@ class RatSPN(Module, Classifier):
             )
 
         self.create_spn()
-        
+
         # Shape computation: delegate to root node
         self.in_shape = self.root_node.in_shape
         self.out_shape = self.root_node.out_shape
-
 
     def create_spn(self):
         """Create the RAT-SPN architecture.
@@ -245,7 +244,9 @@ class RatSPN(Module, Classifier):
             data,
             cache=cache,
         )  # shape: (batch_size,1 , n_root_nodes)
-        ll = ll.squeeze(-1).squeeze(1)  # remove repetition and feature dimensions -> shape: (batch_size, n_root_nodes)
+        ll = ll.squeeze(-1).squeeze(
+            1
+        )  # remove repetition and feature dimensions -> shape: (batch_size, n_root_nodes)
         return log_posterior(log_likelihood=ll, log_prior=ll_y)
 
     def predict_proba(self, data: torch.Tensor):

@@ -30,7 +30,9 @@ class Cat(Module):
 
         if self.dim == 1:
             # Check if all inputs have the same number of channels
-            if not all([module.out_shape.channels == self.inputs[0].out_shape.channels for module in self.inputs]):
+            if not all(
+                [module.out_shape.channels == self.inputs[0].out_shape.channels for module in self.inputs]
+            ):
                 raise ValueError("All inputs must have the same number of channels.")
 
             # Check that all scopes are disjoint
@@ -42,7 +44,9 @@ class Cat(Module):
 
         elif self.dim == 2:
             # Check if all inputs have the same number of features and scopes
-            if not all([module.out_shape.features == self.inputs[0].out_shape.features for module in self.inputs]):
+            if not all(
+                [module.out_shape.features == self.inputs[0].out_shape.features for module in self.inputs]
+            ):
                 raise ValueError("All inputs must have the same number of features.")
             if not Scope.all_equal([module.scope for module in self.inputs]):
                 raise ValueError("All inputs must have the same scope.")
@@ -62,10 +66,7 @@ class Cat(Module):
             out_features = self.inputs[0].out_shape.features
             out_channels = sum([module.out_shape.channels for module in self.inputs])
 
-        self.out_shape = ModuleShape(
-            out_features, out_channels, self.inputs[0].out_shape.repetitions
-        )
-
+        self.out_shape = ModuleShape(out_features, out_channels, self.inputs[0].out_shape.repetitions)
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -132,7 +133,7 @@ class Cat(Module):
         if self.dim == 1:
             # When concatenating features (dim=1), we need to split the sampling context
             # for each input module based on which INTERNAL feature indices belong to that module.
-            # 
+            #
             # IMPORTANT: sampling_ctx.channel_index and mask are indexed by internal feature
             # position (0, 1, 2, ..., total_features-1), NOT by scope indices. Each module's
             # features occupy a contiguous range in the concatenated output.

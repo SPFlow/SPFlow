@@ -65,12 +65,16 @@ class LeafModule(Module, ABC):
     @property
     def inputs(self) -> Module | Iterable[Module]:
         """Leaf modules do not have inputs."""
-        raise AttributeError("LeafModule does not have 'input' attribute -- this should not have been called.")
+        raise AttributeError(
+            "LeafModule does not have 'input' attribute -- this should not have been called."
+        )
 
     @inputs.setter
     def inputs(self, value):
         """Leaf modules do not have inputs."""
-        raise AttributeError("LeafModule does not have 'input' attribute -- this should not have been called.")
+        raise AttributeError(
+            "LeafModule does not have 'input' attribute -- this should not have been called."
+        )
 
     @property
     def is_conditional(self):
@@ -279,7 +283,6 @@ class LeafModule(Module, ABC):
             for j in range(self.out_shape.repetitions):
                 scopes[i, j] = Scope([self.scope.query[i]])
         return scopes
-
 
     @property
     def device(self) -> torch.device:
@@ -546,7 +549,6 @@ class LeafModule(Module, ABC):
             else:
                 sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
 
-
         if is_mpe:
             # Get mode of distribution as MPE
             samples = self.mode.unsqueeze(0)
@@ -583,7 +585,6 @@ class LeafModule(Module, ABC):
                 dist = self.distribution
                 # Sample n_samples from distribution
                 samples = dist.sample((n_samples,))
-
 
             if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
                 # repetition_idx shape: (n_samples,)
@@ -627,22 +628,22 @@ class LeafModule(Module, ABC):
         # Update data inplace - place samples at correct scope positions (vectorized)
         # samples[:, feat_idx] should go to data[:, scope.query[feat_idx]]
         # Only write where the mask is True for that specific position
-        
+
         # Get row indices for instances that need sampling
         row_indices = instance_mask.nonzero(as_tuple=True)[0]  # (n_instances,)
-        
+
         # Create scope indices tensor
         scope_idx = torch.tensor(scope_cols, dtype=torch.long, device=data.device)
-        
+
         # Expand to create all (row, col) index pairs
         # rows: (n_instances, out_features) - row index repeated for each feature
         # cols: (n_instances, out_features) - scope indices repeated for each instance
         rows = row_indices.unsqueeze(1).expand(-1, len(scope_idx))
         cols = scope_idx.unsqueeze(0).expand(n_samples, -1)
-        
+
         # Get mask subset for scope positions only
         mask_subset = samples_mask[instance_mask][:, scope_cols]  # (n_instances, out_features)
-        
+
         # Apply mask and flatten for single vectorized assignment
         data[rows[mask_subset], cols[mask_subset]] = samples[mask_subset].to(data.dtype)
 

@@ -146,7 +146,8 @@ class EinsumLayer(Module):
         self.register_buffer(
             "unraveled_channel_indices",
             torch.tensor(
-                [(i, j) for i in range(self._left_channels) for j in range(self._right_channels)]
+                [(i, j) for i in range(self._left_channels) for j in range(self._right_channels)],
+                dtype=torch.long,
             ),
         )
 
@@ -157,9 +158,7 @@ class EinsumLayer(Module):
 
         # Validate weights shape
         if weights.shape != self.weights_shape:
-            raise ValueError(
-                f"Weight shape mismatch: expected {self.weights_shape}, got {weights.shape}"
-            )
+            raise ValueError(f"Weight shape mismatch: expected {self.weights_shape}, got {weights.shape}")
 
         # Register logits parameter
         self.logits = nn.Parameter(torch.zeros(self.weights_shape))
@@ -236,9 +235,7 @@ class EinsumLayer(Module):
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, weights={self.weights_shape}"
 
-    def _get_left_right_ll(
-        self, data: Tensor, cache: Cache | None = None
-    ) -> tuple[Tensor, Tensor]:
+    def _get_left_right_ll(self, data: Tensor, cache: Cache | None = None) -> tuple[Tensor, Tensor]:
         """Get log-likelihoods from left and right children.
 
         Returns:
@@ -345,14 +342,14 @@ class EinsumLayer(Module):
         # Select repetition if specified
         if sampling_ctx.repetition_idx is not None:
             rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1)
-            rep_idx = rep_idx.expand(-1, self.out_shape.features, -1, self._left_channels, self._right_channels)
+            rep_idx = rep_idx.expand(
+                -1, self.out_shape.features, -1, self._left_channels, self._right_channels
+            )
             logits = logits.gather(dim=2, index=rep_idx).squeeze(2)
             # logits shape: (B, D, I, J)
         else:
             if self.out_shape.repetitions > 1:
-                raise ValueError(
-                    "repetition_idx must be provided when sampling with num_repetitions > 1"
-                )
+                raise ValueError("repetition_idx must be provided when sampling with num_repetitions > 1")
             logits = logits[:, :, 0, :, :]  # (B, D, I, J)
 
         # Flatten (I, J) for categorical sampling
