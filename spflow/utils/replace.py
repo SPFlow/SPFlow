@@ -10,6 +10,8 @@ import inspect
 from contextlib import contextmanager
 from typing import Callable, TypeVar
 
+from spflow.exceptions import InvalidTypeError
+
 T = TypeVar("T")
 
 
@@ -95,12 +97,12 @@ def _extract_class_and_name(method_ref: Callable) -> tuple[type, str]:
     """
     # Verify it's a callable
     if not callable(method_ref):
-        raise TypeError(f"Expected a callable method reference, got {type(method_ref)}")
+        raise InvalidTypeError(f"Expected a callable method reference, got {type(method_ref)}")
 
     # Get the method name
     method_name = getattr(method_ref, "__name__", None)
     if method_name is None:
-        raise TypeError("Method reference must have a __name__ attribute")
+        raise InvalidTypeError("Method reference must have a __name__ attribute")
 
     # Get the qualified name to extract the class
     # __qualname__ looks like "ClassName.method_name"

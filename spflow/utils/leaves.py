@@ -5,7 +5,7 @@ from typing import Callable, Any
 import torch
 from torch import Tensor
 
-from spflow.exceptions import InvalidParameterCombinationError
+from spflow.exceptions import InvalidParameterCombinationError, InvalidParameterError
 from spflow.meta import Scope
 
 
@@ -52,11 +52,11 @@ def apply_nan_strategy(
     """
     # Initialize weights if not provided
     if weights is None:
-        raise ValueError("Weights tensor must be provided for MLE estimation.")
+        raise InvalidParameterError("Weights tensor must be provided for MLE estimation.")
 
     # Validate weights shape
     if weights.shape[0] != scope_data.shape[0]:
-        raise ValueError(
+        raise InvalidParameterError(
             f"Weights shape {weights.shape} does not match number of data points {scope_data.shape[0]}. "
             f"Expected shape ({scope_data.shape[0]},) for maximum-likelihood estimation."
         )
@@ -65,11 +65,11 @@ def apply_nan_strategy(
     nan_mask = torch.isnan(scope_data)
 
     if torch.all(nan_mask):
-        raise ValueError("Cannot compute maximum-likelihood estimation: all data is NaN.")
+        raise InvalidParameterError("Cannot compute maximum-likelihood estimation: all data is NaN.")
 
     if torch.any(nan_mask):
         if nan_strategy is None:
-            raise ValueError(
+            raise InvalidParameterError(
                 "Cannot perform maximum-likelihood estimation on data with missing (NaN) values. "
                 "Set 'nan_strategy' parameter to specify how to handle missing values (e.g., 'ignore')."
             )
@@ -80,7 +80,9 @@ def apply_nan_strategy(
             scope_data = scope_data[valid_rows]
             weights = weights[valid_rows]
         else:
-            raise ValueError(f"Unknown nan_strategy '{nan_strategy}'. Supported strategies: 'ignore'")
+            raise InvalidParameterError(
+                f"Unknown nan_strategy '{nan_strategy}'. Supported strategies: 'ignore'"
+            )
 
     # Normalize weights to sum to the number of samples
     weights = weights * (scope_data.shape[0] / weights.sum())
@@ -106,7 +108,7 @@ def init_parameter(param: Tensor | None, event_shape: tuple[int, ...], init: Cal
         return init(event_shape)
     else:
         if not torch.isfinite(param).all():
-            raise ValueError("Parameter must be finite.")
+            raise InvalidParameterError("Parameter must be finite.")
         return param
 
 
@@ -138,7 +140,7 @@ def parse_leaf_args(
         case list():
             query_length = len(scope)
         case _:
-            raise ValueError("scope must be of type Scope, int, or list of int.")
+            raise InvalidParameterError("scope must be of type Scope, int, or list of int.")
 
     # Either all params are None or no params are None
     if params and not (all(param is None for param in params) ^ all(param is not None for param in params)):

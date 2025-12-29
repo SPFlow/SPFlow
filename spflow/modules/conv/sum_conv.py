@@ -11,6 +11,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
+from spflow.exceptions import InvalidWeightsError, MissingCacheError, ShapeError
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
@@ -131,13 +132,13 @@ class SumConv(Module):
             ValueError: If weights have invalid shape or values.
         """
         if values.shape != self.weights_shape:
-            raise ValueError(
+            raise ShapeError(
                 f"Invalid shape for weights: Was {values.shape} but expected {self.weights_shape}."
             )
         if not torch.all(values > 0):
-            raise ValueError("Weights must be all positive.")
+            raise InvalidWeightsError("Weights must be all positive.")
         if not torch.allclose(values.sum(dim=self.sum_dim), torch.tensor(1.0)):
-            raise ValueError("Weights must sum to one over input channels.")
+            raise InvalidWeightsError("Weights must sum to one over input channels.")
         self.logits.data = proj_convex_to_real(values)
 
     def extra_repr(self) -> str:
@@ -453,7 +454,7 @@ class SumConv(Module):
             cache: Cache dictionary with log-likelihoods from forward pass.
 
         Raises:
-            ValueError: If required log-likelihoods are not found in cache.
+            MissingCacheError: If required log-likelihoods are not found in cache.
         """
         if cache is None:
             cache = Cache()
@@ -462,11 +463,11 @@ class SumConv(Module):
             # Get cached log-likelihoods
             input_lls = cache["log_likelihood"].get(self.inputs)
             if input_lls is None:
-                raise ValueError("Input log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError("Input log-likelihoods not found in cache. Call log_likelihood first.")
 
             module_lls = cache["log_likelihood"].get(self)
             if module_lls is None:
-                raise ValueError("Module log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError("Module log-likelihoods not found in cache. Call log_likelihood first.")
 
             # input_lls shape: (batch, features, in_channels, reps)
             # module_lls shape: (batch, features, out_channels, reps)
@@ -564,4 +565,3 @@ class SumConv(Module):
             kernel_size=self.kernel_size,
             num_repetitions=self.out_shape.repetitions,
         )
-

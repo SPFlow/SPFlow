@@ -11,7 +11,7 @@ class InvalidParameterCombinationError(Exception):
     pass
 
 
-class ScopeError(Exception):
+class ScopeError(ValueError):
     """Raised when variable scopes are invalid or incompatible."""
 
     pass
@@ -50,3 +50,49 @@ class GraphvizError(Exception):
         """Return error message with installation instructions."""
         message = super().__str__()
         return f"{message}\n\n{self.INSTALL_INSTRUCTIONS}"
+
+
+class CacheError(ValueError):
+    """Raised when required values are missing or invalid in a computation cache."""
+
+    pass
+
+
+class MissingCacheError(CacheError):
+    """Raised when required cached values are not present.
+
+    This typically indicates a missing prerequisite call (e.g., calling
+    `log_likelihood()` before an EM step).
+    """
+
+    pass
+
+
+class InvalidWeightsError(ValueError):
+    """Raised when weights have invalid values (e.g., non-positive or not normalized)."""
+
+    pass
+
+
+class OptionalDependencyError(ImportError):
+    """Raised when an optional dependency is required but not installed."""
+
+    pass
+
+
+class UnsupportedOperationError(ValueError):
+    """Raised when an operation is not supported for the given model/configuration."""
+
+    pass
+
+
+class InvalidTypeError(TypeError):
+    """Raised when an argument has an unexpected type."""
+
+    pass
+
+
+class InvalidParameterError(ValueError):
+    """Raised when a parameter value is invalid (range/domain/format)."""
+
+    pass

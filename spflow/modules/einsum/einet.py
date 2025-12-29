@@ -16,6 +16,7 @@ import numpy as np
 import torch
 from torch import nn
 
+from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
 from spflow.interfaces.classifier import Classifier
 from spflow.meta.data.scope import Scope
 from spflow.modules.einsum.einsum_layer import EinsumLayer
@@ -79,25 +80,25 @@ class Einet(Module, Classifier):
                 Defaults to "top-down".
 
         Raises:
-            ValueError: If architectural parameters are invalid.
+            InvalidParameterError: If architectural parameters are invalid.
         """
         super().__init__()
 
         # Validate parameters
         if num_classes < 1:
-            raise ValueError(f"num_classes must be >= 1, got {num_classes}")
+            raise InvalidParameterError(f"num_classes must be >= 1, got {num_classes}")
         if num_sums < 1:
-            raise ValueError(f"num_sums must be >= 1, got {num_sums}")
+            raise InvalidParameterError(f"num_sums must be >= 1, got {num_sums}")
         if num_leaves < 1:
-            raise ValueError(f"num_leaves must be >= 1, got {num_leaves}")
+            raise InvalidParameterError(f"num_leaves must be >= 1, got {num_leaves}")
         if depth < 0:
-            raise ValueError(f"depth must be >= 0, got {depth}")
+            raise InvalidParameterError(f"depth must be >= 0, got {depth}")
         if num_repetitions < 1:
-            raise ValueError(f"num_repetitions must be >= 1, got {num_repetitions}")
+            raise InvalidParameterError(f"num_repetitions must be >= 1, got {num_repetitions}")
         if layer_type not in ("einsum", "linsum"):
-            raise ValueError(f"layer_type must be 'einsum' or 'linsum', got {layer_type}")
+            raise InvalidParameterError(f"layer_type must be 'einsum' or 'linsum', got {layer_type}")
         if structure not in ("top-down", "bottom-up"):
-            raise ValueError(f"structure must be 'top-down' or 'bottom-up', got {structure}")
+            raise InvalidParameterError(f"structure must be 'top-down' or 'bottom-up', got {structure}")
 
         # Store configuration
         self.leaf_modules = nn.ModuleList(leaf_modules)
@@ -115,7 +116,7 @@ class Einet(Module, Classifier):
 
         # Validate depth against number of features
         if 2**depth > self.num_features:
-            raise ValueError(
+            raise InvalidParameterError(
                 f"depth {depth} too large for {self.num_features} features. "
                 f"Maximum depth is {int(np.floor(np.log2(self.num_features)))}."
             )
@@ -355,10 +356,12 @@ class Einet(Module, Classifier):
             Log-posterior probabilities of shape (batch_size, num_classes).
 
         Raises:
-            ValueError: If model has only one class.
+            UnsupportedOperationError: If model has only one class.
         """
         if self.num_classes <= 1:
-            raise ValueError("Posterior can only be computed for models with multiple classes.")
+            raise UnsupportedOperationError(
+                "Posterior can only be computed for models with multiple classes."
+            )
 
         ll_y = self.root_node.log_weights
         ll_y = ll_y.squeeze().view(1, -1)
@@ -436,7 +439,7 @@ class Einet(Module, Classifier):
         if self.num_classes > 1:
             logits = self.root_node.logits
             if logits.shape != (1, self.num_classes, 1):
-                raise ValueError(
+                raise InvalidParameterError(
                     f"Expected logits shape (1, {self.num_classes}, 1), got {logits.shape}"
                 )
             logits = logits.squeeze(-1)

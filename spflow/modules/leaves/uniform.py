@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from spflow.exceptions import InvalidParameterCombinationError
+from spflow.exceptions import InvalidParameterCombinationError, InvalidParameterError
 from spflow.meta.data import Scope
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.cache import Cache
@@ -49,7 +49,7 @@ class Uniform(LeafModule):
             )
 
         if not torch.isfinite(low).all() or not torch.isfinite(high).all():
-            raise ValueError("Parameter must be finite")
+            raise InvalidParameterError("Parameter must be finite")
 
         super().__init__(
             scope=scope,

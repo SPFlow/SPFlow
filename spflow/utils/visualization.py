@@ -8,13 +8,13 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Literal
 
-from spflow.exceptions import GraphvizError
+from spflow.exceptions import GraphvizError, OptionalDependencyError
 
 try:
     import pydot
     from pydot.exceptions import PydotException
 except ImportError as e:
-    raise ImportError(
+    raise OptionalDependencyError(
         "The 'pydot' package is required for visualization functionality.\n\n"
         "To install pydot and graphviz dependencies:\n"
         "  1. Install the Graphviz system dependency:\n"

@@ -6,7 +6,13 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
-from spflow.exceptions import InvalidParameterCombinationError, ScopeError, ShapeError
+from spflow.exceptions import (
+    InvalidParameterCombinationError,
+    InvalidWeightsError,
+    MissingCacheError,
+    ScopeError,
+    ShapeError,
+)
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -185,9 +191,9 @@ class ElementwiseSum(Module):
         if values.shape != self.weights_shape:
             raise ShapeError(f"Invalid shape for weights: {values.shape}.")
         if not torch.all(values > 0):
-            raise ValueError("Weights for 'Sum' must be all positive.")
+            raise InvalidWeightsError("Weights for 'Sum' must be all positive.")
         if not torch.allclose(torch.sum(values, dim=self.sum_dim), torch.tensor(1.0)):
-            raise ValueError("Weights for 'Sum' must sum up to one.")
+            raise InvalidWeightsError("Weights for 'Sum' must sum up to one.")
         self.logits.data = proj_convex_to_real(values)
 
     @log_weights.setter
@@ -461,14 +467,14 @@ class ElementwiseSum(Module):
             for inp in self.inputs:
                 inp_ll = cache.get("log_likelihood", inp)
                 if inp_ll is None:
-                    raise ValueError("Input log-likelihoods not found in cache.")
+                    raise MissingCacheError("Input log-likelihoods not found in cache.")
                 input_lls.append(inp_ll)
             input_lls = torch.stack(input_lls, dim=3)
 
             # Get module lls
             module_lls = cache.get("log_likelihood", self)
             if module_lls is None:
-                raise ValueError("Module log-likelihood not found in cache.")
+                raise MissingCacheError("Module log-likelihood not found in cache.")
 
             log_weights = self.log_weights.unsqueeze(0)
             input_lls = input_lls.unsqueeze(3)

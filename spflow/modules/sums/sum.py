@@ -4,7 +4,12 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from spflow.exceptions import InvalidParameterCombinationError, ShapeError
+from spflow.exceptions import (
+    InvalidParameterCombinationError,
+    InvalidWeightsError,
+    MissingCacheError,
+    ShapeError,
+)
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
@@ -211,9 +216,9 @@ class Sum(Module):
                 f"Invalid shape for weights: Was {values.shape} but expected {self.weights_shape}."
             )
         if not torch.all(values > 0):
-            raise ValueError("Weights for 'Sum' must be all positive.")
+            raise InvalidWeightsError("Weights for 'Sum' must be all positive.")
         if not torch.allclose(torch.sum(values, dim=self.sum_dim), torch.tensor(1.0)):
-            raise ValueError("Weights for 'Sum' must sum up to one.")
+            raise InvalidWeightsError("Weights for 'Sum' must sum up to one.")
         self.logits.data = proj_convex_to_real(values)
 
     @log_weights.setter
@@ -227,10 +232,10 @@ class Sum(Module):
             values: Tensor containing log weights for each input and node.
 
         Raises:
-            ValueError: If log weights have invalid shape.
+            ShapeError: If log weights have invalid shape.
         """
         if values.shape != self.log_weights.shape:
-            raise ValueError(f"Invalid shape for weights: {values.shape}.")
+            raise ShapeError(f"Invalid shape for weights: {values.shape}.")
         self.logits.data = values
 
     def extra_repr(self) -> str:
@@ -425,7 +430,7 @@ class Sum(Module):
             bias_correction: Whether to apply bias correction.
 
         Raises:
-            ValueError: If required log-likelihoods are not found in cache.
+            MissingCacheError: If required log-likelihoods are not found in cache.
         """
         if cache is None:
             cache = Cache()
@@ -436,12 +441,12 @@ class Sum(Module):
             # Get input LLs from cache
             input_lls = cache["log_likelihood"].get(self.inputs)
             if input_lls is None:
-                raise ValueError("Input log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError("Input log-likelihoods not found in cache. Call log_likelihood first.")
 
             # Get module lls from cache
             module_lls = cache["log_likelihood"].get(self)
             if module_lls is None:
-                raise ValueError("Module log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError("Module log-likelihoods not found in cache. Call log_likelihood first.")
 
             log_weights = self.log_weights.unsqueeze(0)
             log_grads = torch.log(module_lls.grad).unsqueeze(2)

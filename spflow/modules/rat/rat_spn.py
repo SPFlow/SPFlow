@@ -14,6 +14,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
+from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
 from spflow.interfaces.classifier import Classifier
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
@@ -98,18 +99,20 @@ class RatSPN(Module, Classifier):
         self.scope = Scope.join_all([leaf.scope for leaf in leaf_modules])
 
         if n_root_nodes < 1:
-            raise ValueError(f"Specified value of 'n_root_nodes' must be at least 1, but is {n_root_nodes}.")
+            raise InvalidParameterError(
+                f"Specified value of 'n_root_nodes' must be at least 1, but is {n_root_nodes}."
+            )
         if n_region_nodes < 1:
-            raise ValueError(
+            raise InvalidParameterError(
                 f"Specified value for 'n_region_nodes' must be at least 1, but is {n_region_nodes}."
             )
         if self.n_leaf_nodes < 1:
-            raise ValueError(
+            raise InvalidParameterError(
                 f"Specified value for 'n_leaf_nodes' must be at least 1, but is {self.n_leaf_nodes}."
             )
 
         if self.num_splits < 2:
-            raise ValueError(
+            raise InvalidParameterError(
                 f"Specified value for 'num_splits' must be at least 2, but is {self.num_splits}."
             )
 
@@ -229,10 +232,12 @@ class RatSPN(Module, Classifier):
             Log-posterior probabilities.
 
         Raises:
-            ValueError: If model has only one root node (single class).
+            UnsupportedOperationError: If model has only one root node (single class).
         """
         if self.n_root_nodes <= 1:
-            raise ValueError("Posterior can only be computed for models with multiple classes.")
+            raise UnsupportedOperationError(
+                "Posterior can only be computed for models with multiple classes."
+            )
 
         ll_y = self.root_node.log_weights  # shape: (1, n_root_nodes, 1, 1)
         ll_y = ll_y.squeeze().view(1, -1)  # shape: (1, n_root_nodes)
@@ -286,7 +291,9 @@ class RatSPN(Module, Classifier):
             sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
             logits = self.root_node.logits
             if logits.shape != (1, self.n_root_nodes, 1):
-                raise ValueError(f"Expected logits shape (1, {self.n_root_nodes}, 1), but got {logits.shape}")
+                raise InvalidParameterError(
+                    f"Expected logits shape (1, {self.n_root_nodes}, 1), but got {logits.shape}"
+                )
             logits = logits.squeeze(-1)
             logits = logits.unsqueeze(0).expand(data.shape[0], -1, -1)  # shape [b ,1, n_root_nodes]
 

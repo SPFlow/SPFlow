@@ -6,6 +6,7 @@ Translates NumPy's histogram "auto" bin size estimation to PyTorch tensors.
 import torch
 from torch import Tensor
 
+from spflow.exceptions import InvalidParameterError
 
 def _ptp_torch(x: Tensor) -> Tensor:
     """Compute peak-to-peak (max - min) of a tensor.
@@ -85,12 +86,12 @@ def _get_outer_edges_torch(
     if range_bounds is not None:
         first_edge, last_edge = range_bounds
         if first_edge > last_edge:
-            raise ValueError("max must be larger than min in range parameter.")
+            raise InvalidParameterError("max must be larger than min in range parameter.")
         if not (
             torch.isfinite(torch.tensor(first_edge))
             and torch.isfinite(torch.tensor(last_edge))
         ):
-            raise ValueError(f"Supplied range [{first_edge}, {last_edge}] is not finite.")
+            raise InvalidParameterError(f"Supplied range [{first_edge}, {last_edge}] is not finite.")
     elif a.numel() == 0:
         # Handle empty tensor case
         first_edge, last_edge = 0.0, 1.0
@@ -100,7 +101,7 @@ def _get_outer_edges_torch(
             torch.isfinite(torch.tensor(first_edge))
             and torch.isfinite(torch.tensor(last_edge))
         ):
-            raise ValueError(
+            raise InvalidParameterError(
                 f"Autodetected range [{first_edge}, {last_edge}] is not finite."
             )
 

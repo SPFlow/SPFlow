@@ -13,6 +13,7 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
+from spflow.exceptions import InvalidWeightsError, MissingCacheError, ScopeError, ShapeError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -84,7 +85,7 @@ class EinsumLayer(Module):
                 )
             # Validate disjoint scopes
             if not Scope.all_pairwise_disjoint([left_input.scope, right_input.scope]):
-                raise ValueError("Left and right input scopes must be disjoint.")
+                raise ScopeError("Left and right input scopes must be disjoint.")
 
             self.inputs = nn.ModuleList([left_input, right_input])
             self._left_channels = left_input.out_shape.channels
@@ -214,12 +215,12 @@ class EinsumLayer(Module):
     def weights(self, values: Tensor) -> None:
         """Set weights (must be positive and sum to 1 over i,j pairs)."""
         if values.shape != self.weights_shape:
-            raise ValueError(f"Weight shape mismatch: expected {self.weights_shape}, got {values.shape}")
+            raise ShapeError(f"Weight shape mismatch: expected {self.weights_shape}, got {values.shape}")
         if not torch.all(values > 0):
-            raise ValueError("Weights must be positive.")
+            raise InvalidWeightsError("Weights must be positive.")
         sums = values.sum(dim=(-2, -1))
         if not torch.allclose(sums, torch.ones_like(sums)):
-            raise ValueError("Weights must sum to 1 over (i,j) channel pairs.")
+            raise InvalidWeightsError("Weights must sum to 1 over (i,j) channel pairs.")
         # Project to logits space
         flat_weights = values.view(*values.shape[:-2], -1)
         flat_logits = proj_convex_to_real(flat_weights)
@@ -229,7 +230,7 @@ class EinsumLayer(Module):
     def log_weights(self, values: Tensor) -> None:
         """Set log weights directly."""
         if values.shape != self.weights_shape:
-            raise ValueError(f"Log weight shape mismatch: expected {self.weights_shape}, got {values.shape}")
+            raise ShapeError(f"Log weight shape mismatch: expected {self.weights_shape}, got {values.shape}")
         self.logits.data = values
 
     def extra_repr(self) -> str:
@@ -451,7 +452,7 @@ class EinsumLayer(Module):
 
             module_lls = cache["log_likelihood"].get(self)
             if module_lls is None:
-                raise ValueError("Module log-likelihoods not in cache. Call log_likelihood first.")
+                raise MissingCacheError("Module log-likelihoods not in cache. Call log_likelihood first.")
 
             # E-step: compute expected counts
             log_weights = self.log_weights.unsqueeze(0)  # (1, D, O, R, I, J)

@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional
 
 from torch import Tensor, nn
 
+from spflow.exceptions import InvalidParameterError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -42,12 +43,14 @@ class SplitMode:
             num_splits: Number of parts to split into.
             indices: For 'by_index' type, the feature indices for each split.
         """
-        if split_type not in ('consecutive', 'interleaved', 'by_index'):
-            raise ValueError(f"split_type must be 'consecutive', 'interleaved', or 'by_index', got '{split_type}'")
-        if split_type != 'by_index' and num_splits < 2:
-            raise ValueError(f"num_splits must be at least 2, got {num_splits}")
-        if split_type == 'by_index' and indices is None:
-            raise ValueError("indices must be provided for 'by_index' split type")
+        if split_type not in ("consecutive", "interleaved", "by_index"):
+            raise InvalidParameterError(
+                f"split_type must be 'consecutive', 'interleaved', or 'by_index', got '{split_type}'"
+            )
+        if split_type != "by_index" and num_splits < 2:
+            raise InvalidParameterError(f"num_splits must be at least 2, got {num_splits}")
+        if split_type == "by_index" and indices is None:
+            raise InvalidParameterError("indices must be provided for 'by_index' split type")
 
         self._split_type = split_type
         self._num_splits = num_splits
@@ -167,7 +170,7 @@ class Split(Module, ABC):
         super().__init__()
 
         if not isinstance(inputs, Module):
-            raise ValueError(f"'{self.__class__.__name__}' requires a single Module as input.")
+            raise InvalidParameterError(f"'{self.__class__.__name__}' requires a single Module as input.")
 
         self.inputs = inputs
 

@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from spflow.exceptions import InvalidParameterCombinationError
+from spflow.exceptions import InvalidParameterCombinationError, MissingCacheError
 from spflow.modules.module import Module
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
@@ -210,7 +210,7 @@ class RepetitionMixingLayer(Sum):
             cache: Optional cache dictionary with log-likelihoods.
 
         Raises:
-            ValueError: If required log-likelihoods are not found in cache.
+            MissingCacheError: If required log-likelihoods are not found in cache.
         """
         if cache is None:
             cache = Cache()
@@ -221,12 +221,12 @@ class RepetitionMixingLayer(Sum):
             # Get input LLs from cache
             input_lls = cache["log_likelihood"].get(self.inputs)
             if input_lls is None:
-                raise ValueError("Input log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError("Input log-likelihoods not found in cache. Call log_likelihood first.")
 
             # Get module lls from cache
             module_lls = cache["log_likelihood"].get(self)
             if module_lls is None:
-                raise ValueError("Module log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError("Module log-likelihoods not found in cache. Call log_likelihood first.")
 
             log_weights = self.log_weights.unsqueeze(0)
             log_grads = torch.log(module_lls.grad)

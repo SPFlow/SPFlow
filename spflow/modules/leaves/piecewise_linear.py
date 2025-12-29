@@ -15,6 +15,7 @@ from typing import List, Optional
 import torch
 from torch import Tensor, nn
 
+from spflow.exceptions import OptionalDependencyError
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.cache import Cache
@@ -392,11 +393,11 @@ class PiecewiseLinear(LeafModule):
         """
         try:
             from fast_pytorch_kmeans import KMeans
-        except ImportError:
-            raise ImportError(
+        except ImportError as e:
+            raise OptionalDependencyError(
                 "fast_pytorch_kmeans required for PiecewiseLinear. "
                 "Install with: pip install fast-pytorch-kmeans"
-            )
+            ) from e
 
         logger.info(f"Initializing PiecewiseLinear with data shape {data.shape}")
 

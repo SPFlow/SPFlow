@@ -16,6 +16,8 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
+from spflow.exceptions import InvalidParameterError
+
 
 def _check_mask_bool(mask: Tensor) -> None:
     """Check if mask tensor has boolean dtype.
@@ -24,10 +26,10 @@ def _check_mask_bool(mask: Tensor) -> None:
         mask: Tensor to check for boolean dtype.
 
     Raises:
-        ValueError: If mask tensor does not have torch.bool dtype.
+        InvalidParameterError: If mask tensor does not have torch.bool dtype.
     """
     if not mask.dtype == torch.bool:
-        raise ValueError("Mask must be of type torch.bool.")
+        raise InvalidParameterError("Mask must be of type torch.bool.")
 
 
 class SamplingContext:
@@ -84,7 +86,7 @@ class SamplingContext:
                 Defaults to None.
 
         Raises:
-            ValueError: If tensor shapes are incompatible, mask has wrong dtype,
+            InvalidParameterError: If tensor shapes are incompatible, mask has wrong dtype,
                 or num_samples conflicts with tensor dimensions.
         """
         if device is None:
@@ -96,28 +98,30 @@ class SamplingContext:
 
         if channel_index is not None and mask is not None:
             if not channel_index.shape == mask.shape:
-                raise ValueError("channel_index and mask must have the same shape.")
+                raise InvalidParameterError("channel_index and mask must have the same shape.")
 
             if num_samples is not None and num_samples != channel_index.shape[0]:
-                raise ValueError(
+                raise InvalidParameterError(
                     "num_samples must be equal to the number of samples in channel_index or be ommitted."
                 )
 
         if channel_index is not None and mask is None:
             if num_samples is not None and num_samples != channel_index.shape[0]:
-                raise ValueError(
+                raise InvalidParameterError(
                     "num_samples must be equal to the number of samples in channel_index or be ommitted."
                 )
             num_samples = channel_index.shape[0]
 
         if channel_index is None and mask is not None:
             if num_samples is not None and num_samples != mask.shape[0]:
-                raise ValueError("num_samples must be equal to the number of samples in mask or be ommitted.")
+                raise InvalidParameterError(
+                    "num_samples must be equal to the number of samples in mask or be ommitted."
+                )
             num_samples = mask.shape[0]
 
         if (channel_index is None) ^ (mask is None):
             # channel_index and mask must be both None or both not None
-            raise ValueError("channel_index and mask must be both None or both not None.")
+            raise InvalidParameterError("channel_index and mask must be both None or both not None.")
         elif channel_index is not None and mask is not None:
             # channel_index and mask are both not None
             _check_mask_bool(mask)
@@ -140,7 +144,7 @@ class SamplingContext:
             mask: Boolean tensor containing the mask to apply to the samples.
         """
         if not channel_index.shape == mask.shape:
-            raise ValueError("channel_index and mask must have the same shape.")
+            raise InvalidParameterError("channel_index and mask must have the same shape.")
 
         _check_mask_bool(mask)
 
@@ -154,7 +158,7 @@ class SamplingContext:
     @channel_index.setter
     def channel_index(self, channel_index):
         if channel_index.shape != self._mask.shape:
-            raise ValueError("New channel_index and previous mask must have the same shape.")
+            raise InvalidParameterError("New channel_index and previous mask must have the same shape.")
         self._channel_index = channel_index
 
     @property
@@ -164,7 +168,7 @@ class SamplingContext:
     @mask.setter
     def mask(self, mask):
         if mask.shape[0] != self._channel_index.shape[0]:
-            raise ValueError("New mask and previous channel_index must have the same shape.")
+            raise InvalidParameterError("New mask and previous channel_index must have the same shape.")
         _check_mask_bool(mask)
         self._mask = mask
 

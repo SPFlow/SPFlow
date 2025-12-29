@@ -8,6 +8,7 @@ structure and parameter learning.
 """
 from inspect import isclass
 
+from spflow.exceptions import InvalidParameterError
 from spflow.meta.data.feature_types import FeatureType
 from spflow.meta.data.meta_type import MetaType
 from spflow.meta.data.scope import Scope
@@ -96,7 +97,7 @@ class FeatureContext:
         """
         if isinstance(domains, list):
             if len(domains) != len(self.scope.query):
-                raise ValueError(
+                raise InvalidParameterError(
                     "Length of list of domain types for 'FeatureContext' does not match number of scope query RVs."
                 )
 
@@ -109,10 +110,10 @@ class FeatureContext:
             feature_type = self.parse_type(feature_type)
 
             if feature_id not in self.scope.query:
-                raise ValueError(f"Feature index {feature_id} is not part of the query scope.")
+                raise InvalidParameterError(f"Feature index {feature_id} is not part of the query scope.")
 
             if self.domain_map[feature_id] != MetaType.Unknown and not overwrite:
-                raise ValueError(
+                raise InvalidParameterError(
                     f"Domain for feature index {feature_id} is already specified (i.e., not 'MetaType.Unknown'). If domain should be overwritten, enable 'overwrite'."
                 )
 

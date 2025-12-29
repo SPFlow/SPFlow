@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from spflow.exceptions import InvalidTypeError
 from spflow.interfaces.classifier import Classifier
 from spflow.modules.module import Module
 
@@ -300,14 +301,14 @@ def train_gradient_descent(
 
     Raises:
         ValueError: If epochs is not a positive integer.
-        TypeError: If is_classification is True and model is not a Classifier instance.
+        InvalidTypeError: If is_classification is True and model is not a Classifier instance.
     """
     # Input validation
     if epochs <= 0:
         raise ValueError("epochs must be a positive integer")
 
     if is_classification and not isinstance(model, Classifier):
-        raise TypeError("model must be a Classifier instance when is_classification=True")
+        raise InvalidTypeError("model must be a Classifier instance when is_classification=True")
 
     # Initialize components
     model.train()
