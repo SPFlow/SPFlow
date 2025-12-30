@@ -41,7 +41,8 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # Napoleon configuration (Google-style docstrings)
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
-napoleon_include_init_method = True
+napoleon_include_init_method = False
+napoleon_include_init_with_doc = True
 napoleon_include_private_with_doc = False
 napoleon_include_special_with_doc = False
 napoleon_use_param = True
@@ -63,6 +64,7 @@ autodoc_default_options = {
     "member-order": "groupwise",
     "undoc-members": True,
     "show-inheritance": True,
+    "autoclass_content": "both",
 }
 
 # Intersphinx configuration - Link to external documentation
