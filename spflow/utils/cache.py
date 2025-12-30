@@ -24,12 +24,18 @@ class Cache:
 
     Uses WeakKeyDictionary to store cached values keyed by module instances,
     allowing garbage collection when modules are no longer referenced elsewhere.
+
+    Attributes:
+        extras: Mutable dictionary for user-defined, per-traversal state. This can be
+            used to pass custom information through recursive module calls without
+            changing public method signatures.
     """
 
     def __init__(self):
         """Initialize cache with per-method locks and storage."""
         self._locks: dict[str, threading.Lock] = defaultdict(threading.Lock)
         self._cache: dict[str, WeakKeyDictionary[Module, Any]] = {}
+        self.extras: dict[str, Any] = {}
 
     def get(self, method_name: str, module: Module) -> Any | None:
         """Retrieve cached value for a module.

@@ -124,6 +124,8 @@ Cache basics
 
 - Use :class:`spflow.utils.cache.Cache` to memoize intermediate results across a single traversal.
 - Many modules use the :func:`spflow.utils.cache.cached` decorator for operations like ``log_likelihood``.
+- :class:`spflow.utils.cache.Cache` also provides ``Cache.extras`` for storing custom, user-defined information that
+  should be available throughout a recursive traversal.
 
 When you should care
 --------------------
@@ -136,4 +138,3 @@ Related references
 
 - :class:`spflow.utils.cache.Cache`
 - :func:`spflow.utils.cache.cached`
-

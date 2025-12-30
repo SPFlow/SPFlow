@@ -6,7 +6,12 @@ from typing import Optional
 from weakref import WeakKeyDictionary
 
 import torch
+from torch import Tensor
 
+from spflow.meta import Scope
+from spflow.modules.leaves import Normal
+from spflow.modules.module import Module
+from spflow.modules.products import Product
 from spflow.utils.cache import Cache, cached
 
 
@@ -217,6 +222,77 @@ class TestCachedDecorator:
         """Test that @cached preserves the decorated function's metadata."""
         assert MockModule.log_likelihood.__name__ == "log_likelihood"
         assert "Mock log_likelihood method" in MockModule.log_likelihood.__doc__
+
+
+class _UserProduct(Module):
+    def __init__(self, inputs: Module) -> None:
+        super().__init__()
+        self.inputs = inputs
+        self.scope = inputs.scope
+        self.in_shape = inputs.out_shape
+        self.out_shape = inputs.out_shape
+
+    @property
+    def feature_to_scope(self):
+        return self.inputs.feature_to_scope
+
+    def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> Tensor:
+        if cache is None:
+            cache = Cache()
+        cache.extras.setdefault("stats", []).append("called")
+        return self.inputs.log_likelihood(data, cache=cache)
+
+    def sample(self, *args, **kwargs) -> Tensor:
+        raise NotImplementedError
+
+    def marginalize(self, *args, **kwargs):
+        return self
+
+
+class _UserSum(Module):
+    def __init__(self, inputs: Module) -> None:
+        super().__init__()
+        self.inputs = inputs
+        self.scope = inputs.scope
+        self.in_shape = inputs.out_shape
+        self.out_shape = inputs.out_shape
+
+    @property
+    def feature_to_scope(self):
+        return self.inputs.feature_to_scope
+
+    def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> Tensor:
+        if cache is None:
+            cache = Cache()
+        cache.extras.setdefault("stats", [])
+        ll = self.inputs.log_likelihood(data, cache=cache)
+        cache.extras["sum_seen"] = len(cache.extras["stats"])
+        return ll
+
+    def sample(self, *args, **kwargs) -> Tensor:
+        raise NotImplementedError
+
+    def marginalize(self, *args, **kwargs):
+        return self
+
+
+class TestCacheExtras:
+    def test_extras_passes_through_recursive_calls(self):
+        cache = Cache()
+
+        leaf = Normal(scope=Scope([0]), out_channels=1)
+        user_prod = _UserProduct(inputs=leaf)
+        prod = Product(inputs=user_prod)
+        user_sum = _UserSum(inputs=prod)
+
+        data = torch.randn(4, 1)
+        user_sum.log_likelihood(data, cache=cache)
+
+        assert cache.extras["stats"] == ["called"]
+        assert cache.extras["sum_seen"] == 1
+
+        user_sum.log_likelihood(data, cache=cache)
+        assert cache.extras["stats"] == ["called"]
 
 
 class TestCacheIntegration:
