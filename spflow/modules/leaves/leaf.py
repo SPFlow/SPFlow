@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from spflow.exceptions import ShapeError
+from spflow.exceptions import ShapeError, UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -550,10 +550,27 @@ class LeafModule(Module, ABC):
                 sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
 
         if is_mpe:
-            # Get mode of distribution as MPE
-            samples = self.mode.unsqueeze(0)
+            if self.is_conditional:
+                evidence = data[instance_mask][:, self.scope.evidence]
+                dist = self.conditional_distribution(evidence)
+                if not hasattr(dist, "mode"):
+                    raise UnsupportedOperationError(
+                        f"MPE sampling requires a distribution with a 'mode' attribute, but "
+                        f"{dist.__class__.__name__} does not provide one."
+                    )
+                samples = dist.mode
+
+                if samples.dim() == 2:
+                    samples = samples.unsqueeze(2).unsqueeze(-1)
+                elif samples.dim() == 3:
+                    samples = samples.unsqueeze(-1)
+            else:
+                # Get mode of distribution as MPE
+                samples = self.mode.unsqueeze(0)
+
             if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
-                samples = samples.repeat(n_samples, 1, 1, 1).detach()
+                if not self.is_conditional:
+                    samples = samples.repeat(n_samples, 1, 1, 1).detach()
                 # repetition_idx shape: (n_samples,)
                 repetition_idx = sampling_ctx.repetition_idx[instance_mask]
 
@@ -573,7 +590,8 @@ class LeafModule(Module, ABC):
                 )
 
             else:
-                samples = samples.repeat(n_samples, 1, 1).detach()
+                if not self.is_conditional:
+                    samples = samples.repeat(n_samples, 1, 1).detach()
 
         else:
             if self.is_conditional:
