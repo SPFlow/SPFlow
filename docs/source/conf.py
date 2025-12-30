@@ -59,7 +59,7 @@ autodoc_typehints = "description"
 autodoc_typehints_description_target = "documented"
 autodoc_default_options = {
     "members": True,
-    "member-order": "bysource",
+    "member-order": "groupwise",
     "undoc-members": True,
     "show-inheritance": True,
 }

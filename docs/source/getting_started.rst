@@ -14,18 +14,11 @@ The easiest way to install SPFlow is via pip::
 
     pip install spflow
 
-From Source
------------
+Development / From Source
+-------------------------
 
-To install the latest development version from source::
-
-    git clone https://github.com/SPFlow/SPFlow.git
-    cd SPFlow
-    pip install -e .
-
-If you use ``uv`` for package management::
-
-    uv sync
+Most users should install from PyPI. If you want to contribute to SPFlow or develop locally, see the repository's
+``CONTRIBUTING.md`` for a source install with development dependencies.
 
 Prerequisites
 -------------

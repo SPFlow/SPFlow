@@ -29,6 +29,12 @@ Thank you for considering contributing to SPFlow! This document provides guideli
 
 ## Development Setup
 
+If you only want to *use* SPFlow, install it from PyPI:
+
+```bash
+pip install spflow
+```
+
 ### Using uv (Recommended)
 
 ```bash
@@ -37,6 +43,12 @@ uv sync --extra dev
 
 # Activate virtual environment
 source .venv/bin/activate
+```
+
+### Using pip
+
+```bash
+pip install -e ".[dev]"
 ```
 
 ### System Dependencies
