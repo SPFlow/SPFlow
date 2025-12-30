@@ -126,6 +126,7 @@ Next Steps
 
 - Read the :doc:`guides/user_guide` for comprehensive tutorials
 - Explore the :doc:`api/index` for detailed API documentation
+- Browse :doc:`Concepts <concepts>` for core semantics (shapes, scopes, evidence, caching)
 
 Key Concepts
 ============
@@ -145,4 +146,4 @@ Structure Learning
 Parameter Learning
     Training the distribution parameters using gradient descent or EM.
 
-For more information, see the :doc:`guides/user_guide` and the publications on Probabilistic Circuits.
+For more information, see the :doc:`guides/user_guide` and :doc:`Concepts <concepts>`.

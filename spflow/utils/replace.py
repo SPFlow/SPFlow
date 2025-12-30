@@ -33,20 +33,20 @@ def replace(method_ref: Callable, replacement_func: Callable):
         None.
 
     Example:
-        ```python
-        def my_custom_ll(self, data, cache=None):
-            # Custom implementation
-            return torch.ones(len(data))
+        ::
 
-        model = Product(Sum(Product(Normal(...))))
+            def my_custom_ll(self, data, cache=None):
+                # Custom implementation
+                return torch.ones(len(data))
 
-        # Normal inference
-        model.log_likelihood(data)
+            model = Product(Sum(Product(Normal(...))))
 
-        # Use custom implementation for Sum modules
-        with replace(Sum.log_likelihood, my_custom_ll):
-            model.log_likelihood(data)  # Sum instances now use my_custom_ll
-        ```
+            # Normal inference
+            model.log_likelihood(data)
+
+            # Use custom implementation for Sum modules
+            with replace(Sum.log_likelihood, my_custom_ll):
+                model.log_likelihood(data)  # Sum instances now use my_custom_ll
 
     Raises:
         ValueError: If the class cannot be inferred from the method reference.

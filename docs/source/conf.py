@@ -3,6 +3,7 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import os
 import sys
 from pathlib import Path
 
@@ -74,7 +75,10 @@ intersphinx_mapping = {
 }
 
 # nbsphinx configuration for Jupyter notebooks
-nbsphinx_execute = "always"
+#
+# Executing notebooks makes docs builds slower and more failure-prone for local contributors.
+# Default to skipping execution, but allow overriding in CI via environment variables.
+nbsphinx_execute = os.environ.get("SPFLOW_NBSPHINX_EXECUTE", "never")
 nbsphinx_timeout = 300
 nbsphinx_allow_errors = True
 nbsphinx_kernel_name = "python3"

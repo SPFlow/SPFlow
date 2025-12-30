@@ -12,6 +12,7 @@ Quick Navigation
 ================
 
 - :doc:`Getting Started <getting_started>` — Installation and quick start guide
+- :doc:`Concepts <concepts>` — Core SPFlow concepts and semantics
 - :doc:`User Guide <guides/user_guide>` — Comprehensive tutorials and examples
 - :doc:`Developer Guide <guides/dev_guide>` — Contributing and development setup
 - :doc:`API Reference <api/index>` — Complete API documentation
@@ -22,6 +23,7 @@ Quick Navigation
     :hidden:
 
     getting_started
+    concepts
     guides/user_guide
     guides/dev_guide
     api/index

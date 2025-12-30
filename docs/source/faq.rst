@@ -2,7 +2,8 @@
 Frequently Asked Questions
 ==========================
 
-This page answers common questions about SPFlow. For detailed tutorials, see the :doc:`User Guide <guides/user_guide>`.
+This page answers common questions about SPFlow. For deeper explanations, see :doc:`Concepts <concepts>`.
+For end-to-end tutorials, see the :doc:`User Guide <guides/user_guide>`.
 
 ----
 
@@ -50,31 +51,18 @@ See the :doc:`API Reference <api/index>` for complete documentation.
 What is a Scope?
 ----------------
 
-A **Scope** defines which input variables (features) a module operates on. Scopes are fundamental to probabilistic circuits:
+A **Scope** defines which input variables (features) a module operates on. Scopes are what make sums/products well-defined
+and enforce decomposability/compatibility constraints.
 
-- Leaf modules have scopes covering their input features
-- Product nodes combine modules with **disjoint** scopes (decomposability)
-- Sum nodes combine modules with the **same** scope
-
-Example::
-
-    from spflow.meta import Scope
-
-    # Scope covering features 0, 1, 2
-    scope = Scope([0, 1, 2])
+See :ref:`concepts-scopes-and-decomposability`.
 
 What are repetitions?
 ---------------------
 
-**Repetitions** are multiple independent copies of the same circuit structure, each with different parameters. They enable:
+**Repetitions** are independent parameterizations of the same structure.
+They usually show up as ``R`` in ``model.to_str()`` and are tracked in module shapes.
 
-- More expressive models without increasing depth
-- Efficient parallel computation via batching
-- Better coverage of the probability space
-
-Specify repetitions when creating modules::
-
-    leaf = Normal(scope=scope, out_channels=4, num_repetitions=8)
+See :ref:`concepts-shapes-and-dimensions`.
 
 What is the difference between Sum and ElementwiseSum?
 ------------------------------------------------------
@@ -252,7 +240,7 @@ Use ``learn_spn`` to automatically learn circuit structure from data::
         min_instances_slice=100
     )
 
-See :doc:`api/learning` for details.
+See :doc:`api/learning` for details and the :doc:`User Guide <guides/user_guide>` for end-to-end examples.
 
 ----
 
@@ -309,7 +297,7 @@ MPE can be combined with evidence for conditional MPE::
 How do I handle missing data?
 -----------------------------
 
-Use ``torch.nan`` in the evidence tensor to indicate missing values::
+Use ``torch.nan`` in your data/evidence tensor to indicate missing values::
 
     # Create data with missing values
     data = torch.randn(100, 5)
@@ -320,6 +308,8 @@ Use ``torch.nan`` in the evidence tensor to indicate missing values::
     log_ll = model.log_likelihood(data)
 
 SPFlow will marginalize over missing features when computing likelihoods.
+
+See :ref:`concepts-missing-data-and-evidence` for details and conditional sampling patterns.
 
 ----
 
@@ -403,7 +393,7 @@ There is no automatic migration path. You will need to:
 3. Retrain your models
 
 Are old models compatible with SPFlow v1.x?
-------------------------------------------
+-------------------------------------------
 
 **No.** Models saved with SPFlow 0.x cannot be loaded in SPFlow 1.x due to the complete architectural rewrite.
 
