@@ -1,6 +1,7 @@
 import os
 import shutil
 
+import numpy as np
 import pytest
 import torch
 
@@ -35,6 +36,7 @@ def _get_test_device() -> str:
     autouse=True,
 )
 def auto_set_test_seed():
+    np.random.seed(0)
     torch.manual_seed(0)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(0)
