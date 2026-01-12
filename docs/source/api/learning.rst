@@ -10,6 +10,10 @@ Automatic structure learning using the LearnSPN algorithm based on Randomized De
 
 .. autofunction:: spflow.learn.learn_spn.learn_spn
 
+Automatic structure learning using the Prometheus algorithm for learning DAG-structured SPNs (with optional subtree sharing).
+
+.. autofunction:: spflow.learn.prometheus.learn_prometheus
+
 Parameter Learning: EM
 ----------------------
 

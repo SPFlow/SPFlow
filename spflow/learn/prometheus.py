@@ -10,9 +10,8 @@ Prometheus learns a DAG-structured SPN by:
 - sharing repeated sub-scopes across decompositions (subtree sharing / DAG),
 - recursively applying the procedure to each sub-scope.
 
-Note:
-    This implementation uses the full O(d^2) affinity matrix. The scalable sampling-based approximation
-    described in the paper is intentionally left as a future TODO.
+    This implementation supports both the full O(d^2) affinity matrix and the scalable sampling-based
+    approximation described in the paper (via `affinity_mode="sampled"`).
 """
 
 from __future__ import annotations
@@ -508,7 +507,8 @@ def learn_prometheus(
         InvalidParameterError: If argument values are invalid or inconsistent.
         UnsupportedOperationError: If data contains NaNs (not supported for affinity computation).
 
-    Pseudocode (Prometheus, from Jaini et al. 2018):
+    Pseudocode (Prometheus, from Jaini et al. 2018)::
+
         Prometheus(D, X):
             if |X| == 1: return univariate leaf fit on D
             cluster D into {D_i}; create sum node N
