@@ -22,5 +22,7 @@ from .feature_types import (
     PoissonType,
     UniformType,
 )
+from .interval_evidence import IntervalEvidence
 from .meta_type import MetaType
 from .scope import Scope
+

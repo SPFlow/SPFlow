@@ -8,6 +8,7 @@ import torch
 from torch import Tensor
 
 from spflow.exceptions import ShapeError, UnsupportedOperationError
+from spflow.meta.data.interval_evidence import IntervalEvidence
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -370,18 +371,21 @@ class LeafModule(Module, ABC):
     @cached
     def log_likelihood(
         self,
-        data: Tensor,
+        data: Tensor | IntervalEvidence,
         cache: Cache | None = None,
     ) -> Tensor:
         """Compute log-likelihoods, marginalizing over NaN values.
 
         Args:
-            data: Input data tensor.
+            data: Input data tensor or IntervalEvidence for range queries.
             cache: Optional cache dictionary.
 
         Returns:
             Log-likelihood tensor.
         """
+        # Dispatch on IntervalEvidence
+        if isinstance(data, IntervalEvidence):
+            return self._log_likelihood_interval(data.low, data.high, cache)
 
         if data.dim() != 2:
             raise ValueError(f"Data must be 2-dimensional (batch, num_features), got shape {data.shape}.")
@@ -432,6 +436,73 @@ class LeafModule(Module, ABC):
             data_q[marg_mask_for_data] = torch.nan
 
         return log_prob
+
+    def _log_likelihood_interval(
+        self,
+        low: Tensor,
+        high: Tensor,
+        cache: Cache | None = None,
+    ) -> Tensor:
+        """Compute log P(low <= X <= high) for interval evidence.
+
+        Uses the distribution's CDF: P(low <= X <= high) = CDF(high) - CDF(low).
+        Subclasses can override this for custom implementations.
+
+        Args:
+            low: Lower bounds of shape (batch, features). NaN = no lower bound (-inf).
+            high: Upper bounds of shape (batch, features). NaN = no upper bound (+inf).
+            cache: Optional cache dictionary.
+
+        Returns:
+            Log-likelihood tensor.
+
+        Raises:
+            NotImplementedError: If the distribution doesn't support CDF.
+        """
+        # Get scope-filtered bounds
+        low_scoped = low[:, self.scope.query]
+        high_scoped = high[:, self.scope.query]
+
+        # Expand to match (batch, features, channels, repetitions)
+        low_expanded = low_scoped.unsqueeze(2).unsqueeze(-1)
+        high_expanded = high_scoped.unsqueeze(2).unsqueeze(-1)
+
+        # Get the distribution
+        dist = self.distribution
+
+        # Check if distribution has cdf method
+        if not hasattr(dist, "cdf"):
+            raise NotImplementedError(
+                f"{self.__class__.__name__} does not support interval inference. "
+                f"The underlying distribution {dist.__class__.__name__} has no cdf() method."
+            )
+
+        # Handle NaN bounds as -inf/+inf
+        low_for_cdf = torch.where(
+            torch.isnan(low_expanded),
+            torch.full_like(low_expanded, float("-inf")),
+            low_expanded,
+        )
+        high_for_cdf = torch.where(
+            torch.isnan(high_expanded),
+            torch.full_like(high_expanded, float("inf")),
+            high_expanded,
+        )
+
+        # Compute CDF values
+        try:
+            cdf_high = dist.cdf(high_for_cdf)
+            cdf_low = dist.cdf(low_for_cdf)
+        except NotImplementedError:
+             raise NotImplementedError(
+                f"{self.__class__.__name__} does not support interval inference. "
+                f"The underlying distribution {dist.__class__.__name__} does not implement cdf()."
+            )
+
+        # P(low <= X <= high) = CDF(high) - CDF(low)
+        prob = torch.clamp(cdf_high - cdf_low, min=1e-40)  # Numerical stability
+
+        return torch.log(prob)
 
     def _prepare_mle_data(
         self,

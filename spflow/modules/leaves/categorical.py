@@ -4,6 +4,7 @@ from torch import Tensor, nn
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data import Scope
 from spflow.modules.leaves.leaf import LeafModule
+from spflow.utils.cache import Cache
 from spflow.utils.leaves import init_parameter
 from spflow.utils.projections import proj_convex_to_real, proj_real_to_convex
 
@@ -156,3 +157,71 @@ class Categorical(LeafModule):
             params_dict: Dictionary with 'probs' parameter values.
         """
         self.probs = params_dict["probs"]  # Uses property setter
+
+    def _log_likelihood_interval(
+        self,
+        low: Tensor,
+        high: Tensor,
+        cache: Cache | None = None,
+    ) -> Tensor:
+        """Compute log P(low <= X <= high) for interval evidence.
+
+        Sums probabilities for all categories k such that low <= k <= high.
+
+        Args:
+            low: Lower bounds of shape (batch, features).
+            high: Upper bounds of shape (batch, features).
+            cache: Optional cache dictionary.
+
+        Returns:
+            Log-likelihood tensor.
+        """
+        # Get probs (features, channels, repetitions, K)
+        probs = self.probs
+
+        # Get scope-filtered bounds
+        low_scoped = low[:, self.scope.query]
+        high_scoped = high[:, self.scope.query]
+
+        # Expand to match (batch, features, channels, repetitions)
+        low_expanded = low_scoped.unsqueeze(2).unsqueeze(-1)
+        high_expanded = high_scoped.unsqueeze(2).unsqueeze(-1)
+
+        # Handle NaN bounds
+        low_processed = torch.where(
+            torch.isnan(low_expanded),
+            torch.zeros_like(low_expanded),
+            torch.ceil(low_expanded),
+        )
+        high_processed = torch.where(
+            torch.isnan(high_expanded),
+            torch.tensor(float(self.K - 1), device=high.device, dtype=high.dtype),
+            torch.floor(high_expanded),
+        )
+
+        # Create category indices tensor [K]
+        K = self.K
+        categories = torch.arange(K, device=probs.device).float()
+
+        # Reshape categories to [1, 1, 1, 1, K] for broadcasting
+        # We need to broadcast against [batch, features, channels, repetitions]
+        categories = categories.view(1, 1, 1, 1, K)
+
+        # Reshape bounds to [batch, features, channels, repetitions, 1]
+        low_b = low_processed.unsqueeze(-1)
+        high_b = high_processed.unsqueeze(-1)
+
+        # Mask of valid categories: low <= cat <= high
+        mask = (categories >= low_b) & (categories <= high_b)
+
+        # Sum probabilities of valid categories
+        # probs shape: [features, channels, reps, K] -> need to unsqueeze batch
+        probs_expanded = probs.unsqueeze(0)  # [1, features, channels, reps, K]
+        
+        # multiply by mask [batch, features, channels, reps, K]
+        valid_probs = probs_expanded * mask
+        
+        # Sum over categories (last dim)
+        total_prob = valid_probs.sum(dim=-1)
+
+        return torch.log(torch.clamp(total_prob, min=1e-40))

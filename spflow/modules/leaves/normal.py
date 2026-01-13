@@ -112,3 +112,52 @@ class Normal(LeafModule):
         """
         self.loc.data = params_dict["loc"]
         self.scale = params_dict["scale"]  # Uses property setter
+
+    def _log_likelihood_interval(
+        self,
+        low: Tensor,
+        high: Tensor,
+        cache=None,
+    ) -> Tensor:
+        """Compute log P(low <= X <= high) for interval evidence.
+
+        Args:
+            low: Lower bounds of shape (batch, features). NaN = no lower bound.
+            high: Upper bounds of shape (batch, features). NaN = no upper bound.
+            cache: Optional cache dictionary.
+
+        Returns:
+            Log-likelihood tensor.
+        """
+        # Get scope-filtered bounds
+        low_scoped = low[:, self.scope.query]
+        high_scoped = high[:, self.scope.query]
+
+        # Expand to match (batch, features, channels, repetitions)
+        low_expanded = low_scoped.unsqueeze(2).unsqueeze(-1)
+        high_expanded = high_scoped.unsqueeze(2).unsqueeze(-1)
+
+        loc = self.loc
+        scale = self.scale
+
+        # Handle NaN bounds as -inf/+inf
+        low_for_cdf = torch.where(
+            torch.isnan(low_expanded),
+            torch.full_like(low_expanded, float("-inf")),
+            low_expanded,
+        )
+        high_for_cdf = torch.where(
+            torch.isnan(high_expanded),
+            torch.full_like(high_expanded, float("inf")),
+            high_expanded,
+        )
+
+        # Compute CDF values using error function
+        sqrt2 = 1.4142135623730951
+        cdf_high = 0.5 * (1 + torch.erf((high_for_cdf - loc) / (scale * sqrt2)))
+        cdf_low = 0.5 * (1 + torch.erf((low_for_cdf - loc) / (scale * sqrt2)))
+
+        # P(low <= X <= high) = CDF(high) - CDF(low)
+        prob = torch.clamp(cdf_high - cdf_low, min=1e-40)  # Numerical stability
+        return torch.log(prob)
+

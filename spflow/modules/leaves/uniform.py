@@ -118,6 +118,49 @@ class Uniform(LeafModule):
         """
         pass
 
+    def _log_likelihood_interval(
+        self,
+        low: Tensor,
+        high: Tensor,
+        cache: Cache | None = None,
+    ) -> Tensor:
+        """Compute log P(low <= X <= high) for interval evidence.
+
+        Args:
+            low: Lower bounds of shape (batch, features). NaN = no lower bound.
+            high: Upper bounds of shape (batch, features). NaN = no upper bound.
+            cache: Optional cache dictionary.
+
+        Returns:
+            Log-likelihood tensor.
+        """
+        # Get scope-filtered bounds
+        low_scoped = low[:, self.scope.query]
+        high_scoped = high[:, self.scope.query]
+
+        # Expand to match (batch, features, channels, repetitions)
+        low_expanded = low_scoped.unsqueeze(2).unsqueeze(-1)
+        high_expanded = high_scoped.unsqueeze(2).unsqueeze(-1)
+
+        # Distribution bounds
+        a = self.low  # (features, channels, reps) or scalar
+        b = self.high
+
+        # Handle NaN bounds (treat as -inf/+inf → clamp to distribution support)
+        effective_low = torch.where(
+            torch.isnan(low_expanded), a, torch.maximum(low_expanded, a)
+        )
+        effective_high = torch.where(
+            torch.isnan(high_expanded), b, torch.minimum(high_expanded, b)
+        )
+
+        # Compute interval probability: (effective_high - effective_low) / (b - a)
+        interval_length = torch.clamp(effective_high - effective_low, min=0.0)
+        support_length = b - a
+
+        prob = interval_length / support_length
+        return torch.log(prob)
+
     def expectation_maximization(
         self,
         data: torch.Tensor,
@@ -125,3 +168,4 @@ class Uniform(LeafModule):
         cache: Cache | None = None,
     ) -> None:
         pass
+
