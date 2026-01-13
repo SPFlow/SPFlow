@@ -203,15 +203,6 @@ class Sum(Module):
         self,
         values: Tensor,
     ) -> None:
-        """Set weights of all nodes.
-
-        Args:
-            values: Tensor containing weights for each input and node.
-
-        Raises:
-            ShapeError: If weights have invalid shape.
-            ValueError: If weights contain non-positive values, or do not sum to one.
-        """
         if values.shape != self.weights_shape:
             raise ShapeError(
                 f"Invalid shape for weights: Was {values.shape} but expected {self.weights_shape}."

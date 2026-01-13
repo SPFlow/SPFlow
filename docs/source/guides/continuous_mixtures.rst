@@ -6,6 +6,11 @@ SPFlow supports **continuous mixtures of tractable probabilistic models**, inspi
 
 *Correia et al., "Continuous Mixtures of Tractable Probabilistic Models" (2023).*
 
+Reference
+=========
+
+- `Continuous Mixtures of Tractable Probabilistic Models (AAAI) <https://dl.acm.org/doi/10.1609/aaai.v37i6.25883>`_
+
 The core idea is to introduce a low-dimensional latent variable ``z`` and a decoder network
 ``φ(z)`` that outputs parameters of a tractable model. The marginal density is an integral
 

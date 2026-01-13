@@ -17,6 +17,7 @@ SPFlow provides a comprehensive set of modules for building and working with Pro
    einsum
    leaves
    operations
+   sos
    rat_spn
    learning
    scope

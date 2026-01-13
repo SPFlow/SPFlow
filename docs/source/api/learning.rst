@@ -47,3 +47,10 @@ Continuous mixtures of tractable probabilistic models (RQMC integration + compil
 
 .. autofunction:: spflow.learn.continuous_mixtures.learn_continuous_mixture_factorized
 .. autofunction:: spflow.learn.continuous_mixtures.learn_continuous_mixture_cltree
+
+SOCS Builder
+------------
+
+Build a SOCS model from a compatible template circuit.
+
+.. autofunction:: spflow.learn.build_socs.build_socs

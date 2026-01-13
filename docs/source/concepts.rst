@@ -4,6 +4,12 @@ Concepts
 
 This page is a stable, linkable reference for SPFlow concepts (separate from the API reference and notebooks).
 
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   concepts/socs
+
 .. _concepts-shapes-and-dimensions:
 
 Shapes and Dimensions

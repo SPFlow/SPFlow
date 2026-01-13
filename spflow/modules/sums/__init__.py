@@ -7,4 +7,12 @@ for representing complex probability distributions through mixture modeling.
 
 from .elementwise_sum import ElementwiseSum
 from .repetition_mixing_layer import RepetitionMixingLayer
+from .signed_sum import SignedSum
 from .sum import Sum
+
+__all__ = [
+    "ElementwiseSum",
+    "RepetitionMixingLayer",
+    "SignedSum",
+    "Sum",
+]

@@ -8,6 +8,7 @@ for different types of data and circuit structures.
 
 from .cnet import learn_cnet
 from .continuous_mixtures import learn_continuous_mixture_cltree, learn_continuous_mixture_factorized
+from .build_socs import build_socs
 from .expectation_maximization import expectation_maximization, expectation_maximization_batched
 from .gradient_descent import train_gradient_descent
 from .hclt import learn_hclt_binary, learn_hclt_categorical
