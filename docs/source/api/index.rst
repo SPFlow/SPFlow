@@ -20,6 +20,7 @@ SPFlow provides a comprehensive set of modules for building and working with Pro
    learning
    scope
    utilities
+   measures
    wrappers
    interfaces
    exceptions
