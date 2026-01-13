@@ -8,6 +8,7 @@ SPFlow provides a comprehensive set of modules for building and working with Pro
    :maxdepth: 2
 
    base_modules
+   data
    module_shape
    dsl
    sums
