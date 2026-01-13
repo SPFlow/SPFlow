@@ -93,6 +93,13 @@ Hypergeometric distribution.
 
 .. autoclass:: spflow.modules.leaves.Hypergeometric
 
+CLTree
+^^^^^^
+
+Chow–Liu tree multivariate discrete leaf with exact inference under missing values.
+
+.. autoclass:: spflow.modules.leaves.CLTree
+
 Non-Parametric Distributions
 ----------------------------
 

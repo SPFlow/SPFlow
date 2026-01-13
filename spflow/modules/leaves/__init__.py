@@ -10,6 +10,7 @@ for likelihood computation, sampling, and parameter learning.
 from .bernoulli import Bernoulli
 from .binomial import Binomial
 from .categorical import Categorical
+from .cltree import CLTree
 from .exponential import Exponential
 from .gamma import Gamma
 from .geometric import Geometric
