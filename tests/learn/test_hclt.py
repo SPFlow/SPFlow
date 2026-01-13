@@ -11,4 +11,3 @@ def test_learn_hclt_binary_builds_and_scores() -> None:
     ll = model.log_likelihood(data)
 
     assert tuple(ll.shape) == (32, 1, 1, 1)
-

@@ -5,3 +5,4 @@ use cases and integration with other frameworks or data formats.
 """
 
 from .image_wrapper import ImageWrapper
+from .joint import JointLogLikelihood

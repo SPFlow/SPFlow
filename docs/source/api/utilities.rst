@@ -27,6 +27,17 @@ Utilities for caching intermediate computations to speed up inference.
 
 .. autoclass:: spflow.utils.cache.Cache
 
+RQMC
+----
+
+Randomized quasi-Monte Carlo helpers used for continuous mixtures.
+
+.. autoclass:: spflow.utils.rqmc.RqmcPoints
+   :members:
+   :show-inheritance:
+
+.. autofunction:: spflow.utils.rqmc.rqmc_sobol_normal
+
 Method Replacement
 ------------------
 

@@ -35,3 +35,15 @@ Hidden Chow–Liu Trees (HCLT) structure construction for binary and categorical
 
 .. autofunction:: spflow.learn.hclt.learn_hclt_binary
 .. autofunction:: spflow.learn.hclt.learn_hclt_categorical
+
+Continuous Mixtures
+-------------------
+
+Continuous mixtures of tractable probabilistic models (RQMC integration + compilation).
+
+.. autoclass:: spflow.learn.continuous_mixtures.LatentOptimizationConfig
+   :members:
+   :show-inheritance:
+
+.. autofunction:: spflow.learn.continuous_mixtures.learn_continuous_mixture_factorized
+.. autofunction:: spflow.learn.continuous_mixtures.learn_continuous_mixture_cltree

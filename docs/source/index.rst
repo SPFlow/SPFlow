@@ -15,6 +15,7 @@ Quick Navigation
 - :doc:`Concepts <concepts>` — Core SPFlow concepts and semantics
 - :doc:`User Guide <guides/user_guide>` — Comprehensive tutorials and examples
 - :doc:`HCLT <guides/hclt>` — Hidden Chow–Liu Trees (latent Chow–Liu models)
+- :doc:`Continuous Mixtures <guides/continuous_mixtures>` — Continuous mixtures of tractable models (RQMC + compilation)
 - :doc:`Developer Guide <guides/dev_guide>` — Contributing and development setup
 - :doc:`sklearn Integration <guides/sklearn>` — Use SPFlow in sklearn workflows
 - :doc:`API Reference <api/index>` — Complete API documentation
@@ -28,6 +29,7 @@ Quick Navigation
     concepts
     guides/user_guide
     guides/hclt
+    guides/continuous_mixtures
     guides/dev_guide
     guides/sklearn
     api/index

@@ -27,6 +27,22 @@ Provides automatic conversion between flattened tensors and image format.
    :undoc-members:
    :show-inheritance:
 
+JointLogLikelihood
+------------------
+
+Wrapper that exposes the **joint** log-likelihood as a single feature, i.e. reduces a
+``(batch, features, channels, repetitions)`` tensor to ``(batch, 1, channels, repetitions)``
+by summing over the feature axis.
+
+This is a convenience adapter to make some multivariate leaves (e.g. ``CLTree``) behave like
+typical "root" modules in SPFlow. It is a tensor reduction and **does not** introduce any
+additional independence/factorization semantics.
+
+.. autoclass:: spflow.modules.wrapper.joint.JointLogLikelihood
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 MarginalizationContext
 ----------------------
 

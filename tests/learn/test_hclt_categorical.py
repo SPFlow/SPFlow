@@ -11,4 +11,3 @@ def test_learn_hclt_categorical_builds_and_scores() -> None:
     ll = model.log_likelihood(data)
 
     assert tuple(ll.shape) == (64, 1, 1, 1)
-
