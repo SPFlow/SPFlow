@@ -93,7 +93,26 @@ if shutil.which("dot") is not None:
 ```
 <img src="res/structure.svg" height="400"/>
 
-More examples can be found in the User Guide(https://spflow.github.io/guides/user_guide.html)
+## Example DSL (for demos)
+
+SPFlow also includes a tiny, example-oriented DSL for constructing small circuits in a readable algebraic form.
+It is intentionally non-invasive (it does not modify core modules) and returns a real `Module` via `.build()`.
+
+```python
+import torch
+
+from spflow.modules.leaves import Normal
+from spflow.dsl import dsl
+
+with dsl():
+    terms = 0.4 * Normal(0) * Normal(1) + 0.6 * Normal(0) * Normal(1)
+
+pc = terms.build()
+ll = pc.log_likelihood(torch.randn(8, 2))
+print(ll.shape)
+```
+
+More examples can be found in the [User Guide](https://spflow.github.io/guides/user_guide.html).
 
 ## Documentation
 

@@ -121,6 +121,24 @@ SPFlow also supports a more compact, layered approach to building circuits using
 
 This layered approach is more concise and scales better for larger circuits, automatically handling module composition instead of explicit node construction.
 
+Example DSL Construction (for demos)
+--------------------------------------------------
+
+SPFlow also includes a tiny, example-oriented DSL for writing small circuits in an algebraic form.
+It is intentionally separate from the core `spflow.modules` API; call ``.build()`` to obtain an actual :class:`spflow.modules.module.Module`.
+
+.. code-block:: python
+
+    import torch
+    from spflow.modules.leaves import Normal
+    from spflow.dsl import dsl
+
+    with dsl():
+        terms = 0.4 * Normal(0) * Normal(1) + 0.6 * Normal(0) * Normal(1)
+    pc = terms.build()
+    ll = pc.log_likelihood(torch.randn(8, 2))
+    print(ll.shape)
+
 Next Steps
 ==========
 

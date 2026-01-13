@@ -9,6 +9,7 @@ SPFlow provides a comprehensive set of modules for building and working with Pro
 
    base_modules
    module_shape
+   dsl
    sums
    products
    conv
@@ -22,4 +23,3 @@ SPFlow provides a comprehensive set of modules for building and working with Pro
    wrappers
    interfaces
    exceptions
-
