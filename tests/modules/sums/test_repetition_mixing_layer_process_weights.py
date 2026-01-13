@@ -47,7 +47,7 @@ class TestProcessWeightsParameter:
         weights, out_channels, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
-            out_channels=None,
+            out_channels=1,
             num_repetitions=None,
         )
         # 1D -> (1, 4, 1)
@@ -62,7 +62,7 @@ class TestProcessWeightsParameter:
         weights, out_channels, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
-            out_channels=None,
+            out_channels=1,
             num_repetitions=None,
         )
         # 2D (3, 2) -> (1, 3, 2)
@@ -77,7 +77,7 @@ class TestProcessWeightsParameter:
         weights, out_channels, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
-            out_channels=None,
+            out_channels=1,
             num_repetitions=None,
         )
         assert weights.dim() == 3
@@ -93,7 +93,7 @@ class TestProcessWeightsParameter:
         _, out_channels, _ = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
-            out_channels=None,
+            out_channels=1,
             num_repetitions=None,
         )
         assert out_channels == 3
@@ -104,7 +104,7 @@ class TestProcessWeightsParameter:
         _, out_channels, _ = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
-            out_channels=None,
+            out_channels=1,
             num_repetitions=None,
         )
         assert out_channels == 5
@@ -115,7 +115,7 @@ class TestProcessWeightsParameter:
         _, out_channels, _ = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
-            out_channels=None,
+            out_channels=1,
             num_repetitions=None,
         )
         assert out_channels == 7
@@ -128,7 +128,7 @@ class TestProcessWeightsParameter:
         _, _, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
-            out_channels=None,
+            out_channels=1,
             num_repetitions=None,
         )
         assert num_repetitions == 1
@@ -139,7 +139,7 @@ class TestProcessWeightsParameter:
         _, _, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
-            out_channels=None,
+            out_channels=1,
             num_repetitions=None,
         )
         assert num_repetitions == 4
@@ -150,7 +150,7 @@ class TestProcessWeightsParameter:
         _, _, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
-            out_channels=None,
+            out_channels=1,
             num_repetitions=None,
         )
         assert num_repetitions == 6
@@ -175,7 +175,7 @@ class TestProcessWeightsParameter:
             layer._process_weights_parameter(
                 inputs=None,
                 weights=input_weights,
-                out_channels=None,
+                out_channels=1,
                 num_repetitions=None,
             )
 
@@ -186,7 +186,7 @@ class TestProcessWeightsParameter:
             layer._process_weights_parameter(
                 inputs=None,
                 weights=input_weights,
-                out_channels=None,
+                out_channels=1,
                 num_repetitions=None,
             )
 
@@ -197,7 +197,7 @@ class TestProcessWeightsParameter:
             layer._process_weights_parameter(
                 inputs=None,
                 weights=input_weights,
-                out_channels=None,
+                out_channels=1,
                 num_repetitions=2,  # Conflicts with weights shape (4)
             )
 
@@ -207,7 +207,7 @@ class TestProcessWeightsParameter:
         weights, out_channels, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
-            out_channels=None,
+            out_channels=1,
             num_repetitions=1,  # Special case: always allowed
         )
         # num_repetitions=1 is allowed even though weights have 4 reps
@@ -219,7 +219,7 @@ class TestProcessWeightsParameter:
         weights, out_channels, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
-            out_channels=None,
+            out_channels=1,
             num_repetitions=4,  # Matches weights shape
         )
         assert num_repetitions == 4
@@ -232,7 +232,7 @@ class TestProcessWeightsParameter:
         weights, _, _ = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
-            out_channels=None,
+            out_channels=1,
             num_repetitions=None,
         )
         # Values should be the same, just reshaped
@@ -244,7 +244,7 @@ class TestProcessWeightsParameter:
         weights, _, _ = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
-            out_channels=None,
+            out_channels=1,
             num_repetitions=None,
         )
         # Values should be the same, just with added dimension

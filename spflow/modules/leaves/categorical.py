@@ -20,7 +20,7 @@ class Categorical(LeafModule):
     def __init__(
         self,
         scope: Scope,
-        out_channels: int | None = None,
+        out_channels: int = 1,
         num_repetitions: int = 1,
         K: int | None = None,
         probs: Tensor | None = None,

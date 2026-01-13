@@ -89,12 +89,3 @@ def test_constructor_missing_rate(out_features: int, out_channels: int, num_repe
         Gamma(scope=scope, concentration=concentration, rate=None)
 
 
-@pytest.mark.parametrize(
-    "out_features,out_channels,num_repetitions",
-    product(out_features_values, out_channels_values, num_repetition_values),
-)
-def test_constructor_both_none(out_features: int, out_channels: int, num_repetitions: int):
-    """Test the constructor of a Gamma distribution with both concentration and rate as None."""
-    with pytest.raises(InvalidParameterCombinationError):
-        scope = Scope(list(range(out_features)))
-        Gamma(scope=scope, concentration=None, rate=None)

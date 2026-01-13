@@ -21,7 +21,7 @@ class RepetitionMixingLayer(Sum):
     def __init__(
         self,
         inputs: Module,
-        out_channels: int | None = None,
+        out_channels: int = 1,
         num_repetitions: int = 1,
         weights: Tensor | None = None,
     ) -> None:
@@ -48,17 +48,18 @@ class RepetitionMixingLayer(Sum):
         self,
         inputs: Module | list[Module],
         weights: Tensor | None,
-        out_channels: int | None,
+        out_channels: int,
         num_repetitions: int | None,
-    ) -> tuple[Tensor | None, int | None, int | None]:
+    ) -> tuple[Tensor | None, int, int | None]:
         if weights is None:
             return weights, out_channels, num_repetitions
 
-        if out_channels is not None:
+        # If out_channels is not the default (1), user explicitly specified both
+        if out_channels != 1:
             raise InvalidParameterCombinationError(
-                f"Cannot specify both 'out_channels' and 'weights' for 'Sum' module."
+                f"Cannot specify both 'out_channels' and 'weights' for 'Sum' module. "
+                f"Use only 'weights' to set the number of output channels."
             )
-
         weight_dim = weights.dim()
         if weight_dim == 1:
             weights = weights.view(1, -1, 1)

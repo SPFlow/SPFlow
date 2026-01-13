@@ -32,7 +32,7 @@ class Binomial(LeafModule):
     def __init__(
         self,
         scope: Scope,
-        out_channels: int = None,
+        out_channels: int = 1,
         num_repetitions: int = 1,
         total_count: Tensor | None = None,
         probs: Tensor | None = None,

@@ -36,7 +36,13 @@ def make_sum(in_channels=None, out_channels=None, out_features=None, weights=Non
         out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions
     )
 
-    return Sum(out_channels=out_channels, inputs=inputs, weights=weights, num_repetitions=num_repetitions)
+    # Only pass out_channels if explicitly specified, otherwise let Sum use default (1)
+    # or infer from weights
+    kwargs = {"inputs": inputs, "weights": weights, "num_repetitions": num_repetitions}
+    if out_channels is not None:
+        kwargs["out_channels"] = out_channels
+
+    return Sum(**kwargs)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
@@ -310,7 +316,7 @@ def test_constructor_empty_inputs():
 def test_constructor_invalid_out_channels():
     """Test that Sum raises ValueError when out_channels < 1."""
     leaf = make_normal_leaf(scope=Scope([0]), out_channels=2)
-    with pytest.raises(ValueError, match="must be greater of equal to 1"):
+    with pytest.raises(ValueError, match="must be greater or equal to 1"):
         Sum(inputs=[leaf], out_channels=0)
 
 

@@ -38,7 +38,7 @@ class Sum(Module):
     def __init__(
         self,
         inputs: Module | list[Module],
-        out_channels: int | None = None,
+        out_channels: int = 1,
         num_repetitions: int = 1,
         weights: Tensor | list[float] | None = None,
     ) -> None:
@@ -49,8 +49,7 @@ class Sum(Module):
 
         Args:
             inputs (Module | list[Module]): Single module or list of modules to mix.
-            out_channels (int | None, optional): Number of output mixture components.
-                Required if weights not provided.
+            out_channels (int, optional): Number of output mixture components. Defaults to 1.
             num_repetitions (int | None, optional): Number of repetitions for structured
                 representations. Inferred from weights if not provided.
             weights (Tensor | list[float] | None, optional): Initial mixture weights.
@@ -84,9 +83,9 @@ class Sum(Module):
             num_repetitions = 1
 
         # ========== 3. CONFIGURATION VALIDATION ==========
-        if out_channels is None or out_channels < 1:
+        if out_channels < 1:
             raise ValueError(
-                f"Number of nodes for 'Sum' must be greater of equal to 1 but was {out_channels}."
+                f"Number of nodes for 'Sum' must be greater or equal to 1 but was {out_channels}."
             )
 
         # ========== 4. INPUT MODULE SETUP ==========
@@ -122,15 +121,17 @@ class Sum(Module):
         self,
         inputs: Module | list[Module],
         weights: Tensor | None,
-        out_channels: int | None,
+        out_channels: int,
         num_repetitions: int | None,
-    ) -> tuple[Tensor | None, int | None, int | None]:
+    ) -> tuple[Tensor | None, int, int | None]:
         if weights is None:
             return weights, out_channels, num_repetitions
 
-        if out_channels is not None:
+        # If out_channels is not the default (1), user explicitly specified both
+        if out_channels != 1:
             raise InvalidParameterCombinationError(
-                f"Cannot specify both 'out_channels' and 'weights' for 'Sum' module."
+                f"Cannot specify both 'out_channels' and 'weights' for 'Sum' module. "
+                f"Use only 'weights' to set the number of output channels."
             )
 
         weight_dim = weights.dim()

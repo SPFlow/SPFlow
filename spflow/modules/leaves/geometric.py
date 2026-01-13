@@ -20,7 +20,7 @@ class Geometric(LeafModule):
     def __init__(
         self,
         scope,
-        out_channels=None,
+        out_channels: int = 1,
         num_repetitions=1,
         parameter_fn=None,
         validate_args: bool | None = True,

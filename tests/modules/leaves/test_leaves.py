@@ -298,25 +298,6 @@ def test_constructor_neginf_param(leaf_cls, out_features: int, out_channels: int
         leaf_cls(scope=module_a.scope, **nan_params).distribution
 
 
-@pytest.mark.parametrize(
-    "leaf_cls,out_features,out_channels, num_reps",
-    product(leaf_cls_values, out_features_values, out_channels_values, num_repetition_values),
-)
-def test_constructor_missing_param_and_out_channels(leaf_cls, out_features: int, out_channels: int, num_reps):
-    """Test the constructor of a Normal distribution with NaN mean."""
-    # Construct module A
-    module_a = make_leaf(
-        leaf_cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps
-    )
-
-    # Get parameters of module A
-    none_params = module_a.params()
-    for key, value in none_params.items():
-        none_params[key] = None
-
-    # Construct module B with parameters of module A is initialization
-    with pytest.raises(InvalidParameterCombinationError):
-        module_b = leaf_cls(scope=module_a.scope, **none_params)
 
 
 # Conditional distribution tests

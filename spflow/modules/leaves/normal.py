@@ -18,7 +18,7 @@ class Normal(LeafModule):
     def __init__(
         self,
         scope,
-        out_channels: int = None,
+        out_channels: int = 1,
         num_repetitions: int = 1,
         parameter_fn: nn.Module = None,
         validate_args: bool | None = True,

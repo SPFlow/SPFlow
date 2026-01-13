@@ -151,7 +151,7 @@ def make_normal_data(mean=0.0, std=1.0, num_samples=10, out_features=2):
 
 
 def make_leaf(
-    cls, out_channels: int = None, out_features: int = None, scope: Scope = None, num_repetitions=1
+    cls, out_channels: int = 1, out_features: int = None, scope: Scope = None, num_repetitions=1
 ) -> LeafModule:
     assert (out_features is None) ^ (scope is None), "Either out_features or scope must be provided"
 
@@ -200,7 +200,7 @@ def make_leaf(
         return cls(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
 
 
-def make_leaf_args(cls, out_channels: int = None, scope: Scope = None, num_repetitions=None) -> dict:
+def make_leaf_args(cls, out_channels: int = 1, scope: Scope = None, num_repetitions=None) -> dict:
     num_repetitions = 1 if num_repetitions is None else num_repetitions
     # Check special cases
     if cls == leaves.Binomial or cls == leaves.NegativeBinomial:
@@ -489,7 +489,7 @@ class DummyLeaf(LeafModule):
     def __init__(
         self,
         scope,
-        out_channels: int = None,
+        out_channels: int = 1,
         num_repetitions: int = 1,
         loc: Tensor = None,
         scale: Tensor = None,

@@ -20,7 +20,7 @@ class LeafModule(Module, ABC):
     def __init__(
         self,
         scope: Scope | int | list[int],
-        out_channels: int = None,
+        out_channels: int = 1,
         num_repetitions: int = 1,
         params: list[Tensor | None] | None = None,
         parameter_fn: Callable[[Tensor], dict[str, Tensor]] = None,
