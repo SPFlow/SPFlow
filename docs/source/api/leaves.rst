@@ -96,6 +96,13 @@ Hypergeometric distribution.
 Non-Parametric Distributions
 ----------------------------
 
+Histogram
+^^^^^^^^^
+
+Piecewise-constant histogram density over fixed bin edges with learnable bin probabilities.
+
+.. autoclass:: spflow.modules.leaves.Histogram
+
 PiecewiseLinear
 ^^^^^^^^^^^^^^^
 
