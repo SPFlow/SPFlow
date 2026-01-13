@@ -1,7 +1,7 @@
 Data Structures
 ===============
 
-Core data structures used in SPFlow.
+Additional data structures used in SPFlow.
 
 IntervalEvidence
 ----------------
