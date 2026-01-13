@@ -15,6 +15,7 @@ Quick Navigation
 - :doc:`Concepts <concepts>` — Core SPFlow concepts and semantics
 - :doc:`User Guide <guides/user_guide>` — Comprehensive tutorials and examples
 - :doc:`Developer Guide <guides/dev_guide>` — Contributing and development setup
+- :doc:`sklearn Integration <guides/sklearn>` — Use SPFlow in sklearn workflows
 - :doc:`API Reference <api/index>` — Complete API documentation
 - :doc:`FAQ <faq>` — Frequently asked questions
 
@@ -26,6 +27,7 @@ Quick Navigation
     concepts
     guides/user_guide
     guides/dev_guide
+    guides/sklearn
     api/index
     faq
 

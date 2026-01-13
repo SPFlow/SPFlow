@@ -114,7 +114,8 @@ def test_multiple_features(leaf_channel, sum_channel):
 
 
 def test_make_moons():
-    from sklearn.datasets import make_moons
+    sklearn = pytest.importorskip("sklearn")
+    from sklearn.datasets import make_moons  # noqa: F401
 
     X, y = make_moons(n_samples=1000, noise=0.1, random_state=42)
 

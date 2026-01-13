@@ -12,3 +12,14 @@ Abstract base class for modules that support classification.
    :members:
    :undoc-members:
    :show-inheritance:
+
+sklearn Wrappers
+----------------
+
+scikit-learn compatible wrappers for density estimation and classification.
+
+.. autoclass:: spflow.interfaces.sklearn.SPFlowDensityEstimator
+   :members:
+
+.. autoclass:: spflow.interfaces.sklearn.SPFlowClassifier
+   :members:

@@ -14,6 +14,10 @@ The easiest way to install SPFlow is via pip::
 
     pip install spflow
 
+Optional integrations can be installed via extras, for example::
+
+    pip install spflow[sklearn]
+
 Development / From Source
 -------------------------
 
