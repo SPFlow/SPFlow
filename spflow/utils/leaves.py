@@ -135,6 +135,10 @@ def parse_leaf_args(
     match scope:
         case Scope():
             query_length = len(scope.query)
+        case str():
+            raise InvalidParameterError(
+                f"scope must be of type Scope, int, or Iterable[int], got {type(scope)}."
+            )
         case int():
             query_length = 1
         case Iterable():
