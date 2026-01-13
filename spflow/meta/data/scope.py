@@ -18,8 +18,8 @@ class Scope:
     of the scope (i.e., RVs that the scope is conditioned on).
 
     Attributes:
-        query: List of non-negative integers representing query RVs.
-        evidence: List of non-negative integers representing evidence variables.
+        query: Tuple of non-negative integers representing query RVs.
+        evidence: Tuple of non-negative integers representing evidence variables.
     """
 
     query: tuple[int, ...]
@@ -27,18 +27,19 @@ class Scope:
 
     def __init__(
         self,
-        query: int | list[int] | tuple[int, ...] | None = None,
-        evidence: int | list[int] | tuple[int, ...] | None = None,
+        query: int | Iterable[int] | None = None,
+        evidence: int | Iterable[int] | None = None,
     ) -> None:
         """Initializes Scope object.
 
         Args:
-            query: List of non-negative integers representing query RVs (may not contain duplicates).
-                If a single integer is provided, it is converted to a list containing that integer.
-            evidence: Optional list of non-negative integers representing evidence variables
-                (may not contain duplicates or RVs that are in the query). If a single integer
-                is provided, it is converted to a list containing that integer. Defaults to None,
-                in which case it is initialized to an empty list.
+            query: Non-negative integers representing query RVs. Can be a single integer,
+                a list, tuple, numpy array, or torch tensor. May not contain duplicates.
+                If None, initialized to an empty list.
+            evidence: Optional non-negative integers representing evidence variables.
+                Can be a single integer, a list, tuple, numpy array, or torch tensor.
+                May not contain duplicates or RVs that are in the query.
+                If None, initialized to an empty list.
 
         Raises:
             ValueError: Invalid arguments.
@@ -51,9 +52,15 @@ class Scope:
 
         if isinstance(query, int):
             query = [query]
+        elif not isinstance(query, (list, tuple)):
+            # Handle other iterables like numpy arrays, torch tensors, ranges, etc.
+            query = list(query)
 
         if isinstance(evidence, int):
             evidence = [evidence]
+        elif not isinstance(evidence, (list, tuple)):
+            # Handle other iterables like numpy arrays, torch tensors, ranges, etc.
+            evidence = list(evidence)
 
         if len(query) == 0 and len(evidence) != 0:
             raise InvalidParameterError(

@@ -19,7 +19,7 @@ from spflow.utils.sampling_context import SamplingContext, init_default_sampling
 class LeafModule(Module, ABC):
     def __init__(
         self,
-        scope: Scope | int | list[int],
+        scope: Scope | int | Iterable[int],
         out_channels: int = 1,
         num_repetitions: int = 1,
         params: list[Tensor | None] | None = None,
@@ -29,7 +29,8 @@ class LeafModule(Module, ABC):
         """Base class for leaf distribution modules.
 
         Args:
-            scope: Variable scope (Scope, int, or list[int]).
+            scope: Variable scope. Can be a Scope object, a single integer,
+                or an iterable of integers (list, tuple, numpy array, torch tensor, etc.).
             out_channels: Number of output channels (inferred from params if None).
             num_repetitions: Number of repetitions (for 3D event shapes).
             params: List of parameter tensors (can include None to trigger random init).

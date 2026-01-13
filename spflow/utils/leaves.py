@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+from collections.abc import Iterable
 from typing import Callable, Any
 
 import torch
@@ -113,12 +112,13 @@ def init_parameter(param: Tensor | None, event_shape: tuple[int, ...], init: Cal
 
 
 def parse_leaf_args(
-    scope: int | list[int] | Scope, out_channels, num_repetitions, params
+    scope: int | Iterable[int] | Scope, out_channels, num_repetitions, params
 ) -> tuple[int, int, int]:
     """Parse leaf arguments and return event_shape.
 
     Args:
-        scope: Variable scope (int, list[int], or Scope).
+        scope: Variable scope. Can be a Scope object, a single integer,
+            or an iterable of integers (list, tuple, numpy array, torch tensor, etc.).
         out_channels: Number of output channels.
         num_repetitions: Number of repetitions.
         params: Distribution parameters.
@@ -137,10 +137,12 @@ def parse_leaf_args(
             query_length = len(scope.query)
         case int():
             query_length = 1
-        case list():
-            query_length = len(scope)
+        case Iterable():
+            query_length = len(scope)  # type: ignore[arg-type]
         case _:
-            raise InvalidParameterError("scope must be of type Scope, int, or list of int.")
+            raise InvalidParameterError(
+                f"scope must be of type Scope, int, or Iterable[int], got {type(scope)}."
+            )
 
     # Either all params are None or no params are None
     if params and not (all(param is None for param in params) ^ all(param is not None for param in params)):

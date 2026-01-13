@@ -28,7 +28,8 @@ class Normal(LeafModule):
         """Initialize Normal distribution.
 
         Args:
-            scope: Variable scope (Scope, int, or list[int]).
+            scope: Variable scope. Can be a Scope object, a single integer,
+                or an iterable of integers (list, tuple, numpy array, torch tensor, etc.).
             out_channels: Number of output channels (inferred from params if None).
             num_repetitions: Number of repetitions (for 3D event shapes).
             parameter_fn: Optional neural network for parameter generation.
