@@ -27,3 +27,11 @@ Parameter Learning: Gradient Descent
 Gradient descent-based parameter learning using PyTorch optimizers.
 
 .. autofunction:: spflow.learn.gradient_descent.train_gradient_descent
+
+Structures: HCLT
+----------------
+
+Hidden Chow–Liu Trees (HCLT) structure construction for binary and categorical data.
+
+.. autofunction:: spflow.learn.hclt.learn_hclt_binary
+.. autofunction:: spflow.learn.hclt.learn_hclt_categorical
