@@ -354,6 +354,23 @@ Use the ``to_str()`` method for a text representation::
     # └─ Product [D=1, C=4] → scope: 0-1
     #    └─ Normal [D=2, C=4] → scope: 0-1
 
+How do I log model complexity (nodes/edges/parameters)?
+-------------------------------------------------------
+
+Use ``get_structure_stats`` to compute deterministic structure statistics::
+
+    from spflow.utils.structure_stats import get_structure_stats
+
+    stats = get_structure_stats(model)
+    print(stats.num_nodes_total, stats.num_edges_total, stats.num_parameters_total)
+
+For a short text overview (similar to ``to_str()``), use::
+
+    print(model.print_structure_stats())
+
+The traversal matches ``model.to_str()`` (it skips internal ``Cat``/``ModuleList`` wrappers), is DAG-aware,
+and counts parameters uniquely across shared subgraphs.
+
 ----
 
 

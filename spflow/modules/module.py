@@ -477,6 +477,20 @@ class Module(nn.Module, ABC):
             show_scope=show_scope,
         )
 
+    def print_structure_stats(self) -> str:
+        """Return a readable text overview of this module's structure statistics.
+
+        This is intended for quick debugging/logging in experiments and mirrors the
+        traversal behavior used by ``to_str()`` (skipping internal ``Cat`` and
+        ``ModuleList`` wrappers).
+
+        Returns:
+            Multi-line string summary of structure statistics.
+        """
+        from spflow.utils.structure_stats import get_structure_stats, structure_stats_to_str
+
+        return structure_stats_to_str(get_structure_stats(self))
+
     def probability(
         self,
         data: Tensor,
