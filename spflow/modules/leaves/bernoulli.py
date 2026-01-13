@@ -169,17 +169,17 @@ class Bernoulli(LeafModule):
 
         # Expand probs for broadcasting: (1, features, channels, repetitions)
         p = probs.unsqueeze(0)
-        
+
         # P(X=1) = p
         # P(X=0) = 1-p
-        
+
         # Check coverage for 0 and 1
         include_0 = (low_processed <= 0) & (high_processed >= 0)
         include_1 = (low_processed <= 1) & (high_processed >= 1)
-        
+
         prob0 = torch.where(include_0, 1 - p, torch.zeros_like(p))
         prob1 = torch.where(include_1, p, torch.zeros_like(p))
-        
+
         total_prob = prob0 + prob1
 
         return torch.log(torch.clamp(total_prob, min=1e-40))

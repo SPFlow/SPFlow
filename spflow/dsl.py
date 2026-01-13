@@ -44,7 +44,8 @@ from spflow.modules.sums.sum import Sum
 class Buildable(Protocol):
     """Protocol for objects that can build a `Module`."""
 
-    def build(self) -> Module: ...
+    def build(self) -> Module:
+        ...
 
 
 def as_expr(value: Module | Buildable) -> Buildable:
@@ -232,9 +233,7 @@ def _validate_product_modules(modules: list[Module]) -> None:
 
     repetitions = {m.out_shape.repetitions for m in modules}
     if len(repetitions) != 1:
-        raise ShapeError(
-            f"Product factors must have the same num_repetitions; got {sorted(repetitions)}."
-        )
+        raise ShapeError(f"Product factors must have the same num_repetitions; got {sorted(repetitions)}.")
 
     devices = {str(m.device) for m in modules}
     if len(devices) != 1:
@@ -264,9 +263,7 @@ def _validate_sum_modules(modules: list[Module]) -> None:
 
     repetitions = {m.out_shape.repetitions for m in modules}
     if len(repetitions) != 1:
-        raise ShapeError(
-            f"Sum terms must have the same num_repetitions; got {sorted(repetitions)}."
-        )
+        raise ShapeError(f"Sum terms must have the same num_repetitions; got {sorted(repetitions)}.")
 
     devices = {str(m.device) for m in modules}
     if len(devices) != 1:
@@ -342,9 +339,7 @@ def dsl():
         return NotImplemented
 
     def _dsl_add(self: Module, other: object):
-        raise InvalidParameterError(
-            "Unweighted '+' is not supported in the DSL. Use 'a * X + b * Y'."
-        )
+        raise InvalidParameterError("Unweighted '+' is not supported in the DSL. Use 'a * X + b * Y'.")
 
     def _dsl_radd(self: Module, other: object):
         return NotImplemented

@@ -87,5 +87,3 @@ def test_constructor_missing_rate(out_features: int, out_channels: int, num_repe
     with pytest.raises(InvalidParameterCombinationError):
         scope = Scope(list(range(out_features)))
         Gamma(scope=scope, concentration=concentration, rate=None)
-
-

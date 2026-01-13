@@ -298,8 +298,6 @@ def test_constructor_neginf_param(leaf_cls, out_features: int, out_channels: int
         leaf_cls(scope=module_a.scope, **nan_params).distribution
 
 
-
-
 # Conditional distribution tests
 # Note: Hypergeometric and Uniform are excluded as they have no trainable parameters
 # and therefore don't support conditional parameter networks

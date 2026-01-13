@@ -160,4 +160,3 @@ class Normal(LeafModule):
         # P(low <= X <= high) = CDF(high) - CDF(low)
         prob = torch.clamp(cdf_high - cdf_low, min=1e-40)  # Numerical stability
         return torch.log(prob)
-

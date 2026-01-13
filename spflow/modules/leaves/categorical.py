@@ -217,10 +217,10 @@ class Categorical(LeafModule):
         # Sum probabilities of valid categories
         # probs shape: [features, channels, reps, K] -> need to unsqueeze batch
         probs_expanded = probs.unsqueeze(0)  # [1, features, channels, reps, K]
-        
+
         # multiply by mask [batch, features, channels, reps, K]
         valid_probs = probs_expanded * mask
-        
+
         # Sum over categories (last dim)
         total_prob = valid_probs.sum(dim=-1)
 

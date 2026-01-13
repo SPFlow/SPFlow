@@ -35,4 +35,3 @@ def test_conditional_leaf_mpe_uses_evidence() -> None:
 
     mpe = leaf.sample(data=data.clone(), is_mpe=True)
     assert torch.allclose(mpe[:, 0], torch.tensor([2.0, -4.0], dtype=torch.float32))
-

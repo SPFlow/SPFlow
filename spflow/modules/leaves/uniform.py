@@ -147,12 +147,8 @@ class Uniform(LeafModule):
         b = self.high
 
         # Handle NaN bounds (treat as -inf/+inf → clamp to distribution support)
-        effective_low = torch.where(
-            torch.isnan(low_expanded), a, torch.maximum(low_expanded, a)
-        )
-        effective_high = torch.where(
-            torch.isnan(high_expanded), b, torch.minimum(high_expanded, b)
-        )
+        effective_low = torch.where(torch.isnan(low_expanded), a, torch.maximum(low_expanded, a))
+        effective_high = torch.where(torch.isnan(high_expanded), b, torch.minimum(high_expanded, b))
 
         # Compute interval probability: (effective_high - effective_low) / (b - a)
         interval_length = torch.clamp(effective_high - effective_low, min=0.0)
@@ -168,4 +164,3 @@ class Uniform(LeafModule):
         cache: Cache | None = None,
     ) -> None:
         pass
-

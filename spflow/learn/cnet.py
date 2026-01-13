@@ -36,9 +36,7 @@ def _validate_discrete_data(data: Tensor, cardinalities: list[int], scope: Scope
         if col.min() < 0:
             raise InvalidParameterError(f"Variable {var} contains negative values.")
         if col.max() >= cardinalities[var]:
-            raise InvalidParameterError(
-                f"Variable {var} has values >= cardinality {cardinalities[var]}."
-            )
+            raise InvalidParameterError(f"Variable {var} has values >= cardinality {cardinalities[var]}.")
 
 
 def _compute_entropy(data: Tensor, var: int, K: int) -> float:
@@ -53,9 +51,7 @@ def _compute_entropy(data: Tensor, var: int, K: int) -> float:
     return float(entropy.item())
 
 
-def _select_conditioning_variable_naive_mle(
-    data: Tensor, scope: Scope, cardinalities: list[int]
-) -> int:
+def _select_conditioning_variable_naive_mle(data: Tensor, scope: Scope, cardinalities: list[int]) -> int:
     """Select variable with highest entropy (most balanced splits)."""
     best_var = scope.query[0]
     best_entropy = -float("inf")
@@ -125,9 +121,7 @@ def learn_cnet(
     else:
         card_list = list(cardinalities)
         if len(card_list) != D:
-            raise InvalidParameterError(
-                f"cardinalities length {len(card_list)} != data columns {D}."
-            )
+            raise InvalidParameterError(f"cardinalities length {len(card_list)} != data columns {D}.")
 
     # Infer scope if not provided
     if scope is None:

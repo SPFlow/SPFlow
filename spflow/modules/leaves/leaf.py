@@ -494,7 +494,7 @@ class LeafModule(Module, ABC):
             cdf_high = dist.cdf(high_for_cdf)
             cdf_low = dist.cdf(low_for_cdf)
         except NotImplementedError:
-             raise NotImplementedError(
+            raise NotImplementedError(
                 f"{self.__class__.__name__} does not support interval inference. "
                 f"The underlying distribution {dist.__class__.__name__} does not implement cdf()."
             )

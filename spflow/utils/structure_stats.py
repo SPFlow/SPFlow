@@ -262,9 +262,7 @@ def structure_stats_to_str(stats: StructureStats, max_node_types: int = 10) -> s
 
     if stats.scope_size_min is not None:
         mean_str = f"{stats.scope_size_mean:.3f}" if stats.scope_size_mean is not None else "None"
-        lines.append(
-            f"- scope_size: min={stats.scope_size_min} max={stats.scope_size_max} mean={mean_str}"
-        )
+        lines.append(f"- scope_size: min={stats.scope_size_min} max={stats.scope_size_max} mean={mean_str}")
 
     if stats.node_type_counts:
         sorted_types = sorted(

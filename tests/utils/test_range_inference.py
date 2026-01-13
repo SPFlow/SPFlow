@@ -299,7 +299,7 @@ class TestCategoricalIntervalProb:
     def test_categorical_interval_nan_bounds(self):
         """Test NaN bounds for Categorical."""
         from spflow.modules.leaves.categorical import Categorical
-        
+
         probs = torch.tensor([0.1, 0.2, 0.3, 0.4])
         probs = probs.view(1, 1, 1, 4)
         leaf = Categorical(scope=0, probs=probs)
@@ -339,10 +339,10 @@ class TestBernoulliIntervalProb:
         # Query: low=-0.5, high=0.5. Includes 0 (prob 0.3).
         low = torch.tensor([[-0.5]])
         high = torch.tensor([[0.5]])
-        
+
         log_prob = log_likelihood_interval(leaf, low, high)
         prob = torch.exp(log_prob)
-        
+
         torch.testing.assert_close(prob, torch.tensor([[[[0.3]]]]), rtol=1e-5, atol=1e-5)
 
     def test_bernoulli_full_interval(self):
@@ -350,13 +350,13 @@ class TestBernoulliIntervalProb:
         from spflow.modules.leaves.bernoulli import Bernoulli
 
         leaf = Bernoulli(scope=0, probs=torch.tensor([[[0.7]]]))
-        
+
         low = torch.tensor([[0.0]])
         high = torch.tensor([[1.0]])
-        
+
         log_prob = log_likelihood_interval(leaf, low, high)
         prob = torch.exp(log_prob)
-        
+
         torch.testing.assert_close(prob, torch.tensor([[[[1.0]]]]), rtol=1e-5, atol=1e-5)
 
 
@@ -366,25 +366,22 @@ class TestExponentialIntervalProb:
     def test_exponential_interval_prob(self):
         """Verify interval probability matches analytic formula."""
         from spflow.modules.leaves.exponential import Exponential
-        
+
         # rate (lambda) = 2.0
         # CDF(x) = 1 - exp(-2x)
         leaf = Exponential(scope=0, rate=torch.tensor([2.0]))
-        
+
         low = torch.tensor([[0.5]])
         high = torch.tensor([[1.0]])
-        
+
         log_prob = log_likelihood_interval(leaf, low, high)
         prob = torch.exp(log_prob)
-        
+
         # P(0.5 <= X <= 1.0) = (1 - exp(-2)) - (1 - exp(-1)) = exp(-1) - exp(-2)
         # exp(-1) ≈ 0.367879
         # exp(-2) ≈ 0.135335
         # diff ≈ 0.232544
         expected_val = torch.exp(torch.tensor(-1.0)) - torch.exp(torch.tensor(-2.0))
         expected = expected_val.view(1, 1, 1, 1)
-        
+
         torch.testing.assert_close(prob.view(-1), expected.view(-1), rtol=1e-5, atol=1e-5)
-
-
-

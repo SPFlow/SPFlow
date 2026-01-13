@@ -37,14 +37,10 @@ class IntervalEvidence:
     def __post_init__(self) -> None:
         """Validate interval bounds after initialization."""
         if self.low.shape != self.high.shape:
-            raise ValueError(
-                f"low and high must have same shape, got {self.low.shape} and {self.high.shape}"
-            )
+            raise ValueError(f"low and high must have same shape, got {self.low.shape} and {self.high.shape}")
 
         if self.low.dim() != 2:
-            raise ValueError(
-                f"Tensors must be 2-dimensional (batch, features), got {self.low.dim()}D"
-            )
+            raise ValueError(f"Tensors must be 2-dimensional (batch, features), got {self.low.dim()}D")
 
         # Check low <= high for finite entries
         finite_mask = torch.isfinite(self.low) & torch.isfinite(self.high)

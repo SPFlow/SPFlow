@@ -25,4 +25,3 @@ from .feature_types import (
 from .interval_evidence import IntervalEvidence
 from .meta_type import MetaType
 from .scope import Scope
-
