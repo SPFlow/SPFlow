@@ -442,11 +442,12 @@ def pic2qpc(
     quadrature_rule: QuadratureRule,
     *,
     mode: str = "expanded",
-    tensorized_config: "TensorizedQPCConfig | None" = None,
+    tensorized_config: "TensorizedQPCConfig" | None = None,
 ) -> Module:
     """Algorithm 3: Materialize a symbolic PIC into a QPC.
 
     This function supports two modes:
+
     - `mode="expanded"`: current exact materialization into a standard SPFlow module graph
       (OuterProduct / ElementwiseProduct / WeightedSum), matching Eqs. (3)–(4) in the paper.
     - `mode="tensorized"`: folded/tensorized materialization inspired by the authors' reference

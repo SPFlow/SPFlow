@@ -9,6 +9,8 @@ Module
 The abstract base class for all SPFlow modules. Every probabilistic circuit component inherits from this class.
 
 .. autoclass:: spflow.modules.module.Module
+   :members:
+   :no-index:
 
 
 LeafModule

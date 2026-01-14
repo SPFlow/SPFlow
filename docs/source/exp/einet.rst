@@ -1,5 +1,5 @@
 Einsum Networks (Einet)
-=====================
+=======================
 
 .. warning::
    Einet is an **experimental** module located in ``spflow.exp.einet``.

@@ -34,33 +34,3 @@ SOCS Builder
 Build a SOCS model from a compatible template circuit.
 
 .. autofunction:: spflow.learn.build_socs.build_socs
-
-Experimental: HCLT
-------------------
-
-Hidden Chow–Liu Trees (HCLT) structure construction for binary and categorical data.
-
-.. note::
-
-   This feature is experimental and located in :mod:`spflow.exp.hclt`.
-   See the :doc:`../exp/hclt` guide for usage examples.
-
-.. autofunction:: spflow.exp.hclt.learn_hclt_binary
-.. autofunction:: spflow.exp.hclt.learn_hclt_categorical
-
-Experimental: Continuous Mixtures
----------------------------------
-
-Continuous mixtures of tractable probabilistic models (RQMC integration + compilation).
-
-.. note::
-
-   This feature is experimental and located in :mod:`spflow.exp.cms`.
-   See the :doc:`../exp/cms` guide for usage examples.
-
-.. autoclass:: spflow.exp.cms.LatentOptimizationConfig
-   :members:
-   :show-inheritance:
-
-.. autofunction:: spflow.exp.cms.learn_continuous_mixture_factorized
-.. autofunction:: spflow.exp.cms.learn_continuous_mixture_cltree

@@ -9,3 +9,5 @@ Scope
 Represents scopes over random variables with query and evidence designations.
 
 .. autoclass:: spflow.meta.data.scope.Scope
+   :members:
+   :no-index:

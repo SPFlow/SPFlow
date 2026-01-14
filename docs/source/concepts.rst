@@ -4,11 +4,7 @@ Concepts
 
 This page is a stable, linkable reference for SPFlow concepts (separate from the API reference and notebooks).
 
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-
-   exp/socs
+See also :doc:`SOCS <exp/socs>` for details on signed circuits and compatibility.
 
 .. _concepts-shapes-and-dimensions:
 

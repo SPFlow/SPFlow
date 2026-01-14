@@ -272,6 +272,7 @@ class FunctionGroup(nn.Module):
         """Evaluate all functions in the group in a single shared-backbone pass.
 
         This implements the C-sharing/F-sharing semantics from Sec. 3.3 of the paper:
+
         - C-sharing: different heads over a shared backbone
         - F-sharing: a single head shared across units
 

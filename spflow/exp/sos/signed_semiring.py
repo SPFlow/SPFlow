@@ -14,16 +14,16 @@ from torch import Tensor
 
 
 def sign_of(x: Tensor) -> Tensor:
-    """Return sign(x) in {-1, 0, +1} as an integer tensor."""
+    """Return ``sign(x)`` in {-1, 0, +1} as an integer tensor."""
     return torch.sign(x).to(dtype=torch.int8)
 
 
 def logabs_of(x: Tensor, eps: float = 0.0) -> Tensor:
-    """Return log(|x|), with optional epsilon to avoid log(0).
+    """Return ``log(|x|)``, with optional epsilon to avoid ``log(0)``.
 
     Args:
         x: Input tensor.
-        eps: If > 0, computes log(|x| + eps).
+        eps: If > 0, computes ``log(|x| + eps)``.
     """
     if eps > 0.0:
         return torch.log(torch.abs(x) + x.new_tensor(eps))
