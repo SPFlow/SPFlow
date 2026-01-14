@@ -1,9 +1,6 @@
 Hidden Chow-Liu Trees (HCLT)
 ============================
 
-.. note::
-   HCLT is part of the **Paper Zoo** and is located in ``spflow.zoo.hclt``.
-
 Hidden Chow-Liu Trees (HCLTs) are latent-variable models where the structure is derived from a Chow-Liu tree over the observed variables, and hidden states are modeled via the channel dimension.
 
 Reference

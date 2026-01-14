@@ -1,9 +1,6 @@
 =====================================
-PIC (Probabilistic Integral Circuits)
+Probabilistic Integral Circuits (PICs)
 =====================================
-
-.. note::
-   PIC is part of the **Paper Zoo** and is located in ``spflow.zoo.pic``.
 
 Probabilistic Integral Circuits (PICs) are a framework for scaling continuous latent variable models by representing them as integrals over tractable circuits. They allow for flexible neural functional sharing while maintaining tractability via quadrature-based materialization.
 

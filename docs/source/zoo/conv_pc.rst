@@ -1,9 +1,6 @@
 Convolutional Probabilistic Circuits (ConvPc)
 =============================================
 
-.. note::
-   ConvPc is part of the **Paper Zoo** and is located in ``spflow.zoo.conv``.
-
 Convolutional Probabilistic Circuits (ConvPc) are a multi-layer architecture that stacks alternating SumConv and ProdConv layers on top of a leaf distribution, designed specifically for data with spatial structure like images.
 
 Reference

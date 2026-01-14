@@ -1,8 +1,5 @@
-Continuous Mixtures (CMS)
+Continuous Mixtures (CMs)
 =========================
-
-.. note::
-   CMS is part of the **Paper Zoo** and is located in ``spflow.zoo.cms``.
 
 Continuous Mixtures of Tractable Probabilistic Models introduce a low-dimensional latent variable and a decoder network that outputs parameters of a tractable model, allowing for continuous variations in the model structure.
 

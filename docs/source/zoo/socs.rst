@@ -1,9 +1,6 @@
 ================================
-SOCS (Sum of Compatible Squares)
+Sum of Compatible Squares (SOCS)
 ================================
-
-.. note::
-   SOCS is part of the **Paper Zoo** and is located in ``spflow.zoo.sos``.
 
 SPFlow includes an implementation of **SOCS / Σ2cmp** ("Sum of Compatible Squares Circuits").
 SOCS turns a set of (possibly signed) *compatible* component circuits into a valid, non-negative

@@ -1,8 +1,5 @@
-RAT-SPN
-=======
-
-.. note::
-   RAT-SPN is part of the **Paper Zoo** and is located in ``spflow.zoo.rat``.
+Random and Tensorized Sum-Product Networks (RAT-SPN)
+====================================================
 
 Random and Tensorized Sum-Product Networks (RAT-SPNs) provide a principled approach to building deep probabilistic models through randomized circuit construction. They combine interpretability with expressiveness through tensorized operations.
 

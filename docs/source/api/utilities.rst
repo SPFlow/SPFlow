@@ -32,10 +32,6 @@ RQMC
 
 Randomized quasi-Monte Carlo helpers used for continuous mixtures.
 
-.. note::
-
-   This feature is part of the **Paper Zoo** and is located in :mod:`spflow.zoo.cms`.
-
 .. autoclass:: spflow.zoo.cms.RqmcPoints
    :members:
    :show-inheritance:

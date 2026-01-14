@@ -1,9 +1,6 @@
 Einsum Networks (Einet)
 =======================
 
-.. note::
-   Einet is part of the **Paper Zoo** and is located in ``spflow.zoo.einet``.
-
 Einsum Networks (Einets) are a scalable class of probabilistic circuits that use Einstein summation notation (einsum) to implement efficient sum-product operations in parallel.
 
 Reference

@@ -38,10 +38,6 @@ This is a convenience adapter to make some multivariate leaves (e.g. ``CLTree``)
 typical "root" modules in SPFlow. It is a tensor reduction and **does not** introduce any
 additional independence/factorization semantics.
 
-.. note::
-
-   This wrapper is part of the **Paper Zoo** and is located in :mod:`spflow.zoo.cms`.
-
 .. autoclass:: spflow.zoo.cms.JointLogLikelihood
    :members:
    :undoc-members:
