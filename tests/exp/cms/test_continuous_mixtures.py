@@ -1,6 +1,6 @@
 import torch
 
-from spflow.exp.cms import (
+from spflow.zoo.cms import (
     JointLogLikelihood,
     LatentOptimizationConfig,
     learn_continuous_mixture_cltree,

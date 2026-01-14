@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from spflow.exp.pic.tensorized.utils import log_func_exp
+from spflow.zoo.pic.tensorized.utils import log_func_exp
 
 
 class TestLogFuncExp:

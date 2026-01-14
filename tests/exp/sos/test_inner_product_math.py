@@ -9,7 +9,7 @@ from spflow.modules.leaves.gamma import Gamma
 from spflow.modules.leaves.laplace import Laplace
 from spflow.modules.leaves.log_normal import LogNormal
 from spflow.modules.leaves.poisson import Poisson
-from spflow.exp.sos import inner_product_matrix
+from spflow.zoo.sos import inner_product_matrix
 
 
 def test_exponential_inner_product_closed_form():

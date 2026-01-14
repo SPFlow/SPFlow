@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from spflow.meta.data import Scope
-from spflow.exp.conv import ConvPc
+from spflow.zoo.conv import ConvPc
 from spflow.modules.leaves import Normal
 from spflow.utils.cache import Cache
 

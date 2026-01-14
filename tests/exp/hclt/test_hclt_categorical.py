@@ -1,6 +1,6 @@
 import torch
 
-from spflow.exp.hclt import learn_hclt_categorical
+from spflow.zoo.hclt import learn_hclt_categorical
 
 
 def test_learn_hclt_categorical_builds_and_scores() -> None:

@@ -8,7 +8,7 @@ from spflow.meta import Scope
 from spflow.modules import leaves
 from spflow.modules.leaves import Normal, Bernoulli
 from spflow.modules.ops import SplitMode
-from spflow.exp.rat import RatSPN
+from spflow.zoo.rat import RatSPN
 from spflow.utils.sampling_context import SamplingContext
 from spflow.utils.sampling_context import init_default_sampling_context
 from tests.utils.leaves import make_leaf, make_data

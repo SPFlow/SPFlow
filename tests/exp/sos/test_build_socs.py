@@ -1,12 +1,12 @@
 import torch
 
-from spflow.exp.sos import build_socs
+from spflow.zoo.sos import build_socs
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.bernoulli import Bernoulli
 from spflow.modules.ops.cat import Cat
-from spflow.exp.sos import SignedSum
+from spflow.zoo.sos import SignedSum
 from spflow.modules.sums.sum import Sum
-from spflow.exp.sos import check_socs_compatibility
+from spflow.zoo.sos import check_socs_compatibility
 
 
 def test_build_socs_creates_compatible_components_and_signed_sums():

@@ -34,13 +34,13 @@ Randomized quasi-Monte Carlo helpers used for continuous mixtures.
 
 .. note::
 
-   This feature is experimental and located in :mod:`spflow.exp.cms`.
+   This feature is part of the **Paper Zoo** and is located in :mod:`spflow.zoo.cms`.
 
-.. autoclass:: spflow.exp.cms.RqmcPoints
+.. autoclass:: spflow.zoo.cms.RqmcPoints
    :members:
    :show-inheritance:
 
-.. autofunction:: spflow.exp.cms.rqmc_sobol_normal
+.. autofunction:: spflow.zoo.cms.rqmc_sobol_normal
 
 Method Replacement
 ------------------

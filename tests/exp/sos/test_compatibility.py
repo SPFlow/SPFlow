@@ -9,7 +9,7 @@ from spflow.modules.leaves.bernoulli import Bernoulli
 from spflow.modules.leaves.normal import Normal
 from spflow.modules.products.product import Product
 from spflow.modules.sums.sum import Sum
-from spflow.exp.sos import check_compatible_components
+from spflow.zoo.sos import check_compatible_components
 
 
 def test_compatibility_accepts_same_structure_different_parameters():

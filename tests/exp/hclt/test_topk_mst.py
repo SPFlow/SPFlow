@@ -1,6 +1,6 @@
 import numpy as np
 
-from spflow.exp.hclt.topk_mst import topk_mst
+from spflow.zoo.hclt.topk_mst import topk_mst
 
 
 def test_topk_mst_matches_chowliutrees_jl_fixture() -> None:

@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from spflow.exp.hclt.mi import pairwise_mi_binary, pairwise_marginal_binary
+from spflow.zoo.hclt.mi import pairwise_mi_binary, pairwise_marginal_binary
 
 
 def test_pairwise_mi_binary_matches_chowliutrees_jl_values() -> None:

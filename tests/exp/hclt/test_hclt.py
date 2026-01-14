@@ -1,6 +1,6 @@
 import torch
 
-from spflow.exp.hclt import learn_hclt_binary
+from spflow.zoo.hclt import learn_hclt_binary
 
 
 def test_learn_hclt_binary_builds_and_scores() -> None:

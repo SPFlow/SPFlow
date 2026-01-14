@@ -40,9 +40,9 @@ additional independence/factorization semantics.
 
 .. note::
 
-   This wrapper is experimental and located in :mod:`spflow.exp.cms`.
+   This wrapper is part of the **Paper Zoo** and is located in :mod:`spflow.zoo.cms`.
 
-.. autoclass:: spflow.exp.cms.JointLogLikelihood
+.. autoclass:: spflow.zoo.cms.JointLogLikelihood
    :members:
    :undoc-members:
    :show-inheritance:

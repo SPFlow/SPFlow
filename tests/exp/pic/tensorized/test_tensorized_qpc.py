@@ -7,8 +7,8 @@ from torch import Tensor
 from spflow.meta.data.scope import Scope
 from spflow.meta.region_graph import Region, RegionGraph
 from spflow.modules.module import Module
-from spflow.exp.pic import QuadratureRule, pic2qpc
-from spflow.exp.pic.tensorized.qpc import InnerNet, IntegralGroupArgs, TensorizedQPC, TensorizedQPCConfig
+from spflow.zoo.pic import QuadratureRule, pic2qpc
+from spflow.zoo.pic.tensorized.qpc import InnerNet, IntegralGroupArgs, TensorizedQPC, TensorizedQPCConfig
 
 
 class DummyPIC(Module):

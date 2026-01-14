@@ -6,7 +6,7 @@ import pytest
 import torch
 
 from spflow.meta import Scope
-from spflow.exp.einet import Einet
+from spflow.zoo.einet import Einet
 from spflow.modules.leaves.normal import Normal
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext

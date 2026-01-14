@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from spflow.exp.pic.tensorized import TuckerLayer
+from spflow.zoo.pic.tensorized import TuckerLayer
 
 
 class TestTuckerLayerInit:

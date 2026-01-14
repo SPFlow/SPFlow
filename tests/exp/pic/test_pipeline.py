@@ -10,7 +10,7 @@ from spflow.modules.module import Module
 from spflow.modules.leaves.normal import Normal
 from spflow.modules.products.outer_product import OuterProduct
 from spflow.modules.products.elementwise_product import ElementwiseProduct
-from spflow.exp.pic import (
+from spflow.zoo.pic import (
     Integral,
     MergeStrategy,
     PICProduct,

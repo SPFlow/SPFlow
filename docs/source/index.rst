@@ -14,7 +14,7 @@ Quick Navigation
 - :doc:`Getting Started <getting_started>` — Installation and quick start guide
 - :doc:`Concepts <concepts>` — Core SPFlow concepts and semantics
 - :doc:`API Reference <api/index>` — Complete API documentation
-- :doc:`Experimental Features <exp/index>` — Research implementations and papers (PIC, SOCS, RAT-SPN, etc.)
+- :doc:`Paper Zoo <zoo/index>` — Research implementations and papers (PIC, SOCS, RAT-SPN, etc.)
 - :doc:`FAQ <faq>` — Frequently asked questions
 
 .. toctree::
@@ -23,8 +23,9 @@ Quick Navigation
 
     getting_started
     concepts
-    exp/index
+    zoo/index
     guides/user_guide
+
     guides/dev_guide
     guides/sklearn
     api/index

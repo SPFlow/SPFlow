@@ -2,7 +2,7 @@
 
 import torch
 
-from spflow.exp.pic.functional_sharing import (
+from spflow.zoo.pic.functional_sharing import (
     FourierFeatures,
     SharedMLP,
     MultiHeadedMLP,

@@ -28,9 +28,9 @@ from spflow.modules.module import Module
 from spflow.modules.ops.cat import Cat
 from spflow.modules.products.elementwise_product import ElementwiseProduct
 from spflow.modules.products.outer_product import OuterProduct
-from spflow.exp.pic import QuadratureRule, pic2qpc, rg2pic
-from spflow.exp.pic.tensorized.qpc import TensorizedQPC, TensorizedQPCConfig, _masked_softmax
-from spflow.exp.pic.weighted_sum import WeightedSum
+from spflow.zoo.pic import QuadratureRule, pic2qpc, rg2pic
+from spflow.zoo.pic.tensorized.qpc import TensorizedQPC, TensorizedQPCConfig, _masked_softmax
+from spflow.zoo.pic.weighted_sum import WeightedSum
 
 
 class _DummyLeaf(Module):

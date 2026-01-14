@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from spflow.exp.pic.tensorized.cp import (
+from spflow.zoo.pic.tensorized.cp import (
     CollapsedCPLayer,
     CPLayer,
     SharedCPLayer,

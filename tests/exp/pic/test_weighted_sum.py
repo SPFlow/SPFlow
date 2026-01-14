@@ -5,7 +5,7 @@ import torch
 
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.normal import Normal
-from spflow.exp.pic.weighted_sum import WeightedSum
+from spflow.zoo.pic.weighted_sum import WeightedSum
 
 
 class TestWeightedSumInit:

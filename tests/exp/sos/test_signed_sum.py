@@ -2,7 +2,7 @@ import torch
 
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.normal import Normal
-from spflow.exp.sos import SignedSum
+from spflow.zoo.sos import SignedSum
 from spflow.utils.cache import Cache
 
 

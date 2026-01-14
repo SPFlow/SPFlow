@@ -6,8 +6,8 @@ from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.bernoulli import Bernoulli
 from spflow.modules.leaves.categorical import Categorical
 from spflow.modules.leaves.normal import Normal
-from spflow.exp.sos import SOCS
-from spflow.exp.sos import SignedSum
+from spflow.zoo.sos import SOCS
+from spflow.zoo.sos import SignedSum
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
 
@@ -109,7 +109,7 @@ def test_inner_product_sum_bernoulli_matches_exact_enumeration():
     m1 = w1 * p11 + w2 * p21
     z = m0 * m0 + m1 * m1
 
-    from spflow.exp.sos import log_self_inner_product_scalar
+    from spflow.zoo.sos import log_self_inner_product_scalar
 
     logZ = log_self_inner_product_scalar(mix)
     torch.testing.assert_close(
@@ -138,7 +138,7 @@ def test_inner_product_signed_sum_bernoulli_matches_exact_enumeration():
     c1 = w1 * p11 + w2 * p21
     z = c0 * c0 + c1 * c1
 
-    from spflow.exp.sos import log_self_inner_product_scalar
+    from spflow.zoo.sos import log_self_inner_product_scalar
 
     logZ = log_self_inner_product_scalar(node)
     torch.testing.assert_close(
@@ -195,7 +195,7 @@ def test_inner_product_categorical_matches_exact_enumeration():
     m = w1 * p1.view(-1) + w2 * p2.view(-1)
     z = float(torch.sum(m.pow(2)).item())
 
-    from spflow.exp.sos import log_self_inner_product_scalar
+    from spflow.zoo.sos import log_self_inner_product_scalar
 
     logZ = log_self_inner_product_scalar(mix)
     torch.testing.assert_close(
