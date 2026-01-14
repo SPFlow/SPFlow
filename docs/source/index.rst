@@ -13,14 +13,8 @@ Quick Navigation
 
 - :doc:`Getting Started <getting_started>` — Installation and quick start guide
 - :doc:`Concepts <concepts>` — Core SPFlow concepts and semantics
-- :doc:`SOCS <api/socs>` — Sum of Compatible Squares (signed circuits)
-- :doc:`PIC <api/pic>` — Probabilistic Integral Circuits (continuous latent models)
-- :doc:`User Guide <guides/user_guide>` — Comprehensive tutorials and examples
-- :doc:`HCLT <guides/hclt>` — Hidden Chow–Liu Trees (latent Chow–Liu models)
-- :doc:`Continuous Mixtures <guides/continuous_mixtures>` — Continuous mixtures of tractable models (RQMC + compilation)
-- :doc:`Developer Guide <guides/dev_guide>` — Contributing and development setup
-- :doc:`sklearn Integration <guides/sklearn>` — Use SPFlow in sklearn workflows
 - :doc:`API Reference <api/index>` — Complete API documentation
+- :doc:`Experimental Features <exp/index>` — Research implementations and papers (PIC, SOCS, RAT-SPN, etc.)
 - :doc:`FAQ <faq>` — Frequently asked questions
 
 .. toctree::
@@ -29,9 +23,8 @@ Quick Navigation
 
     getting_started
     concepts
+    exp/index
     guides/user_guide
-    guides/hclt
-    guides/continuous_mixtures
     guides/dev_guide
     guides/sklearn
     api/index

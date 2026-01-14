@@ -43,7 +43,7 @@ Hidden Chow–Liu Trees (HCLT) structure construction for binary and categorical
 .. note::
 
    This feature is experimental and located in :mod:`spflow.exp.hclt`.
-   See the :doc:`../guides/hclt` guide for usage examples.
+   See the :doc:`../exp/hclt` guide for usage examples.
 
 .. autofunction:: spflow.exp.hclt.learn_hclt_binary
 .. autofunction:: spflow.exp.hclt.learn_hclt_categorical
@@ -56,7 +56,7 @@ Continuous mixtures of tractable probabilistic models (RQMC integration + compil
 .. note::
 
    This feature is experimental and located in :mod:`spflow.exp.cms`.
-   See the :doc:`../guides/continuous_mixtures` guide for usage examples.
+   See the :doc:`../exp/cms` guide for usage examples.
 
 .. autoclass:: spflow.exp.cms.LatentOptimizationConfig
    :members:

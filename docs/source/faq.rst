@@ -44,7 +44,8 @@ SPFlow provides several core module types:
 - **Leaves**: Probability distributions at the terminals (Normal, Categorical, Bernoulli, etc.)
 - **Products**: Combine independent distributions (Product, OuterProduct, ElementwiseProduct)
 - **Sums**: Weighted mixtures of distributions (Sum, ElementwiseSum)
-- **Specialized architectures**: RAT-SPN, ConvPc for images
+    - **Specialized architectures**: RAT-SPN, ConvPc for images (see :doc:`Experimental Features <exp/index>`)
+
 
 See the :doc:`API Reference <api/index>` for complete documentation.
 
@@ -143,7 +144,7 @@ RAT-SPN (Randomized And Tensorized SPN) automatically builds a deep circuit from
         depth=3
     )
 
-See :doc:`api/rat_spn` for details.
+See :doc:`exp/rat_spn` for details.
 
 Does SPFlow have image-specific modules?
 -----------------------------------------
@@ -181,7 +182,7 @@ For adapting existing models to image data, use ``ImageWrapper``::
     image_data = torch.randn(32, 1, 28, 28)
     log_ll = wrapped.log_likelihood(image_data)
 
-See :doc:`api/conv`, :doc:`api/conv_pc` and :doc:`api/wrappers` for complete documentation.
+See :doc:`api/conv`, :doc:`exp/conv_pc` and :doc:`api/wrappers` for complete documentation.
 
 ----
 

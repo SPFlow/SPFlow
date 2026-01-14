@@ -14,13 +14,8 @@ SPFlow provides a comprehensive set of modules for building and working with Pro
    sums
    products
    conv
-   conv_pc
-   einsum
    leaves
    operations
-   socs
-   pic
-   rat_spn
    learning
    scope
    utilities

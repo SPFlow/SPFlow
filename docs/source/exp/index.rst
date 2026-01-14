@@ -8,5 +8,10 @@ Experimental Features
 .. toctree::
    :maxdepth: 2
 
+   rat_spn
+   einet
+   hclt
+   conv_pc
+   cms
    socs
    pic

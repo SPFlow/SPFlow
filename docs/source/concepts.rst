@@ -8,7 +8,7 @@ This page is a stable, linkable reference for SPFlow concepts (separate from the
    :maxdepth: 1
    :hidden:
 
-   api/socs
+   exp/socs
 
 .. _concepts-shapes-and-dimensions:
 
