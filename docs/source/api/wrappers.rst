@@ -38,7 +38,11 @@ This is a convenience adapter to make some multivariate leaves (e.g. ``CLTree``)
 typical "root" modules in SPFlow. It is a tensor reduction and **does not** introduce any
 additional independence/factorization semantics.
 
-.. autoclass:: spflow.modules.wrapper.joint.JointLogLikelihood
+.. note::
+
+   This wrapper is experimental and located in :mod:`spflow.exp.cms`.
+
+.. autoclass:: spflow.exp.cms.JointLogLikelihood
    :members:
    :undoc-members:
    :show-inheritance:

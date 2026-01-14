@@ -8,7 +8,7 @@ from spflow.meta import Scope
 from spflow.modules import leaves
 from spflow.modules.leaves import Normal, Bernoulli
 from spflow.modules.ops import SplitMode
-from spflow.modules.rat import RatSPN
+from spflow.exp.rat import RatSPN
 from spflow.utils.sampling_context import SamplingContext
 from spflow.utils.sampling_context import init_default_sampling_context
 from tests.utils.leaves import make_leaf, make_data
@@ -106,12 +106,12 @@ def test_log_likelihood(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes,
     # Check that output has expected structure: [batch, features, channels, num_reps]
     assert lls.ndim == 4, f"Expected 4D output, got {lls.ndim}D with shape {lls.shape}"
     assert lls.shape[0] == data.shape[0], f"Batch size mismatch: got {lls.shape[0]}, expected {data.shape[0]}"
-    assert (
-        lls.shape[1] == module.out_shape.features
-    ), f"Out_features mismatch: got {lls.shape[1]}, expected {module.out_shape.features}"
-    assert (
-        lls.shape[2] == module.out_shape.channels
-    ), f"Out_channels mismatch: got {lls.shape[2]}, expected {module.out_shape.channels}"
+    assert lls.shape[1] == module.out_shape.features, (
+        f"Out_features mismatch: got {lls.shape[1]}, expected {module.out_shape.features}"
+    )
+    assert lls.shape[2] == module.out_shape.channels, (
+        f"Out_channels mismatch: got {lls.shape[2]}, expected {module.out_shape.channels}"
+    )
     assert lls.shape[3] == 1, f"Num_reps mismatch: got {lls.shape[3]}, expected {1}"
 
 

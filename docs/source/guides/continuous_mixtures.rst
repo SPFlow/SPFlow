@@ -31,7 +31,7 @@ Two structures are provided, matching the paper setup:
 Factorized Continuous Mixtures (``S_F``)
 ========================================
 
-Use :func:`spflow.learn.learn_continuous_mixture_factorized` for factorized continuous mixtures.
+Use :func:`spflow.exp.cms.learn_continuous_mixture_factorized` for factorized continuous mixtures.
 Supported leaves:
 
 - Bernoulli (binary data, values in ``{0, 1}``, NaNs allowed)
@@ -44,8 +44,7 @@ Example (Bernoulli)
 .. code-block:: python
 
     import torch
-    from spflow.learn import learn_continuous_mixture_factorized
-    from spflow.learn.continuous_mixtures import LatentOptimizationConfig
+    from spflow.exp.cms import learn_continuous_mixture_factorized, LatentOptimizationConfig
 
     # (N, F) with values in {0, 1}; NaNs are treated as missing.
     data = torch.randint(0, 2, (2048, 50), dtype=torch.float32)
@@ -66,7 +65,7 @@ Example (Bernoulli)
 Chow–Liu Continuous Mixtures (``S_CLT``)
 ========================================
 
-Use :func:`spflow.learn.learn_continuous_mixture_cltree` to learn continuous mixtures whose
+Use :func:`spflow.exp.cms.learn_continuous_mixture_cltree` to learn continuous mixtures whose
 components are Chow–Liu trees.
 
 Important notes:
@@ -74,7 +73,7 @@ Important notes:
 - **Discrete only**: Bernoulli / Categorical(K)
 - **Complete data required** (no NaNs) for structure learning and training
 - Output is wrapped so that ``log_likelihood`` returns a single feature (joint score).
-  This uses :class:`spflow.modules.wrapper.joint.JointLogLikelihood`, which simply **sums**
+  This uses :class:`spflow.exp.cms.JointLogLikelihood`, which simply **sums**
   the per-feature log-likelihood contributions into a joint score (it is a tensor reduction,
   not a factorization/product semantics change).
 
@@ -84,8 +83,7 @@ Example (Categorical)
 .. code-block:: python
 
     import torch
-    from spflow.learn import learn_continuous_mixture_cltree
-    from spflow.learn.continuous_mixtures import LatentOptimizationConfig
+    from spflow.exp.cms import learn_continuous_mixture_cltree, LatentOptimizationConfig
 
     # (N, F) with values in {0, ..., K-1}; must be complete (no NaNs).
     K = 4

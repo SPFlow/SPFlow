@@ -11,13 +11,13 @@ import torch
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterError, ShapeError
-from spflow.learn.chow_liu import learn_chow_liu_trees_binary, learn_chow_liu_trees_categorical
+from spflow.exp.hclt.chow_liu import learn_chow_liu_trees_binary, learn_chow_liu_trees_categorical
 from spflow.meta import Scope
 from spflow.modules.leaves import Bernoulli, Categorical
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.sums import Sum
 from spflow.modules.module import Module
-from spflow.utils.topk_mst import Edge
+from spflow.exp.hclt.topk_mst import Edge
 
 
 def _edges_to_adjacency(num_nodes: int, edges: list[Edge]) -> list[list[int]]:

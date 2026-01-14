@@ -24,7 +24,7 @@ model using EinsumLayer or LinsumLayer for efficient batched computations.
 **Reference:** Peharz, R., et al. (2020). "Einsum Networks: Fast and Scalable Learning
 of Tractable Probabilistic Circuits." ICML 2020.
 
-.. autoclass:: spflow.modules.einsum.Einet
+.. autoclass:: spflow.exp.einet.Einet
    :members:
    :undoc-members:
    :show-inheritance:

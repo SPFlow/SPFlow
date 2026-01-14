@@ -16,6 +16,13 @@ Element-wise summation over multiple inputs with the same scope.
 
 .. autoclass:: spflow.modules.sums.elementwise_sum.ElementwiseSum
 
+RepetitionMixingLayer
+---------------------
+
+A specialized sum layer used to sum over repetitions.
+
+.. autoclass:: spflow.modules.sums.repetition_mixing_layer.RepetitionMixingLayer
+
 SignedSum
 ---------
 

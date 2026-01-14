@@ -145,7 +145,7 @@ class Einet(Module, Classifier):
         down to the leaves. Each layer i has 2^i input features.
         """
         LayerClass = self._get_layer_class()
-        layers: list[Module] = []
+        layers: list[dict] = []
 
         # Build layers from top (i=1) to bottom (i=depth)
         for i in range(1, self.depth + 1):
@@ -190,7 +190,6 @@ class Einet(Module, Classifier):
             )
         else:
             # Create factorized leaves
-            leaf_num_features_out = 2**self.depth
             fac_layer = Factorize(
                 inputs=list(self.leaf_modules),
                 depth=self.depth,
@@ -251,7 +250,6 @@ class Einet(Module, Classifier):
 
         # Build layers from leaves to root
         current = fac_layer
-        in_features = fac_layer.out_shape.features
 
         for i in range(self.depth):
             # Create einsum/linsum layer
@@ -260,8 +258,6 @@ class Einet(Module, Classifier):
                 out_channels=self.num_sums,
                 num_repetitions=self.num_repetitions,
             )
-
-            in_features = current.out_shape.features
 
         # Handle depth=0 case
         if self.depth == 0:

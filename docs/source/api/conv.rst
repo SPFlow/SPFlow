@@ -3,15 +3,6 @@ Convolutional Modules
 
 Convolutional layers for modeling spatial structure in image data with probabilistic circuits.
 
-ConvPc
-------
-
-High-level convolutional probabilistic circuit architecture that stacks alternating
-ProdConv and SumConv layers on top of a leaf distribution. Similar to RAT-SPN but
-designed specifically for image data with spatial structure.
-
-.. autoclass:: spflow.modules.conv.ConvPc
-
 SumConv
 -------
 

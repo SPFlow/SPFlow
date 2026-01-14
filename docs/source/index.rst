@@ -13,7 +13,8 @@ Quick Navigation
 
 - :doc:`Getting Started <getting_started>` — Installation and quick start guide
 - :doc:`Concepts <concepts>` — Core SPFlow concepts and semantics
-- :doc:`SOCS <concepts/socs>` — Sum of Compatible Squares (signed circuits)
+- :doc:`SOCS <api/socs>` — Sum of Compatible Squares (signed circuits)
+- :doc:`PIC <api/pic>` — Probabilistic Integral Circuits (continuous latent models)
 - :doc:`User Guide <guides/user_guide>` — Comprehensive tutorials and examples
 - :doc:`HCLT <guides/hclt>` — Hidden Chow–Liu Trees (latent Chow–Liu models)
 - :doc:`Continuous Mixtures <guides/continuous_mixtures>` — Continuous mixtures of tractable models (RQMC + compilation)

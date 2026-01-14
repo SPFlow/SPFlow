@@ -29,8 +29,8 @@ from spflow.meta.data.scope import Scope
 from spflow.modules.leaves import Bernoulli, Categorical, CLTree, Normal
 from spflow.modules.products.product import Product
 from spflow.modules.sums.sum import Sum
-from spflow.modules.wrapper.joint import JointLogLikelihood
-from spflow.utils.rqmc import rqmc_sobol_normal
+from spflow.exp.cms.joint import JointLogLikelihood
+from spflow.exp.cms.rqmc import rqmc_sobol_normal
 
 FactorizedLeaf = Literal["bernoulli", "categorical", "normal"]
 CltLeaf = Literal["bernoulli", "categorical"]
@@ -160,7 +160,7 @@ def _factorized_component_ll(
         if not torch.allclose(x[mask], x[mask].round()):
             raise InvalidParameterError("Categorical data must be integer-coded (or NaN).")
         if (x[mask] < 0).any() or (x[mask] >= K).any():
-            raise InvalidParameterError(f"Categorical data must be in {{0,..,{K-1}}} (or NaN).")
+            raise InvalidParameterError(f"Categorical data must be in {{0,..,{K - 1}}} (or NaN).")
         x_long = x.to(dtype=torch.long)
         log_probs = torch.log_softmax(logits, dim=2)  # (I,F,K)
         # gather along K with broadcast over batch without materializing (I,B,F,K) storage.
@@ -168,9 +168,7 @@ def _factorized_component_ll(
             log_probs.unsqueeze(1).expand(-1, B, -1, -1),
             dim=3,
             index=x_long.unsqueeze(0).unsqueeze(-1).expand(log_probs.shape[0], -1, -1, 1),
-        ).squeeze(
-            -1
-        )  # (I,B,F)
+        ).squeeze(-1)  # (I,B,F)
         gathered = torch.where(mask.unsqueeze(0), gathered, torch.zeros_like(gathered))
         return gathered.sum(dim=2)  # (I,B)
 
@@ -624,7 +622,7 @@ def learn_continuous_mixture_cltree(
     if K < 2:
         raise InvalidParameterError("num_cats must be provided and >= 2 for categorical.")
     if (data < 0).any() or (data >= K).any():
-        raise InvalidParameterError(f"CLTree data must be in {{0,..,{K-1}}}.")
+        raise InvalidParameterError(f"CLTree data must be in {{0,..,{K - 1}}}.")
 
     # Learn the Chow–Liu structure once.
     tmp = CLTree(scope=Scope(list(range(F))), out_channels=1, num_repetitions=1, K=K)

@@ -1,11 +1,13 @@
 import torch
 
-from spflow.learn.continuous_mixtures import LatentOptimizationConfig
-from spflow.learn.continuous_mixtures import learn_continuous_mixture_cltree
-from spflow.learn.continuous_mixtures import learn_continuous_mixture_factorized
+from spflow.exp.cms import (
+    JointLogLikelihood,
+    LatentOptimizationConfig,
+    learn_continuous_mixture_cltree,
+    learn_continuous_mixture_factorized,
+)
 from spflow.meta import Scope
 from spflow.modules.leaves import CLTree
-from spflow.modules.wrapper.joint import JointLogLikelihood
 
 
 def test_joint_log_likelihood_wrapper_reduces_feature_axis():

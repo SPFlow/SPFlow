@@ -226,6 +226,20 @@ class Scope:
         return Scope(sorted(new_query), sorted(new_evidence))
 
     @staticmethod
+    def as_scope(scope: Scope | int | Iterable[int] | None) -> Scope:
+        """Normalize a scope-like argument to a Scope.
+
+        Args:
+            scope: Scope object, integer, or iterable of integers.
+
+        Returns:
+            Scope object.
+        """
+        if isinstance(scope, Scope):
+            return scope
+        return Scope(scope)
+
+    @staticmethod
     def join_all(scopes: Iterable["Scope"]) -> "Scope":
         """Computes the joint scope of the scope and a sequence of scopes.
 

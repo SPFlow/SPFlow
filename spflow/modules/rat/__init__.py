@@ -6,4 +6,3 @@ efficient learning and inference.
 """
 
 from .factorize import Factorize
-from .rat_spn import RatSPN

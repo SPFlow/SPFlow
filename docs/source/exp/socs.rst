@@ -2,7 +2,11 @@
 SOCS (Sum of Compatible Squares)
 ================================
 
-SPFlow includes an implementation of **SOCS / Σ2cmp** (“Sum of Compatible Squares Circuits”).
+.. warning::
+   SOCS is an **experimental** module located in ``spflow.exp.sos``.
+   The API may change in future versions.
+
+SPFlow includes an implementation of **SOCS / Σ2cmp** ("Sum of Compatible Squares Circuits").
 SOCS turns a set of (possibly signed) *compatible* component circuits into a valid, non-negative
 probability model.
 
@@ -17,7 +21,7 @@ Definition
 ==========
 
 Let ``c_i(x)`` be real-valued component circuits that share the same structured decomposition
-(“compatible” components).
+("compatible" components).
 SOCS defines the non-negative function:
 
 .. math::
@@ -30,14 +34,14 @@ and the normalized density:
 
    p(x) = \frac{c(x)}{Z}, \qquad Z = \int c(x) \, dx = \sum_{i=1}^r \int c_i(x)^2 \, dx.
 
-In SPFlow, SOCS is implemented as the wrapper module :class:`spflow.modules.sos.SOCS`.
+In SPFlow, SOCS is implemented as the wrapper module :class:`spflow.exp.sos.SOCS`.
 
-Why “signed” components?
+Why "signed" components?
 ========================
 
 Standard SPFlow sum nodes (:class:`spflow.modules.sums.Sum`) represent convex mixtures and require
 strictly positive weights.
-To represent signed circuits, SPFlow provides :class:`spflow.modules.sums.SignedSum`, which allows
+To represent signed circuits, the experimental module provides :class:`spflow.exp.sos.SignedSum`, which allows
 **real-valued (including negative) weights**.
 
 Important: ``SignedSum`` is *not* a probabilistic mixture node (its output may be negative), so it
@@ -53,11 +57,11 @@ SOCS needs the normalization terms:
 
    Z_i = \int c_i(x)^2 \, dx.
 
-Rather than building an explicit “squared circuit”, SPFlow computes these terms using an exact,
-bottom-up **inner-product dynamic program** implemented in :mod:`spflow.utils.inner_product`.
+Rather than building an explicit "squared circuit", SPFlow computes these terms using an exact,
+bottom-up **inner-product dynamic program** implemented in :mod:`spflow.exp.sos.inner_product`.
 
 The implementation supports exact inner products for common leaves (and can be extended by adding
-new closed-form formulas in ``spflow/utils/inner_product.py``). Currently supported include:
+new closed-form formulas in ``spflow/exp/sos/inner_product.py``). Currently supported include:
 
 - ``Normal``, ``Bernoulli``, ``Categorical``
 - ``Exponential``, ``Laplace``, ``LogNormal``
@@ -123,12 +127,12 @@ Compatibility checks
 ====================
 
 SOCS assumes component circuits are compatible (same decomposition / region graph).
-SPFlow provides conservative structural checks in :mod:`spflow.utils.compatibility`:
+SPFlow provides conservative structural checks in :mod:`spflow.exp.sos.compatibility`:
 
-- :func:`spflow.utils.compatibility.check_compatible_components`
-- :func:`spflow.utils.compatibility.check_socs_compatibility`
+- :func:`spflow.exp.sos.check_compatible_components`
+- :func:`spflow.exp.sos.check_socs_compatibility`
 
-These utilities verify that corresponding nodes across components have the same “skeleton”
+These utilities verify that corresponding nodes across components have the same "skeleton"
 (node types, scopes, arities, and selected structural metadata like ``Cat.dim`` and ``CLTree.parents``).
 
 Structure builder
@@ -137,7 +141,7 @@ Structure builder
 To reduce boilerplate, SPFlow includes a small builder that clones a template circuit into multiple
 compatible components and optionally converts all ``Sum`` nodes to ``SignedSum`` nodes:
 
-- :func:`spflow.learn.build_socs.build_socs`
+- :func:`spflow.exp.sos.build_socs`
 
 Minimal example
 ===============
@@ -147,8 +151,7 @@ Build a SOCS model from one signed component and evaluate it::
     import torch
     from spflow.meta.data.scope import Scope
     from spflow.modules.leaves import Bernoulli
-    from spflow.modules.sums import SignedSum
-    from spflow.modules.sos import SOCS
+    from spflow.exp.sos import SignedSum, SOCS
 
     b1 = Bernoulli(scope=Scope([0]), probs=torch.tensor([[[0.2]]]))
     b2 = Bernoulli(scope=Scope([0]), probs=torch.tensor([[[0.8]]]))
@@ -157,3 +160,47 @@ Build a SOCS model from one signed component and evaluate it::
     model = SOCS([comp])
     x = torch.tensor([[0.0], [1.0]])
     ll = model.log_likelihood(x)  # (B,1,1,1)
+
+
+API Reference
+=============
+
+.. autoclass:: spflow.exp.sos.SOCS
+   :members:
+   :show-inheritance:
+
+.. autoclass:: spflow.exp.sos.SignedSum
+   :members:
+   :show-inheritance:
+
+Builders
+--------
+
+.. autofunction:: spflow.exp.sos.build_socs
+
+.. autofunction:: spflow.exp.sos.build_abs_weight_proposal
+
+Compatibility
+-------------
+
+.. autofunction:: spflow.exp.sos.check_compatible_components
+
+.. autofunction:: spflow.exp.sos.check_socs_compatibility
+
+Exact Inner Products
+--------------------
+
+.. autofunction:: spflow.exp.sos.inner_product_matrix
+
+.. autofunction:: spflow.exp.sos.leaf_inner_product
+
+.. autofunction:: spflow.exp.sos.log_self_inner_product_scalar
+
+Signed Semiring Utilities
+-------------------------
+
+.. autofunction:: spflow.exp.sos.signed_logsumexp
+
+.. autofunction:: spflow.exp.sos.sign_of
+
+.. autofunction:: spflow.exp.sos.logabs_of

@@ -9,12 +9,12 @@ and return it as a standard :class:`spflow.modules.module.Module`.
 Binary HCLT
 ===========
 
-For binary observed variables (values in ``{0, 1}``), use :func:`spflow.learn.hclt.learn_hclt_binary`.
+For binary observed variables (values in ``{0, 1}``), use :func:`spflow.exp.hclt.learn_hclt_binary`.
 
 .. code-block:: python
 
     import torch
-    from spflow.learn import learn_hclt_binary
+    from spflow.exp.hclt import learn_hclt_binary
 
     # (N, D) with values in {0, 1}
     data = torch.randint(0, 2, (1024, 50), dtype=torch.float32)
@@ -34,12 +34,12 @@ Categorical HCLT
 ================
 
 For categorical observed variables (values in ``{0, ..., K-1}``), use
-:func:`spflow.learn.hclt.learn_hclt_categorical`.
+:func:`spflow.exp.hclt.learn_hclt_categorical`.
 
 .. code-block:: python
 
     import torch
-    from spflow.learn import learn_hclt_categorical
+    from spflow.exp.hclt import learn_hclt_categorical
 
     # (N, D) with values in {0, ..., K-1}
     data = torch.randint(0, 4, (1024, 50), dtype=torch.float32)

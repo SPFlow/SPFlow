@@ -11,8 +11,8 @@ import torch
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterError, ShapeError
-from spflow.utils.chow_liu import pairwise_mi_binary, pairwise_mi_categorical
-from spflow.utils.topk_mst import Edge, topk_mst
+from spflow.exp.hclt.mi import pairwise_mi_binary, pairwise_mi_categorical
+from spflow.exp.hclt.topk_mst import Edge, topk_mst
 
 
 def learn_chow_liu_trees_binary(

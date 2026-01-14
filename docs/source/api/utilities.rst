@@ -32,11 +32,15 @@ RQMC
 
 Randomized quasi-Monte Carlo helpers used for continuous mixtures.
 
-.. autoclass:: spflow.utils.rqmc.RqmcPoints
+.. note::
+
+   This feature is experimental and located in :mod:`spflow.exp.cms`.
+
+.. autoclass:: spflow.exp.cms.RqmcPoints
    :members:
    :show-inheritance:
 
-.. autofunction:: spflow.utils.rqmc.rqmc_sobol_normal
+.. autofunction:: spflow.exp.cms.rqmc_sobol_normal
 
 Method Replacement
 ------------------

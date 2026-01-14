@@ -126,7 +126,7 @@ How do I use RAT-SPN?
 
 RAT-SPN (Randomized And Tensorized SPN) automatically builds a deep circuit from hyperparameters::
 
-    from spflow.modules.rat import RatSPN
+    from spflow.exp.rat import RatSPN
     from spflow.modules.leaves import Normal
     from spflow.meta import Scope
 
@@ -150,7 +150,7 @@ Does SPFlow have image-specific modules?
 
 Yes! Use the ``ConvPc`` module for image data with spatial structure::
 
-    from spflow.modules.conv import ConvPc
+    from spflow.exp.conv import ConvPc
     from spflow.modules.leaves import Binomial
     from spflow.meta import Scope
 
@@ -181,7 +181,7 @@ For adapting existing models to image data, use ``ImageWrapper``::
     image_data = torch.randn(32, 1, 28, 28)
     log_ll = wrapped.log_likelihood(image_data)
 
-See :doc:`api/conv` and :doc:`api/wrappers` for complete documentation.
+See :doc:`api/conv`, :doc:`api/conv_pc` and :doc:`api/wrappers` for complete documentation.
 
 ----
 

@@ -28,29 +28,39 @@ Gradient descent-based parameter learning using PyTorch optimizers.
 
 .. autofunction:: spflow.learn.gradient_descent.train_gradient_descent
 
-Structures: HCLT
-----------------
-
-Hidden Chow–Liu Trees (HCLT) structure construction for binary and categorical data.
-
-.. autofunction:: spflow.learn.hclt.learn_hclt_binary
-.. autofunction:: spflow.learn.hclt.learn_hclt_categorical
-
-Continuous Mixtures
--------------------
-
-Continuous mixtures of tractable probabilistic models (RQMC integration + compilation).
-
-.. autoclass:: spflow.learn.continuous_mixtures.LatentOptimizationConfig
-   :members:
-   :show-inheritance:
-
-.. autofunction:: spflow.learn.continuous_mixtures.learn_continuous_mixture_factorized
-.. autofunction:: spflow.learn.continuous_mixtures.learn_continuous_mixture_cltree
-
 SOCS Builder
 ------------
 
 Build a SOCS model from a compatible template circuit.
 
 .. autofunction:: spflow.learn.build_socs.build_socs
+
+Experimental: HCLT
+------------------
+
+Hidden Chow–Liu Trees (HCLT) structure construction for binary and categorical data.
+
+.. note::
+
+   This feature is experimental and located in :mod:`spflow.exp.hclt`.
+   See the :doc:`../guides/hclt` guide for usage examples.
+
+.. autofunction:: spflow.exp.hclt.learn_hclt_binary
+.. autofunction:: spflow.exp.hclt.learn_hclt_categorical
+
+Experimental: Continuous Mixtures
+---------------------------------
+
+Continuous mixtures of tractable probabilistic models (RQMC integration + compilation).
+
+.. note::
+
+   This feature is experimental and located in :mod:`spflow.exp.cms`.
+   See the :doc:`../guides/continuous_mixtures` guide for usage examples.
+
+.. autoclass:: spflow.exp.cms.LatentOptimizationConfig
+   :members:
+   :show-inheritance:
+
+.. autofunction:: spflow.exp.cms.learn_continuous_mixture_factorized
+.. autofunction:: spflow.exp.cms.learn_continuous_mixture_cltree

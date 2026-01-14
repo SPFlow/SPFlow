@@ -14,11 +14,9 @@ from spflow.modules.leaves.leaf import LeafModule
 from spflow.modules.module import Module
 
 
-def as_scope(scope: Scope | int | Iterable[int]) -> Scope:
+def as_scope(scope: Scope | int | Iterable[int] | None) -> Scope:
     """Normalize a scope-like argument to a Scope."""
-    if isinstance(scope, Scope):
-        return scope
-    return Scope(scope)
+    return Scope.as_scope(scope)
 
 
 def reduce_log_likelihood(
