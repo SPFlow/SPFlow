@@ -10,14 +10,14 @@ SOCS turns a set of (possibly signed) *compatible* component circuits into a val
 probability model.
 
 Reference
-=========
+---------
 
 The core SOCS / Σ2cmp construction is described in the AAAI paper:
 
 - `Sum of Squares Circuits (AAAI) <https://ojs.aaai.org/index.php/AAAI/article/view/34100>`_
 
 Definition
-==========
+----------
 
 Let ``c_i(x)`` be real-valued component circuits that share the same structured decomposition
 ("compatible" components).
@@ -36,7 +36,7 @@ and the normalized density:
 In SPFlow, SOCS is implemented as the wrapper module :class:`spflow.zoo.sos.SOCS`.
 
 Why "signed" components?
-========================
+------------------------
 
 Standard SPFlow sum nodes (:class:`spflow.modules.sums.Sum`) represent convex mixtures and require
 strictly positive weights.
@@ -48,7 +48,7 @@ does not implement ``log_likelihood``. Instead, SOCS evaluates signed components
 signed representation internally.
 
 Exact normalization via inner products
-======================================
+--------------------------------------
 
 SOCS needs the normalization terms:
 
@@ -68,7 +68,7 @@ new closed-form formulas in ``spflow/exp/sos/inner_product.py``). Currently supp
 - ``CLTree`` (only when both trees share the same structure)
 
 Non-scalar outputs
-==================
+------------------
 
 SPFlow modules return log-likelihood tensors with shape ``(batch, F, C, R)`` where:
 
@@ -86,7 +86,7 @@ This makes SOCS usable as a building block inside larger architectures (e.g., cl
 SOCS with ``channels = num_classes``).
 
 Sampling (signed components)
-============================
+----------------------------
 
 Sampling from the density proportional to ``c_i(x)^2`` is not generally tractable with the standard
 top-down sampler when ``c_i`` is signed.
@@ -123,7 +123,7 @@ Limitations
 - SOCS sampling currently supports only **scalar outputs** (``out_shape == (1,1,1)``).
 
 Compatibility checks
-====================
+--------------------
 
 SOCS assumes component circuits are compatible (same decomposition / region graph).
 SPFlow provides conservative structural checks in :mod:`spflow.zoo.sos.compatibility`:
@@ -135,7 +135,7 @@ These utilities verify that corresponding nodes across components have the same 
 (node types, scopes, arities, and selected structural metadata like ``Cat.dim`` and ``CLTree.parents``).
 
 Structure builder
-=================
+-----------------
 
 To reduce boilerplate, SPFlow includes a small builder that clones a template circuit into multiple
 compatible components and optionally converts all ``Sum`` nodes to ``SignedSum`` nodes:
@@ -143,7 +143,7 @@ compatible components and optionally converts all ``Sum`` nodes to ``SignedSum``
 - :func:`spflow.zoo.sos.build_socs`
 
 Minimal example
-===============
+---------------
 
 Build a SOCS model from one signed component and evaluate it::
 
@@ -162,7 +162,8 @@ Build a SOCS model from one signed component and evaluate it::
 
 
 API Reference
-=============
+-------------
+
 
 .. autoclass:: spflow.zoo.sos.SOCS
    :members:

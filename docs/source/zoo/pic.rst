@@ -1,6 +1,6 @@
-====================================
+=====================================
 PIC (Probabilistic Integral Circuits)
-====================================
+=====================================
 
 .. note::
    PIC is part of the **Paper Zoo** and is located in ``spflow.zoo.pic``.
@@ -8,14 +8,14 @@ PIC (Probabilistic Integral Circuits)
 Probabilistic Integral Circuits (PICs) are a framework for scaling continuous latent variable models by representing them as integrals over tractable circuits. They allow for flexible neural functional sharing while maintaining tractability via quadrature-based materialization.
 
 Reference
-=========
+---------
 
 PICs are described in the NeurIPS 2024 paper:
 
 - `Scaling Continuous Latent Variable Models as Probabilistic Integral Circuits <https://arxiv.org/abs/2410.02410>`_
 
 Overview
-========
+--------
 
 A PIC is a symbolic representation of a continuous mixture model. It consists of:
 
@@ -25,7 +25,7 @@ A PIC is a symbolic representation of a continuous mixture model. It consists of
 - **Integral Units**: Representing integration over continuous latent variables :math:`Z`.
 
 Pipeline
-========
+--------
 
 The typical PIC workflow in SPFlow follows these steps:
 
@@ -43,7 +43,7 @@ When converting a RegionGraph to a PIC, SPFlow supports different merge strategi
 - ``CP``: Always uses CP-style merging (resulting in :class:`spflow.modules.products.ElementwiseProduct` after materialization).
 
 Functional Sharing
-==================
+------------------
 
 PICs allow parameters of the circuit to be computed by neural networks. This is implemented via:
 
@@ -52,14 +52,14 @@ PICs allow parameters of the circuit to be computed by neural networks. This is 
 - :class:`spflow.zoo.pic.FourierFeatures`: Positional encoding for latent variables.
 
 Tensorized QPCs
-===============
+---------------
 
 For high-performance evaluation, PICs can be materialized into a **Tensorized QPC**. This mode avoids creating thousands of small SPFlow modules and instead uses a single folded module that performs evaluation using efficient tensor operations.
 
 - :class:`spflow.zoo.pic.TensorizedQPC`: A folded module for efficient PIC inference.
 
 Minimal Example
-===============
+---------------
 
 .. code-block:: python
 
@@ -96,7 +96,7 @@ Minimal Example
     ll = model.log_likelihood(x)
 
 API Reference
-=============
+-------------
 
 Pipeline
 --------
@@ -129,6 +129,7 @@ Integral and Sum Units
 .. autoclass:: spflow.zoo.pic.WeightedSum
    :members:
    :show-inheritance:
+   :no-index:
 
 Functional Sharing
 ------------------

@@ -23,9 +23,18 @@ Quick Navigation
 
     getting_started
     concepts
-    zoo/index
-    guides/user_guide
 
+.. toctree::
+    :maxdepth: 1
+    :hidden:
+
+    zoo/index
+
+.. toctree::
+    :maxdepth: 2
+    :hidden:
+
+    guides/user_guide
     guides/dev_guide
     guides/sklearn
     api/index
