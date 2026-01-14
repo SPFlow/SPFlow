@@ -1,4 +1,4 @@
-"""Probabilistic Integral Circuits (PIC) module.
+"""Paper Zoo: Probabilistic Integral Circuits (PIC) module.
 
 This module contains the PIC implementation including:
 - Pipeline functions (rg2pic, pic2qpc)

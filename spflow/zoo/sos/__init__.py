@@ -1,10 +1,7 @@
-"""Experimental Sum-of-Squares circuit modules (SOCS).
+"""Paper Zoo: Sum-of-Squares circuit modules (SOCS).
 
-This experimental module provides SOCS (Sum of Compatible Squares) implementation
+This module provides SOCS (Sum of Compatible Squares) implementation
 for representing non-negative densities via squared signed circuits.
-
-Warning:
-    This module is experimental and may change in future versions.
 
 Example::
 

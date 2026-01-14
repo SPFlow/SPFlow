@@ -1,4 +1,4 @@
-"""Hidden Chow-Liu Trees (HCLT) experimental package."""
+"""Paper Zoo: Hidden Chow-Liu Trees (HCLT) package."""
 
 from .learn import learn_hclt_binary, learn_hclt_categorical
 

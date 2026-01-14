@@ -40,7 +40,7 @@ Why "signed" components?
 
 Standard SPFlow sum nodes (:class:`spflow.modules.sums.Sum`) represent convex mixtures and require
 strictly positive weights.
-To represent signed circuits, the experimental module provides :class:`spflow.zoo.sos.SignedSum`, which allows
+To represent signed circuits, the Paper Zoo provides :class:`spflow.zoo.sos.SignedSum`, which allows
 **real-valued (including negative) weights**.
 
 Important: ``SignedSum`` is *not* a probabilistic mixture node (its output may be negative), so it

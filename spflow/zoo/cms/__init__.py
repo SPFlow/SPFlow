@@ -1,4 +1,4 @@
-"""Continuous Mixtures of Tractable Probabilistic Models (experimental).
+"""Paper Zoo: Continuous Mixtures of Tractable Probabilistic Models.
 
 This module provides RQMC-based learning for factorized and CLT continuous mixtures,
 including latent optimization and compilation to discrete mixtures.
