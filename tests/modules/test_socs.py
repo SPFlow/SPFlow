@@ -296,3 +296,26 @@ def test_socs_multi_feature_cat_normal_matches_per_feature_squared_density():
     expected = torch.stack([t0.log_prob(x[:, 0]), t1.log_prob(x[:, 1])], dim=1)
 
     torch.testing.assert_close(ll, expected.to(dtype=ll.dtype, device=ll.device), rtol=1e-4, atol=1e-4)
+
+
+def test_socs_log_partition_cache_is_per_module():
+    # Regression test: SOCS must not reuse another SOCS' log-partition when sharing a Cache.
+    sigma1 = 0.9
+    sigma2 = 1.7
+
+    x = torch.zeros(3, 1, dtype=torch.get_default_dtype())
+    cache = Cache()
+
+    m1 = SOCS([_make_normal_component(mu=0.0, sigma=sigma1)])
+    _ = m1.log_likelihood(x, cache=cache)
+    logZ1 = cache.extras["socs_logZ"][0, 0, 0].detach().cpu()
+    expected1 = logZ1.new_tensor(math.log(1.0 / (2.0 * math.sqrt(math.pi) * sigma1)))
+    torch.testing.assert_close(logZ1, expected1, rtol=0.0, atol=1e-6)
+
+    m2 = SOCS([_make_normal_component(mu=0.0, sigma=sigma2)])
+    _ = m2.log_likelihood(x, cache=cache)
+    logZ2 = cache.extras["socs_logZ"][0, 0, 0].detach().cpu()
+    expected2 = logZ2.new_tensor(math.log(1.0 / (2.0 * math.sqrt(math.pi) * sigma2)))
+    torch.testing.assert_close(logZ2, expected2, rtol=0.0, atol=1e-6)
+
+    assert not torch.allclose(logZ1, logZ2)

@@ -9,7 +9,10 @@ from spflow.modules.leaves.gamma import Gamma
 from spflow.modules.leaves.laplace import Laplace
 from spflow.modules.leaves.log_normal import LogNormal
 from spflow.modules.leaves.poisson import Poisson
+from spflow.modules.leaves.uniform import Uniform
+from spflow.modules.leaves.geometric import Geometric
 from spflow.zoo.sos import inner_product_matrix
+from spflow.zoo.sos import triple_product_scalar
 
 
 def test_exponential_inner_product_closed_form():
@@ -102,6 +105,81 @@ def test_poisson_inner_product_matches_bessel_series():
     expected = math.exp(-(lam1 + lam2)) * i0(torch.tensor(2.0 * math.sqrt(lam1 * lam2))).item()
     torch.testing.assert_close(
         k, torch.tensor(expected, dtype=k.dtype, device=k.device), rtol=1e-7, atol=1e-10
+    )
+
+
+def test_uniform_inner_product_closed_form():
+    a = Uniform(
+        scope=Scope([0]),
+        out_channels=1,
+        num_repetitions=1,
+        low=torch.tensor([[[0.0]]]),
+        high=torch.tensor([[[2.0]]]),
+    )
+    b = Uniform(
+        scope=Scope([0]),
+        out_channels=1,
+        num_repetitions=1,
+        low=torch.tensor([[[1.0]]]),
+        high=torch.tensor([[[3.0]]]),
+    )
+    k = inner_product_matrix(a, b)[0, 0, 0, 0]
+    # overlap length = 1.0, lengths are 2.0 and 2.0
+    expected = 1.0 / 4.0
+    torch.testing.assert_close(k, torch.tensor(expected, dtype=k.dtype, device=k.device))
+
+
+def test_geometric_inner_product_closed_form():
+    p1 = 0.3
+    p2 = 0.8
+    a = Geometric(scope=Scope([0]), out_channels=1, num_repetitions=1, probs=torch.tensor([[[p1]]]))
+    b = Geometric(scope=Scope([0]), out_channels=1, num_repetitions=1, probs=torch.tensor([[[p2]]]))
+    k = inner_product_matrix(a, b)[0, 0, 0, 0]
+    expected = (p1 * p2) / (p1 + p2 - p1 * p2)
+    torch.testing.assert_close(
+        k, torch.tensor(expected, dtype=k.dtype, device=k.device), rtol=1e-7, atol=1e-10
+    )
+
+
+def test_uniform_triple_product_closed_form():
+    a = Uniform(
+        scope=Scope([0]),
+        out_channels=1,
+        num_repetitions=1,
+        low=torch.tensor([[[0.0]]]),
+        high=torch.tensor([[[3.0]]]),
+    )
+    b = Uniform(
+        scope=Scope([0]),
+        out_channels=1,
+        num_repetitions=1,
+        low=torch.tensor([[[1.0]]]),
+        high=torch.tensor([[[4.0]]]),
+    )
+    c = Uniform(
+        scope=Scope([0]),
+        out_channels=1,
+        num_repetitions=1,
+        low=torch.tensor([[[2.0]]]),
+        high=torch.tensor([[[5.0]]]),
+    )
+    z = triple_product_scalar(a, b, c)
+    # overlap [2,3] length 1; lengths 3,3,3 => 1/27
+    expected = 1.0 / 27.0
+    torch.testing.assert_close(
+        z, torch.tensor(expected, dtype=z.dtype, device=z.device), rtol=1e-7, atol=1e-10
+    )
+
+
+def test_geometric_triple_product_closed_form():
+    p1, p2, p3 = 0.4, 0.6, 0.8
+    a = Geometric(scope=Scope([0]), out_channels=1, num_repetitions=1, probs=torch.tensor([[[p1]]]))
+    b = Geometric(scope=Scope([0]), out_channels=1, num_repetitions=1, probs=torch.tensor([[[p2]]]))
+    c = Geometric(scope=Scope([0]), out_channels=1, num_repetitions=1, probs=torch.tensor([[[p3]]]))
+    z = triple_product_scalar(a, b, c)
+    expected = (p1 * p2 * p3) / (1.0 - (1.0 - p1) * (1.0 - p2) * (1.0 - p3))
+    torch.testing.assert_close(
+        z, torch.tensor(expected, dtype=z.dtype, device=z.device), rtol=1e-7, atol=1e-10
     )
 
 

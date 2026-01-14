@@ -142,3 +142,33 @@ def build_abs_weight_proposal(component: Module, *, eps: float = 1e-8) -> Module
 
     _transform(prop)
     return prop
+
+
+def build_complex_socs(real: Module, imag: Module) -> SOCS:
+    """Build a SOCS model equivalent to a complex squared circuit |c|^2.
+
+    This implements the paper-aligned reduction:
+
+        c(x) = a(x) + i b(x)  =>  |c(x)|^2 = a(x)^2 + b(x)^2
+
+    by constructing a SOCS with two components `[a, b]`. This avoids introducing
+    complex-valued parameters/semirings in SPFlow while still matching the
+    squared-magnitude semantics used by complex SOS models.
+
+    Args:
+        real: Circuit computing a(x).
+        imag: Circuit computing b(x).
+
+    Returns:
+        A `SOCS` module with two components.
+    """
+    if real.scope != imag.scope:
+        raise InvalidParameterError(
+            "build_complex_socs requires real and imag circuits to have identical scope."
+        )
+    if tuple(real.out_shape) != tuple(imag.out_shape):
+        raise InvalidParameterError(
+            "build_complex_socs requires real and imag circuits to have identical out_shape; "
+            f"got {tuple(real.out_shape)} vs {tuple(imag.out_shape)}."
+        )
+    return SOCS([real, imag])

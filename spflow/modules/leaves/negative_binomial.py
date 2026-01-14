@@ -9,15 +9,20 @@ from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
 
 
 class NegativeBinomial(LeafModule):
-    """Negative Binomial distribution leaf for modeling failures before r-th success.
+    """Negative Binomial distribution leaf matching ``torch.distributions.NegativeBinomial``.
 
-    Note: Parameter n (number of successes) is fixed and cannot be learned.
-    Success probability p is stored in logit-space for numerical stability.
+    In PyTorch, ``NegativeBinomial(total_count=r, probs=p)`` models the number of
+    **successes** observed before ``r`` failures occur, where each trial succeeds
+    with probability ``p``. This leaf uses that exact parameterization.
+
+    Notes:
+        - ``total_count`` (``r``) is fixed and cannot be learned.
+        - ``probs`` (``p``) is learnable and stored in logit-space for numerical stability.
 
     Attributes:
-        n: Fixed number of required successes (buffer).
-        p: Success probability in [0, 1] (stored in logit-space).
-        distribution: Underlying torch.distributions.NegativeBinomial.
+        total_count: Fixed number of failures before stopping (buffer).
+        probs: Success probability in ``[0, 1]`` (stored in logit-space).
+        distribution: Underlying ``torch.distributions.NegativeBinomial``.
     """
 
     def __init__(
@@ -37,7 +42,7 @@ class NegativeBinomial(LeafModule):
             scope: Scope object specifying the scope of the distribution.
             out_channels: Number of output channels (inferred from params if None).
             num_repetitions: Number of repetitions for the distribution.
-            total_count: Number of required successes tensor (required).
+            total_count: Number of failures before stopping (required).
             probs: Success probability tensor (optional).
             logits: Logits of the success probability.
             parameter_fn: Optional neural network for parameter generation.

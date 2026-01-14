@@ -57,7 +57,11 @@ def _children(module: Module) -> list[Module]:
     return []
 
 
-def _check_pair(a: Module, b: Module, *, path: str) -> None:
+def _check_pair(a: Module, b: Module, *, path: str, visited: set[tuple[int, int]]) -> None:
+    key = (id(a), id(b))
+    if key in visited:
+        return
+    visited.add(key)
     if type(a) is not type(b):
         raise StructureError(f"{path}: type mismatch: {type(a).__name__} vs {type(b).__name__}.")
 
@@ -92,7 +96,7 @@ def _check_pair(a: Module, b: Module, *, path: str) -> None:
     if len(ca) != len(cb):
         raise StructureError(f"{path}: child count mismatch: {len(ca)} vs {len(cb)}.")
     for i, (ai, bi) in enumerate(zip(ca, cb)):
-        _check_pair(ai, bi, path=f"{path}.inputs[{i}]")
+        _check_pair(ai, bi, path=f"{path}.inputs[{i}]", visited=visited)
 
 
 def check_compatible_components(components: list[Module]) -> None:
@@ -102,7 +106,7 @@ def check_compatible_components(components: list[Module]) -> None:
 
     ref = components[0]
     for i, other in enumerate(components[1:], start=1):
-        _check_pair(ref, other, path=f"components[0] vs components[{i}]")
+        _check_pair(ref, other, path=f"components[0] vs components[{i}]", visited=set())
 
 
 def check_socs_compatibility(model: SOCS) -> None:

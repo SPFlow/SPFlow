@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-import copy
 from typing import cast
 
 import numpy as np
@@ -118,20 +117,23 @@ class SOCS(Module):
 
     def _log_partition(self, cache: Cache) -> Tensor:
         """Compute log Z per output entry (shape: (F, C, R))."""
-        cached = cache.extras.get("socs_logZ")
+        cached = cache.get("socs_logZ", self)
         if cached is not None:
+            # Keep a convenient handle for downstream inspection/debugging.
+            cache.extras["socs_logZ"] = cached
             return cast(Tensor, cached)
 
         # Z[f,c,r] = Σ_i ∫ c_{i,f,c,r}(x)^2 dx;
         # each component contributes the diagonal of its self inner-product.
         z_parts = []
         for comp in self.components:
-            k = inner_product_matrix(cast(Module, comp), cast(Module, comp))  # (F, C, C, R)
+            k = inner_product_matrix(cast(Module, comp), cast(Module, comp), cache=cache)  # (F, C, C, R)
             diag = torch.diagonal(k, dim1=1, dim2=2)  # (F, R, C)
             z_parts.append(diag.permute(0, 2, 1))  # (F, C, R)
 
         Z = torch.stack(z_parts, dim=0).sum(dim=0)  # (F, C, R)
         logZ = torch.log(torch.clamp(Z, min=1e-30))
+        cache.set("socs_logZ", self, logZ)
         cache.extras["socs_logZ"] = logZ
         return logZ
 
@@ -221,7 +223,9 @@ class SOCS(Module):
         sampling_ctx = init_default_sampling_context(sampling_ctx, num_samples, data.device)
 
         # Mixture over components with weights proportional to Z_i
-        logZs = torch.stack([log_self_inner_product_scalar(cast(Module, c)) for c in self.components])
+        logZs = torch.stack(
+            [log_self_inner_product_scalar(cast(Module, c), cache=cache) for c in self.components]
+        )
         comp_idx = torch.distributions.Categorical(logits=logZs).sample((num_samples,))
 
         # MCMC settings (can be overridden via cache.extras)
@@ -245,47 +249,6 @@ class SOCS(Module):
             logabs, _sign = _signed_eval(mod, x, eval_cache)
             return (2.0 * logabs).sum(dim=1).squeeze(-1).squeeze(-1)  # (B,)
 
-        def _make_abs_proposal(mod: Module) -> Module:
-            """Return a monotone proposal q(x) by replacing SignedSum with Sum(|w|)."""
-            prop = copy.deepcopy(mod)
-
-            if isinstance(prop, SignedSum):
-                w = prop.weights.detach()
-                w = torch.abs(w) + w.new_tensor(1e-8)
-                w = w / w.sum(dim=1, keepdim=True).clamp_min(1e-12)
-                return Sum(
-                    inputs=cast(Module, prop.inputs),
-                    out_channels=prop.out_shape.channels,
-                    num_repetitions=prop.out_shape.repetitions,
-                    weights=w,
-                )
-
-            def _replace(node: Module) -> Module:
-                if isinstance(node, SignedSum):
-                    w = node.weights.detach()
-                    w = torch.abs(w) + w.new_tensor(1e-8)
-                    w = w / w.sum(dim=1, keepdim=True).clamp_min(1e-12)
-                    return Sum(
-                        inputs=cast(Module, node.inputs),
-                        out_channels=node.out_shape.channels,
-                        num_repetitions=node.out_shape.repetitions,
-                        weights=w,
-                    )
-                return node
-
-            def _walk(parent: torch.nn.Module) -> None:
-                for name, child in list(parent.named_children()):
-                    if not isinstance(child, Module):
-                        _walk(child)
-                        continue
-                    new_child = _replace(cast(Module, child))
-                    if new_child is not child:
-                        parent._modules[name] = new_child
-                    _walk(parent._modules[name])
-
-            _walk(prop)
-            return cast(Module, prop)
-
         # Sample per-component with an independence MH kernel:
         # target π(x) ∝ c_i(x)^2, proposal q(x) from a monotone PC (either c_i itself or abs-weight proxy).
         out = data.clone()
@@ -296,7 +259,13 @@ class SOCS(Module):
             n_i = int(mask.sum().item())
             comp_mod = cast(Module, comp)
             has_signed = _contains_signed_sum(comp_mod)
-            proposal = _make_abs_proposal(comp_mod) if has_signed else comp_mod
+            if has_signed:
+                # Local import to avoid a circular import: build_socs -> SOCS.
+                from spflow.zoo.sos.build_socs import build_abs_weight_proposal
+
+                proposal = build_abs_weight_proposal(comp_mod)
+            else:
+                proposal = comp_mod
 
             x = proposal.sample(num_samples=n_i)
             log_q_x = _joint_ll(proposal, x)
