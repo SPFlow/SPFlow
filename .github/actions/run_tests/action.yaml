@@ -27,26 +27,27 @@ runs:
       with:
         version: "0.9.6"
         enable-cache: true
-        python-version: ${{ matrix.version-python }}
+        python-version: ${{ inputs.version-python }}
 
 
     - name: Install library and dependencies
       shell: bash
       run: |
-        uv venv --python ${{ matrix.version-python }} && uv sync --extra dev
+        uv venv --python ${{ inputs.version-python }} && uv sync --extra dev
 
-    - name: Set up Torch ${{ matrix.version-pytorch }}
-      if: matrix.version-pytorch
+    - name: Set up Torch ${{ inputs.version-pytorch }}
+      if: ${{ inputs.version-pytorch != '' }}
       shell: bash
       run: |
-        uv pip install torch==${{ matrix.version-pytorch }} 
+        uv pip install torch==${{ inputs.version-pytorch }}
 
     - name: Test with pytest
       shell: bash
       run: |
-        uv run pytest --cov=spflow --cov-branch
+        uv run pytest --cov=spflow --cov-branch --cov-report=xml
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+        token: ${{ inputs.codecov-token }}
+        files: ./coverage.xml
