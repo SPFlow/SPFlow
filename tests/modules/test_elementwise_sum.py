@@ -4,10 +4,18 @@ import numpy as np
 import pytest
 import torch
 
-from spflow.exceptions import InvalidParameterCombinationError, ScopeError, ShapeError
+from spflow.exceptions import (
+    InvalidParameterCombinationError,
+    InvalidWeightsError,
+    MissingCacheError,
+    ScopeError,
+    ShapeError,
+)
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.meta import Scope
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.sums.elementwise_sum import ElementwiseSum
 from spflow.utils.cache import Cache
@@ -747,3 +755,152 @@ def test_feature_to_scope_consistency_across_inputs():
 
     # Validate all elements are Scope objects
     assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
+
+
+def test_constructor_rejects_num_repetitions_when_weights_are_provided():
+    in_channels = 2
+    out_channels = 3
+    out_features = 2
+    num_reps = 1
+    weights = torch.rand((out_features, in_channels, out_channels, 2, num_reps)) + 1.0
+    weights = weights / weights.sum(dim=3, keepdim=True)
+
+    leaves = [
+        make_normal_leaf(out_features=out_features, out_channels=in_channels, num_repetitions=num_reps),
+        make_normal_leaf(out_features=out_features, out_channels=in_channels, num_repetitions=num_reps),
+    ]
+    with pytest.raises(InvalidParameterCombinationError, match="num_repetitions"):
+        ElementwiseSum(inputs=leaves, weights=weights, num_repetitions=num_reps)
+
+
+def test_constructor_requires_out_channels_or_weights():
+    leaves = [
+        make_normal_leaf(out_features=1, out_channels=1),
+        make_normal_leaf(out_features=1, out_channels=1),
+    ]
+    with pytest.raises(ValueError, match="Either 'out_channels' or 'weights'"):
+        ElementwiseSum(inputs=leaves)
+
+
+def test_constructor_rejects_feature_to_scope_mismatch_per_repetition():
+    class _ToyModule(Module):
+        def __init__(self, feature_to_scope: np.ndarray) -> None:
+            super().__init__()
+            self.scope = Scope([0, 1])
+            self.in_shape = ModuleShape(features=2, channels=1, repetitions=2)
+            self.out_shape = ModuleShape(features=2, channels=1, repetitions=2)
+            self._feature_to_scope = feature_to_scope
+
+        @property
+        def feature_to_scope(self) -> np.ndarray:
+            return self._feature_to_scope
+
+        def log_likelihood(self, data: torch.Tensor, cache=None) -> torch.Tensor:  # pragma: no cover
+            raise NotImplementedError
+
+        def sample(
+            self, num_samples=None, data=None, is_mpe: bool = False, cache=None, sampling_ctx=None
+        ) -> torch.Tensor:  # pragma: no cover
+            raise NotImplementedError
+
+        def marginalize(self, marg_rvs: list[int], prune: bool = True, cache=None):  # pragma: no cover
+            raise NotImplementedError
+
+    good = np.array([[Scope([0]), Scope([0])], [Scope([1]), Scope([1])]], dtype=object)
+    bad = np.array([[Scope([0]), Scope([0, 1])], [Scope([1]), Scope([1])]], dtype=object)
+    with pytest.raises(ScopeError, match="feature to scope mapping"):
+        ElementwiseSum(inputs=[_ToyModule(good), _ToyModule(bad)], out_channels=1, num_repetitions=2)
+
+
+def test_weights_setter_rejects_non_positive_values():
+    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
+    invalid = module.weights.clone()
+    invalid[0, 0, 0, 0, 0] = 0.0
+    with pytest.raises(InvalidWeightsError, match="all positive"):
+        module.weights = invalid
+
+
+def test_log_weights_setter_rejects_invalid_shape():
+    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
+    with pytest.raises(ValueError, match="Invalid shape for weights"):
+        module.log_weights = torch.zeros((1,))
+
+
+def test_extra_repr_contains_weights_shape():
+    module = make_sum(in_channels=2, out_channels=3, out_features=2, num_repetitions=1)
+    assert "weights=" in module.extra_repr()
+
+
+def test_marginalize_with_non_overlapping_rvs_keeps_inputs():
+    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
+    marg = module.marginalize([99], prune=True)
+    assert marg is not None
+    assert len(marg.inputs) == len(module.inputs)
+
+
+def test_marginalize_returns_none_when_all_partially_marginalized_inputs_vanish(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
+    for inp in module.inputs:
+        monkeypatch.setattr(inp, "marginalize", lambda *args, **kwargs: None)
+    assert module.marginalize([0], prune=True, cache=Cache()) is None
+
+
+def test_sample_requires_repetition_index_for_multiple_repetitions():
+    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=2)
+    data = torch.full((4, 2), torch.nan)
+    sampling_ctx = SamplingContext(
+        channel_index=torch.zeros((4, 2), dtype=torch.long),
+        mask=torch.ones((4, 2), dtype=torch.bool),
+        repetition_index=None,
+    )
+    with pytest.raises(ValueError, match="sampling_ctx.repetition_idx must be provided"):
+        module.sample(data=data, sampling_ctx=sampling_ctx)
+
+
+def test_sample_mpe_path_runs():
+    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
+    data = torch.full((4, 2), torch.nan)
+    sampling_ctx = SamplingContext(
+        channel_index=torch.zeros((4, 2), dtype=torch.long),
+        mask=torch.ones((4, 2), dtype=torch.bool),
+    )
+    samples = module.sample(data=data, is_mpe=True, sampling_ctx=sampling_ctx)
+    assert torch.isfinite(samples).all()
+
+
+def test_expectation_maximization_initializes_cache_when_missing():
+    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
+    with pytest.raises(MissingCacheError, match="Input log-likelihoods not found"):
+        module.expectation_maximization(torch.randn(3, 2), cache=None)
+
+
+def test_expectation_maximization_raises_when_module_ll_missing():
+    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
+    cache = Cache()
+    for inp in module.inputs:
+        cache.set(
+            "log_likelihood",
+            inp,
+            torch.zeros(
+                (2, module.out_shape.features, module.in_shape.channels, module.out_shape.repetitions)
+            ),
+        )
+    with pytest.raises(MissingCacheError, match="Module log-likelihood not found in cache"):
+        module.expectation_maximization(torch.randn(2, 2), cache=cache)
+
+
+def test_maximum_likelihood_estimation_delegates_to_expectation_maximization(monkeypatch: pytest.MonkeyPatch):
+    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
+    called: dict[str, object] = {}
+
+    def _fake_em(data: torch.Tensor, cache=None) -> None:
+        called["shape"] = data.shape
+        called["cache"] = cache
+
+    monkeypatch.setattr(module, "expectation_maximization", _fake_em)
+    cache = Cache()
+    module.maximum_likelihood_estimation(torch.randn(5, 2), cache=cache)
+    assert called["shape"] == (5, 2)
+    assert called["cache"] is cache

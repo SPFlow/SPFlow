@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 import torch
 
+from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
 from spflow.meta import Scope
 from spflow.modules import leaves
 from spflow.modules.leaves import Normal, Bernoulli
@@ -307,3 +308,233 @@ def test_rat_spn_feature_to_scope_split_variants():
         assert np.array_equal(feature_scopes, model.root_node.feature_to_scope)
         assert len(feature_scopes[0, 0].query) == num_features
         assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
+
+
+class _DummyOutShape:
+    def __init__(self, channels: int):
+        self.channels = channels
+
+
+class _DummyLeaf:
+    def __init__(self, channels: int):
+        self.out_shape = _DummyOutShape(channels=channels)
+        self.scope = Scope([0])
+
+
+def test_constructor_rejects_invalid_hyperparameters():
+    valid_leaf = make_leaf(cls=Normal, out_channels=2, out_features=4, num_repetitions=1)
+
+    with pytest.raises(InvalidParameterError, match="n_root_nodes"):
+        RatSPN(
+            leaf_modules=[valid_leaf],
+            n_root_nodes=0,
+            n_region_nodes=1,
+            num_repetitions=1,
+            depth=1,
+        )
+
+    with pytest.raises(InvalidParameterError, match="n_region_nodes"):
+        RatSPN(
+            leaf_modules=[valid_leaf],
+            n_root_nodes=1,
+            n_region_nodes=0,
+            num_repetitions=1,
+            depth=1,
+        )
+
+    with pytest.raises(InvalidParameterError, match="n_leaf_nodes"):
+        RatSPN(
+            leaf_modules=[_DummyLeaf(channels=0)],
+            n_root_nodes=1,
+            n_region_nodes=1,
+            num_repetitions=1,
+            depth=1,
+        )
+
+    with pytest.raises(InvalidParameterError, match="num_splits"):
+        RatSPN(
+            leaf_modules=[valid_leaf],
+            n_root_nodes=1,
+            n_region_nodes=1,
+            num_repetitions=1,
+            depth=1,
+            split_mode=SplitMode.consecutive(),
+            num_splits=1,
+        )
+
+
+def test_n_out_and_scopes_out_delegate_to_root_node():
+    module = make_rat_spn(
+        leaf_cls=Normal,
+        depth=1,
+        n_region_nodes=2,
+        num_leaves=2,
+        num_repetitions=1,
+        n_root_nodes=2,
+        num_features=8,
+        outer_product=False,
+        split_mode=SplitMode.consecutive(),
+    )
+
+    monkey_scopes_out = [module.scope]
+    setattr(module.root_node, "scopes_out", monkey_scopes_out)
+
+    assert module.n_out == 1
+    assert module.scopes_out == monkey_scopes_out
+
+
+def test_log_posterior_raises_for_single_class():
+    module = make_rat_spn(
+        leaf_cls=Normal,
+        depth=1,
+        n_region_nodes=2,
+        num_leaves=2,
+        num_repetitions=1,
+        n_root_nodes=1,
+        num_features=6,
+        outer_product=False,
+        split_mode=SplitMode.consecutive(),
+    )
+    data = make_data(cls=Normal, out_features=6, n_samples=3)
+
+    with pytest.raises(UnsupportedOperationError, match="multiple classes"):
+        module.log_posterior(data)
+
+
+def test_log_posterior_and_predict_proba_shapes():
+    module = make_rat_spn(
+        leaf_cls=Normal,
+        depth=1,
+        n_region_nodes=2,
+        num_leaves=2,
+        num_repetitions=1,
+        n_root_nodes=3,
+        num_features=6,
+        outer_product=False,
+        split_mode=SplitMode.consecutive(),
+    )
+    data = make_data(cls=Normal, out_features=6, n_samples=5)
+
+    log_post = module.log_posterior(data)
+    proba = module.predict_proba(data)
+
+    assert log_post.shape == (data.shape[0], 3)
+    assert proba.shape == (data.shape[0], 3)
+    assert torch.allclose(proba.sum(dim=1), torch.ones(data.shape[0]), atol=1e-5)
+
+
+def test_sample_initializes_channel_index_for_mpe_and_stochastic(monkeypatch):
+    module = make_rat_spn(
+        leaf_cls=Normal,
+        depth=1,
+        n_region_nodes=2,
+        num_leaves=2,
+        num_repetitions=1,
+        n_root_nodes=3,
+        num_features=6,
+        outer_product=False,
+        split_mode=SplitMode.consecutive(),
+    )
+    data = torch.full((4, 6), torch.nan)
+    monkeypatch.setattr(
+        module.root_node,
+        "logits",
+        torch.nn.Parameter(torch.zeros(1, module.n_root_nodes, 1)),
+    )
+
+    captured: dict[str, SamplingContext] = {}
+    original_sample = module.root_node.inputs.sample
+
+    def capture_sample(*args, **kwargs):
+        captured["ctx"] = kwargs["sampling_ctx"]
+        return original_sample(*args, **kwargs)
+
+    monkeypatch.setattr(module.root_node.inputs, "sample", capture_sample)
+
+    module.sample(data=data, is_mpe=True, sampling_ctx=None)
+    mpe_channel_index = captured["ctx"].channel_index
+    assert mpe_channel_index is not None
+    assert mpe_channel_index.shape[0] == data.shape[0]
+
+    module.sample(data=data, is_mpe=False, sampling_ctx=None)
+    random_channel_index = captured["ctx"].channel_index
+    assert random_channel_index is not None
+    assert random_channel_index.shape[0] == data.shape[0]
+
+
+def test_sample_raises_when_logits_shape_is_invalid(monkeypatch):
+    module = make_rat_spn(
+        leaf_cls=Normal,
+        depth=1,
+        n_region_nodes=2,
+        num_leaves=2,
+        num_repetitions=1,
+        n_root_nodes=3,
+        num_features=6,
+        outer_product=False,
+        split_mode=SplitMode.consecutive(),
+    )
+    data = torch.full((2, 6), torch.nan)
+
+    monkeypatch.setattr(
+        module.root_node,
+        "logits",
+        torch.nn.Parameter(torch.zeros(1, module.n_root_nodes + 1, 1)),
+    )
+    with pytest.raises(InvalidParameterError, match="Expected logits shape"):
+        module.sample(data=data, sampling_ctx=None)
+
+
+def test_expectation_maximization_and_mle_delegate(monkeypatch):
+    module = make_rat_spn(
+        leaf_cls=Normal,
+        depth=1,
+        n_region_nodes=2,
+        num_leaves=2,
+        num_repetitions=1,
+        n_root_nodes=2,
+        num_features=6,
+        outer_product=False,
+        split_mode=SplitMode.consecutive(),
+    )
+    data = make_data(cls=Normal, out_features=6, n_samples=3)
+    weights = torch.ones((3, 1, 1, 1))
+
+    called = {"em": False, "mle": False}
+
+    def fake_em(data_arg, cache=None):
+        called["em"] = True
+
+    def fake_mle(data_arg, weights=None, cache=None):
+        called["mle"] = True
+
+    monkeypatch.setattr(module.root_node, "expectation_maximization", fake_em)
+    monkeypatch.setattr(module.root_node, "maximum_likelihood_estimation", fake_mle)
+
+    module.expectation_maximization(data)
+    module.maximum_likelihood_estimation(data, weights=weights)
+
+    assert called["em"]
+    assert called["mle"]
+
+
+def test_marginalize_delegates_to_root_node(monkeypatch):
+    module = make_rat_spn(
+        leaf_cls=Normal,
+        depth=1,
+        n_region_nodes=2,
+        num_leaves=2,
+        num_repetitions=1,
+        n_root_nodes=2,
+        num_features=6,
+        outer_product=False,
+        split_mode=SplitMode.consecutive(),
+    )
+
+    sentinel = object()
+
+    def fake_marginalize(marg_rvs, prune=True, cache=None):
+        return sentinel
+
+    monkeypatch.setattr(module.root_node, "marginalize", fake_marginalize)
+    assert module.marginalize([0, 1]) is sentinel

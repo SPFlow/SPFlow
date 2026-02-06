@@ -7,7 +7,7 @@ import torch
 
 from spflow.meta import Scope
 from spflow.modules.einsum import EinsumLayer
-from spflow.modules.ops.split import Split
+from spflow.modules.ops.split import Split, SplitMode
 from spflow.modules.ops.split_consecutive import SplitConsecutive
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
@@ -645,3 +645,180 @@ class TestEinsumLayerEMTwoInputs:
 
         with pytest.raises(ValueError, match="not in cache"):
             module.expectation_maximization(data, cache=cache)
+
+
+class TestEinsumLayerCoverageBranches:
+    """Targeted branch-coverage tests for EinsumLayer."""
+
+    def test_invalid_input_list_length_raises(self):
+        leaf = make_normal_leaf(out_features=4, out_channels=2, num_repetitions=1)
+        with pytest.raises(ValueError, match="exactly 2 input modules"):
+            EinsumLayer(inputs=[leaf], out_channels=2)
+
+    def test_invalid_two_inputs_feature_mismatch_raises(self):
+        left = make_leaf(cls=DummyLeaf, out_channels=2, scope=Scope([0, 1]), num_repetitions=1)
+        right = make_leaf(cls=DummyLeaf, out_channels=2, scope=Scope([2, 3, 4]), num_repetitions=1)
+        with pytest.raises(ValueError, match="same number of features"):
+            EinsumLayer(inputs=[left, right], out_channels=2)
+
+    def test_invalid_two_inputs_repetition_mismatch_raises(self):
+        left = make_leaf(cls=DummyLeaf, out_channels=2, scope=Scope([0, 1]), num_repetitions=1)
+        right = make_leaf(cls=DummyLeaf, out_channels=2, scope=Scope([2, 3]), num_repetitions=2)
+        with pytest.raises(ValueError, match="same number of repetitions"):
+            EinsumLayer(inputs=[left, right], out_channels=2)
+
+    def test_invalid_out_channels_raises(self):
+        inputs = make_normal_leaf(out_features=4, out_channels=2, num_repetitions=1)
+        with pytest.raises(ValueError, match="out_channels must be >= 1"):
+            EinsumLayer(inputs=inputs, out_channels=0)
+
+    def test_invalid_init_weight_shape_raises(self):
+        inputs = make_normal_leaf(out_features=4, out_channels=2, num_repetitions=1)
+        with pytest.raises(ValueError, match="Weight shape mismatch"):
+            EinsumLayer(inputs=inputs, out_channels=3, weights=torch.rand(1, 2, 3))
+
+    def test_set_non_positive_weights_raises(self):
+        module = make_einsum_single_input(2, 3, 4, 1)
+        invalid = module.weights.clone()
+        invalid[0, 0, 0, 0, 0] = 0.0
+        invalid[0, 0, 0, 0, 1] = 1.0
+        invalid[0, 0, 0, 1, 0] = 1e-8
+        invalid[0, 0, 0, 1, 1] = 1e-8
+        invalid = invalid / invalid.sum(dim=(-2, -1), keepdim=True)
+        with pytest.raises(ValueError, match="positive"):
+            module.weights = invalid
+
+    def test_set_invalid_log_weights_shape_raises(self):
+        module = make_einsum_single_input(2, 3, 4, 1)
+        with pytest.raises(ValueError, match="Log weight shape mismatch"):
+            module.log_weights = torch.zeros(1, 2, 3)
+
+    def test_feature_to_scope_single_input(self):
+        module = make_einsum_single_input(2, 3, 4, 1)
+        mapping = module.feature_to_scope
+        assert mapping.shape == (2, 1)
+        assert set(mapping[0, 0].query) == {0, 1}
+        assert set(mapping[1, 0].query) == {2, 3}
+
+    def test_feature_to_scope_two_inputs(self):
+        module = make_einsum_two_inputs(2, 3, 2, 1)
+        mapping = module.feature_to_scope
+        assert mapping.shape == (2, 1)
+        assert set(mapping[0, 0].query) == {0, 2}
+        assert set(mapping[1, 0].query) == {1, 3}
+
+    def test_sample_requires_repetition_index_for_multi_rep(self):
+        module = make_einsum_single_input(2, 3, 4, 2)
+        num_samples = 5
+        data = torch.full((num_samples, 4), torch.nan)
+        channel_index = torch.zeros((num_samples, module.out_shape.features), dtype=torch.long)
+        mask = torch.ones((num_samples, module.out_shape.features), dtype=torch.bool)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
+
+        with pytest.raises(ValueError, match="repetition_idx must be provided"):
+            module.sample(data=data, sampling_ctx=sampling_ctx)
+
+    def test_sample_two_inputs_uses_cached_log_likelihoods(self):
+        module = make_einsum_two_inputs(2, 3, 4, 2)
+        batch_size = 8
+        data = torch.full((batch_size, 8), torch.nan)
+        channel_index = torch.randint(0, module.out_shape.channels, (batch_size, module.out_shape.features))
+        mask = torch.ones((batch_size, module.out_shape.features), dtype=torch.bool)
+        repetition_index = torch.randint(0, module.out_shape.repetitions, (batch_size,))
+        sampling_ctx = SamplingContext(
+            channel_index=channel_index,
+            mask=mask,
+            repetition_index=repetition_index,
+        )
+
+        left_ll = torch.randn(
+            batch_size,
+            module.out_shape.features,
+            module._left_channels,
+            module.out_shape.repetitions,
+        )
+        right_ll = torch.randn(
+            batch_size,
+            module.out_shape.features,
+            module._right_channels,
+            module.out_shape.repetitions,
+        )
+        cache = Cache()
+        cache["log_likelihood"][module.inputs[0]] = left_ll
+        cache["log_likelihood"][module.inputs[1]] = right_ll
+
+        samples = module.sample(data=data, cache=cache, sampling_ctx=sampling_ctx, is_mpe=True)
+        assert samples.shape == data.shape
+        assert torch.isfinite(samples[:, module.scope.query]).all()
+
+    def test_expectation_maximization_creates_cache_if_none(self):
+        module = make_einsum_single_input(2, 3, 4, 1)
+        data = make_normal_data(out_features=4, num_samples=6)
+        with pytest.raises(ValueError, match="not in cache"):
+            module.expectation_maximization(data, cache=None)
+
+    def test_mle_delegates_to_em(self, monkeypatch):
+        module = make_einsum_single_input(2, 3, 4, 1)
+        data = make_normal_data(out_features=4, num_samples=4)
+        cache = Cache()
+        called = {}
+
+        def _fake_em(data_arg, bias_correction=True, cache=None):
+            called["data"] = data_arg
+            called["bias_correction"] = bias_correction
+            called["cache"] = cache
+
+        monkeypatch.setattr(module, "expectation_maximization", _fake_em)
+        module.maximum_likelihood_estimation(data, bias_correction=False, cache=cache)
+
+        assert called["data"] is data
+        assert called["bias_correction"] is False
+        assert called["cache"] is cache
+
+    def test_marginalize_two_inputs_branch_outcomes(self, monkeypatch):
+        module = make_einsum_two_inputs(2, 3, 4, 1)
+        monkeypatch.setattr(module.inputs[0], "marginalize", lambda *args, **kwargs: None)
+        monkeypatch.setattr(module.inputs[1], "marginalize", lambda *args, **kwargs: None)
+        assert module.marginalize([0]) is None
+
+        module = make_einsum_two_inputs(2, 3, 4, 1)
+        right_keep = module.inputs[1]
+        monkeypatch.setattr(module.inputs[0], "marginalize", lambda *args, **kwargs: None)
+        monkeypatch.setattr(module.inputs[1], "marginalize", lambda *args, **kwargs: right_keep)
+        assert module.marginalize([0]) is right_keep
+
+        module = make_einsum_two_inputs(2, 3, 4, 1)
+        left_keep = module.inputs[0]
+        monkeypatch.setattr(module.inputs[0], "marginalize", lambda *args, **kwargs: left_keep)
+        monkeypatch.setattr(module.inputs[1], "marginalize", lambda *args, **kwargs: None)
+        assert module.marginalize([0]) is left_keep
+
+        module = make_einsum_two_inputs(2, 3, 4, 1)
+        monkeypatch.setattr(module.inputs[0], "marginalize", lambda *args, **kwargs: module.inputs[0])
+        monkeypatch.setattr(module.inputs[1], "marginalize", lambda *args, **kwargs: module.inputs[1])
+        rebuilt = module.marginalize([0])
+        assert isinstance(rebuilt, EinsumLayer)
+        assert rebuilt._two_inputs
+
+    def test_marginalize_single_input_branch_outcomes(self, monkeypatch):
+        module = make_einsum_single_input(2, 3, 4, 1)
+        monkeypatch.setattr(module.inputs.inputs, "marginalize", lambda *args, **kwargs: None)
+        assert module.marginalize([0]) is None
+
+        module = make_einsum_single_input(2, 3, 4, 1)
+        small_input = make_normal_leaf(out_features=1, out_channels=2, num_repetitions=1)
+        monkeypatch.setattr(module.inputs.inputs, "marginalize", lambda *args, **kwargs: small_input)
+        assert module.marginalize([0]) is small_input
+
+        module = make_einsum_single_input(2, 3, 6, 1)
+        even_input = make_normal_leaf(out_features=4, out_channels=2, num_repetitions=1)
+        monkeypatch.setattr(module.inputs.inputs, "marginalize", lambda *args, **kwargs: even_input)
+        rebuilt = module.marginalize([0])
+        assert isinstance(rebuilt, EinsumLayer)
+
+    def test_split_mode_factory_path_is_used(self):
+        leaf = make_normal_leaf(out_features=4, out_channels=2, num_repetitions=1)
+        module = EinsumLayer(inputs=leaf, out_channels=3, split_mode=SplitMode.interleaved(num_splits=2))
+        from spflow.modules.ops.split_interleaved import SplitInterleaved
+
+        assert isinstance(module.inputs, SplitInterleaved)

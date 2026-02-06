@@ -1,12 +1,18 @@
 import math
 
+import pytest
 import torch
 
+from spflow.exceptions import ShapeError, UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.bernoulli import Bernoulli
 from spflow.modules.leaves.categorical import Categorical
 from spflow.modules.leaves.normal import Normal
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
+from spflow.modules.products.product import Product
 from spflow.modules.sos.socs import SOCS
+from spflow.modules.sos.socs import _signed_eval
 from spflow.modules.sums.signed_sum import SignedSum
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
@@ -319,3 +325,152 @@ def test_socs_log_partition_cache_is_per_module():
     torch.testing.assert_close(logZ2, expected2, rtol=0.0, atol=1e-6)
 
     assert not torch.allclose(logZ1, logZ2)
+
+
+class _MargNoneModule(Module):
+    def __init__(self, scope: Scope, out_channels: int = 1) -> None:
+        super().__init__()
+        self.scope = scope
+        self.in_shape = ModuleShape(features=len(scope.query), channels=1, repetitions=1)
+        self.out_shape = ModuleShape(features=1, channels=out_channels, repetitions=1)
+        self._feature_to_scope = torch.tensor([[0]], dtype=torch.int64).numpy()
+
+    @property
+    def feature_to_scope(self):
+        return self._feature_to_scope
+
+    def log_likelihood(self, data: torch.Tensor, cache=None) -> torch.Tensor:
+        return torch.zeros(
+            (data.shape[0], 1, self.out_shape.channels, 1), dtype=data.dtype, device=data.device
+        )
+
+    def sample(
+        self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None
+    ) -> torch.Tensor:
+        n = 1 if num_samples is None else num_samples
+        return torch.zeros((n, len(self.scope.query)))
+
+    def expectation_maximization(self, data, bias_correction=True, cache=None) -> None:
+        return None
+
+    def maximum_likelihood_estimation(self, data, weights=None, cache=None) -> None:
+        return None
+
+    def marginalize(self, marg_rvs, prune=True, cache=None):
+        return None
+
+
+def test_socs_constructor_validation_and_feature_scope():
+    with pytest.raises(ValueError, match="at least one component"):
+        SOCS([])
+
+    c0 = Normal(scope=Scope([0]), out_channels=1, num_repetitions=1)
+    c1 = Normal(scope=Scope([1]), out_channels=1, num_repetitions=1)
+    with pytest.raises(ShapeError, match="identical scope"):
+        SOCS([c0, c1])
+
+    c2 = Normal(scope=Scope([0]), out_channels=2, num_repetitions=1)
+    with pytest.raises(ShapeError, match="identical out_shape"):
+        SOCS([c0, c2])
+
+    model = SOCS([c0])
+    assert model.feature_to_scope.shape == c0.feature_to_scope.shape
+
+
+def test_socs_signed_eval_sum_product_and_cache_hit():
+    x0 = Normal(scope=Scope([0]), out_channels=1, num_repetitions=1)
+    x1 = Normal(scope=Scope([1]), out_channels=1, num_repetitions=1)
+    mix = Sum(inputs=[x0, x0], out_channels=1, num_repetitions=1)
+    prod = Product([x0, x1])
+
+    data = torch.zeros((3, 2))
+    cache = Cache()
+
+    sum_logabs, sum_sign = _signed_eval(mix, data[:, :1], cache)
+    assert sum_logabs.shape == (3, 1, 1, 1)
+    assert torch.equal(sum_sign, torch.ones_like(sum_sign, dtype=torch.int8))
+
+    cached_logabs, cached_sign = _signed_eval(mix, data[:, :1], cache)
+    assert cached_logabs is sum_logabs
+    assert cached_sign is sum_sign
+
+    prod_logabs, prod_sign = _signed_eval(prod, data, Cache())
+    assert prod_logabs.shape == (3, 1, 1, 1)
+    assert prod_sign.shape == (3, 1, 1, 1)
+
+
+def test_socs_log_partition_cache_hit_and_unsupported_methods():
+    comp = _make_normal_component(mu=0.0, sigma=1.0)
+    model = SOCS([comp])
+    x = torch.zeros((2, 1))
+    cache = Cache()
+    _ = model.log_likelihood(x, cache=cache)
+    first = cache.extras["socs_logZ"]
+    _ = model.log_likelihood(x, cache=cache)
+    second = cache.extras["socs_logZ"]
+    assert first is second
+
+    with pytest.raises(UnsupportedOperationError, match="expectation-maximization"):
+        model.expectation_maximization(x)
+    with pytest.raises(UnsupportedOperationError, match="maximum-likelihood"):
+        model.maximum_likelihood_estimation(x)
+
+
+def test_socs_marginalize_none_and_prune_paths():
+    model_none = SOCS([_MargNoneModule(scope=Scope([0]))])
+    assert model_none.marginalize([0], prune=True) is None
+
+    comp = Product(
+        [
+            Normal(scope=Scope([0]), out_channels=1, num_repetitions=1),
+            Normal(scope=Scope([1]), out_channels=1, num_repetitions=1),
+        ]
+    )
+    model = SOCS([comp])
+    out_prune = model.marginalize([0], prune=True)
+    out_no_prune = model.marginalize([0], prune=False)
+    assert isinstance(out_prune, SOCS)
+    assert isinstance(out_no_prune, SOCS)
+
+
+def test_socs_sample_error_paths_and_default_num_samples():
+    scalar = _make_normal_component(mu=0.0, sigma=1.0)
+    model = SOCS([scalar])
+
+    with pytest.raises(UnsupportedOperationError, match="SOCS.mpe"):
+        model.sample(is_mpe=True)
+
+    with pytest.raises(UnsupportedOperationError, match="conditional sampling"):
+        model.sample(data=torch.zeros((2, 1)))
+
+    non_scalar = SOCS([Normal(scope=Scope([0]), out_channels=2, num_repetitions=1)])
+    with pytest.raises(UnsupportedOperationError, match="scalar-output circuits"):
+        non_scalar.sample(num_samples=1)
+
+    cache_bad_steps = Cache()
+    cache_bad_steps.extras["socs_mcmc_steps"] = 0
+    with pytest.raises(ValueError, match="socs_mcmc_steps"):
+        model.sample(num_samples=1, cache=cache_bad_steps)
+
+    cache_bad_burn = Cache()
+    cache_bad_burn.extras["socs_mcmc_burn_in"] = -1
+    with pytest.raises(ValueError, match="socs_mcmc_burn_in"):
+        model.sample(num_samples=1, cache=cache_bad_burn)
+
+    out = model.sample()
+    assert out.shape == (1, 1)
+
+    nan_data = torch.full((4, 1), float("nan"))
+    out_data = model.sample(data=nan_data)
+    assert out_data.shape == (4, 1)
+
+
+def test_socs_sample_component_loop_continue_branch():
+    comp0 = _make_normal_component(mu=0.0, sigma=1.0)
+    comp1 = _make_normal_component(mu=0.5, sigma=1.1)
+    model = SOCS([comp0, comp1])
+    cache = Cache()
+    cache.extras["socs_mcmc_steps"] = 1
+    cache.extras["socs_mcmc_burn_in"] = 0
+    samples = model.sample(num_samples=1, cache=cache)
+    assert samples.shape == (1, 1)

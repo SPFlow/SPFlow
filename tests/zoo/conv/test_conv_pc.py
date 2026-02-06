@@ -353,3 +353,54 @@ class TestConvPcConditionalSample:
             atol=0.0,
             equal_nan=True,
         )
+
+
+# Additional branch-focused conv_pc tests
+from spflow.zoo.conv.conv_pc import compute_non_overlapping_kernel_and_padding
+
+
+def _leaf(h: int, w: int, c: int = 1, r: int = 1) -> Normal:
+    return Normal(scope=Scope(list(range(h * w))), out_channels=c, num_repetitions=r)
+
+
+def test_kernel_padding_validation_and_constructor_guards():
+    with pytest.raises(ValueError, match="positive"):
+        compute_non_overlapping_kernel_and_padding(0, 1, 1, 1)
+
+    with pytest.raises(ValueError, match="depth"):
+        ConvPc(leaf=_leaf(4, 4), input_height=4, input_width=4, channels=2, depth=0)
+
+    with pytest.raises(ValueError, match="channels"):
+        ConvPc(leaf=_leaf(4, 4), input_height=4, input_width=4, channels=0, depth=1)
+
+
+def test_feature_scope_repr_cache_and_delegate_paths(monkeypatch):
+    model = ConvPc(leaf=_leaf(4, 4), input_height=4, input_width=4, channels=2, depth=1, num_repetitions=1)
+    assert model.feature_to_scope.shape[0] == 1
+    assert "depth=1" in model.extra_repr()
+
+    # log_likelihood cache=None branch
+    x = torch.randn(3, 16)
+    ll = model.log_likelihood(x, cache=None)
+    assert ll.shape[0] == 3
+
+    # sample data=None/num_samples=None branch
+    s = model.sample(num_samples=None, data=None)
+    assert s.shape == (1, 16)
+
+    em_called = {"n": 0}
+
+    def _fake_em(data, cache=None, bias_correction=True):
+        em_called["n"] += 1
+
+    monkeypatch.setattr(model.inputs, "expectation_maximization", _fake_em)
+    model.expectation_maximization(x, cache=None)
+    assert em_called["n"] == 1
+
+    sentinel = object()
+
+    def _fake_marginalize(marg_rvs, prune=True, cache=None):
+        return sentinel
+
+    monkeypatch.setattr(model.inputs, "marginalize", _fake_marginalize)
+    assert model.marginalize([0]) is sentinel

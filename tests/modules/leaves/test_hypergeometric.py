@@ -134,3 +134,148 @@ def test_hypergeometric_log_likelihood_handles_nans_without_broadcast_errors():
     marg_mask = torch.isnan(data).unsqueeze(2).unsqueeze(-1).expand_as(log_prob)
     assert marg_mask.any()
     torch.testing.assert_close(log_prob[marg_mask], torch.zeros_like(log_prob[marg_mask]))
+
+
+def test_align_support_mask_expands_lower_rank_mask():
+    """Support masks with fewer dims are reshaped/sliced/expanded to match data."""
+    K = torch.full((1, 1, 1), 2.0)
+    N = torch.full((1, 1, 1), 5.0)
+    n = torch.full((1, 1, 1), 2.0)
+    distribution = make_leaf(K=K, N=N, n=n).distribution
+
+    mask = torch.tensor([[True, False]])
+    data = torch.zeros((2, 2, 3))
+    aligned = distribution._align_support_mask(mask, data)
+
+    assert aligned.shape == data.shape
+    assert torch.all(aligned[:, 0, :])
+    assert torch.all(~aligned[:, 1, :])
+
+
+def test_align_support_mask_raises_on_rank_mismatch():
+    """Support mask rank greater than data rank should fail early."""
+    K = torch.full((1, 1, 1), 2.0)
+    N = torch.full((1, 1, 1), 5.0)
+    n = torch.full((1, 1, 1), 2.0)
+    distribution = make_leaf(K=K, N=N, n=n).distribution
+
+    mask = torch.ones((2, 2, 2), dtype=torch.bool)
+    data = torch.zeros((2, 2))
+    with pytest.raises(RuntimeError, match="Support mask rank"):
+        distribution._align_support_mask(mask, data)
+
+
+def test_align_support_mask_raises_on_incompatible_shapes():
+    """Same-rank but non-broadcastable masks should raise a clear error."""
+    K = torch.full((1, 1, 1), 2.0)
+    N = torch.full((1, 1, 1), 5.0)
+    n = torch.full((1, 1, 1), 2.0)
+    distribution = make_leaf(K=K, N=N, n=n).distribution
+
+    mask = torch.ones((2, 3), dtype=torch.bool)
+    data = torch.zeros((2, 4))
+    with pytest.raises(RuntimeError, match="Support mask shape"):
+        distribution._align_support_mask(mask, data)
+
+
+def test_hypergeometric_check_support_raises_for_out_of_support_values():
+    """check_support should reject non-integer/out-of-range values."""
+    shape = (2, 1, 1)
+    K = torch.full(shape, 4.0)
+    N = torch.full(shape, 10.0)
+    n = torch.full(shape, 3.0)
+    leaf = make_leaf(K=K, N=N, n=n)
+
+    data = torch.tensor([[0.0, 1.0], [3.0, 5.0]])
+    with pytest.raises(ValueError, match="outside of support"):
+        leaf.distribution.check_support(data)
+
+
+def test_hypergeometric_check_support_delegates_and_returns_mask():
+    """Leaf check_support delegates and returns a boolean validity mask."""
+    K = torch.full((1, 1, 1), 2.0)
+    N = torch.full((1, 1, 1), 5.0)
+    n = torch.full((1, 1, 1), 2.0)
+    leaf = make_leaf(K=K, N=N, n=n)
+
+    data = torch.tensor([[0.0], [1.0], [2.0], [float("nan")]])
+    mask = leaf.check_support(data)
+    assert mask.dtype == torch.bool
+    assert torch.all(mask)
+
+
+def test_hypergeometric_sample_accepts_int_sample_count():
+    """Sampling should also accept integer sample counts (not only tuples)."""
+    K = torch.full((1, 1, 1), 2.0)
+    N = torch.full((1, 1, 1), 5.0)
+    n = torch.full((1, 1, 1), 2.0)
+    distribution = make_leaf(K=K, N=N, n=n).distribution
+
+    samples = distribution.sample(7)
+    assert samples.shape == (7, 1, 1, 1)
+
+
+def test_constructor_rejects_non_integer_N():
+    K = torch.full((1, 1, 1), 2.0)
+    N = torch.full((1, 1, 1), 5.5)
+    n = torch.full((1, 1, 1), 2.0)
+    with pytest.raises(ValueError, match="Value of 'N'.*integer value"):
+        make_leaf(K=K, N=N, n=n)
+
+
+def test_constructor_rejects_non_integer_K():
+    K = torch.full((1, 1, 1), 2.5)
+    N = torch.full((1, 1, 1), 5.0)
+    n = torch.full((1, 1, 1), 2.0)
+    with pytest.raises(ValueError, match="Values of 'K'.*integer value"):
+        make_leaf(K=K, N=N, n=n)
+
+
+def test_constructor_rejects_non_integer_n():
+    K = torch.full((1, 1, 1), 2.0)
+    N = torch.full((1, 1, 1), 5.0)
+    n = torch.full((1, 1, 1), 2.5)
+    with pytest.raises(ValueError, match="Value of 'n'.*integer value"):
+        make_leaf(K=K, N=N, n=n)
+
+
+def test_constructor_rejects_scopewise_inconsistent_N():
+    K = torch.tensor([[[2.0]], [[2.0]]])
+    N = torch.tensor([[[5.0]], [[6.0]]])
+    n = torch.tensor([[[2.0]], [[2.0]]])
+    with pytest.raises(ValueError, match="All values of 'N'.*same scope"):
+        make_leaf(K=K, N=N, n=n)
+
+
+def test_constructor_rejects_scopewise_inconsistent_K():
+    K = torch.tensor([[[2.0]], [[3.0]]])
+    N = torch.tensor([[[5.0]], [[5.0]]])
+    n = torch.tensor([[[2.0]], [[2.0]]])
+    with pytest.raises(ValueError, match="All values of 'K'.*same scope"):
+        make_leaf(K=K, N=N, n=n)
+
+
+def test_constructor_rejects_scopewise_inconsistent_n():
+    K = torch.tensor([[[2.0]], [[2.0]]])
+    N = torch.tensor([[[5.0]], [[5.0]]])
+    n = torch.tensor([[[2.0]], [[3.0]]])
+    with pytest.raises(ValueError, match="All values of 'n'.*same scope"):
+        make_leaf(K=K, N=N, n=n)
+
+
+def test_set_mle_parameters_is_noop_for_fixed_hypergeometric_params():
+    """Hypergeometric parameters are fixed buffers; setting MLE params is a no-op."""
+    K = torch.full((1, 1, 1), 2.0)
+    N = torch.full((1, 1, 1), 5.0)
+    n = torch.full((1, 1, 1), 2.0)
+    leaf = make_leaf(K=K, N=N, n=n)
+
+    original = leaf.params()
+    leaf._set_mle_parameters(
+        {"K": torch.full_like(K, 1.0), "N": torch.full_like(N, 8.0), "n": torch.full_like(n, 1.0)}
+    )
+    after = leaf.params()
+
+    torch.testing.assert_close(after["K"], original["K"])
+    torch.testing.assert_close(after["N"], original["N"])
+    torch.testing.assert_close(after["n"], original["n"])

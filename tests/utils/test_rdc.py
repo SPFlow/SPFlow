@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 import torch
 
+import spflow.utils.rdc as rdc_module
 from spflow.utils.rdc import cca_loop, cca_loop_np, rdc, rdc_np, rankdata_ordinal
 
 
@@ -401,3 +402,149 @@ class TestRDCLinAlgErrorHandling:
         result = rdc(x, y, k=10, n=5)
 
         assert 0.0 <= result.item() <= 1.0
+
+
+class TestRDCBranchCoverage:
+    """Branch-oriented tests for difficult-to-trigger paths in rdc module."""
+
+    def test_rdc_n_greater_1_skips_linalg_error(self, monkeypatch):
+        """rdc should ignore LinAlgError runs and take median of successful values."""
+        original_rdc = rdc_module.rdc
+        outputs = iter(
+            [
+                torch.linalg.LinAlgError("singular"),
+                torch.tensor(0.2, dtype=torch.float32),
+                torch.tensor(0.6, dtype=torch.float32),
+                torch.tensor(0.4, dtype=torch.float32),
+            ]
+        )
+
+        def fake_recursive_call(*_args, **_kwargs):
+            value = next(outputs)
+            if isinstance(value, Exception):
+                raise value
+            return value
+
+        monkeypatch.setattr(rdc_module, "rdc", fake_recursive_call)
+        x = torch.randn(20, 1)
+        y = torch.randn(20, 1)
+
+        result = original_rdc(x, y, n=4)
+
+        torch.testing.assert_close(result, torch.tensor(0.4, dtype=x.dtype), rtol=0.0, atol=1e-6)
+
+    def test_rdc_real_eigenvalue_path(self, monkeypatch):
+        """rdc should support purely real eigenvalues and return sqrt(max(eigs))."""
+
+        def fake_eigvals(_matrix):
+            return torch.tensor([0.25], dtype=torch.float32)
+
+        monkeypatch.setattr(torch.linalg, "eigvals", fake_eigvals)
+
+        x = torch.randn(30, 1)
+        y = torch.randn(30, 1)
+        result = rdc(x, y, k=1, n=1)
+
+        torch.testing.assert_close(result, torch.tensor(0.5, dtype=result.dtype), rtol=0.0, atol=1e-6)
+
+    def test_cca_loop_handles_large_imaginary_part_then_converges(self, monkeypatch):
+        """cca_loop should reduce k when imaginary part is significant."""
+        eigvals_sequence = iter(
+            [
+                torch.tensor([0.2 + 0.1j], dtype=torch.complex64),
+                torch.tensor([0.36], dtype=torch.float32),
+                torch.tensor([0.36], dtype=torch.float32),
+                torch.tensor([0.36], dtype=torch.float32),
+            ]
+        )
+
+        def fake_eigvals(_matrix):
+            return next(eigvals_sequence)
+
+        monkeypatch.setattr(torch.linalg, "eigvals", fake_eigvals)
+
+        c = torch.eye(6, dtype=torch.float32)
+        result = cca_loop(3, c)
+
+        torch.testing.assert_close(result, torch.tensor(0.6, dtype=result.dtype), rtol=0.0, atol=1e-6)
+
+    def test_cca_loop_rejects_out_of_range_real_eigenvalues(self, monkeypatch):
+        """cca_loop should shrink k when real eigenvalues fall outside [0, 1]."""
+        eigvals_sequence = iter(
+            [
+                torch.tensor([1.2], dtype=torch.float32),
+                torch.tensor([0.49], dtype=torch.float32),
+                torch.tensor([0.49], dtype=torch.float32),
+                torch.tensor([0.49], dtype=torch.float32),
+            ]
+        )
+
+        def fake_eigvals(_matrix):
+            return next(eigvals_sequence)
+
+        monkeypatch.setattr(torch.linalg, "eigvals", fake_eigvals)
+
+        c = torch.eye(6, dtype=torch.float32)
+        result = cca_loop(3, c)
+
+        torch.testing.assert_close(result, torch.tensor(0.7, dtype=result.dtype), rtol=0.0, atol=1e-6)
+
+    @pytest.mark.filterwarnings(
+        "ignore:The numpy.linalg.linalg has been made private and renamed to numpy.linalg._linalg.*:DeprecationWarning"
+    )
+    def test_rdc_np_n_greater_1_skips_linalg_error(self, monkeypatch):
+        """rdc_np should ignore LinAlgError runs and take median of successful values."""
+        original_rdc_np = rdc_module.rdc_np
+        outputs = iter(
+            [
+                np.linalg.linalg.LinAlgError("singular"),
+                0.2,
+                0.8,
+                0.4,
+            ]
+        )
+
+        def fake_recursive_call(*_args, **_kwargs):
+            value = next(outputs)
+            if isinstance(value, Exception):
+                raise value
+            return value
+
+        monkeypatch.setattr(rdc_module, "rdc", fake_recursive_call)
+
+        x = np.random.randn(20, 1)
+        y = np.random.randn(20, 1)
+        result = original_rdc_np(x, y, n=4)
+
+        assert result == pytest.approx(0.4, abs=1e-8)
+
+    def test_rdc_np_accepts_1d_inputs(self):
+        """rdc_np should reshape 1D arrays internally."""
+        np.random.seed(0)
+        x = np.random.randn(50)
+        y = np.random.randn(50)
+
+        result = rdc_np(x, y, k=5, n=1)
+
+        assert 0.0 <= result <= 1.0
+
+    def test_cca_loop_np_binary_search_fallback_paths(self, monkeypatch):
+        """cca_loop_np should run invalid->valid binary-search fallback branches."""
+        eigvals_sequence = iter(
+            [
+                np.array([1.1], dtype=np.float64),
+                np.array([0.25], dtype=np.float64),
+                np.array([0.25], dtype=np.float64),
+                np.array([0.25], dtype=np.float64),
+            ]
+        )
+
+        def fake_eigvals(_matrix):
+            return next(eigvals_sequence)
+
+        monkeypatch.setattr(np.linalg, "eigvals", fake_eigvals)
+
+        c = np.eye(6)
+        result = cca_loop_np(3, c)
+
+        assert result == pytest.approx(0.5, abs=1e-8)

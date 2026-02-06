@@ -229,6 +229,19 @@ uv run pytest tests/modules/test_sum.py
 uv run pytest tests/modules/test_sum.py::test_sum_log_likelihood
 ```
 
+### Coverage
+
+```bash
+# Generate HTML coverage report in htmlcov/
+.venv/bin/pytest -n 4 --cov=spflow --cov-report=html
+
+# Overview low-coverage files
+.venv/bin/python scripts/coverage_inspect.py list --limit 30
+
+# Show missed line chunks for a file
+.venv/bin/python scripts/coverage_inspect.py show spflow/exceptions.py --context 3
+```
+
 ### Writing Tests
 
 - Place tests in `tests/` directory mirroring `spflow/` structure

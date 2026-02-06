@@ -5,8 +5,11 @@ from itertools import product
 import pytest
 import torch
 
+from spflow.exceptions import InvalidParameterCombinationError, InvalidParameterError
 from spflow.meta import Scope
 from spflow.modules.leaves import Histogram
+from spflow.modules.leaves.histogram import HistogramDist
+from spflow.utils.histogram import _get_outer_edges_torch, get_bin_edges_torch
 
 
 def _make_histogram(*, bin_edges: torch.Tensor, probs: torch.Tensor) -> Histogram:
@@ -113,3 +116,160 @@ def test_mle_update_increases_training_ll():
     ll_after = leaf.log_likelihood(x).mean().item()
 
     assert ll_after > ll_before + 0.05
+
+
+def test_get_outer_edges_range_validation_and_special_cases():
+    with pytest.raises(InvalidParameterError, match="max must be larger than min"):
+        _get_outer_edges_torch(torch.tensor([0.0, 1.0]), range_bounds=(2.0, 1.0))
+
+    with pytest.raises(InvalidParameterError, match="is not finite"):
+        _get_outer_edges_torch(torch.tensor([0.0, 1.0]), range_bounds=(0.0, float("inf")))
+
+    first, last = _get_outer_edges_torch(torch.tensor([]))
+    assert (first, last) == (0.0, 1.0)
+
+    with pytest.raises(InvalidParameterError, match="Autodetected range"):
+        _get_outer_edges_torch(torch.tensor([0.0, float("nan")]))
+
+    first2, last2 = _get_outer_edges_torch(torch.tensor([3.0, 3.0]))
+    assert (first2, last2) == (2.5, 3.5)
+
+
+def test_get_bin_edges_range_filtering_and_zero_width_fallback():
+    x = torch.tensor([0.0, 0.0, 0.0])
+    edges, (first, last, n_bins) = get_bin_edges_torch(x)
+    assert n_bins == 1
+    assert first < last
+    assert edges.shape[0] == 2
+
+    y = torch.tensor([-10.0, 10.0])
+    edges2, (_first2, _last2, n_bins2) = get_bin_edges_torch(y, range_bounds=(0.0, 1.0))
+    assert n_bins2 == 1
+    torch.testing.assert_close(edges2, torch.tensor([0.0, 1.0]))
+
+
+def test_histogram_dist_validation_and_accessors():
+    with pytest.raises(InvalidParameterError, match="bin_edges must be 1D"):
+        HistogramDist(bin_edges=torch.tensor([[0.0, 1.0]]), logits=torch.zeros(1, 1, 1, 1))
+    with pytest.raises(InvalidParameterError, match="at least two edges"):
+        HistogramDist(bin_edges=torch.tensor([0.0]), logits=torch.zeros(1, 1, 1, 1))
+    with pytest.raises(InvalidParameterError, match="must be finite"):
+        HistogramDist(bin_edges=torch.tensor([0.0, float("inf")]), logits=torch.zeros(1, 1, 1, 1))
+    with pytest.raises(InvalidParameterError, match="strictly increasing"):
+        HistogramDist(bin_edges=torch.tensor([0.0, 0.0]), logits=torch.zeros(1, 1, 1, 1))
+    with pytest.raises(InvalidParameterError, match="logits must be 4D"):
+        HistogramDist(bin_edges=torch.tensor([0.0, 1.0]), logits=torch.zeros(1, 1, 1))
+
+    dist = HistogramDist(bin_edges=torch.tensor([0.0, 1.0, 2.0]), logits=torch.zeros(1, 2, 3, 2))
+    assert dist.nbins == 2
+    torch.testing.assert_close(dist.bin_edges, torch.tensor([0.0, 1.0, 2.0]))
+
+
+def test_histogram_dist_align_x_and_log_prob_errors():
+    dist = HistogramDist(bin_edges=torch.tensor([0.0, 1.0, 2.0]), logits=torch.zeros(1, 1, 1, 2))
+
+    assert dist._align_x(torch.zeros(2, 1)).shape == (2, 1, 1, 1)
+    assert dist._align_x(torch.zeros(2, 1, 1)).shape == (2, 1, 1, 1)
+    assert dist._align_x(torch.zeros(2, 1, 1, 1)).shape == (2, 1, 1, 1)
+
+    with pytest.raises(InvalidParameterError, match="Expected x to have shape"):
+        dist._align_x(torch.zeros(2, 1, 1, 1, 1))
+
+    with pytest.raises(InvalidParameterError, match="Feature mismatch"):
+        dist.log_prob(torch.zeros(4, 2))
+
+
+def test_histogram_dist_sample_with_torch_size_shape():
+    dist = HistogramDist(bin_edges=torch.tensor([0.0, 1.0, 2.0]), logits=torch.zeros(1, 1, 1, 2))
+    samples = dist.sample(torch.Size([5]))
+    assert samples.shape == (5, 1, 1, 1)
+
+    samples_default = dist.sample(torch.Size())
+    assert samples_default.shape == (1, 1, 1, 1)
+
+
+def test_histogram_constructor_validation_errors():
+    with pytest.raises(InvalidParameterCombinationError, match="either probs or logits"):
+        Histogram(
+            scope=Scope([0]),
+            bin_edges=torch.tensor([0.0, 1.0]),
+            probs=torch.tensor([[[[1.0]]]]),
+            logits=torch.tensor([[[[0.0]]]]),
+        )
+
+    with pytest.raises(InvalidParameterError, match="requires scope with exactly one query RV"):
+        Histogram(scope=Scope([0, 1]), bin_edges=torch.tensor([0.0, 1.0]))
+
+    with pytest.raises(InvalidParameterError, match="bin_edges must be 1D"):
+        Histogram(scope=Scope([0]), bin_edges=torch.tensor([[0.0, 1.0]]))
+    with pytest.raises(InvalidParameterError, match="at least two edges"):
+        Histogram(scope=Scope([0]), bin_edges=torch.tensor([0.0]))
+    with pytest.raises(InvalidParameterError, match="must be finite"):
+        Histogram(scope=Scope([0]), bin_edges=torch.tensor([0.0, float("nan")]))
+    with pytest.raises(InvalidParameterError, match="strictly increasing"):
+        Histogram(scope=Scope([0]), bin_edges=torch.tensor([0.0, 0.0]))
+
+    with pytest.raises(InvalidParameterError, match="Last dim of probs/logits must match nbins=2"):
+        Histogram(
+            scope=Scope([0]),
+            bin_edges=torch.tensor([0.0, 1.0, 2.0]),
+            probs=torch.tensor([[[[1.0]]]]),
+        )
+
+
+def test_histogram_parameter_properties_and_setters():
+    leaf = Histogram(
+        scope=Scope([0]),
+        bin_edges=torch.tensor([0.0, 1.0, 2.0]),
+        probs=torch.tensor([[[[0.4, 0.6]]]]),
+    )
+
+    assert leaf._torch_distribution_class is None
+    assert isinstance(leaf.logits, torch.Tensor)
+    params = leaf.params()
+    assert "logits" in params
+    assert params["logits"].shape == leaf.logits.shape
+
+    new_logits = torch.tensor([[[[2.0, -1.0]]]])
+    leaf.logits = new_logits
+    torch.testing.assert_close(leaf.logits, new_logits)
+
+    with pytest.raises(InvalidParameterError, match="probs must be finite"):
+        leaf.probs = torch.tensor([[[[float("inf"), 1.0]]]])
+    with pytest.raises(InvalidParameterError, match="probs must be non-negative"):
+        leaf.probs = torch.tensor([[[[-1.0, 2.0]]]])
+
+
+def test_histogram_compute_parameter_estimates_validation_errors():
+    leaf = Histogram(
+        scope=Scope([0]),
+        bin_edges=torch.tensor([0.0, 1.0, 2.0]),
+        probs=torch.tensor([[[[0.5, 0.5]]]]),
+    )
+    weights = torch.ones(3, 1, 1, 1)
+
+    bad_shape_data = torch.zeros(3, 2, 1, 1)
+    with pytest.raises(InvalidParameterError, match="expects univariate scoped data"):
+        leaf._compute_parameter_estimates(data=bad_shape_data, weights=weights, bias_correction=False)
+
+    out_of_support_data = torch.tensor([[[[-1.0]]], [[[0.5]]], [[[1.5]]]])
+    with pytest.raises(InvalidParameterError, match="outside histogram support"):
+        leaf._compute_parameter_estimates(data=out_of_support_data, weights=weights, bias_correction=False)
+
+
+def test_histogram_marginalize_branches():
+    leaf = Histogram(
+        scope=Scope([0]),
+        bin_edges=torch.tensor([0.0, 1.0, 2.0]),
+        probs=torch.tensor([[[[0.5, 0.5]]]]),
+    )
+
+    leaf.parameter_fn = lambda evidence: {"logits": leaf.logits}
+    with pytest.raises(RuntimeError, match="Marginalization not supported for conditional leaf"):
+        leaf.marginalize([99])
+
+    leaf.parameter_fn = None
+    assert leaf.marginalize([0]) is None
+
+    kept = leaf.marginalize([1])
+    assert isinstance(kept, Histogram)

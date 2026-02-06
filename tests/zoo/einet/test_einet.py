@@ -4,7 +4,9 @@ from itertools import product
 
 import pytest
 import torch
+from torch import nn
 
+from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
 from spflow.meta import Scope
 from spflow.zoo.einet import Einet
 from spflow.modules.leaves.normal import Normal
@@ -359,3 +361,148 @@ class TestEinetExtraRepr:
         assert "num_classes=2" in repr_str
         assert f"layer_type={layer_type}" in repr_str
         assert f"structure={structure}" in repr_str
+
+
+class TestEinetAdditionalCoverage:
+    """Targeted tests for less common branches and delegating methods."""
+
+    def test_more_invalid_constructor_parameters(self):
+        leaf_modules = make_leaf_modules(4, 3, 1)
+        with pytest.raises(ValueError, match="num_classes"):
+            Einet(leaf_modules=leaf_modules, num_classes=0)
+        with pytest.raises(ValueError, match="num_sums"):
+            Einet(leaf_modules=leaf_modules, num_sums=0)
+        with pytest.raises(ValueError, match="num_leaves"):
+            Einet(leaf_modules=leaf_modules, num_leaves=0)
+        with pytest.raises(ValueError, match="depth"):
+            Einet(leaf_modules=leaf_modules, depth=-1)
+        with pytest.raises(ValueError, match="num_repetitions"):
+            Einet(leaf_modules=leaf_modules, num_repetitions=0)
+
+    def test_properties_delegate_to_root(self):
+        leaf_modules = make_leaf_modules(4, 3, 1)
+        model = Einet(leaf_modules=leaf_modules, num_classes=1, num_repetitions=1)
+        assert model.n_out == 1
+        assert model.feature_to_scope.shape == model.root_node.feature_to_scope.shape
+        with pytest.raises(AttributeError, match="scopes_out"):
+            _ = type(model).scopes_out.fget(model)
+
+    def test_log_posterior_raises_for_single_class(self):
+        leaf_modules = make_leaf_modules(4, 3, 1)
+        model = Einet(leaf_modules=leaf_modules, num_classes=1, num_repetitions=1)
+        data = torch.randn(3, 4)
+        with pytest.raises(UnsupportedOperationError):
+            model.log_posterior(data)
+
+    def test_log_posterior_and_predict_proba_multiclass(self):
+        leaf_modules = make_leaf_modules(4, 3, 1)
+        model = Einet(leaf_modules=leaf_modules, num_classes=3, depth=1, num_repetitions=1)
+        data = torch.randn(5, 4)
+
+        log_post = model.log_posterior(data)
+        proba = model.predict_proba(data)
+
+        assert log_post.shape == (5, 3)
+        assert proba.shape == (5, 3)
+        assert torch.isfinite(log_post).all()
+        assert torch.allclose(proba.sum(dim=-1), torch.ones(5), atol=1e-5)
+
+    def test_multiclass_sample_mpe_and_stochastic(self):
+        leaf_modules = make_leaf_modules(4, 3, 1)
+        model = Einet(leaf_modules=leaf_modules, num_classes=3, depth=1, num_repetitions=1)
+        data = torch.full((6, 4), torch.nan)
+
+        class DummyInput(nn.Module):
+            def __init__(self, num_features: int):
+                super().__init__()
+                self.num_features = num_features
+
+            def sample(self, data, is_mpe, cache, sampling_ctx):
+                assert sampling_ctx.channel_index is not None
+                assert sampling_ctx.channel_index.shape == (data.shape[0], 1)
+                return torch.zeros((data.shape[0], self.num_features))
+
+        class DummyRoot(nn.Module):
+            def __init__(self, num_classes: int, num_features: int):
+                super().__init__()
+                self.logits = torch.nn.Parameter(torch.zeros((1, num_classes, 1)))
+                self.inputs = DummyInput(num_features)
+
+        model.root_node = DummyRoot(model.num_classes, model.num_features)
+
+        mpe_samples = model.sample(data=data, is_mpe=True)
+        random_samples = model.sample(data=data, is_mpe=False)
+
+        assert mpe_samples.shape == (6, 4)
+        assert random_samples.shape == (6, 4)
+        assert torch.isfinite(mpe_samples).all()
+        assert torch.isfinite(random_samples).all()
+
+    def test_multiclass_sampling_raises_for_invalid_logits_shape(self):
+        leaf_modules = make_leaf_modules(4, 3, 1)
+        model = Einet(leaf_modules=leaf_modules, num_classes=3, depth=1, num_repetitions=1)
+        model.root_node.logits = torch.nn.Parameter(torch.zeros(2, 2))
+
+        with pytest.raises(InvalidParameterError, match="Expected logits shape"):
+            model.sample(num_samples=2)
+
+    def test_sample_defaults_to_one_sample(self):
+        leaf_modules = make_leaf_modules(4, 3, 1)
+        model = Einet(leaf_modules=leaf_modules, num_classes=1, num_repetitions=1)
+        samples = model.sample()
+        assert samples.shape == (1, 4)
+
+    def test_sample_initializes_repetition_index_for_single_rep(self):
+        leaf_modules = make_leaf_modules(4, 3, 1)
+        model = Einet(leaf_modules=leaf_modules, num_classes=1, num_repetitions=1)
+        sampling_ctx = SamplingContext(num_samples=4)
+        data = torch.full((4, 4), torch.nan)
+
+        samples = model.sample(data=data, sampling_ctx=sampling_ctx)
+
+        assert samples.shape == (4, 4)
+        assert sampling_ctx.repetition_idx is not None
+        assert torch.equal(sampling_ctx.repetition_idx, torch.zeros(4, dtype=torch.long))
+
+    def test_delegating_methods(self, monkeypatch: pytest.MonkeyPatch):
+        leaf_modules = make_leaf_modules(4, 3, 1)
+        model = Einet(leaf_modules=leaf_modules, num_classes=1, num_repetitions=1)
+        data = torch.randn(3, 4)
+        weights = torch.rand(3)
+        cache = Cache()
+
+        calls = {"em": 0, "mle": 0, "marginalize": 0}
+        expected_result = object()
+
+        def fake_em(call_data, cache=None):
+            assert call_data is data
+            assert cache is cache_obj
+            calls["em"] += 1
+
+        def fake_mle(call_data, weights=None, cache=None):
+            assert call_data is data
+            assert weights is weights_obj
+            assert cache is cache_obj
+            calls["mle"] += 1
+
+        def fake_marginalize(marg_rvs, prune=True, cache=None):
+            assert marg_rvs == [0, 2]
+            assert prune is False
+            assert cache is cache_obj
+            calls["marginalize"] += 1
+            return expected_result
+
+        cache_obj = cache
+        weights_obj = weights
+        monkeypatch.setattr(model.root_node, "expectation_maximization", fake_em)
+        monkeypatch.setattr(model.root_node, "maximum_likelihood_estimation", fake_mle)
+        monkeypatch.setattr(model.root_node, "marginalize", fake_marginalize)
+
+        model.expectation_maximization(data, cache=cache_obj)
+        model.maximum_likelihood_estimation(data, weights=weights_obj, cache=cache_obj)
+        result = model.marginalize([0, 2], prune=False, cache=cache_obj)
+
+        assert calls["em"] == 1
+        assert calls["mle"] == 1
+        assert calls["marginalize"] == 1
+        assert result is expected_result

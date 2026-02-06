@@ -1,9 +1,17 @@
 import itertools
 
+import pytest
 import torch
 
+from spflow.exceptions import InvalidParameterError, ShapeError, UnsupportedOperationError
 from spflow.meta import Scope
 from spflow.modules.leaves import CLTree
+from spflow.modules.leaves.cltree import (
+    _compute_orders_from_parents,
+    _prim_maximum_spanning_tree,
+    _validate_discrete_values,
+)
+from spflow.utils.sampling_context import SamplingContext
 
 
 def _make_chain_cltree(*, K: int = 3) -> CLTree:
@@ -144,3 +152,140 @@ def test_mle_update_improves_likelihood_on_training_data():
     ll_after = model.log_likelihood(data).sum(dim=1).mean()
 
     assert ll_after >= ll_before - 1e-6
+
+
+def test_helper_validation_and_tree_utilities_cover_edge_cases():
+    _validate_discrete_values(torch.empty((0, 3)), K=3)
+    _validate_discrete_values(torch.full((2, 3), float("nan")), K=3)
+    with pytest.raises(InvalidParameterError, match="discrete integer values"):
+        _validate_discrete_values(torch.tensor([[0.1, 1.0]]), K=3)
+    with pytest.raises(InvalidParameterError, match="observed values must be in"):
+        _validate_discrete_values(torch.tensor([[0.0, 3.0]]), K=3)
+
+    assert _compute_orders_from_parents([]).pre_order == ()
+    with pytest.raises(InvalidParameterError, match="exactly one root"):
+        _compute_orders_from_parents([-1, -1, 0])
+    with pytest.raises(InvalidParameterError, match="parent index out of range"):
+        _compute_orders_from_parents([-1, 3, 0])
+    orders = _compute_orders_from_parents([-1, 0, 0, 1])
+    assert orders.pre_order == (0, 1, 3, 2)
+    assert orders.post_order == (2, 3, 1, 0)
+
+    with pytest.raises(ShapeError, match="Expected square weights matrix"):
+        _prim_maximum_spanning_tree(torch.ones(2, 3))
+    assert _prim_maximum_spanning_tree(torch.empty((0, 0))) == []
+    with pytest.raises(InvalidParameterError, match="Root index out of range"):
+        _prim_maximum_spanning_tree(torch.zeros(3, 3), root=3)
+    with pytest.raises(UnsupportedOperationError, match="graph appears disconnected"):
+        _prim_maximum_spanning_tree(torch.full((3, 3), float("-inf")))
+
+    weights = torch.tensor([[0.0, 2.0, 1.0], [2.0, 0.0, 3.0], [1.0, 3.0, 0.0]])
+    assert _prim_maximum_spanning_tree(weights, root=0) == [-1, 0, 1]
+
+
+def test_init_and_public_api_validation_errors():
+    with pytest.raises(InvalidParameterError, match="K >= 2"):
+        CLTree(scope=Scope([0, 1]), K=1)
+    with pytest.raises(InvalidParameterError, match="alpha > 0"):
+        CLTree(scope=Scope([0, 1]), K=2, alpha=0.0)
+    with pytest.raises(InvalidParameterError, match="at least 2 variables"):
+        CLTree(scope=Scope([0]), K=2)
+
+    with pytest.raises(ShapeError, match="parents must have shape"):
+        CLTree(scope=Scope([0, 1]), K=2, parents=torch.tensor([-1, 0, 1]))
+
+    with pytest.raises(ShapeError, match="log_cpt must have shape"):
+        CLTree(scope=Scope([0, 1]), K=2, log_cpt=torch.zeros((2, 1, 1, 2, 3)))
+
+    node = CLTree(scope=Scope([0, 1]), K=2)
+    assert node._supported_value == 0.0
+    assert "log_cpt" in node.params()
+    with pytest.raises(UnsupportedOperationError, match="does not expose"):
+        _ = node._torch_distribution_class
+    with pytest.raises(UnsupportedOperationError, match="template MLE hooks"):
+        node._compute_parameter_estimates(
+            data=torch.zeros((1, 2)),
+            weights=torch.zeros((1, 2, 1, 1)),
+            bias_correction=True,
+        )
+
+
+def test_structure_and_data_resolution_checks():
+    node = CLTree(scope=Scope([0, 1, 2]), K=3)
+    assert not node._has_learned_structure()
+
+    node.parents.data = torch.tensor([-1, 0, 1], dtype=torch.long)
+    assert node._has_learned_structure()
+    node.parents.data = torch.tensor([-1, 1, 1], dtype=torch.long)
+    assert not node._has_learned_structure()
+
+    with pytest.raises(ShapeError, match="Data must be 2D"):
+        node._resolve_scoped_data(torch.zeros((2, 3, 1)))
+
+    node._resolve_scope_columns = lambda num_features: [0, 1]  # type: ignore[method-assign]
+    with pytest.raises(ShapeError, match="scope length"):
+        node._resolve_scoped_data(torch.zeros((2, 3)))
+
+
+def test_fit_structure_mutual_information_and_log_likelihood_errors():
+    node = CLTree(scope=Scope([0, 1, 2]), K=3)
+    data = torch.tensor(
+        [
+            [0.0, 0.0, 1.0],
+            [1.0, 1.0, 0.0],
+            [2.0, 2.0, 1.0],
+            [1.0, 0.0, 2.0],
+        ]
+    )
+
+    with pytest.raises(ShapeError, match="sample_weights must have shape"):
+        node._compute_mutual_information(data.to(torch.long), sample_weights=torch.ones((4, 1)))
+    with pytest.raises(InvalidParameterError, match="sample_weights must be finite"):
+        node._compute_mutual_information(
+            data.to(torch.long), sample_weights=torch.tensor([1.0, 1.0, float("inf"), 1.0])
+        )
+
+    node.fit_structure(data, sample_weights=torch.tensor([1.0, 2.0, 1.0, 1.0]))
+    assert node._has_learned_structure()
+    assert node.parents.shape[0] == 3
+
+    with pytest.raises(InvalidParameterError, match="without NaNs"):
+        node.fit_structure(torch.tensor([[0.0, float("nan"), 1.0], [1.0, 1.0, 0.0]]))
+
+    unfit = CLTree(scope=Scope([0, 1, 2]), K=3)
+    with pytest.raises(RuntimeError, match="structure is not initialized"):
+        unfit.log_likelihood(data)
+
+
+def test_mle_input_checks_and_sampling_context_errors():
+    node = _make_chain_cltree(K=3)
+    data = torch.tensor([[0.0, 1.0, 2.0], [1.0, 2.0, 0.0]])
+
+    with pytest.raises(ShapeError, match="weights must be 4D"):
+        node.maximum_likelihood_estimation(data, weights=torch.ones((2, 3)))
+    with pytest.raises(ShapeError, match="batch dimension does not match"):
+        node.maximum_likelihood_estimation(data, weights=torch.ones((3, 3, 1, 1)))
+    with pytest.raises(InvalidParameterError, match="at least 2 complete samples"):
+        node.maximum_likelihood_estimation(
+            torch.tensor([[0.0, float("nan"), 2.0], [float("nan"), 1.0, 0.0]]),
+            nan_strategy="ignore",
+        )
+
+    bad_ctx = SamplingContext(
+        channel_index=torch.tensor([[0, 1, 0]], dtype=torch.long),
+        mask=torch.tensor([[True, True, True]], dtype=torch.bool),
+    )
+    with pytest.raises(InvalidParameterError, match="consistent channel_index"):
+        node.sample(data=torch.tensor([[float("nan"), float("nan"), float("nan")]]), sampling_ctx=bad_ctx)
+
+    base = _make_chain_cltree(K=3)
+    multi_rep = CLTree(
+        scope=Scope([0, 1, 2]),
+        out_channels=1,
+        num_repetitions=2,
+        K=3,
+        parents=base.parents.clone(),
+        log_cpt=base.log_cpt.detach().repeat(1, 1, 2, 1, 1),
+    )
+    with pytest.raises(InvalidParameterError, match="Repetition index must be provided"):
+        multi_rep.sample(data=torch.tensor([[float("nan"), float("nan"), float("nan")]]))

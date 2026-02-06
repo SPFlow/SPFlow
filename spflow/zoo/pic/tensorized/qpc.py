@@ -342,8 +342,6 @@ class TensorizedQPC(Module):
         # Deterministic order: sort by RV index.
         leaf_regions = sorted(leaf_regions, key=lambda r: int(r.scope.query[0]))
         leaf_vars = [int(r.scope.query[0]) for r in leaf_regions]
-        if len(set(leaf_vars)) != len(leaf_vars):
-            raise StructureError("TensorizedQPC requires unique leaf variables.")
 
         self._leaf_regions = leaf_regions
         self._leaf_vars = torch.tensor(leaf_vars, dtype=torch.long)

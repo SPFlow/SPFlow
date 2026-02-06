@@ -150,46 +150,6 @@ class PICProduct(Module):
 
     @property
     def feature_to_scope(self) -> np.ndarray:
-        return _symbolic_feature_to_scope(self.scope)
-
-    def log_likelihood(self, data: Tensor, cache=None) -> Tensor:  # pragma: no cover
-        raise NotImplementedError("PICSum is symbolic; materialize to QPC with pic2qpc().")
-
-    def sample(
-        self, num_samples=None, data=None, is_mpe: bool = False, cache=None, sampling_ctx=None
-    ) -> Tensor:  # pragma: no cover
-        raise NotImplementedError("PICSum is symbolic; materialize to QPC with pic2qpc().")
-
-    def marginalize(
-        self, marg_rvs: list[int], prune: bool = True, cache=None
-    ) -> Module | None:  # pragma: no cover
-        raise NotImplementedError("PICSum is symbolic; materialize to QPC with pic2qpc().")
-
-
-class PICProduct(Module):
-    """Symbolic PIC product unit ×([u1, u2])."""
-
-    def __init__(self, left: Module, right: Module) -> None:
-        super().__init__()
-        self.left = left
-        self.right = right
-        self.inputs = nn.ModuleList([left, right])
-
-        # Observed scopes must be disjoint (region partitions).
-        if not left.scope.isdisjoint(right.scope):  # type: ignore[attr-defined]
-            raise StructureError(f"PICProduct requires disjoint scopes, got {left.scope} and {right.scope}.")
-        self.scope = left.scope.join(right.scope)  # type: ignore[attr-defined]
-
-        z_left = getattr(left, "latent_scope", Scope([]))
-        z_right = getattr(right, "latent_scope", Scope([]))
-        self.latent_scope = Scope.join_all([z_left, z_right])
-
-        # Symbolic shape placeholder.
-        self.in_shape = ModuleShape(features=len(self.scope.query), channels=1, repetitions=1)
-        self.out_shape = ModuleShape(features=len(self.scope.query), channels=1, repetitions=1)
-
-    @property
-    def feature_to_scope(self) -> np.ndarray:
         return np.array([Scope([rv]) for rv in self.scope.query])
 
     def log_likelihood(self, data: Tensor, cache=None) -> Tensor:  # pragma: no cover

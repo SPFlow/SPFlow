@@ -1,11 +1,69 @@
 """Tests for WeightedSum module."""
 
+import numpy as np
 import pytest
 import torch
 
 from spflow.meta.data.scope import Scope
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
+from spflow.utils.sampling_context import SamplingContext
 from spflow.modules.leaves.normal import Normal
 from spflow.zoo.pic.weighted_sum import WeightedSum
+
+
+class DummyInput(Module):
+    """Test helper module with deterministic shape/scope behavior."""
+
+    def __init__(
+        self,
+        feature_to_scope: np.ndarray,
+        channels: int,
+        repetitions: int,
+        marginalize_result: Module | None = None,
+    ) -> None:
+        super().__init__()
+        self._feature_to_scope = feature_to_scope
+        self.in_shape = ModuleShape(
+            features=feature_to_scope.shape[0], channels=channels, repetitions=repetitions
+        )
+        self.out_shape = self.in_shape
+        query_rvs: set[int] = set()
+        for entry in feature_to_scope.flatten():
+            if entry is not None:
+                query_rvs.update(entry.query)
+        self.scope = Scope(sorted(query_rvs))
+        self._marginalize_result = marginalize_result
+        self.sample_calls: list[SamplingContext] = []
+
+    @property
+    def feature_to_scope(self) -> np.ndarray:
+        return self._feature_to_scope
+
+    def log_likelihood(self, data: torch.Tensor, cache=None) -> torch.Tensor:
+        batch_size = data.shape[0]
+        return torch.zeros(
+            batch_size,
+            self.out_shape.features,
+            self.out_shape.channels,
+            self.out_shape.repetitions,
+            dtype=data.dtype,
+            device=data.device,
+        )
+
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: torch.Tensor | None = None,
+        is_mpe: bool = False,
+        cache=None,
+        sampling_ctx: SamplingContext | None = None,
+    ) -> torch.Tensor:
+        self.sample_calls.append(sampling_ctx)
+        return data
+
+    def marginalize(self, marg_rvs, prune=True, cache=None):
+        return self._marginalize_result
 
 
 class TestWeightedSumInit:
@@ -63,6 +121,46 @@ class TestWeightedSumInit:
         weights = torch.ones(1, 1, 1, 1, 1)  # 5D
 
         with pytest.raises(ShapeError, match="must be 1D, 2D, 3D, or 4D"):
+            WeightedSum(inputs=leaf, weights=weights)
+
+    def test_init_list_weights_and_single_input_list(self):
+        """Test list weights conversion and single-list input unwrapping."""
+        leaf = Normal(scope=Scope([0]), out_channels=2)
+        ws = WeightedSum(inputs=[leaf], weights=[1.0, 2.0])
+        assert ws.inputs is leaf
+        assert ws.weights.shape == (1, 2, 1, 1)
+
+    def test_init_3d_weights_and_feature_broadcast(self):
+        """Test 3D weight expansion plus feature broadcasting."""
+        leaf = Normal(scope=Scope([0, 1]), out_channels=2)
+        weights = torch.ones(1, 2, 3)  # (1, IC, OC) -> unsqueeze + repeat over 2 features
+        ws = WeightedSum(inputs=leaf, weights=weights)
+        assert ws.weights.shape == (2, 2, 3, 1)
+
+    def test_init_negative_weights_raises(self):
+        """Test non-negative constraint for weights."""
+        from spflow.exceptions import InvalidWeightsError
+
+        leaf = Normal(scope=Scope([0]), out_channels=2)
+        with pytest.raises(InvalidWeightsError, match="must be non-negative"):
+            WeightedSum(inputs=leaf, weights=torch.tensor([-1.0, 1.0]))
+
+    def test_init_feature_mismatch_raises(self):
+        """Test feature mismatch shape validation."""
+        from spflow.exceptions import ShapeError
+
+        leaf = Normal(scope=Scope([0, 1]), out_channels=2)
+        weights = torch.ones(3, 2, 1, 1)
+        with pytest.raises(ShapeError, match="first dimension must match"):
+            WeightedSum(inputs=leaf, weights=weights)
+
+    def test_init_in_channel_mismatch_raises(self):
+        """Test in-channel mismatch shape validation."""
+        from spflow.exceptions import ShapeError
+
+        leaf = Normal(scope=Scope([0]), out_channels=3)
+        weights = torch.ones(1, 2, 1, 1)
+        with pytest.raises(ShapeError, match="in_channels dimension must match"):
             WeightedSum(inputs=leaf, weights=weights)
 
 
@@ -173,3 +271,128 @@ class TestWeightedSumSetWeights:
 
         with pytest.raises(ShapeError, match="Invalid shape"):
             ws.weights = torch.ones(1, 2, 1, 1)  # Wrong shape
+
+
+class TestWeightedSumSamplingAndMarginalize:
+    """Tests for sampling and marginalization code paths."""
+
+    def test_feature_to_scope_and_extra_repr(self):
+        """Test delegated feature_to_scope and string repr."""
+        f2s = np.array([[Scope([0])]], dtype=object)
+        inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=1)
+        ws = WeightedSum(inputs=inp, weights=torch.ones(1, 1, 1, 1))
+        assert ws.feature_to_scope.shape == (1, 1)
+        assert "weights=(1, 1, 1, 1)" in ws.extra_repr()
+
+    def test_log_likelihood_wrapped_function_cache_none_branch(self):
+        """Call undecorated method to exercise internal cache initialization."""
+        f2s = np.array([[Scope([0])]], dtype=object)
+        inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=1)
+        ws = WeightedSum(inputs=inp, weights=torch.ones(1, 1, 1, 1))
+        data = torch.zeros(2, 1)
+        ll = WeightedSum.log_likelihood.__wrapped__(ws, data, cache=None)
+        assert ll.shape == (2, 1, 1, 1)
+
+    def test_sample_with_default_context_and_mpe(self):
+        """Test sample path with default context and MPE argmax selection."""
+        f2s = np.array([[Scope([0]), Scope([0])]], dtype=object)
+        inp = DummyInput(feature_to_scope=f2s, channels=2, repetitions=2)
+        weights = torch.tensor([[[[1.0, 3.0], [5.0, 2.0]], [[2.0, 1.0], [4.0, 7.0]]]])
+        ws = WeightedSum(inputs=inp, weights=weights)
+
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((3, 1), dtype=torch.long),
+            mask=torch.ones((3, 1), dtype=torch.bool),
+            repetition_index=torch.tensor([1, 0, 1], dtype=torch.long),
+        )
+        out = ws.sample(data=torch.full((3, 1), float("nan")), is_mpe=True, sampling_ctx=sampling_ctx)
+
+        assert out.shape == (3, 1)
+        assert inp.sample_calls[-1].channel_index.shape == (3, 1)
+
+    def test_sample_requires_repetition_index_when_repetitions_gt_1(self):
+        """Test validation when repetitions > 1 and repetition_idx is missing."""
+        f2s = np.array([[Scope([0]), Scope([0])]], dtype=object)
+        inp = DummyInput(feature_to_scope=f2s, channels=2, repetitions=2)
+        ws = WeightedSum(inputs=inp, weights=torch.ones(1, 2, 2, 2))
+        with pytest.raises(ValueError, match="repetition_idx must be provided"):
+            ws.sample(data=torch.full((2, 1), float("nan")))
+
+    def test_sample_uniform_fallback_for_zero_rows(self):
+        """Test stochastic sample branch with zero-sum weight rows."""
+        f2s = np.array([[Scope([0])]], dtype=object)
+        inp = DummyInput(feature_to_scope=f2s, channels=2, repetitions=1)
+        ws = WeightedSum(inputs=inp, weights=torch.zeros(1, 2, 2, 1))
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((2, 1), dtype=torch.long),
+            mask=torch.ones((2, 1), dtype=torch.bool),
+        )
+        out = ws.sample(data=torch.full((2, 1), float("nan")), sampling_ctx=sampling_ctx)
+        assert out.shape == (2, 1)
+
+    def test_sample_creates_data_when_none(self):
+        """Test num_samples/data default creation branch."""
+        f2s = np.array([[Scope([0])]], dtype=object)
+        inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=1)
+        ws = WeightedSum(inputs=inp, weights=torch.ones(1, 1, 1, 1))
+        out = ws.sample()
+        assert out.shape == (1, 1)
+
+    def test_sample_updates_mask_when_shape_changes(self):
+        """Test sampling_ctx.update branch when channel shape changes."""
+        f2s = np.array([[Scope([0]), Scope([0])], [Scope([1]), Scope([1])]], dtype=object)
+        inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=2)
+        ws = WeightedSum(inputs=inp, weights=torch.ones(2, 1, 3, 2))
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((2, 2), dtype=torch.long),
+            mask=torch.ones((2, 2), dtype=torch.bool),
+            repetition_index=torch.zeros(2, dtype=torch.long),
+        )
+        # Deliberately introduce a narrower mask so WeightedSum hits the update() branch.
+        sampling_ctx.mask = torch.ones((2, 1), dtype=torch.bool)
+        ws.sample(data=torch.full((2, 2), float("nan")), is_mpe=True, sampling_ctx=sampling_ctx)
+        assert sampling_ctx.channel_index.shape == (2, 2)
+        assert sampling_ctx.mask.shape == (2, 2)
+
+    def test_marginalize_full_scope_returns_none(self):
+        """Test full marginalization short-circuit."""
+        f2s = np.array([[Scope([0])]], dtype=object)
+        inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=1, marginalize_result=None)
+        ws = WeightedSum(inputs=inp, weights=torch.ones(1, 1, 1, 1))
+        assert ws.marginalize([0]) is None
+
+    def test_marginalize_no_overlap_keeps_input(self):
+        """Test no-overlap marginalization path."""
+        f2s = np.array([[Scope([0])]], dtype=object)
+        inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=1, marginalize_result=None)
+        ws = WeightedSum(inputs=inp, weights=torch.ones(1, 1, 1, 1))
+        marg = ws.marginalize([2])
+        assert isinstance(marg, WeightedSum)
+        assert marg.inputs is inp
+
+    def test_marginalize_partial_with_consistent_masks(self):
+        """Test partial marginalization path with equal masked feature counts."""
+        f2s = np.array([[Scope([0, 1]), Scope([0, 1])], [Scope([0, 2]), Scope([0, 2])]], dtype=object)
+        inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=2)
+        inp._marginalize_result = inp
+        ws = WeightedSum(inputs=inp, weights=torch.ones(2, 1, 1, 2))
+        marg = ws.marginalize([0])
+        assert isinstance(marg, WeightedSum)
+        assert marg.weights.shape == (2, 1, 1, 2)
+
+    def test_marginalize_partial_with_padding(self):
+        """Test partial marginalization path that pads unequal feature counts."""
+        f2s = np.array([[Scope([0]), Scope([1])], [Scope([0, 1]), Scope([1])]], dtype=object)
+        inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=2)
+        inp._marginalize_result = inp
+        ws = WeightedSum(inputs=inp, weights=torch.ones(2, 1, 1, 2))
+        marg = ws.marginalize([0])
+        assert isinstance(marg, WeightedSum)
+        assert marg.weights.shape == (2, 1, 1, 2)
+
+    def test_marginalize_partial_when_child_returns_none(self):
+        """Test partial marginalization returning None if child is removed."""
+        f2s = np.array([[Scope([0, 1]), Scope([0, 1])]], dtype=object)
+        inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=2, marginalize_result=None)
+        ws = WeightedSum(inputs=inp, weights=torch.ones(1, 1, 1, 2))
+        assert ws.marginalize([0]) is None

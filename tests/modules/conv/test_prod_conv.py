@@ -226,3 +226,103 @@ class TestProdConvSample:
 
         # After upsampling, samples should be finite
         assert torch.isfinite(data).all()
+
+
+# Additional branch-focused prod_conv tests
+import numpy as np
+
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
+
+
+class _DummyInput(Module):
+    def __init__(self, features: int = 16, channels: int = 2, reps: int = 1):
+        super().__init__()
+        self.scope = Scope(list(range(features)))
+        self.in_shape = ModuleShape(features, channels, reps)
+        self.out_shape = ModuleShape(features, channels, reps)
+        self.em_called = 0
+        self.marginalize_result = self
+
+    @property
+    def feature_to_scope(self) -> np.ndarray:
+        scopes = np.array([Scope([i]) for i in range(self.out_shape.features)], dtype=object)
+        return scopes.reshape(self.out_shape.features, self.out_shape.repetitions)
+
+    def log_likelihood(self, data, cache=None):
+        return torch.zeros((data.shape[0], self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions))
+
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
+        data[:] = torch.nan_to_num(data, nan=0.0)
+        return data
+
+    def expectation_maximization(self, data, bias_correction=True, cache=None):
+        self.em_called += 1
+
+    def maximum_likelihood_estimation(self, data, weights=None, bias_correction=True, nan_strategy="ignore", cache=None):
+        return None
+
+    def marginalize(self, marg_rvs, prune=True, cache=None):
+        return self.marginalize_result
+
+
+def test_kernel_width_validation_and_extra_repr():
+    with pytest.raises(ValueError, match="kernel_size_w"):
+        ProdConv(inputs=_DummyInput(features=4, channels=1), kernel_size_h=1, kernel_size_w=0)
+
+    node = ProdConv(inputs=_DummyInput(features=4, channels=1), kernel_size_h=1, kernel_size_w=1)
+    assert "kernel=(1, 1)" in node.extra_repr()
+
+
+def test_feature_to_scope_handles_full_padding_patch():
+    node = ProdConv(inputs=_DummyInput(features=4, channels=1), kernel_size_h=2, kernel_size_w=2, padding_h=3, padding_w=3)
+    f2s = node.feature_to_scope
+    assert any(len(s.query) == 0 for s in f2s.flatten())
+
+
+def test_log_likelihood_cache_none_sample_default_and_context_branches():
+    node = ProdConv(inputs=_DummyInput(features=16, channels=2), kernel_size_h=2, kernel_size_w=2, padding_h=1, padding_w=1)
+
+    ll = node.log_likelihood(torch.zeros((2, 16)), cache=None)
+    assert ll.shape[0] == 2
+
+    # num_samples default branch
+    out = node.sample(num_samples=None, data=None, cache=Cache())
+    assert out.shape[0] == 1
+
+    # current_features == out_features -> upsample + trim branch
+    out_features = node.out_shape.features
+    ctx = SamplingContext(
+        channel_index=torch.zeros((2, out_features), dtype=torch.long),
+        mask=torch.ones((2, out_features), dtype=torch.bool),
+    )
+    data = torch.full((2, 16), float("nan"))
+    node.sample(data=data, sampling_ctx=ctx)
+    assert torch.isfinite(data).all()
+
+    # current_features not in {1, out_features} -> expand branch
+    ctx2 = SamplingContext(
+        channel_index=torch.zeros((2, 2), dtype=torch.long),
+        mask=torch.ones((2, 2), dtype=torch.bool),
+    )
+    data2 = torch.full((2, 16), float("nan"))
+    node.sample(data=data2, sampling_ctx=ctx2)
+    assert torch.isfinite(data2).all()
+
+
+def test_em_and_marginalize_paths():
+    inp = _DummyInput(features=16, channels=2)
+    node = ProdConv(inputs=inp, kernel_size_h=2, kernel_size_w=2)
+
+    node.expectation_maximization(torch.zeros((2, 16)), cache=None)
+    assert inp.em_called == 1
+
+    assert node.marginalize(marg_rvs=list(node.scope.query)) is None
+
+    inp.marginalize_result = None
+    assert node.marginalize(marg_rvs=[0]) is None
+
+    inp2 = _DummyInput(features=16, channels=2)
+    node2 = ProdConv(inputs=inp2, kernel_size_h=2, kernel_size_w=2)
+    out = node2.marginalize(marg_rvs=[0])
+    assert isinstance(out, ProdConv)

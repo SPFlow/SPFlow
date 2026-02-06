@@ -322,3 +322,86 @@ class TestModuleToStrParameterDisplay:
 
         # Tree should contain dimension info
         assert "D=" in output_with_params or "C=" in output_with_params
+
+
+# Additional branch-focused module display tests
+import numpy as np
+import torch
+
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
+from spflow.utils.module_display import _format_scope, _get_module_children, _tree_view
+
+
+class _Mini(Module):
+    def __init__(self, scope: Scope | None = None):
+        super().__init__()
+        self.scope = scope if scope is not None else Scope([0])
+        self.in_shape = ModuleShape(1, 1, 1)
+        self.out_shape = ModuleShape(1, 1, 1)
+
+    @property
+    def feature_to_scope(self) -> np.ndarray:
+        return np.array([Scope([0])], dtype=object).reshape(1, 1)
+
+    def log_likelihood(self, data, cache=None):
+        return torch.zeros((data.shape[0], 1, 1, 1))
+
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
+        return self._prepare_sample_data(num_samples, data)
+
+    def expectation_maximization(self, data, bias_correction=True, cache=None):
+        return None
+
+    def maximum_likelihood_estimation(self, data, weights=None, bias_correction=True, nan_strategy="ignore", cache=None):
+        return None
+
+    def marginalize(self, marg_rvs, prune=True, cache=None):
+        return self
+
+
+def test_tree_view_depth_cutoff_branch():
+    m = _Mini()
+    assert _tree_view(m, max_depth=0, show_params=True, show_scope=True, depth=1, is_last=True, prefix="") == ""
+
+
+def test_num_repetitions_property_and_scope_format_branches():
+    m = _Mini(Scope([0, 2, 4]))
+    m.num_repetitions = 7
+
+    out = module_to_str(m, format="tree", show_scope=True)
+    assert "R=7" in out
+    assert "{0, 2, 4}" in out
+
+    assert _format_scope(None) == ""
+    assert _format_scope(type("NoQuery", (), {})()) == ""
+    assert _format_scope(type("Empty", (), {"query": []})()) == ""
+
+
+def test_get_module_children_branches_for_modulelist_list_cat_and_ratspn():
+    child = _Mini()
+
+    # ModuleList branch
+    parent_ml = _Mini()
+    parent_ml.inputs = torch.nn.ModuleList([child])
+    assert _get_module_children(parent_ml) == [("input[0]", child)]
+
+    # list branch
+    parent_list = _Mini()
+    parent_list.inputs = [child]
+    assert _get_module_children(parent_list) == [("input[0]", child)]
+
+    # Cat special-case branch with single module input
+    CatCls = type("Cat", (_Mini,), {})
+    cat = CatCls()
+    cat.inputs = child
+
+    parent_cat = _Mini()
+    parent_cat.inputs = cat
+    assert _get_module_children(parent_cat) == [("inputs", child)]
+
+    # RatSPN root_node branch
+    RatCls = type("RatSPN", (_Mini,), {})
+    rat = RatCls()
+    rat.root_node = child
+    assert _get_module_children(rat) == [("root_node", child)]

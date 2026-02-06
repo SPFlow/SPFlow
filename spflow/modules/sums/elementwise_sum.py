@@ -78,11 +78,6 @@ class ElementwiseSum(Module):
             out_channels = weights.shape[2]
             inferred_num_repetitions = weights.shape[4]
 
-            if num_repetitions is not None and num_repetitions != inferred_num_repetitions:
-                raise InvalidParameterCombinationError(
-                    f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. "
-                    f"Was {num_repetitions} but weights shape indicates {inferred_num_repetitions}."
-                )
             num_repetitions = inferred_num_repetitions
         else:
             # Set defaults when weights not provided

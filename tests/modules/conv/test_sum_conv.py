@@ -7,10 +7,12 @@ import numpy as np
 import pytest
 import torch
 
+from spflow.exceptions import InvalidWeightsError, MissingCacheError, ShapeError
 from spflow.meta.data import Scope
 from spflow.modules.conv import SumConv
 from spflow.modules.leaves import Normal
 from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import SamplingContext
 
 # Test parameter values
 in_channels_values = [1, 3]
@@ -85,6 +87,57 @@ class TestSumConvConstruction:
         weights_sum = module.weights.sum(dim=1)  # Sum over in_channels
         torch.testing.assert_close(weights_sum, torch.ones_like(weights_sum), rtol=1e-5, atol=1e-8)
 
+    @pytest.mark.parametrize("in_channels,out_channels,hw", construction_params)
+    def test_extra_repr_contains_metadata(self, in_channels, out_channels, hw):
+        """Test repr includes key layer metadata."""
+        height, width = hw
+        leaf = make_normal_leaf(height, width, out_channels=in_channels)
+        module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
+
+        repr_str = module.extra_repr()
+        assert f"in_channels={in_channels}" in repr_str
+        assert f"out_channels={out_channels}" in repr_str
+        assert "kernel_size=2" in repr_str
+
+    def test_weights_setter_updates_weights(self):
+        """Test setting valid weights updates module parameters."""
+        leaf = make_normal_leaf(4, 4, out_channels=3)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        values = torch.full(module.weights_shape, 1.0 / 3.0)
+        module.weights = values
+
+        torch.testing.assert_close(module.weights, values, atol=1e-5, rtol=1e-5)
+
+    def test_weights_setter_rejects_invalid_shape(self):
+        """Test setting weights with invalid shape raises ShapeError."""
+        leaf = make_normal_leaf(4, 4, out_channels=3)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        with pytest.raises(ShapeError, match="Invalid shape for weights"):
+            module.weights = torch.ones(2, 3, 2, 1, 1)
+
+    def test_weights_setter_rejects_non_positive_weights(self):
+        """Test non-positive weights are rejected."""
+        leaf = make_normal_leaf(4, 4, out_channels=3)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        values = torch.full(module.weights_shape, 1.0 / 3.0)
+        values[0, 0, 0, 0, 0] = 0.0
+
+        with pytest.raises(InvalidWeightsError, match="all positive"):
+            module.weights = values
+
+    def test_weights_setter_rejects_non_normalized_weights(self):
+        """Test non-normalized weights are rejected."""
+        leaf = make_normal_leaf(4, 4, out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        values = torch.full(module.weights_shape, 0.6)
+
+        with pytest.raises(InvalidWeightsError, match="sum to one"):
+            module.weights = values
+
 
 class TestSumConvLogLikelihood:
     """Test SumConv log_likelihood computation."""
@@ -132,6 +185,47 @@ class TestSumConvLogLikelihood:
         # Should return same object from cache
         assert ll1 is ll2
 
+    def test_log_likelihood_broadcasts_input_repetitions(self):
+        """Test current behavior for reps=1 input and reps>1 output path."""
+        leaf = make_normal_leaf(4, 4, out_channels=2, num_repetitions=1)
+        module = SumConv(inputs=leaf, out_channels=3, kernel_size=2, num_repetitions=2)
+
+        data = torch.randn(4, 16)
+        with pytest.raises(RuntimeError, match="number of sizes provided"):
+            module.log_likelihood(data)
+
+    def test_log_likelihood_repetition_mismatch_raises(self):
+        """Test incompatible repetition counts raise ValueError."""
+        leaf = make_normal_leaf(4, 4, out_channels=2, num_repetitions=2)
+        module = SumConv(inputs=leaf, out_channels=3, kernel_size=2, num_repetitions=3)
+
+        with pytest.raises(ValueError, match="Input repetitions 2 incompatible with output 3"):
+            module.log_likelihood(torch.randn(2, 16))
+
+    def test_log_likelihood_small_spatial_dims_uses_special_case(self):
+        """Test special path when spatial dimensions are smaller than kernel."""
+        leaf = make_normal_leaf(1, 1, out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=3, kernel_size=2)
+
+        ll = module.log_likelihood(torch.randn(5, 1))
+        assert ll.shape == (5, 1, 3, 1)
+
+    def test_log_likelihood_non_square_features_raises(self):
+        """Test non-square feature counts are rejected."""
+        leaf = Normal(scope=Scope(list(range(6))), out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        with pytest.raises(ValueError, match="not a perfect square"):
+            module.log_likelihood(torch.randn(3, 6))
+
+    def test_log_likelihood_non_divisible_spatial_dims_raises(self):
+        """Test square dims not divisible by kernel size are rejected."""
+        leaf = make_normal_leaf(3, 3, out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        with pytest.raises(ValueError, match="must be divisible by kernel_size"):
+            module.log_likelihood(torch.randn(2, 9))
+
 
 class TestSumConvSample:
     """Test SumConv sampling."""
@@ -172,6 +266,65 @@ class TestSumConvSample:
         # MPE should give deterministic results (same selection)
         # Note: actual values may vary due to leaf sampling
         assert samples1.shape == samples2.shape
+
+    def test_sample_defaults_to_single_sample(self):
+        """Test sample() uses one sample when no inputs are provided."""
+        leaf = make_normal_leaf(4, 4, out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        samples = module.sample()
+        assert samples.shape == (1, 16)
+
+    def test_sample_uses_repetition_index_and_cached_input_lls(self):
+        """Test sampling path with repetition selection and conditional cache."""
+        batch_size = 3
+        leaf = make_normal_leaf(4, 4, out_channels=2, num_repetitions=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2, num_repetitions=2)
+
+        cache = Cache()
+        data = torch.randn(batch_size, 16)
+        module.log_likelihood(data, cache=cache)
+
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((batch_size, 1), dtype=torch.long),
+            mask=torch.ones((batch_size, 1), dtype=torch.bool),
+            repetition_index=torch.tensor([0, 1, 0], dtype=torch.long),
+        )
+
+        out = module.sample(data=torch.full((batch_size, 16), float("nan")), cache=cache, sampling_ctx=sampling_ctx)
+        assert out.shape == (batch_size, 16)
+        assert sampling_ctx.channel_index.shape == (batch_size, 16)
+
+    def test_sample_upsamples_context_from_parent_spatial_shape(self):
+        """Test sampling context upsampling branch for reduced parent features."""
+        batch_size = 2
+        leaf = make_normal_leaf(4, 4, out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((batch_size, 4), dtype=torch.long),
+            mask=torch.ones((batch_size, 4), dtype=torch.bool),
+        )
+
+        out = module.sample(data=torch.full((batch_size, 16), float("nan")), sampling_ctx=sampling_ctx)
+        assert out.shape == (batch_size, 16)
+        assert sampling_ctx.channel_index.shape == (batch_size, 16)
+
+    def test_sample_non_square_features_raises(self):
+        """Test sample rejects non-square feature counts."""
+        leaf = Normal(scope=Scope(list(range(6))), out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        with pytest.raises(ValueError, match="not a perfect square"):
+            module.sample(num_samples=2)
+
+    def test_sample_non_divisible_spatial_dims_raises(self):
+        """Test sample rejects square dims not divisible by kernel size."""
+        leaf = make_normal_leaf(3, 3, out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        with pytest.raises(ValueError, match="must be divisible by kernel_size"):
+            module.sample(num_samples=2)
 
 
 class TestSumConvFeatureToScope:
@@ -249,3 +402,86 @@ class TestSumConvEM:
         # Check weights still sum to 1 over in_channels
         weights_sum = module.weights.sum(dim=1)
         torch.testing.assert_close(weights_sum, torch.ones_like(weights_sum), rtol=1e-5, atol=1e-5)
+
+    def test_em_missing_input_lls_raises(self):
+        """Test EM raises if input log-likelihoods are missing in cache."""
+        leaf = make_normal_leaf(4, 4, out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        cache = Cache()
+        cache["log_likelihood"][module] = torch.zeros(2, 16, 2, 1)
+
+        with pytest.raises(MissingCacheError, match="Input log-likelihoods not found in cache"):
+            module.expectation_maximization(data=torch.randn(2, 16), cache=cache)
+
+    def test_em_missing_module_lls_raises(self):
+        """Test EM raises if module log-likelihoods are missing in cache."""
+        leaf = make_normal_leaf(4, 4, out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        cache = Cache()
+        cache["log_likelihood"][leaf] = torch.zeros(2, 16, 2, 1)
+
+        with pytest.raises(MissingCacheError, match="Module log-likelihoods not found in cache"):
+            module.expectation_maximization(data=torch.randn(2, 16), cache=cache)
+
+    def test_em_handles_missing_gradients(self):
+        """Test EM falls back to uniform log gradients when grad is missing."""
+        leaf = make_normal_leaf(4, 4, out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        cache = Cache()
+        data = torch.randn(10, 16)
+        module.log_likelihood(data, cache=cache)
+
+        with patch.object(leaf, "expectation_maximization") as mock_leaf_em:
+            module.expectation_maximization(data, cache=cache)
+
+        mock_leaf_em.assert_called_once()
+
+    def test_em_raises_when_expected_gradient_missing(self):
+        """Test EM raises when gradient was expected but is missing."""
+        leaf = make_normal_leaf(4, 4, out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        cache = Cache()
+        data = torch.randn(10, 16)
+        module.log_likelihood(data, cache=cache)
+        cache["log_likelihood"][module].retain_grad()
+
+        with pytest.raises(RuntimeError, match="Expected gradient for cached module log-likelihood"):
+            module.expectation_maximization(data, cache=cache)
+
+
+class TestSumConvMarginalize:
+    """Test SumConv marginalization behavior."""
+
+    def test_marginalize_returns_none_when_fully_marginalized(self):
+        """Test full scope marginalization returns None."""
+        leaf = make_normal_leaf(4, 4, out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=3, kernel_size=2)
+
+        result = module.marginalize(marg_rvs=list(range(16)))
+        assert result is None
+
+    def test_marginalize_returns_none_when_input_marginalizes_to_none(self):
+        """Test return None when child marginalization returns None."""
+        leaf = make_normal_leaf(4, 4, out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=3, kernel_size=2)
+
+        with patch.object(leaf, "marginalize", return_value=None):
+            result = module.marginalize(marg_rvs=[0])
+
+        assert result is None
+
+    def test_marginalize_returns_sumconv_for_partial_scope(self):
+        """Test partial marginalization returns a SumConv with same metadata."""
+        leaf = make_normal_leaf(4, 4, out_channels=2, num_repetitions=2)
+        module = SumConv(inputs=leaf, out_channels=3, kernel_size=2, num_repetitions=2)
+
+        result = module.marginalize(marg_rvs=[0, 1, 2])
+
+        assert isinstance(result, SumConv)
+        assert result.out_shape.channels == module.out_shape.channels
+        assert result.kernel_size == module.kernel_size
+        assert result.out_shape.repetitions == module.out_shape.repetitions

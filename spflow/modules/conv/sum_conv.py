@@ -482,13 +482,23 @@ class SumConv(Module):
             out_channels = module_lls.shape[2]
             num_reps = self.out_shape.repetitions
 
-            # Get log gradients from module output
-            # grad is set during backward pass or EM routine
-            if module_lls.grad is None:
+            # Get log gradients from module output.
+            # Accessing `.grad` on non-leaf tensors without `retain_grad()` emits
+            # a PyTorch warning, so only read it when it is expected to exist.
+            grad_expected = module_lls.is_leaf or module_lls.retains_grad
+            module_lls_grad = module_lls.grad if grad_expected else None
+
+            if module_lls_grad is None and grad_expected:
+                raise RuntimeError(
+                    "Expected gradient for cached module log-likelihood, but found None. "
+                    "This usually indicates a disconnected/non-differentiable computation path."
+                )
+
+            if module_lls_grad is None:
                 # If no gradient, use uniform (this happens at the root)
                 log_grads = torch.zeros_like(module_lls)
             else:
-                log_grads = torch.log(module_lls.grad + 1e-10)
+                log_grads = torch.log(module_lls_grad + 1e-10)
 
             # Current log weights: (out_c, in_c, k, k, reps)
             # Average over kernel spatial dims for simplicity

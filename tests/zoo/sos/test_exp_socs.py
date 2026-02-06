@@ -1,12 +1,16 @@
 import math
 
 import numpy as np
+import pytest
 import torch
 from scipy import integrate
 
+from spflow.exceptions import ShapeError, UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.bernoulli import Bernoulli
 from spflow.modules.leaves.normal import Normal
+from spflow.modules.module import Module
+from spflow.modules.module_shape import ModuleShape
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
 from spflow.zoo.sos import ExpSOCS
@@ -95,3 +99,95 @@ def test_exp_socs_continuous_normal_partition_matches_scipy_quad():
 
     z_num, _err = integrate.quad(numerator, -np.inf, np.inf, epsabs=1e-8, epsrel=1e-8, limit=200)
     assert abs(math.log(z_num) - logZ) < 2e-4
+
+
+class _DummyScalarModule(Module):
+    def __init__(self, scope: Scope, *, marginalize_to_none: bool = False):
+        super().__init__()
+        self.scope = scope
+        self.in_shape = ModuleShape(1, 1, 1)
+        self.out_shape = ModuleShape(1, 1, 1)
+        self._marginalize_to_none = marginalize_to_none
+
+    @property
+    def feature_to_scope(self) -> np.ndarray:
+        return np.array([[self.scope]], dtype=object)
+
+    def log_likelihood(self, data: torch.Tensor, cache: Cache | None = None) -> torch.Tensor:
+        return torch.zeros((data.shape[0], 1, 1, 1), dtype=data.dtype, device=data.device)
+
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: torch.Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx=None,
+    ) -> torch.Tensor:
+        if data is None:
+            n = 1 if num_samples is None else num_samples
+            data = torch.zeros((n, 1), dtype=torch.get_default_dtype())
+        return data
+
+    def marginalize(self, marg_rvs: list[int], prune: bool = True, cache: Cache | None = None):
+        if self._marginalize_to_none:
+            return None
+        return _DummyScalarModule(self.scope, marginalize_to_none=False)
+
+
+def test_exp_socs_constructor_and_unsupported_ops():
+    scope = Scope([0])
+    mono = _DummyScalarModule(scope)
+    comp = _DummyScalarModule(scope)
+
+    with pytest.raises(ValueError, match="at least one component"):
+        ExpSOCS(monotone=mono, components=[])
+
+    bad_mono = _DummyScalarModule(scope)
+    bad_mono.out_shape = ModuleShape(2, 1, 1)
+    with pytest.raises(ShapeError, match="monotone.out_shape"):
+        ExpSOCS(monotone=bad_mono, components=[comp])
+
+    bad_comp = _DummyScalarModule(scope)
+    bad_comp.out_shape = ModuleShape(1, 2, 1)
+    with pytest.raises(ShapeError, match="component.out_shape"):
+        ExpSOCS(monotone=mono, components=[bad_comp])
+
+    other_scope_comp = _DummyScalarModule(Scope([1]))
+    with pytest.raises(ShapeError, match="identical scope"):
+        ExpSOCS(monotone=mono, components=[other_scope_comp])
+
+    model = ExpSOCS(monotone=mono, components=[comp])
+    assert np.array_equal(model.feature_to_scope, mono.feature_to_scope)
+
+    with pytest.raises(UnsupportedOperationError, match="expectation-maximization"):
+        model.expectation_maximization(torch.zeros((2, 1)))
+    with pytest.raises(UnsupportedOperationError, match="maximum-likelihood"):
+        model.maximum_likelihood_estimation(torch.zeros((2, 1)))
+    with pytest.raises(UnsupportedOperationError, match="sample"):
+        model.sample(num_samples=2)
+
+
+def test_exp_socs_partition_cache_and_marginalize_branches():
+    scope = Scope([0])
+    mono = Bernoulli(scope=scope, out_channels=1, num_repetitions=1, probs=torch.tensor([[[0.4]]]))
+    comp = Bernoulli(scope=scope, out_channels=1, num_repetitions=1, probs=torch.tensor([[[0.7]]]))
+    model = ExpSOCS(monotone=mono, components=[comp])
+
+    x = torch.zeros((3, 1), dtype=torch.get_default_dtype())
+    cache = Cache()
+    model.log_likelihood(x, cache=cache)
+    first_logz = cache.extras["exp_socs_logZ"]
+    model.log_likelihood(x, cache=cache)
+    second_logz = cache.extras["exp_socs_logZ"]
+    torch.testing.assert_close(first_logz, second_logz)
+
+    assert model.marginalize([]) is not None
+
+    mono_none = _DummyScalarModule(scope, marginalize_to_none=True)
+    model_mono_none = ExpSOCS(monotone=mono_none, components=[comp])
+    assert model_mono_none.marginalize([0]) is None
+
+    comp_none = _DummyScalarModule(scope, marginalize_to_none=True)
+    model_comp_none = ExpSOCS(monotone=mono, components=[comp_none])
+    assert model_comp_none.marginalize([0]) is None

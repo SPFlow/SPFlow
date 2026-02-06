@@ -208,3 +208,76 @@ class TestCnetInputValidation:
         data = make_binary_data(n_samples=100, n_vars=4)
         with pytest.raises(Exception):  # InvalidParameterError
             learn_cnet(data, cardinalities=[2, 2])  # Only 2 instead of 4
+
+
+# Additional branch-focused cnet tests
+from spflow.meta import Scope
+from spflow.learn import cnet as cnet_mod
+from spflow.learn.cnet import (
+    _compute_entropy,
+    _select_conditioning_variable_naive_mle,
+    _select_conditioning_variable_random,
+    _validate_discrete_data,
+)
+
+
+def test_internal_validation_entropy_and_variable_selection_branches():
+    scope = Scope([0, 1])
+
+    try:
+        _validate_discrete_data(torch.tensor([0.0, 1.0]), [2, 2], scope)
+        raise AssertionError("Expected InvalidParameterError")
+    except Exception as exc:
+        assert "Data must be 2D" in str(exc)
+
+    data = torch.tensor([[0.0, 0.0], [1.5, 1.0]])
+    try:
+        _validate_discrete_data(data, [2, 2], scope)
+        raise AssertionError("Expected InvalidParameterError")
+    except Exception as exc:
+        assert "non-integer" in str(exc)
+
+    empty = torch.empty((0, 2))
+    assert _compute_entropy(empty, 0, 2) == 0.0
+
+    d = torch.tensor([[0.0, 0.0], [0.0, 1.0], [0.0, 1.0], [0.0, 0.0]])
+    best = _select_conditioning_variable_naive_mle(d, scope, [2, 2])
+    assert best in scope.query
+
+    rng = torch.Generator().manual_seed(0)
+    r = _select_conditioning_variable_random(scope, rng)
+    assert r in scope.query
+
+
+def test_learn_cnet_branches_for_single_var_and_empty_slices():
+    # remaining_scope empty branch
+    d1 = torch.tensor([[0.0], [1.0], [0.0], [1.0]])
+    m1 = learn_cnet(d1, cardinalities=2, min_instances_slice=1, min_features_slice=0)
+    assert m1 is not None
+
+    # empty-slice branch + single non-empty branch collapse
+    d2 = torch.tensor([[0.0, 0.0], [0.0, 1.0], [0.0, 0.0], [0.0, 1.0]])
+    m2 = learn_cnet(d2, cardinalities=[3, 2], min_instances_slice=1, min_features_slice=1, cond="naive_mle")
+    ll = m2.log_likelihood(d2)
+    assert torch.isfinite(ll).all()
+
+
+def test_learn_cnet_random_seeded_path_executes():
+    d = torch.randint(0, 2, (20, 3)).float()
+    m = learn_cnet(d, cardinalities=2, cond="random", seed=0, min_instances_slice=1, min_features_slice=1)
+    assert torch.isfinite(m.log_likelihood(d[:3])).all()
+
+
+def test_learn_cnet_cond_var_none_and_zero_total_branches(monkeypatch):
+    # Force empty variable order in cond=random -> cond_var=None fallback.
+    monkeypatch.setattr(cnet_mod.torch, "randperm", lambda *args, **kwargs: torch.tensor([], dtype=torch.long))
+    d = torch.randint(0, 2, (5, 2)).float()
+    m = learn_cnet(d, cardinalities=2, cond="random", min_instances_slice=1, min_features_slice=1)
+    assert m is not None
+
+    # Force validation bypass and run with empty data to hit total == 0 normalization branch.
+    monkeypatch.setattr(cnet_mod, "_validate_discrete_data", lambda data, cardinalities, scope: None)
+    monkeypatch.setattr(cnet_mod.torch, "randperm", lambda *args, **kwargs: torch.tensor([0, 1], dtype=torch.long))
+    empty = torch.empty((0, 2))
+    m2 = learn_cnet(empty, cardinalities=2, cond="random", min_instances_slice=0, min_features_slice=0)
+    assert m2 is not None

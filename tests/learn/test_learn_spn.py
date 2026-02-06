@@ -1,3 +1,4 @@
+import importlib
 from itertools import combinations, product
 import pytest
 
@@ -5,12 +6,16 @@ import numpy as np
 import torch
 
 from spflow.learn import learn_spn
-from spflow.learn.learn_spn import cluster_by_kmeans, prune_sums
+from spflow.learn.learn_spn import cluster_by_kmeans, partition_by_rdc, prune_sums
 from spflow.meta import Scope
 from spflow.modules.leaves import Normal
 from spflow.modules.module import Module
+from spflow.modules.ops.cat import Cat
+from spflow.modules.products import Product
 from spflow.modules.sums import Sum
 from spflow.utils.rdc import rdc
+
+learn_spn_module = importlib.import_module("spflow.learn.learn_spn")
 
 
 def test_kmeans():
@@ -156,3 +161,195 @@ def test_prune_sums_flattens_nested_sums():
 
     assert num_sums_after < num_sums_before
     assert torch.allclose(lls_before, lls_after)
+
+
+def test_partition_by_rdc_applies_preprocessing_and_restores_dtype():
+    data = torch.randn(24, 3, dtype=torch.float32)
+
+    original_dtype = torch.get_default_dtype()
+    torch.set_default_dtype(torch.float32)
+    try:
+        was_called = {"value": False}
+
+        def preprocessing(x):
+            was_called["value"] = True
+            return x + 0.123
+
+        partition_ids = partition_by_rdc(data, threshold=1.1, preprocessing=preprocessing)
+
+        assert was_called["value"] is True
+        assert partition_ids.shape == (data.shape[1],)
+        assert partition_ids.device == data.device
+        assert torch.get_default_dtype() == torch.float32
+    finally:
+        torch.set_default_dtype(original_dtype)
+
+
+def test_cluster_by_kmeans_applies_preprocessing(monkeypatch):
+    seen = {}
+
+    class DummyKMeans:
+        def __init__(self, n_clusters, mode, verbose):
+            seen["args"] = (n_clusters, mode, verbose)
+
+        def fit_predict(self, data):
+            seen["data"] = data
+            return torch.zeros(data.shape[0], dtype=torch.int64)
+
+    monkeypatch.setattr(learn_spn_module, "KMeans", DummyKMeans)
+
+    data = torch.randn(9, 2)
+    labels = cluster_by_kmeans(data, n_clusters=3, preprocessing=lambda x: x + 1.0)
+
+    assert seen["args"] == (3, "euclidean", 1)
+    assert torch.equal(seen["data"], data + 1.0)
+    assert labels.shape == (data.shape[0],)
+
+
+def test_learn_spn_builds_scope_from_disjoint_leaf_list_and_returns_product():
+    data = torch.randn(16, 2)
+    leaves = [Normal(scope=Scope([0]), out_channels=1), Normal(scope=Scope([1]), out_channels=1)]
+
+    model = learn_spn(data, leaf_modules=leaves, min_features_slice=3)
+
+    assert isinstance(model, Product)
+    assert tuple(model.scope.query) == (0, 1)
+
+
+def test_learn_spn_single_leaf_list_uses_single_scope_path():
+    data = torch.randn(16, 1)
+    leaves = [Normal(scope=Scope([0]), out_channels=1)]
+
+    model = learn_spn(data, leaf_modules=leaves, min_features_slice=3)
+
+    assert isinstance(model, Normal)
+    assert tuple(model.scope.query) == (0,)
+
+
+def test_learn_spn_rejects_non_disjoint_leaf_scopes():
+    data = torch.randn(16, 3)
+    leaves = [Normal(scope=Scope([0, 1]), out_channels=1), Normal(scope=Scope([1, 2]), out_channels=1)]
+
+    with pytest.raises(ValueError, match="disjoint scopes"):
+        learn_spn(data, leaf_modules=leaves)
+
+
+@pytest.mark.parametrize(
+    "kwargs,match",
+    [
+        ({"clustering_method": "invalid"}, "invalid"),
+        ({"partitioning_method": "invalid"}, "invalid"),
+        ({"min_instances_slice": 1}, "min_instances_slice"),
+        ({"min_features_slice": 1}, "min_features_slice"),
+    ],
+)
+def test_learn_spn_validates_inputs(kwargs, match):
+    data = torch.randn(8, 1)
+    leaf = Normal(scope=Scope([0]), out_channels=1)
+
+    with pytest.raises(ValueError, match=match):
+        learn_spn(data, leaf_modules=leaf, **kwargs)
+
+
+def test_learn_spn_applies_method_kwargs_via_partial_binding():
+    data = torch.randn(20, 2)
+    leaf = Normal(scope=Scope([0, 1]), out_channels=1)
+    seen = {"partition_tokens": [], "cluster_tokens": []}
+
+    def partitioning_method(part_data, token):
+        seen["partition_tokens"].append(token)
+        return torch.tensor([0, 1], device=part_data.device)
+
+    def clustering_method(cluster_data, token):
+        seen["cluster_tokens"].append(token)
+        return torch.zeros(cluster_data.shape[0], dtype=torch.int64, device=cluster_data.device)
+
+    model = learn_spn(
+        data,
+        leaf_modules=leaf,
+        partitioning_method=partitioning_method,
+        clustering_method=clustering_method,
+        partitioning_args={"token": "partition-token"},
+        clustering_args={"token": "cluster-token"},
+    )
+
+    assert isinstance(model, Product)
+    assert seen["partition_tokens"][0] == "partition-token"
+
+
+def test_learn_spn_single_cluster_keeps_inputs_as_list_branch():
+    data = torch.randn(30, 2)
+    leaf = Normal(scope=Scope([0, 1]), out_channels=1)
+    state = {"partition_calls": 0}
+
+    def partitioning_method(part_data):
+        state["partition_calls"] += 1
+        if state["partition_calls"] == 1:
+            return torch.tensor([1, 1], device=part_data.device)
+        return torch.tensor([1, 2], device=part_data.device)
+
+    def clustering_method(cluster_data):
+        return torch.zeros(cluster_data.shape[0], dtype=torch.int64, device=cluster_data.device)
+
+    model = learn_spn(
+        data,
+        leaf_modules=leaf,
+        partitioning_method=partitioning_method,
+        clustering_method=clustering_method,
+        min_instances_slice=2,
+        min_features_slice=2,
+        out_channels=1,
+    )
+
+    assert isinstance(model, Sum)
+    assert state["partition_calls"] >= 2
+
+
+def test_learn_spn_conditional_scope_raises_not_implemented():
+    data = torch.randn(20, 3)
+    scope = Scope(query=[0, 1], evidence=[2])
+    leaf = Normal(scope=Scope([0, 1]), out_channels=1)
+
+    def partitioning_method(_):
+        return torch.tensor([1, 1])
+
+    def clustering_method(cluster_data):
+        return torch.remainder(torch.arange(cluster_data.shape[0]), 2).to(cluster_data.device)
+
+    with pytest.raises(NotImplementedError, match="Conditional clustering"):
+        learn_spn(
+            data,
+            leaf_modules=leaf,
+            scope=scope,
+            partitioning_method=partitioning_method,
+            clustering_method=clustering_method,
+            min_instances_slice=2,
+            min_features_slice=2,
+        )
+
+
+def test_prune_sums_flattens_cat_of_cat_inputs():
+    scope = Scope([0])
+    left_a = Normal(scope=scope, out_channels=1)
+    left_b = Normal(scope=scope, out_channels=1)
+    right_a = Normal(scope=scope, out_channels=1)
+    right_b = Normal(scope=scope, out_channels=1)
+
+    child_sum1 = Sum(inputs=Cat([left_a, left_b], dim=2), out_channels=1)
+    child_sum2 = Sum(inputs=Cat([right_a, right_b], dim=2), out_channels=1)
+    root_sum = Sum(inputs=[child_sum1, child_sum2], out_channels=1)
+
+    prune_sums(root_sum)
+
+    assert isinstance(root_sum.inputs, Cat)
+    assert len(root_sum.inputs.inputs) == 4
+
+
+def test_prune_sums_descends_into_product_with_non_cat_input():
+    scope = Scope([0])
+    inner_sum = Sum(inputs=Normal(scope=scope, out_channels=1), out_channels=1)
+    product = Product(inputs=inner_sum)
+
+    prune_sums(product)
+
+    assert isinstance(product.inputs, Sum)

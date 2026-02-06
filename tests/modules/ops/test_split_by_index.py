@@ -337,3 +337,53 @@ class TestSplitByIndexProperties:
         repr_str = split.extra_repr()
         assert "indices" in repr_str
         assert "[[0, 1], [2, 3]]" in repr_str
+
+    def test_feature_to_scope_with_padding_and_repetitions(self):
+        """Test feature_to_scope shape and padding for uneven splits."""
+        scope = Scope(list(range(0, 5)))
+        leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=2)
+        split = SplitByIndex(inputs=leaf, indices=[[0, 2, 4], [1, 3]])
+
+        f2s = split.feature_to_scope
+        assert f2s.shape == (3, 2, 2)
+        # Second split has only 2 elements and should be padded with -1.
+        assert f2s[2, 1, 0] == -1
+        assert f2s[2, 1, 1] == -1
+
+
+class TestSplitByIndexSamplingContextExpansion:
+    def test_sample_expands_split_sized_context_by_repeat(self):
+        scope = Scope(list(range(0, 4)))
+        leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
+        split = SplitByIndex(inputs=leaf, indices=[[0, 1], [2, 3]])
+
+        n = 6
+        data = torch.full((n, 4), torch.nan)
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((n, 2), dtype=torch.long),
+            mask=torch.ones((n, 2), dtype=torch.bool),
+            repetition_index=torch.zeros(n, dtype=torch.long),
+        )
+
+        out = split.sample(data=data, sampling_ctx=sampling_ctx)
+        assert out.shape == (n, 4)
+        assert sampling_ctx.channel_index.shape == (n, 4)
+        assert sampling_ctx.mask.shape == (n, 4)
+
+    def test_sample_expands_singleton_context_to_full_input(self):
+        scope = Scope(list(range(0, 4)))
+        leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
+        split = SplitByIndex(inputs=leaf, indices=[[0, 1], [2, 3]])
+
+        n = 5
+        data = torch.full((n, 4), torch.nan)
+        sampling_ctx = SamplingContext(
+            channel_index=torch.ones((n, 1), dtype=torch.long),
+            mask=torch.ones((n, 1), dtype=torch.bool),
+            repetition_index=torch.zeros(n, dtype=torch.long),
+        )
+
+        out = split.sample(data=data, sampling_ctx=sampling_ctx)
+        assert out.shape == (n, 4)
+        assert sampling_ctx.channel_index.shape == (n, 4)
+        assert sampling_ctx.mask.shape == (n, 4)

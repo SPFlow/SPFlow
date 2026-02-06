@@ -1,10 +1,15 @@
 """Tests for PiecewiseLinear leaf distribution module."""
 
+import builtins
+import sys
+import types
+
 import pytest
 import torch
 
+from spflow.exceptions import OptionalDependencyError
 from spflow.meta.data import Scope
-from spflow.modules.leaves.piecewise_linear import PiecewiseLinear, PiecewiseLinearDist
+from spflow.modules.leaves.piecewise_linear import PiecewiseLinear, PiecewiseLinearDist, interp, pairwise
 from spflow.utils.domain import DataType, Domain
 
 
@@ -81,6 +86,42 @@ class TestPiecewiseLinearInitialization:
         with pytest.raises(ValueError, match="not been initialized"):
             leaf.sample(num_samples=10, data=torch.full((10, 1), float("nan")))
 
+    def test_negative_alpha_raises(self):
+        """Test alpha validation."""
+        with pytest.raises(ValueError, match="alpha must be non-negative"):
+            _ = PiecewiseLinear(scope=Scope([0]), alpha=-0.1)
+
+    def test_torch_distribution_class_is_none(self):
+        """Test torch distribution class property."""
+        leaf = PiecewiseLinear(scope=Scope([0]))
+        assert leaf._torch_distribution_class is None
+
+    def test_initialize_import_error_raises_optional_dependency_error(self, monkeypatch):
+        """Test OptionalDependencyError branch when k-means dependency is missing."""
+        real_import = builtins.__import__
+
+        def _raising_import(name, *args, **kwargs):
+            if name == "fast_pytorch_kmeans":
+                raise ImportError("missing")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", _raising_import)
+
+        leaf = PiecewiseLinear(scope=Scope([0]))
+        with pytest.raises(OptionalDependencyError, match="fast_pytorch_kmeans required"):
+            leaf.initialize(torch.randn(10, 1), [Domain.continuous_inf_support()])
+
+    def test_initialize_shape_validation_errors(self):
+        """Test input validation branches in initialize."""
+        leaf = PiecewiseLinear(scope=Scope([0, 1]))
+        domains = [Domain.continuous_inf_support(), Domain.continuous_inf_support()]
+
+        with pytest.raises(ValueError, match="Data has 1 features but scope has 2"):
+            leaf.initialize(torch.randn(8, 1), domains)
+
+        with pytest.raises(ValueError, match="Got 1 domains but scope has 2 features"):
+            leaf.initialize(torch.randn(8, 2), domains[:1])
+
     def test_reset(self):
         """Test reset functionality."""
         scope = Scope([0])
@@ -153,6 +194,15 @@ class TestPiecewiseLinearLogLikelihood:
         # Should still produce valid output
         assert not torch.isnan(log_prob).any()
 
+    def test_log_likelihood_requires_2d_data(self):
+        """Test dimensionality validation branch."""
+        scope = Scope([0])
+        leaf = PiecewiseLinear(scope=scope, out_channels=1, num_repetitions=1)
+        leaf.initialize(torch.randn(20, 1), [Domain.continuous_inf_support()])
+
+        with pytest.raises(ValueError, match="Data must be 2-dimensional"):
+            _ = leaf.log_likelihood(torch.randn(20, 1, 1))
+
 
 class TestPiecewiseLinearDist:
     """Test PiecewiseLinearDist distribution class."""
@@ -184,6 +234,88 @@ class TestPiecewiseLinearDist:
         assert mode.shape == (1, 1, 1, 1)  # [C, F, L, R]
         # Mode should be at x=1.0 (highest density)
         assert torch.isclose(mode[0, 0, 0, 0], torch.tensor(1.0))
+
+    def test_log_prob_accepts_5d_input(self):
+        """Test log_prob with [N, C, F, 1, 1] inputs."""
+        xs = [[[[torch.tensor([-1.0, 0.0, 1.0, 2.0])]]]]
+        ys = [[[[torch.tensor([0.0, 0.5, 0.5, 0.0])]]]]
+        domains = [Domain.continuous_inf_support()]
+        dist = PiecewiseLinearDist(xs, ys, domains)
+
+        x = torch.tensor([[[[[0.25]]]], [[[[1.5]]]]])  # [N=2, C=1, F=1, 1, 1]
+        log_prob = dist.log_prob(x)
+
+        assert log_prob.shape == (2, 1, 1, 1, 1)
+        assert torch.isfinite(log_prob).all()
+
+    def test_sample_discrete_values(self):
+        """Test sampling discrete values from categorical branch."""
+        xs = [[[[torch.tensor([-1.0, 0.0, 1.0, 2.0])]]]]
+        ys = [[[[torch.tensor([0.0, 0.1, 0.9, 0.0])]]]]
+        domains = [Domain.discrete_range(0, 1)]
+        dist = PiecewiseLinearDist(xs, ys, domains)
+
+        torch.manual_seed(0)
+        samples = dist.sample((128,))
+
+        assert samples.shape == (128, 1, 1, 1, 1)
+        assert torch.isin(samples.unique(), torch.tensor([0.0, 1.0])).all()
+
+    def test_sample_continuous_values_within_support(self):
+        """Test continuous inverse-CDF sampling branch."""
+        xs = [[[[torch.tensor([-1.0, 0.0, 1.0, 2.0])]]]]
+        ys = [[[[torch.tensor([0.0, 1.0, 0.5, 0.0])]]]]
+        domains = [Domain.continuous_inf_support()]
+        dist = PiecewiseLinearDist(xs, ys, domains)
+
+        torch.manual_seed(0)
+        samples = dist.sample((128,))
+
+        assert samples.shape == (128, 1, 1, 1, 1)
+        assert torch.all(samples >= -1.0)
+        assert torch.all(samples <= 2.0)
+
+    def test_sample_unknown_domain_type_raises(self):
+        """Test error branch for unknown data types."""
+
+        class _InvalidDomain:
+            data_type = "invalid"
+
+        xs = [[[[torch.tensor([-1.0, 0.0, 1.0, 2.0])]]]]
+        ys = [[[[torch.tensor([0.0, 1.0, 0.5, 0.0])]]]]
+        dist = PiecewiseLinearDist(xs, ys, [_InvalidDomain()])
+
+        with pytest.raises(ValueError, match="Unknown data type"):
+            _ = dist.sample((4,))
+
+
+class TestPiecewiseLinearHelpers:
+    """Test helper functions in piecewise_linear module."""
+
+    def test_pairwise(self):
+        """Test pairwise helper output."""
+        assert list(pairwise([1, 2, 3, 4])) == [(1, 2), (2, 3), (3, 4)]
+
+    def test_interp_constant_extrapolation(self):
+        """Test constant-value extrapolation."""
+        xp = torch.tensor([0.0, 1.0, 2.0])
+        fp = torch.tensor([0.0, 1.0, 0.0])
+        x = torch.tensor([-1.0, 0.5, 3.0])
+
+        y = interp(x=x, xp=xp, fp=fp, extrapolate="constant")
+
+        assert torch.allclose(y, torch.tensor([0.0, 0.5, 0.0]))
+
+    def test_interp_linear_extrapolation_with_dim(self):
+        """Test linear extrapolation branch and non-default interpolation axis."""
+        xp = torch.tensor([[0.0], [1.0], [2.0]])
+        fp = torch.tensor([[1.0], [0.0], [1.0]])
+        x = torch.tensor([[-1.0], [0.5], [3.0]])
+
+        y = interp(x=x, xp=xp, fp=fp, dim=0, extrapolate="linear")
+
+        assert y.shape == x.shape
+        assert torch.all(y >= 0.0)
 
 
 class TestPiecewiseLinearSampling:
@@ -219,6 +351,139 @@ class TestPiecewiseLinearSampling:
 
         assert samples.shape == (10, 2)
         assert not torch.isnan(samples).any()
+
+    def test_sample_requires_repetition_idx_for_multiple_repetitions(self):
+        """Test repetition-index validation in sample."""
+        scope = Scope([0])
+        leaf = PiecewiseLinear(scope=scope, out_channels=1, num_repetitions=2)
+        data = torch.randn(100, 1)
+        domains = [Domain.continuous_inf_support()]
+        leaf.initialize(data, domains)
+
+        sample_data = torch.full((8, 1), float("nan"))
+        with pytest.raises(ValueError, match="Repetition index must be provided"):
+            _ = leaf.sample(num_samples=8, data=sample_data)
+
+    def test_sample_is_mpe_branch(self):
+        """Test MPE sampling branch."""
+        scope = Scope([0, 1])
+        leaf = PiecewiseLinear(scope=scope, out_channels=1, num_repetitions=1)
+        leaf.initialize(torch.randn(50, 2), [Domain.continuous_inf_support(), Domain.continuous_inf_support()])
+
+        sample_data = torch.full((6, 2), float("nan"))
+        samples = leaf.sample(num_samples=6, data=sample_data, is_mpe=True)
+
+        assert samples.shape == (6, 2)
+        assert torch.isfinite(samples).all()
+
+
+class TestPiecewiseLinearParamsAndMode:
+    """Test params/mode and unsupported MLE branches."""
+
+    def test_params_and_mode(self):
+        """Test params() and mode property accessors."""
+        leaf = PiecewiseLinear(scope=Scope([0]), out_channels=1, num_repetitions=1)
+        leaf.initialize(torch.randn(40, 1), [Domain.continuous_inf_support()])
+
+        params = leaf.params()
+        assert "xs" in params and "ys" in params
+        mode = leaf.mode
+        assert mode.shape == (1, 1, 1, 1)
+
+    def test_compute_parameter_estimates_not_implemented(self):
+        """Test MLE unsupported branch."""
+        leaf = PiecewiseLinear(scope=Scope([0]))
+        with pytest.raises(NotImplementedError, match="does not support MLE"):
+            _ = leaf._compute_parameter_estimates(
+                data=torch.randn(4, 1),
+                weights=torch.ones(4, 1, 1),
+                bias_correction=False,
+            )
+
+
+class TestPiecewiseLinearInitializeBranches:
+    """Test additional initialize branch coverage with deterministic fake KMeans."""
+
+    @staticmethod
+    def _install_fake_kmeans(monkeypatch, assignments):
+        """Install a fake fast_pytorch_kmeans module with deterministic assignments."""
+
+        class FakeKMeans:
+            def __init__(self, n_clusters, mode, verbose, init_method):
+                self.n_clusters = n_clusters
+                self.centroids = torch.zeros(n_clusters, 1)
+
+            def fit(self, data):
+                self.centroids = torch.zeros(self.n_clusters, data.shape[1], device=data.device)
+                return self
+
+            def max_sim(self, a, b):
+                idx = torch.as_tensor(assignments, dtype=torch.long, device=a.device)
+                return torch.zeros_like(idx, dtype=torch.float32), idx
+
+        fake_mod = types.SimpleNamespace(KMeans=FakeKMeans)
+        monkeypatch.setitem(sys.modules, "fast_pytorch_kmeans", fake_mod)
+
+    def test_initialize_empty_cluster_discrete_uses_uniform(self, monkeypatch):
+        """Test empty discrete cluster fallback densities."""
+        self._install_fake_kmeans(monkeypatch, assignments=[0, 0, 0, 0])
+
+        leaf = PiecewiseLinear(scope=Scope([0]), out_channels=2, num_repetitions=1)
+        data = torch.tensor([[0.0], [1.0], [2.0], [1.0]])
+        leaf.initialize(data, [Domain.discrete_range(0, 2)])
+
+        # cluster_idx=1 gets no points; with tails this should be [0, 1/3, 1/3, 1/3, 0]
+        y_empty_cluster = leaf.ys[0][1][0][0]
+        assert torch.isclose(y_empty_cluster[1:-1].sum(), torch.tensor(1.0), atol=1e-5)
+
+    def test_initialize_empty_cluster_continuous_and_alpha_smoothing(self, monkeypatch):
+        """Test empty continuous cluster fallback + Laplace smoothing branch."""
+        self._install_fake_kmeans(monkeypatch, assignments=[0, 0, 0, 0, 0])
+
+        leaf = PiecewiseLinear(scope=Scope([0]), out_channels=2, num_repetitions=1, alpha=0.5)
+        data = torch.tensor([[0.0], [0.2], [0.4], [0.6], [0.8]])
+        leaf.initialize(data, [Domain.continuous_range(0.0, 1.0)])
+
+        y_empty_cluster = leaf.ys[0][1][0][0]
+        assert torch.isfinite(y_empty_cluster).all()
+        assert torch.all(y_empty_cluster >= 0.0)
+
+    def test_initialize_unknown_data_type_raises(self, monkeypatch):
+        """Test error for unknown data type in histogram construction."""
+        self._install_fake_kmeans(monkeypatch, assignments=[0, 0, 0])
+
+        class _InvalidDomain:
+            data_type = "invalid"
+            min = 0.0
+            max = 1.0
+            values = None
+
+        leaf = PiecewiseLinear(scope=Scope([0]), out_channels=2, num_repetitions=1)
+        with pytest.raises(ValueError, match="Unknown data type"):
+            leaf.initialize(torch.tensor([[0.0], [0.5], [1.0]]), [_InvalidDomain()])
+
+    def test_initialize_tail_break_unknown_type_raises(self, monkeypatch):
+        """Test tail-break error branch with changing data type value."""
+        self._install_fake_kmeans(monkeypatch, assignments=[0, 0, 0])
+
+        class _FlakyDomain:
+            min = 0.0
+            max = 1.0
+            values = None
+
+            def __init__(self):
+                self.calls = 0
+
+            @property
+            def data_type(self):
+                self.calls += 1
+                if self.calls <= 2:
+                    return DataType.CONTINUOUS
+                return "invalid"
+
+        leaf = PiecewiseLinear(scope=Scope([0]), out_channels=2, num_repetitions=1)
+        with pytest.raises(ValueError, match="Unknown data type in tail break construction"):
+            leaf.initialize(torch.tensor([[0.0], [0.5], [1.0]]), [_FlakyDomain()])
 
 
 class TestDomain:

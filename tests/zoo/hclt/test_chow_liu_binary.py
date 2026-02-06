@@ -1,6 +1,13 @@
 import pytest
 import torch
 
+from spflow.exceptions import InvalidParameterError, ShapeError
+from spflow.zoo.hclt.chow_liu import (
+    learn_chow_liu_tree_binary,
+    learn_chow_liu_tree_categorical,
+    learn_chow_liu_trees_binary,
+    learn_chow_liu_trees_categorical,
+)
 from spflow.zoo.hclt.mi import pairwise_mi_binary, pairwise_marginal_binary
 
 
@@ -36,3 +43,33 @@ def test_pairwise_marginal_binary_shapes() -> None:
     x = torch.randint(0, 2, (17, 5))
     pxy = pairwise_marginal_binary(x, pseudocount=1.0)
     assert tuple(pxy.shape) == (5, 5, 4)
+
+
+def test_learn_chow_liu_binary_validation_errors() -> None:
+    x = torch.randint(0, 2, (8, 4))
+    with pytest.raises(ShapeError, match="must be 2D"):
+        learn_chow_liu_trees_binary(x.unsqueeze(0))
+    with pytest.raises(InvalidParameterError, match="num_trees must be >= 1"):
+        learn_chow_liu_trees_binary(x, num_trees=0)
+    with pytest.raises(InvalidParameterError, match="pseudocount must be >= 0"):
+        learn_chow_liu_trees_binary(x, pseudocount=-1.0)
+
+
+def test_learn_chow_liu_categorical_validation_errors() -> None:
+    x = torch.randint(0, 3, (8, 4))
+    with pytest.raises(ShapeError, match="must be 2D"):
+        learn_chow_liu_trees_categorical(x.unsqueeze(0))
+    with pytest.raises(InvalidParameterError, match="num_trees must be >= 1"):
+        learn_chow_liu_trees_categorical(x, num_trees=0)
+    with pytest.raises(InvalidParameterError, match="pseudocount must be >= 0"):
+        learn_chow_liu_trees_categorical(x, pseudocount=-1.0)
+
+
+def test_learn_chow_liu_single_tree_wrappers() -> None:
+    xb = torch.randint(0, 2, (24, 5), dtype=torch.long)
+    tree_b = learn_chow_liu_tree_binary(xb)
+    assert len(tree_b) == 4
+
+    xc = torch.randint(0, 4, (24, 5), dtype=torch.long)
+    tree_c = learn_chow_liu_tree_categorical(xc, num_cats=4)
+    assert len(tree_c) == 4

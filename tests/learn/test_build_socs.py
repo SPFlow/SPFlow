@@ -28,3 +28,47 @@ def test_build_socs_creates_compatible_components_and_signed_sums():
     x = torch.tensor([[0.0], [1.0]])
     ll = model.log_likelihood(x)
     assert torch.isfinite(ll).all()
+
+
+# Additional branch-focused build_socs tests
+import pytest
+
+from spflow.exceptions import InvalidParameterError
+from spflow.learn.build_socs import build_abs_weight_proposal
+from spflow.modules.products.product import Product
+
+
+def _make_template() -> Product:
+    left = Sum(inputs=Bernoulli(scope=Scope([0]), out_channels=1), out_channels=1)
+    right = Sum(inputs=Bernoulli(scope=Scope([1]), out_channels=1), out_channels=1)
+    return Product([left, right])
+
+
+def test_build_socs_parameter_validation_and_rng_none_paths():
+    template = _make_template()
+
+    with pytest.raises(InvalidParameterError, match="num_components"):
+        build_socs(template, num_components=0)
+    with pytest.raises(InvalidParameterError, match="noise_scale"):
+        build_socs(template, num_components=1, noise_scale=-1.0)
+    with pytest.raises(InvalidParameterError, match="flip_prob"):
+        build_socs(template, num_components=1, flip_prob=2.0)
+
+    # seed=None exercises rand_like/randn_like branch in conversion.
+    model = build_socs(template, num_components=2, signed=True, noise_scale=0.1, flip_prob=0.5, seed=None)
+    for comp in model.components:
+        assert any(isinstance(m, SignedSum) for m in comp.modules())
+
+
+def test_build_abs_weight_proposal_validation_and_recursive_signed_replacement():
+    template = _make_template()
+    signed_component = build_socs(template, num_components=1, signed=True, noise_scale=0.0, flip_prob=0.0, seed=0).components[
+        0
+    ]
+
+    with pytest.raises(InvalidParameterError, match="eps must be > 0"):
+        build_abs_weight_proposal(signed_component, eps=0.0)
+
+    proposal = build_abs_weight_proposal(signed_component, eps=1e-6)
+    assert not any(isinstance(m, SignedSum) for m in proposal.modules())
+    assert any(isinstance(m, Sum) for m in proposal.modules())
