@@ -489,15 +489,12 @@ class TestRDCBranchCoverage:
 
         torch.testing.assert_close(result, torch.tensor(0.7, dtype=result.dtype), rtol=0.0, atol=1e-6)
 
-    @pytest.mark.filterwarnings(
-        "ignore:The numpy.linalg.linalg has been made private and renamed to numpy.linalg._linalg.*:DeprecationWarning"
-    )
     def test_rdc_np_n_greater_1_skips_linalg_error(self, monkeypatch):
         """rdc_np should ignore LinAlgError runs and take median of successful values."""
         original_rdc_np = rdc_module.rdc_np
         outputs = iter(
             [
-                np.linalg.linalg.LinAlgError("singular"),
+                np.linalg.LinAlgError("singular"),
                 0.2,
                 0.8,
                 0.4,

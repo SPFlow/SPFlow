@@ -225,7 +225,7 @@ def rdc_np(x, y, f=np.sin, k=20, s=1 / 6.0, n=1):
         for i in range(n):
             try:
                 values.append(rdc(x, y, f, k, s, 1))
-            except np.linalg.linalg.LinAlgError:
+            except np.linalg.LinAlgError:
                 pass
         return np.median(values)
 
