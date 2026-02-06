@@ -57,4 +57,3 @@ runs:
       uses: codecov/test-results-action@v1
       with:
         token: ${{ inputs.codecov-token }}
-        files: ./junit.xml

@@ -5,6 +5,10 @@
 - **Run single test:** `.venv/bin/pytest tests/path/to/test_file.py::test_function`
 - **Format code:** `.venv/bin/black spflow tests`
 - **Build docs:** `cd docs && make html`
+- **Generate HTML coverage report:** `.venv/bin/pytest -n 4 --cov=spflow --cov-report=html`
+- **List lowest-coverage files:** `.venv/bin/python scripts/coverage_inspect.py list --limit 30`
+- **Show missed line chunks (with context):** `.venv/bin/python scripts/coverage_inspect.py show spflow/path/to_file.py --context 3`
+- **Coverage runtime note (PyTorch):** Avoid module-targeted `pytest-cov` like `--cov=spflow.learn.prometheus` in this environment; it can trigger `RuntimeError: function '_has_torch_function' already has a docstring` during `import torch`. Use package-level coverage targets instead (for example `--cov=spflow` or `--cov=spflow.learn`).
 
 ## Code Style Guidelines
 - **Python version:** 3.10+ with type hints required
@@ -69,3 +73,10 @@ git commit -m "docs: update RAT-SPN examples in README"
 * Keep modules cohesive; avoid unnecessary coupling.
 * Prefer simple control flow; avoid deeply nested logic.
 * Avoid repetition; follow DRY (Don’t Repeat Yourself).
+
+## Comment Best Practices
+* Use comments to explain intent, invariants, assumptions, and non-obvious tradeoffs.
+* Prefer self-explanatory names and clear code; do not restate what the code already says.
+* Keep comments concise, specific, and close to the code they describe.
+* Update or remove comments whenever code changes so comments never become stale.
+* Use `TODO(username): short reason` for actionable follow-ups; avoid vague TODOs.
