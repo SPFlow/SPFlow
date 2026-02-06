@@ -44,10 +44,17 @@ runs:
     - name: Test with pytest
       shell: bash
       run: |
-        uv run pytest --cov=spflow --cov-branch --cov-report=xml
+        uv run pytest --cov=spflow --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
       with:
         token: ${{ inputs.codecov-token }}
         files: ./coverage.xml
+
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/test-results-action@v1
+      with:
+        token: ${{ inputs.codecov-token }}
+        files: ./junit.xml
