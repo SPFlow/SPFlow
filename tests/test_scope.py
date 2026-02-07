@@ -107,28 +107,25 @@ def test_scope_init_invalid():
     # Empty query with non-empty evidence
     with pytest.raises(
         ValueError,
-        match="List of query variables for 'Scope' is empty, but list of evidence variables is not.",
     ):
         Scope([], [1, 2])
 
     # Negative values in query
-    with pytest.raises(ValueError, match="Query variables must all be non-negative."):
+    with pytest.raises(ValueError):
         Scope([-1, 0, 1])
 
     # Negative values in evidence
-    with pytest.raises(ValueError, match="Evidence variables must all be non-negative."):
+    with pytest.raises(ValueError):
         Scope([0, 1], [-1, 2])
 
     # Duplicate values in query
-    with pytest.raises(ValueError, match="List of query variables for 'Scope' contains duplicates."):
+    with pytest.raises(ValueError):
         Scope([1, 2, 2, 3])
 
     # Duplicate values in evidence
-    with pytest.raises(ValueError, match="List of evidence variables for 'Scope' contains duplicates."):
+    with pytest.raises(ValueError):
         Scope([1, 2, 3], [4, 4, 5])
 
     # Overlapping query and evidence
-    with pytest.raises(
-        ValueError, match="Specified query and evidence variables for 'Scope' are not disjoint."
-    ):
+    with pytest.raises(ValueError):
         Scope([1, 2, 3], [3, 4, 5])

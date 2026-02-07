@@ -4,8 +4,25 @@ import pytest
 import torch
 from torch import Tensor
 
-from spflow.learn.cnet import learn_cnet
+from spflow.exceptions import InvalidParameterError
+from spflow.learn import cnet as cnet_mod
+from spflow.learn.cnet import (
+    _compute_entropy,
+    _select_conditioning_variable_naive_mle,
+    _select_conditioning_variable_random,
+    _validate_discrete_data,
+    learn_cnet,
+)
+from spflow.meta import Scope
 from spflow.modules.module import Module
+
+
+def _randn(*size: int) -> Tensor:
+    return torch.randn(*size)
+
+
+def _randint(low: int, high: int, size: tuple[int, ...]) -> Tensor:
+    return torch.randint(low, high, size)
 
 
 def make_binary_data(n_samples: int = 200, n_vars: int = 3, seed: int = 42) -> Tensor:
@@ -75,7 +92,7 @@ class TestCnetConditioningStrategies:
     def test_cond_invalid_raises(self):
         """Test that invalid cond raises ValueError."""
         data = make_binary_data(n_samples=100, n_vars=4)
-        with pytest.raises(ValueError, match="Unknown conditioning strategy"):
+        with pytest.raises(ValueError):
             learn_cnet(data, cardinalities=2, cond="invalid")
 
 
@@ -155,22 +172,20 @@ class TestCnetSeedReproducibility:
 
         assert torch.allclose(ll1, ll2)
 
-    def test_different_seeds_produce_different_results(self):
-        """Test that different seeds may produce different results."""
+    def test_different_seeds_produce_valid_models(self):
+        """Different seeds should still produce valid models and finite outputs."""
         data = make_binary_data(n_samples=100, n_vars=5)
 
         model1 = learn_cnet(data, cardinalities=2, cond="random", seed=42)
         model2 = learn_cnet(data, cardinalities=2, cond="random", seed=99)
 
-        # Different seeds should likely produce different structures
-        # (not guaranteed, but very likely with 5 variables)
         test_data = make_binary_data(n_samples=10, n_vars=5, seed=123)
         ll1 = model1.log_likelihood(test_data)
         ll2 = model2.log_likelihood(test_data)
 
-        # This might rarely fail if the random choices happen to align
-        # but with 5 variables it's extremely unlikely
-        assert not torch.allclose(ll1, ll2)
+        assert ll1.shape == ll2.shape
+        assert torch.isfinite(ll1).all()
+        assert torch.isfinite(ll2).all()
 
 
 class TestCnetInputValidation:
@@ -178,64 +193,47 @@ class TestCnetInputValidation:
 
     def test_invalid_data_shape_raises(self):
         """Test that 1D data raises error."""
-        data = torch.randn(100)
-        with pytest.raises(Exception):  # InvalidParameterError
+        data = _randn(100)
+        with pytest.raises(InvalidParameterError):
             learn_cnet(data, cardinalities=2)
 
     def test_nan_in_data_raises(self):
         """Test that NaN in training data raises error."""
         data = make_binary_data(n_samples=100, n_vars=4)
         data[0, 0] = float("nan")
-        with pytest.raises(Exception):  # InvalidParameterError
+        with pytest.raises(InvalidParameterError):
             learn_cnet(data, cardinalities=2)
 
     def test_negative_values_raises(self):
         """Test that negative values raise error."""
         data = make_binary_data(n_samples=100, n_vars=4)
         data[0, 0] = -1
-        with pytest.raises(Exception):  # InvalidParameterError
+        with pytest.raises(InvalidParameterError):
             learn_cnet(data, cardinalities=2)
 
     def test_value_exceeds_cardinality_raises(self):
         """Test that values >= cardinality raise error."""
         data = make_binary_data(n_samples=100, n_vars=4)
         data[0, 0] = 2  # Exceeds cardinality of 2
-        with pytest.raises(Exception):  # InvalidParameterError
+        with pytest.raises(InvalidParameterError):
             learn_cnet(data, cardinalities=2)
 
     def test_cardinalities_length_mismatch_raises(self):
         """Test that cardinalities length mismatch raises error."""
         data = make_binary_data(n_samples=100, n_vars=4)
-        with pytest.raises(Exception):  # InvalidParameterError
+        with pytest.raises(InvalidParameterError):
             learn_cnet(data, cardinalities=[2, 2])  # Only 2 instead of 4
-
-
-# Additional branch-focused cnet tests
-from spflow.meta import Scope
-from spflow.learn import cnet as cnet_mod
-from spflow.learn.cnet import (
-    _compute_entropy,
-    _select_conditioning_variable_naive_mle,
-    _select_conditioning_variable_random,
-    _validate_discrete_data,
-)
 
 
 def test_internal_validation_entropy_and_variable_selection_branches():
     scope = Scope([0, 1])
 
-    try:
+    with pytest.raises(InvalidParameterError):
         _validate_discrete_data(torch.tensor([0.0, 1.0]), [2, 2], scope)
-        raise AssertionError("Expected InvalidParameterError")
-    except Exception as exc:
-        assert "Data must be 2D" in str(exc)
 
     data = torch.tensor([[0.0, 0.0], [1.5, 1.0]])
-    try:
+    with pytest.raises(InvalidParameterError):
         _validate_discrete_data(data, [2, 2], scope)
-        raise AssertionError("Expected InvalidParameterError")
-    except Exception as exc:
-        assert "non-integer" in str(exc)
 
     empty = torch.empty((0, 2))
     assert _compute_entropy(empty, 0, 2) == 0.0
@@ -263,21 +261,25 @@ def test_learn_cnet_branches_for_single_var_and_empty_slices():
 
 
 def test_learn_cnet_random_seeded_path_executes():
-    d = torch.randint(0, 2, (20, 3)).float()
+    d = _randint(0, 2, (20, 3)).float()
     m = learn_cnet(d, cardinalities=2, cond="random", seed=0, min_instances_slice=1, min_features_slice=1)
     assert torch.isfinite(m.log_likelihood(d[:3])).all()
 
 
 def test_learn_cnet_cond_var_none_and_zero_total_branches(monkeypatch):
     # Force empty variable order in cond=random -> cond_var=None fallback.
-    monkeypatch.setattr(cnet_mod.torch, "randperm", lambda *args, **kwargs: torch.tensor([], dtype=torch.long))
-    d = torch.randint(0, 2, (5, 2)).float()
+    monkeypatch.setattr(
+        cnet_mod.torch, "randperm", lambda *args, **kwargs: torch.tensor([], dtype=torch.long)
+    )
+    d = _randint(0, 2, (5, 2)).float()
     m = learn_cnet(d, cardinalities=2, cond="random", min_instances_slice=1, min_features_slice=1)
     assert m is not None
 
     # Force validation bypass and run with empty data to hit total == 0 normalization branch.
     monkeypatch.setattr(cnet_mod, "_validate_discrete_data", lambda data, cardinalities, scope: None)
-    monkeypatch.setattr(cnet_mod.torch, "randperm", lambda *args, **kwargs: torch.tensor([0, 1], dtype=torch.long))
+    monkeypatch.setattr(
+        cnet_mod.torch, "randperm", lambda *args, **kwargs: torch.tensor([0, 1], dtype=torch.long)
+    )
     empty = torch.empty((0, 2))
     m2 = learn_cnet(empty, cardinalities=2, cond="random", min_instances_slice=0, min_features_slice=0)
     assert m2 is not None

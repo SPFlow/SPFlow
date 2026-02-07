@@ -6,6 +6,10 @@ import torch
 from spflow.interfaces.classifier import Classifier
 
 
+def _randn(*size: int) -> torch.Tensor:
+    return torch.randn(*size)
+
+
 class ConcreteClassifier(Classifier):
     """Concrete implementation of Classifier for testing."""
 
@@ -68,7 +72,7 @@ class TestClassifier:
         classifier = ConcreteClassifier()
         batch_size = 5
         num_features = 10
-        data = torch.randn(batch_size, num_features)
+        data = _randn(batch_size, num_features)
 
         probs = classifier.predict_proba(data)
 
@@ -80,7 +84,7 @@ class TestClassifier:
         classifier = ConcreteClassifier()
         batch_size = 5
         num_features = 10
-        data = torch.randn(batch_size, num_features)
+        data = _randn(batch_size, num_features)
 
         predictions = classifier.predict(data)
 
@@ -90,7 +94,7 @@ class TestClassifier:
     def test_predict_proba_with_single_sample(self):
         """Test predict_proba with a single sample."""
         classifier = ConcreteClassifier()
-        data = torch.randn(1, 10)
+        data = _randn(1, 10)
 
         probs = classifier.predict_proba(data)
 
@@ -99,7 +103,7 @@ class TestClassifier:
     def test_predict_with_single_sample(self):
         """Test predict with a single sample."""
         classifier = ConcreteClassifier()
-        data = torch.randn(1, 10)
+        data = _randn(1, 10)
 
         predictions = classifier.predict(data)
 
@@ -110,7 +114,7 @@ class TestClassifier:
         classifier = ConcreteClassifier()
         batch_size = 1000
         num_features = 10
-        data = torch.randn(batch_size, num_features)
+        data = _randn(batch_size, num_features)
 
         probs = classifier.predict_proba(data)
 
@@ -121,7 +125,7 @@ class TestClassifier:
         classifier = ConcreteClassifier()
         batch_size = 1000
         num_features = 10
-        data = torch.randn(batch_size, num_features)
+        data = _randn(batch_size, num_features)
 
         predictions = classifier.predict(data)
 
@@ -130,7 +134,7 @@ class TestClassifier:
     def test_predict_proba_returns_tensor(self):
         """Test that predict_proba returns a torch.Tensor."""
         classifier = ConcreteClassifier()
-        data = torch.randn(5, 10)
+        data = _randn(5, 10)
 
         result = classifier.predict_proba(data)
 
@@ -139,7 +143,7 @@ class TestClassifier:
     def test_predict_returns_tensor(self):
         """Test that predict returns a torch.Tensor."""
         classifier = ConcreteClassifier()
-        data = torch.randn(5, 10)
+        data = _randn(5, 10)
 
         result = classifier.predict(data)
 
@@ -150,7 +154,7 @@ class TestClassifier:
         classifier = ConcreteClassifier()
 
         for num_features in [1, 5, 10, 100]:
-            data = torch.randn(3, num_features)
+            data = _randn(3, num_features)
             probs = classifier.predict_proba(data)
             assert probs.shape[0] == 3
 
@@ -159,7 +163,7 @@ class TestClassifier:
         classifier = ConcreteClassifier()
 
         for num_features in [1, 5, 10, 100]:
-            data = torch.randn(3, num_features)
+            data = _randn(3, num_features)
             predictions = classifier.predict(data)
             assert predictions.shape[0] == 3
 
@@ -199,7 +203,7 @@ class TestClassifier:
                 return torch.tensor([[0.1, 0.9], [0.8, 0.2], [0.6, 0.4]])
 
         classifier = MinimalClassifier()
-        data = torch.randn(3, 10)
+        data = _randn(3, 10)
         predictions = classifier.predict(data)
 
         # Should use argmax of predict_proba

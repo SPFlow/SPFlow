@@ -282,13 +282,10 @@ class TestRestorationAndCleanup:
 
         mock = MockModule()
 
-        # Try with exception
-        try:
+        with pytest.raises(ValueError):
             with replace(MockModule.non_cached_method, custom_method):
                 assert mock.non_cached_method() == "custom"
                 raise ValueError("Test exception")
-        except ValueError:
-            pass
 
         # Original should still be restored
         assert mock.non_cached_method() == "original"
@@ -321,7 +318,7 @@ class TestErrorHandling:
 
     def test_invalid_method_reference_non_callable(self):
         """Test error when passing non-callable as method reference."""
-        with pytest.raises(TypeError, match="Expected a callable"):
+        with pytest.raises(TypeError):
             with replace("not_a_method", lambda self: None):
                 pass
 

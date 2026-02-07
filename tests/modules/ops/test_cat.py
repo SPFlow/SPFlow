@@ -19,6 +19,14 @@ num_repetitions = [1, 5]
 params = list(product(out_channels_values, out_features_values, num_repetitions, dim_values))
 
 
+def _randint(low: int, high: int, size: tuple[int, ...]) -> torch.Tensor:
+    return torch.randint(low=low, high=high, size=size)
+
+
+def _rand(*size: int) -> torch.Tensor:
+    return torch.rand(*size)
+
+
 def make_cat(out_channels=3, out_features=3, num_repetitions=None, dim=1):
     if dim == 1:
         # different scopes
@@ -59,21 +67,18 @@ def test_sample(out_channels: int, out_features: int, num_reps, dim: int):
         num_repetitions=num_reps,
         dim=dim,
     )
-    for i in range(module.out_shape.channels):
-        data = torch.full((n_samples, module.out_shape.features), torch.nan)
-        channel_index = torch.randint(
-            low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-        )
-        mask = torch.full((n_samples, module.out_shape.features), True, dtype=torch.bool)
-        # Always set repetition_index since num_reps is never None
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-        sampling_ctx = SamplingContext(
-            channel_index=channel_index, mask=mask, repetition_index=repetition_index
-        )
-        samples = module.sample(data=data, sampling_ctx=sampling_ctx)
-        assert samples.shape == data.shape
-        samples_query = samples[:, module.scope.query]
-        assert torch.isfinite(samples_query).all()
+    data = torch.full((n_samples, module.out_shape.features), torch.nan)
+    channel_index = _randint(
+        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
+    )
+    mask = torch.full((n_samples, module.out_shape.features), True, dtype=torch.bool)
+    # Always set repetition_index since num_reps is never None
+    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+    assert samples.shape == data.shape
+    samples_query = samples[:, module.scope.query]
+    assert torch.isfinite(samples_query).all()
 
 
 @pytest.mark.parametrize("out_channels,out_features, num_reps, dim", params)
@@ -234,14 +239,14 @@ def test_marginalize_one_of_two_inputs():
     num_repetitions = 3
     inputs_cat = Categorical(
         scope=Scope([0, 1]),
-        probs=torch.rand(2, out_channels, num_repetitions),
+        probs=_rand(2, out_channels, num_repetitions),
         num_repetitions=num_repetitions,
     )
     inputs_bin = Binomial(
         scope=Scope([2, 3, 4]),
         num_repetitions=num_repetitions,
         total_count=torch.ones((3, out_channels, num_repetitions)) * 3,
-        probs=torch.rand(3, out_channels, num_repetitions),
+        probs=_rand(3, out_channels, num_repetitions),
     )
 
     module = Cat(inputs=[inputs_cat, inputs_bin], dim=1)

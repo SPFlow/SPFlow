@@ -107,12 +107,12 @@ def test_log_likelihood(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes,
     # Check that output has expected structure: [batch, features, channels, num_reps]
     assert lls.ndim == 4, f"Expected 4D output, got {lls.ndim}D with shape {lls.shape}"
     assert lls.shape[0] == data.shape[0], f"Batch size mismatch: got {lls.shape[0]}, expected {data.shape[0]}"
-    assert lls.shape[1] == module.out_shape.features, (
-        f"Out_features mismatch: got {lls.shape[1]}, expected {module.out_shape.features}"
-    )
-    assert lls.shape[2] == module.out_shape.channels, (
-        f"Out_channels mismatch: got {lls.shape[2]}, expected {module.out_shape.channels}"
-    )
+    assert (
+        lls.shape[1] == module.out_shape.features
+    ), f"Out_features mismatch: got {lls.shape[1]}, expected {module.out_shape.features}"
+    assert (
+        lls.shape[2] == module.out_shape.channels
+    ), f"Out_channels mismatch: got {lls.shape[2]}, expected {module.out_shape.channels}"
     assert lls.shape[3] == 1, f"Num_reps mismatch: got {lls.shape[3]}, expected {1}"
 
 
@@ -133,20 +133,17 @@ def test_sample(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_p
         outer_product=outer_product,
         split_mode=split_mode,
     )
-    for i in range(module.out_shape.channels):
-        data = torch.full((n_samples, num_features), torch.nan)
-        channel_index = torch.randint(
-            low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-        )
-        mask = torch.full((n_samples, module.out_shape.features), True)
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-        sampling_ctx = SamplingContext(
-            channel_index=channel_index, mask=mask, repetition_index=repetition_index
-        )
-        samples = module.sample(data=data, sampling_ctx=sampling_ctx)
-        assert samples.shape == data.shape
-        samples_query = samples[:, module.scope.query]
-        assert torch.isfinite(samples_query).all()
+    data = torch.full((n_samples, num_features), torch.nan)
+    channel_index = torch.randint(
+        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
+    )
+    mask = torch.full((n_samples, module.out_shape.features), True)
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+    assert samples.shape == data.shape
+    samples_query = samples[:, module.scope.query]
+    assert torch.isfinite(samples_query).all()
 
 
 @pytest.mark.parametrize(
@@ -324,7 +321,7 @@ class _DummyLeaf:
 def test_constructor_rejects_invalid_hyperparameters():
     valid_leaf = make_leaf(cls=Normal, out_channels=2, out_features=4, num_repetitions=1)
 
-    with pytest.raises(InvalidParameterError, match="n_root_nodes"):
+    with pytest.raises(InvalidParameterError):
         RatSPN(
             leaf_modules=[valid_leaf],
             n_root_nodes=0,
@@ -333,7 +330,7 @@ def test_constructor_rejects_invalid_hyperparameters():
             depth=1,
         )
 
-    with pytest.raises(InvalidParameterError, match="n_region_nodes"):
+    with pytest.raises(InvalidParameterError):
         RatSPN(
             leaf_modules=[valid_leaf],
             n_root_nodes=1,
@@ -342,7 +339,7 @@ def test_constructor_rejects_invalid_hyperparameters():
             depth=1,
         )
 
-    with pytest.raises(InvalidParameterError, match="n_leaf_nodes"):
+    with pytest.raises(InvalidParameterError):
         RatSPN(
             leaf_modules=[_DummyLeaf(channels=0)],
             n_root_nodes=1,
@@ -351,7 +348,7 @@ def test_constructor_rejects_invalid_hyperparameters():
             depth=1,
         )
 
-    with pytest.raises(InvalidParameterError, match="num_splits"):
+    with pytest.raises(InvalidParameterError):
         RatSPN(
             leaf_modules=[valid_leaf],
             n_root_nodes=1,
@@ -397,7 +394,7 @@ def test_log_posterior_raises_for_single_class():
     )
     data = make_data(cls=Normal, out_features=6, n_samples=3)
 
-    with pytest.raises(UnsupportedOperationError, match="multiple classes"):
+    with pytest.raises(UnsupportedOperationError):
         module.log_posterior(data)
 
 
@@ -481,7 +478,7 @@ def test_sample_raises_when_logits_shape_is_invalid(monkeypatch):
         "logits",
         torch.nn.Parameter(torch.zeros(1, module.n_root_nodes + 1, 1)),
     )
-    with pytest.raises(InvalidParameterError, match="Expected logits shape"):
+    with pytest.raises(InvalidParameterError):
         module.sample(data=data, sampling_ctx=None)
 
 

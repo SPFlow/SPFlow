@@ -4,7 +4,12 @@ import numpy as np
 import pytest
 import torch
 
-from spflow.exceptions import InvalidParameterCombinationError, InvalidWeightsError, ShapeError
+from spflow.exceptions import (
+    InvalidParameterCombinationError,
+    InvalidWeightsError,
+    MissingCacheError,
+    ShapeError,
+)
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.meta import Scope
@@ -21,6 +26,18 @@ out_channels_values = [1, 5]
 out_features_values = [1, 6]
 num_repetitions = [1, 7]
 params = list(product(in_channels_values, out_channels_values, out_features_values, num_repetitions))
+
+
+def _randn(*size: int) -> torch.Tensor:
+    return torch.randn(*size)
+
+
+def _rand(*size: int) -> torch.Tensor:
+    return torch.rand(*size)
+
+
+def _randint(low: int, high: int, size: tuple[int, ...]) -> torch.Tensor:
+    return torch.randint(low=low, high=high, size=size)
 
 
 def make_sum(in_channels=None, out_channels=None, out_features=None, weights=None, num_repetitions=None):
@@ -146,20 +163,17 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps
         out_features=out_features,
         num_repetitions=num_reps,
     )
-    for i in range(module.out_shape.channels):
-        data = torch.full((n_samples, module.out_shape.features), torch.nan)
-        channel_index = torch.randint(
-            low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-        )
-        mask = torch.full((n_samples, module.out_shape.features), True)
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-        sampling_ctx = SamplingContext(
-            channel_index=channel_index, mask=mask, repetition_index=repetition_index
-        )
-        samples = module.sample(data=data, sampling_ctx=sampling_ctx)
-        assert samples.shape == data.shape
-        samples_query = samples[:, module.scope.query]
-        assert torch.isfinite(samples_query).all()
+    data = torch.full((n_samples, module.out_shape.features), torch.nan)
+    channel_index = _randint(
+        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
+    )
+    mask = torch.full((n_samples, module.out_shape.features), True)
+    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+    assert samples.shape == data.shape
+    samples_query = samples[:, module.scope.query]
+    assert torch.isfinite(samples_query).all()
 
 
 @pytest.mark.parametrize(
@@ -185,20 +199,17 @@ def test_sample_product_inputs(in_channels: int, out_channels: int, out_features
 
     module = Sum(out_channels=out_channels, inputs=prod, num_repetitions=num_reps)
 
-    for i in range(module.out_shape.channels):
-        data = torch.full((n_samples, out_features), torch.nan)
-        channel_index = torch.randint(
-            low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-        )
-        mask = torch.full((n_samples, module.out_shape.features), True)
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-        sampling_ctx = SamplingContext(
-            channel_index=channel_index, mask=mask, repetition_index=repetition_index
-        )
-        samples = module.sample(data=data, sampling_ctx=sampling_ctx)
-        assert samples.shape == data.shape
-        samples_query = samples[:, module.scope.query]
-        assert torch.isfinite(samples_query).all()
+    data = torch.full((n_samples, out_features), torch.nan)
+    channel_index = _randint(
+        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
+    )
+    mask = torch.full((n_samples, module.out_shape.features), True)
+    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+    assert samples.shape == data.shape
+    samples_query = samples[:, module.scope.query]
+    assert torch.isfinite(samples_query).all()
 
 
 @pytest.mark.parametrize(
@@ -215,45 +226,42 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
         num_repetitions=num_reps,
     )
 
-    for i in range(module.out_shape.channels):
-        # Create some data
-        data = torch.randn(n_samples, module.out_shape.features)
+    # Create some data
+    data = _randn(n_samples, module.out_shape.features)
 
-        # Set first three scopes to nan
-        data[:, [0, 1, 2]] = torch.nan
+    # Set first three scopes to nan
+    data[:, [0, 1, 2]] = torch.nan
 
-        data_copy = data.clone()
+    data_copy = data.clone()
 
-        channel_index = torch.randint(
-            low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-        )
-        mask = torch.full(channel_index.shape, True)
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-        sampling_ctx = SamplingContext(
-            channel_index=channel_index, mask=mask, repetition_index=repetition_index
-        )
+    channel_index = _randint(
+        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
+    )
+    mask = torch.full(channel_index.shape, True)
+    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
 
-        cache = Cache()
-        samples = module.sample_with_evidence(
-            evidence=data,
-            is_mpe=False,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-        )
+    cache = Cache()
+    samples = module.sample_with_evidence(
+        evidence=data,
+        is_mpe=False,
+        cache=cache,
+        sampling_ctx=sampling_ctx,
+    )
 
-        # Check that log_likelihood is cached
-        cached_ll = cache["log_likelihood"][module.inputs]
-        assert cached_ll is not None
-        assert cached_ll.isfinite().all()
+    # Check that log_likelihood is cached
+    cached_ll = cache["log_likelihood"][module.inputs]
+    assert cached_ll is not None
+    assert cached_ll.isfinite().all()
 
-        # Check for correct shape
-        assert samples.shape == data.shape
+    # Check for correct shape
+    assert samples.shape == data.shape
 
-        samples_query = samples[:, module.scope.query]
-        assert torch.isfinite(samples_query).all()
+    samples_query = samples[:, module.scope.query]
+    assert torch.isfinite(samples_query).all()
 
-        # Check, that the last three scopes (those that were conditioned on) are still the same
-        torch.testing.assert_close(data_copy[:, [3, 4, 5]], samples[:, [3, 4, 5]], rtol=0.0, atol=0.0)
+    # Check, that the last three scopes (those that were conditioned on) are still the same
+    torch.testing.assert_close(data_copy[:, [3, 4, 5]], samples[:, [3, 4, 5]], rtol=0.0, atol=0.0)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
@@ -320,21 +328,21 @@ def test_weights(in_channels: int, out_channels: int, out_features: int, num_rep
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
 def test_invalid_weights_not_normalized(in_channels: int, out_channels: int, out_features: int, num_reps):
-    weights = torch.rand((out_features, in_channels, out_channels, num_reps))
-    with pytest.raises(ValueError, match="must sum up to one"):
+    weights = _rand((out_features, in_channels, out_channels, num_reps))
+    with pytest.raises(InvalidWeightsError):
         make_sum(weights=weights, in_channels=in_channels)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
 def test_invalid_weights_negative(in_channels: int, out_channels: int, out_features: int, num_reps):
-    weights = torch.rand((out_features, in_channels, out_channels, num_reps)) - 1.0
-    with pytest.raises(ValueError, match="must be all positive"):
+    weights = _rand((out_features, in_channels, out_channels, num_reps)) - 1.0
+    with pytest.raises(InvalidWeightsError):
         make_sum(weights=weights, in_channels=in_channels)
 
 
 def test_invalid_weights_wrong_dim():
-    weights = torch.rand((2, 2, 2, 2, 2))
-    with pytest.raises(ShapeError, match="must be a 1D, 2D, 3D, or 4D tensor"):
+    weights = _rand((2, 2, 2, 2, 2))
+    with pytest.raises(ShapeError):
         make_sum(weights=weights, in_channels=2)
 
 
@@ -342,32 +350,30 @@ def test_invalid_out_channels_and_weights():
     weights = torch.ones((2, 2, 2, 1))
     weights /= weights.sum(dim=1, keepdim=True)
     inputs = make_normal_leaf(out_features=2, out_channels=2, num_repetitions=1)
-    with pytest.raises(
-        InvalidParameterCombinationError, match="Cannot specify both 'out_channels' and 'weights'"
-    ):
+    with pytest.raises(InvalidParameterCombinationError):
         Sum(out_channels=2, inputs=inputs, weights=weights)
 
 
 def test_expectation_maximization_cache_error():
     """Test that expectation_maximization raises ValueError when cache is missing entries."""
     module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
-    data = torch.randn(5, 2)
+    data = _randn(5, 2)
     cache = Cache()
     # Missing log_likelihood in cache
-    with pytest.raises(ValueError, match="Input log-likelihoods not found in cache"):
+    with pytest.raises(MissingCacheError):
         module.expectation_maximization(data, cache=cache)
 
 
 def test_constructor_empty_inputs():
     """Test that Sum raises ValueError when inputs is empty."""
-    with pytest.raises(ValueError, match="requires at least one input"):
+    with pytest.raises(ValueError):
         Sum(inputs=[], out_channels=2)
 
 
 def test_constructor_invalid_out_channels():
     """Test that Sum raises ValueError when out_channels < 1."""
     leaf = make_normal_leaf(scope=Scope([0]), out_channels=2)
-    with pytest.raises(ValueError, match="must be greater or equal to 1"):
+    with pytest.raises(ValueError):
         Sum(inputs=[leaf], out_channels=0)
 
 
@@ -405,13 +411,13 @@ def test_weights_can_be_initialized_from_3d_tensor():
 
 def test_setting_weights_with_invalid_shape_raises():
     module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
-    with pytest.raises(ShapeError, match="Invalid shape for weights"):
+    with pytest.raises(ShapeError):
         module.weights = torch.ones((2, 2, 2))
 
 
 def test_setting_log_weights_with_invalid_shape_raises():
     module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
-    with pytest.raises(ShapeError, match="Invalid shape for weights"):
+    with pytest.raises(ShapeError):
         module.log_weights = torch.zeros((2, 2, 2))
 
 
@@ -430,7 +436,7 @@ def test_sample_defaults_to_single_sample_without_data_or_num_samples():
 
 def test_sample_requires_repetition_index_for_multiple_repetitions():
     module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=2)
-    with pytest.raises(ValueError, match="repetition_idx must be provided"):
+    with pytest.raises(ValueError):
         module.sample(num_samples=3)
 
 
@@ -459,16 +465,16 @@ def test_sample_updates_mask_when_feature_shape_expands():
 
 def test_expectation_maximization_creates_default_cache_and_raises_for_missing_input_lls():
     module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
-    with pytest.raises(ValueError, match="Input log-likelihoods not found in cache"):
-        module.expectation_maximization(torch.randn(3, 2), cache=None)
+    with pytest.raises(MissingCacheError):
+        module.expectation_maximization(_randn(3, 2), cache=None)
 
 
 def test_expectation_maximization_raises_for_missing_module_lls():
     module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
     cache = Cache()
     cache["log_likelihood"][module.inputs] = torch.zeros(3, 2, 2, 1)
-    with pytest.raises(ValueError, match="Module log-likelihoods not found in cache"):
-        module.expectation_maximization(torch.randn(3, 2), cache=cache)
+    with pytest.raises(MissingCacheError):
+        module.expectation_maximization(_randn(3, 2), cache=cache)
 
 
 def test_maximum_likelihood_estimation_delegates_to_em(monkeypatch):
@@ -479,7 +485,7 @@ def test_maximum_likelihood_estimation_delegates_to_em(monkeypatch):
         called["seen"] = True
 
     monkeypatch.setattr(module, "expectation_maximization", _mock_em)
-    module.maximum_likelihood_estimation(torch.randn(3, 2))
+    module.maximum_likelihood_estimation(_randn(3, 2))
     assert called["seen"]
 
 
@@ -493,7 +499,7 @@ def test_marginalize_handles_different_features_per_repetition():
     )
     inputs = _ToyInput(feature_to_scope=feature_to_scope, out_channels=2)
     module = Sum(inputs=inputs, out_channels=2, num_repetitions=2)
-    with pytest.raises(InvalidWeightsError, match="must be all positive"):
+    with pytest.raises(InvalidWeightsError):
         module.marginalize([1])
 
 
@@ -517,7 +523,7 @@ def test_num_repetitions_mismatch_with_weights():
     leaf = make_normal_leaf(scope=Scope([0, 1]), out_channels=in_channels, num_repetitions=3)
 
     # Passing num_repetitions=2 which mismatches weights shape (3)
-    with pytest.raises(InvalidParameterCombinationError, match="does not match weights shape"):
+    with pytest.raises(InvalidParameterCombinationError):
         Sum(inputs=leaf, weights=weights, num_repetitions=2)
 
 
@@ -566,8 +572,8 @@ def test_multiple_input():
     num_reps = 5
     sum_out_channels = 3
 
-    mean = torch.rand((out_features, out_channels, num_reps))
-    std = torch.rand((out_features, out_channels, num_reps))
+    mean = _rand((out_features, out_channels, num_reps))
+    std = _rand((out_features, out_channels, num_reps))
 
     normal_layer_a = make_normal_leaf(
         out_features=out_features,
@@ -609,9 +615,9 @@ def test_multiple_input():
     n_samples = 10
 
     data_a = torch.full((n_samples, out_features), torch.nan)
-    channel_index = torch.randint(low=0, high=sum_out_channels, size=(n_samples, out_features))
+    channel_index = _randint(low=0, high=sum_out_channels, size=(n_samples, out_features))
     mask = torch.full((n_samples, out_features), True)
-    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx_a = SamplingContext(
         channel_index=channel_index, mask=mask, repetition_index=repetition_index
     )

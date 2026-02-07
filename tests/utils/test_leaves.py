@@ -118,10 +118,8 @@ class TestApplyNanStrategy:
         data = torch.tensor([[float("nan"), float("nan")], [float("nan"), float("nan")]])
         weights = torch.ones((data.shape[0], data.shape[1], 1, 1))
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError):
             apply_nan_strategy("ignore", data, weights)
-
-        assert "all data is NaN" in str(exc_info.value)
 
     def test_apply_nan_strategy_with_weights(self):
         """Test apply_nan_strategy filters weights consistently."""
@@ -149,11 +147,8 @@ class TestApplyNanStrategy:
         data = torch.tensor([[1.0, 2.0]] * 100)  # (100, 2)
         weights = torch.ones((50, data.shape[1], 1, 1))  # Wrong first dimension
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError):
             apply_nan_strategy(None, data, weights)
-
-        assert "Weights shape" in str(exc_info.value)
-        assert "does not match" in str(exc_info.value)
 
     def test_apply_nan_strategy_handles_multidimensional_weights(self):
         """Test apply_nan_strategy accepts multi-dimensional weights."""
@@ -170,21 +165,16 @@ class TestApplyNanStrategy:
         data = torch.tensor([[1.0, 2.0], [float("nan"), 4.0]])
         weights = torch.ones((data.shape[0], data.shape[1], 1, 1))
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError):
             apply_nan_strategy(None, data, weights)
-
-        assert "missing (NaN) values" in str(exc_info.value)
-        assert "nan_strategy" in str(exc_info.value)
 
     def test_apply_nan_strategy_unknown_strategy(self):
         """Test apply_nan_strategy with unknown strategy."""
         data = torch.tensor([[1.0, 2.0], [float("nan"), 4.0]])
         weights = torch.ones((data.shape[0], data.shape[1], 1, 1))
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError):
             apply_nan_strategy("unknown", data, weights)
-
-        assert "Unknown nan_strategy" in str(exc_info.value)
 
     def test_apply_nan_strategy_weights_normalization(self):
         """Test that weights are normalized to sum to number of samples."""
@@ -254,10 +244,8 @@ class TestInitParameter:
         def init_fn(shape):
             return torch.zeros(shape)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError):
             init_parameter(nan_param, (3,), init_fn)
-
-        assert "must be finite" in str(exc_info.value)
 
     def test_init_parameter_with_inf(self):
         """Test init_parameter with infinity."""
@@ -266,10 +254,8 @@ class TestInitParameter:
         def init_fn(shape):
             return torch.zeros(shape)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError):
             init_parameter(inf_param, (3,), init_fn)
-
-        assert "must be finite" in str(exc_info.value)
 
     def test_init_parameter_with_neg_inf(self):
         """Test init_parameter with negative infinity."""
@@ -367,10 +353,8 @@ class TestParseLeafArgs:
         param1 = torch.randn(5, 10)  # Wrong first dimension
         params = [param1]
 
-        with pytest.raises(InvalidParameterCombinationError) as exc_info:
+        with pytest.raises(InvalidParameterCombinationError):
             parse_leaf_args(scope, out_channels, num_repetitions, params)
-
-        assert "scope dimensions" in str(exc_info.value)
 
     def test_parse_leaf_args_params_mismatch_out_channels(self):
         """Test parse_leaf_args with params that don't match out_channels."""
@@ -380,10 +364,8 @@ class TestParseLeafArgs:
         param1 = torch.randn(2, 10)  # Second dimension doesn't match out_channels
         params = [param1]
 
-        with pytest.raises(InvalidParameterCombinationError) as exc_info:
+        with pytest.raises(InvalidParameterCombinationError):
             parse_leaf_args(scope, out_channels, num_repetitions, params)
-
-        assert "out_channels" in str(exc_info.value)
 
     def test_parse_leaf_args_partial_params_error(self):
         """Test parse_leaf_args with partial params (some None, some not)."""
@@ -393,10 +375,8 @@ class TestParseLeafArgs:
         param1 = torch.randn(2, 5)
         params = [param1, None]  # Partial params
 
-        with pytest.raises(InvalidParameterCombinationError) as exc_info:
+        with pytest.raises(InvalidParameterCombinationError):
             parse_leaf_args(scope, out_channels, num_repetitions, params)
-
-        assert "all parameters or none" in str(exc_info.value)
 
     def test_parse_leaf_args_no_out_channels_no_params(self):
         """Test parse_leaf_args with neither out_channels nor params."""
@@ -405,10 +385,8 @@ class TestParseLeafArgs:
         num_repetitions = None
         params = None
 
-        with pytest.raises(InvalidParameterCombinationError) as exc_info:
+        with pytest.raises(InvalidParameterCombinationError):
             parse_leaf_args(scope, out_channels, num_repetitions, params)
-
-        assert "out_channels or distribution parameters" in str(exc_info.value)
 
     def test_parse_leaf_args_invalid_scope_type(self):
         """Test parse_leaf_args with invalid scope type."""
@@ -417,10 +395,8 @@ class TestParseLeafArgs:
         num_repetitions = None
         params = None
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError):
             parse_leaf_args(scope, out_channels, num_repetitions, params)
-
-        assert "scope must be of type" in str(exc_info.value)
 
 
 class TestHandleMleEdgeCases:

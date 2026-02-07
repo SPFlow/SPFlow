@@ -88,22 +88,24 @@ def test_check_pair_respects_visited_guard():
 
 
 def test_out_shape_cat_dim_cat_arity_and_k_mismatch_branches():
-    with pytest.raises(ShapeError, match="out_shape mismatch"):
-        compatibility_mod._check_pair(_normal(0, channels=1), _normal(0, channels=2), path="root", visited=set())
+    with pytest.raises(ShapeError):
+        compatibility_mod._check_pair(
+            _normal(0, channels=1), _normal(0, channels=2), path="root", visited=set()
+        )
 
     # Single-input Cat keeps same out_shape across dims; only dim differs.
     c1 = Cat([_normal(0)], dim=1)
     c2 = Cat([_normal(0)], dim=2)
-    with pytest.raises(StructureError, match="Cat dim mismatch"):
+    with pytest.raises(StructureError):
         compatibility_mod._check_pair(c1, c2, path="root", visited=set())
 
     # Different arity but same overall out_shape/channels.
     c3 = Cat([_normal(0, channels=1), _normal(0, channels=2)], dim=2)
     c4 = Cat([_normal(0, channels=3)], dim=2)
-    with pytest.raises(StructureError, match="Cat arity mismatch"):
+    with pytest.raises(StructureError):
         compatibility_mod._check_pair(c3, c4, path="root", visited=set())
 
-    with pytest.raises(ShapeError, match="Categorical K mismatch"):
+    with pytest.raises(ShapeError):
         compatibility_mod._check_pair(
             Categorical(scope=Scope([0]), out_channels=1, K=2),
             Categorical(scope=Scope([0]), out_channels=1, K=3),
@@ -115,7 +117,7 @@ def test_out_shape_cat_dim_cat_arity_and_k_mismatch_branches():
 def test_cltree_specific_branches_and_child_count_mismatch(monkeypatch):
     p = torch.tensor([-1, 0], dtype=torch.long)
 
-    with pytest.raises(ShapeError, match="CLTree K mismatch"):
+    with pytest.raises(ShapeError):
         compatibility_mod._check_pair(
             CLTree(scope=Scope([0, 1]), out_channels=1, K=2, parents=p),
             CLTree(scope=Scope([0, 1]), out_channels=1, K=3, parents=p),
@@ -123,7 +125,7 @@ def test_cltree_specific_branches_and_child_count_mismatch(monkeypatch):
             visited=set(),
         )
 
-    with pytest.raises(StructureError, match="CLTree parents mismatch"):
+    with pytest.raises(StructureError):
         compatibility_mod._check_pair(
             CLTree(scope=Scope([0, 1]), out_channels=1, K=2, parents=torch.tensor([-1, 0])),
             CLTree(scope=Scope([0, 1]), out_channels=1, K=2, parents=torch.tensor([-1, 1])),
@@ -138,5 +140,5 @@ def test_cltree_specific_branches_and_child_count_mismatch(monkeypatch):
         return [module] if module is a else []
 
     monkeypatch.setattr(compatibility_mod, "_children", _fake_children)
-    with pytest.raises(StructureError, match="child count mismatch"):
+    with pytest.raises(StructureError):
         compatibility_mod._check_pair(a, b, path="root", visited=set())

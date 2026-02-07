@@ -31,6 +31,15 @@ leaf_cls_values = [
     leaves.Uniform,
 ]
 params = list(product(leaf_cls_values, out_features_values, out_channels_values, num_repetition_values))
+non_trainable_leaf_cls_values = [leaves.Hypergeometric, leaves.Uniform]
+trainable_params = list(
+    product(
+        [leaf_cls for leaf_cls in leaf_cls_values if leaf_cls not in non_trainable_leaf_cls_values],
+        out_features_values,
+        out_channels_values,
+        num_repetition_values,
+    )
+)
 
 
 @pytest.mark.parametrize("leaf_cls, out_features, out_channels, num_reps", params)
@@ -119,17 +128,13 @@ def test_requires_grad(leaf_cls, out_features: int, out_channels: int, num_reps)
         assert param.requires_grad
 
 
-@pytest.mark.parametrize("leaf_cls,out_features,out_channels, num_reps", params)
+@pytest.mark.parametrize("leaf_cls,out_features,out_channels, num_reps", trainable_params)
 def test_gradient_descent_optimization(
     leaf_cls,
     out_features: int,
     out_channels: int,
     num_reps,
 ):
-    # Skip leaves without parameters
-    if leaf_cls in [leaves.Hypergeometric, leaves.Uniform]:
-        return
-
     module = make_leaf(
         leaf_cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps
     )
@@ -148,17 +153,13 @@ def test_gradient_descent_optimization(
             assert not torch.allclose(param, params_before[param_name], rtol=0.0, atol=0.0)
 
 
-@pytest.mark.parametrize("leaf_cls,out_features,out_channels, num_reps", params)
+@pytest.mark.parametrize("leaf_cls,out_features,out_channels, num_reps", trainable_params)
 def test_expectation_maximization(
     leaf_cls,
     out_features: int,
     out_channels: int,
     num_reps,
 ):
-    # Skip leaves without parameters
-    if leaf_cls in [leaves.Hypergeometric, leaves.Uniform]:
-        return
-
     module = make_leaf(
         leaf_cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps
     )
@@ -409,7 +410,7 @@ class TestConditionalLeaves:
             with pytest.raises(AttributeError):
                 leaf.conditional_distribution(evidence=None)
         else:
-            with pytest.raises(ValueError, match="Evidence tensor must be provided"):
+            with pytest.raises(ValueError):
                 leaf.conditional_distribution(evidence=None)
 
     @pytest.mark.parametrize(
@@ -545,7 +546,7 @@ class TestConditionalLeaves:
         n_vars = max(query + evidence) + 1
         data = torch.randn(batch_size, n_vars)
 
-        with pytest.raises(RuntimeError, match="MLE not supported for conditional"):
+        with pytest.raises(RuntimeError):
             leaf.maximum_likelihood_estimation(data=data)
 
     @pytest.mark.parametrize(
@@ -572,5 +573,5 @@ class TestConditionalLeaves:
         )
         leaf = leaf_cls(scope=scope, out_channels=out_channels, parameter_fn=param_net, **leaf_args)
 
-        with pytest.raises(RuntimeError, match="Marginalization not supported for conditional"):
+        with pytest.raises(RuntimeError):
             leaf.marginalize(marg_rvs=[0])

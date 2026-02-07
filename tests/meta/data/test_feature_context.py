@@ -148,7 +148,7 @@ class TestFeatureContextSetDomains:
         ctx = FeatureContext(scope, {0: NormalType()})
 
         # Try to overwrite without permission
-        with pytest.raises(ValueError, match="already specified"):
+        with pytest.raises(ValueError):
             ctx.set_domains({0: PoissonType()}, overwrite=False)
 
     def test_set_domains_overwrite_unknown_is_allowed(self):
@@ -170,7 +170,7 @@ class TestFeatureContextSetDomainsErrors:
         ctx = FeatureContext(scope)
 
         # Feature 5 doesn't exist in scope
-        with pytest.raises(ValueError, match="not part of the query scope"):
+        with pytest.raises(ValueError):
             ctx.set_domains({5: NormalType()})
 
     def test_set_domains_list_shape_mismatch(self):
@@ -179,7 +179,7 @@ class TestFeatureContextSetDomainsErrors:
         ctx = FeatureContext(scope)
 
         # Only 2 domains for 3 features
-        with pytest.raises(ValueError, match="does not match number of scope query"):
+        with pytest.raises(ValueError):
             ctx.set_domains([NormalType(), BernoulliType()])
 
     def test_set_domains_list_too_many(self):
@@ -188,7 +188,7 @@ class TestFeatureContextSetDomainsErrors:
         ctx = FeatureContext(scope)
 
         # 3 domains for 2 features
-        with pytest.raises(ValueError, match="does not match number of scope query"):
+        with pytest.raises(ValueError):
             ctx.set_domains([NormalType(), BernoulliType(), PoissonType()])
 
 

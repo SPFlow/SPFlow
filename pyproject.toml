@@ -60,6 +60,7 @@ dev = [
   "imageio~=2.37.0",
   "scikit-image~=0.24.0",
   "pytest-xdist",
+  "hypothesis>=6.120.0",
   "matplotlib>=3.9.2",
   "scikit-learn>=1.0",
   "build",
@@ -85,6 +86,12 @@ sklearn = [
 
 [tool.pytest.ini_options]
 addopts = "--color=yes --doctest-modules"
+markers = [
+    "slow: Long-running tests.",
+    "gpu: Tests requiring CUDA/GPU.",
+    "property: Property-based tests (typically with hypothesis).",
+    "contract: Shared behavior contract tests across multiple implementations.",
+]
 testpaths = [
     # for the doctests and for detecting broken yet unimported modules:
     "spflow",

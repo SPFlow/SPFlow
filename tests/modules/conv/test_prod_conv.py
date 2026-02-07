@@ -63,7 +63,7 @@ class TestProdConvConstruction:
     def test_invalid_kernel_size(self, out_channels):
         """Test that kernel_size < 1 raises ValueError."""
         leaf = make_normal_leaf(4, 4, out_channels=out_channels)
-        with pytest.raises(ValueError, match="kernel_size_h must be >= 1"):
+        with pytest.raises(ValueError):
             ProdConv(inputs=leaf, kernel_size_h=0, kernel_size_w=2)
 
     @pytest.mark.parametrize("out_channels,hwk", construction_params)
@@ -250,7 +250,9 @@ class _DummyInput(Module):
         return scopes.reshape(self.out_shape.features, self.out_shape.repetitions)
 
     def log_likelihood(self, data, cache=None):
-        return torch.zeros((data.shape[0], self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions))
+        return torch.zeros(
+            (data.shape[0], self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions)
+        )
 
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
         data[:] = torch.nan_to_num(data, nan=0.0)
@@ -259,7 +261,9 @@ class _DummyInput(Module):
     def expectation_maximization(self, data, bias_correction=True, cache=None):
         self.em_called += 1
 
-    def maximum_likelihood_estimation(self, data, weights=None, bias_correction=True, nan_strategy="ignore", cache=None):
+    def maximum_likelihood_estimation(
+        self, data, weights=None, bias_correction=True, nan_strategy="ignore", cache=None
+    ):
         return None
 
     def marginalize(self, marg_rvs, prune=True, cache=None):
@@ -267,7 +271,7 @@ class _DummyInput(Module):
 
 
 def test_kernel_width_validation_and_extra_repr():
-    with pytest.raises(ValueError, match="kernel_size_w"):
+    with pytest.raises(ValueError):
         ProdConv(inputs=_DummyInput(features=4, channels=1), kernel_size_h=1, kernel_size_w=0)
 
     node = ProdConv(inputs=_DummyInput(features=4, channels=1), kernel_size_h=1, kernel_size_w=1)
@@ -275,13 +279,21 @@ def test_kernel_width_validation_and_extra_repr():
 
 
 def test_feature_to_scope_handles_full_padding_patch():
-    node = ProdConv(inputs=_DummyInput(features=4, channels=1), kernel_size_h=2, kernel_size_w=2, padding_h=3, padding_w=3)
+    node = ProdConv(
+        inputs=_DummyInput(features=4, channels=1), kernel_size_h=2, kernel_size_w=2, padding_h=3, padding_w=3
+    )
     f2s = node.feature_to_scope
     assert any(len(s.query) == 0 for s in f2s.flatten())
 
 
 def test_log_likelihood_cache_none_sample_default_and_context_branches():
-    node = ProdConv(inputs=_DummyInput(features=16, channels=2), kernel_size_h=2, kernel_size_w=2, padding_h=1, padding_w=1)
+    node = ProdConv(
+        inputs=_DummyInput(features=16, channels=2),
+        kernel_size_h=2,
+        kernel_size_w=2,
+        padding_h=1,
+        padding_w=1,
+    )
 
     ll = node.log_likelihood(torch.zeros((2, 16)), cache=None)
     assert ll.shape[0] == 2

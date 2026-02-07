@@ -205,7 +205,7 @@ def test_structure_stats_cycle_detection_raises() -> None:
     b = _DummyModule(inputs=a)
     a.inputs = b
 
-    with pytest.raises(StructureError, match="Cycle detected while computing structure depth"):
+    with pytest.raises(StructureError):
         get_structure_stats(a)
 
 

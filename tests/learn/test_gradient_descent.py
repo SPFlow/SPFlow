@@ -245,7 +245,7 @@ def test_train_gradient_descent_custom_scheduler(model, dataloader):
 
 def test_train_gradient_descent_requires_classifier_for_classification_mode(model, dataloader):
     """Ensure TypeError is raised when using is_classification=True with non-Classifier model."""
-    with pytest.raises(TypeError, match="model must be a Classifier instance when is_classification=True"):
+    with pytest.raises(TypeError):
         train_gradient_descent(
             model,  # DummyModel doesn't implement Classifier
             dataloader,

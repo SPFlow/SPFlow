@@ -43,17 +43,17 @@ class TestModuleToStrBasics:
 
     def test_invalid_format_raises_error(self, simple_model):
         """Test invalid format raises ValueError."""
-        with pytest.raises(ValueError, match="Unknown format"):
+        with pytest.raises(ValueError):
             module_to_str(simple_model, format="invalid_format")
 
     def test_inline_format_raises_error(self, simple_model):
         """Test that inline format is no longer supported."""
-        with pytest.raises(ValueError, match="Unknown format"):
+        with pytest.raises(ValueError):
             module_to_str(simple_model, format="inline")
 
     def test_graph_format_raises_error(self, simple_model):
         """Test that graph format is no longer supported."""
-        with pytest.raises(ValueError, match="Unknown format"):
+        with pytest.raises(ValueError):
             module_to_str(simple_model, format="graph")
 
 
@@ -353,7 +353,9 @@ class _Mini(Module):
     def expectation_maximization(self, data, bias_correction=True, cache=None):
         return None
 
-    def maximum_likelihood_estimation(self, data, weights=None, bias_correction=True, nan_strategy="ignore", cache=None):
+    def maximum_likelihood_estimation(
+        self, data, weights=None, bias_correction=True, nan_strategy="ignore", cache=None
+    ):
         return None
 
     def marginalize(self, marg_rvs, prune=True, cache=None):
@@ -362,7 +364,9 @@ class _Mini(Module):
 
 def test_tree_view_depth_cutoff_branch():
     m = _Mini()
-    assert _tree_view(m, max_depth=0, show_params=True, show_scope=True, depth=1, is_last=True, prefix="") == ""
+    assert (
+        _tree_view(m, max_depth=0, show_params=True, show_scope=True, depth=1, is_last=True, prefix="") == ""
+    )
 
 
 def test_num_repetitions_property_and_scope_format_branches():

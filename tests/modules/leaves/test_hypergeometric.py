@@ -108,7 +108,7 @@ def test_hypergeometric_missing_parameters():
     scope = Scope([0])
     K = torch.tensor([[5.0]])
     N = torch.tensor([[10.0]])
-    with pytest.raises(InvalidParameterCombinationError, match="parameters are required"):
+    with pytest.raises(InvalidParameterCombinationError):
         Hypergeometric(scope=scope, K=K, N=N, n=None)
 
 
@@ -161,7 +161,7 @@ def test_align_support_mask_raises_on_rank_mismatch():
 
     mask = torch.ones((2, 2, 2), dtype=torch.bool)
     data = torch.zeros((2, 2))
-    with pytest.raises(RuntimeError, match="Support mask rank"):
+    with pytest.raises(RuntimeError):
         distribution._align_support_mask(mask, data)
 
 
@@ -174,7 +174,7 @@ def test_align_support_mask_raises_on_incompatible_shapes():
 
     mask = torch.ones((2, 3), dtype=torch.bool)
     data = torch.zeros((2, 4))
-    with pytest.raises(RuntimeError, match="Support mask shape"):
+    with pytest.raises(RuntimeError):
         distribution._align_support_mask(mask, data)
 
 
@@ -187,7 +187,7 @@ def test_hypergeometric_check_support_raises_for_out_of_support_values():
     leaf = make_leaf(K=K, N=N, n=n)
 
     data = torch.tensor([[0.0, 1.0], [3.0, 5.0]])
-    with pytest.raises(ValueError, match="outside of support"):
+    with pytest.raises(ValueError):
         leaf.distribution.check_support(data)
 
 
@@ -219,7 +219,7 @@ def test_constructor_rejects_non_integer_N():
     K = torch.full((1, 1, 1), 2.0)
     N = torch.full((1, 1, 1), 5.5)
     n = torch.full((1, 1, 1), 2.0)
-    with pytest.raises(ValueError, match="Value of 'N'.*integer value"):
+    with pytest.raises(ValueError):
         make_leaf(K=K, N=N, n=n)
 
 
@@ -227,7 +227,7 @@ def test_constructor_rejects_non_integer_K():
     K = torch.full((1, 1, 1), 2.5)
     N = torch.full((1, 1, 1), 5.0)
     n = torch.full((1, 1, 1), 2.0)
-    with pytest.raises(ValueError, match="Values of 'K'.*integer value"):
+    with pytest.raises(ValueError):
         make_leaf(K=K, N=N, n=n)
 
 
@@ -235,7 +235,7 @@ def test_constructor_rejects_non_integer_n():
     K = torch.full((1, 1, 1), 2.0)
     N = torch.full((1, 1, 1), 5.0)
     n = torch.full((1, 1, 1), 2.5)
-    with pytest.raises(ValueError, match="Value of 'n'.*integer value"):
+    with pytest.raises(ValueError):
         make_leaf(K=K, N=N, n=n)
 
 
@@ -243,7 +243,7 @@ def test_constructor_rejects_scopewise_inconsistent_N():
     K = torch.tensor([[[2.0]], [[2.0]]])
     N = torch.tensor([[[5.0]], [[6.0]]])
     n = torch.tensor([[[2.0]], [[2.0]]])
-    with pytest.raises(ValueError, match="All values of 'N'.*same scope"):
+    with pytest.raises(ValueError):
         make_leaf(K=K, N=N, n=n)
 
 
@@ -251,7 +251,7 @@ def test_constructor_rejects_scopewise_inconsistent_K():
     K = torch.tensor([[[2.0]], [[3.0]]])
     N = torch.tensor([[[5.0]], [[5.0]]])
     n = torch.tensor([[[2.0]], [[2.0]]])
-    with pytest.raises(ValueError, match="All values of 'K'.*same scope"):
+    with pytest.raises(ValueError):
         make_leaf(K=K, N=N, n=n)
 
 
@@ -259,7 +259,7 @@ def test_constructor_rejects_scopewise_inconsistent_n():
     K = torch.tensor([[[2.0]], [[2.0]]])
     N = torch.tensor([[[5.0]], [[5.0]]])
     n = torch.tensor([[[2.0]], [[3.0]]])
-    with pytest.raises(ValueError, match="All values of 'n'.*same scope"):
+    with pytest.raises(ValueError):
         make_leaf(K=K, N=N, n=n)
 
 

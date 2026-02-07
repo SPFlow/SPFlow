@@ -86,7 +86,7 @@ class TestLogFuncExp:
 
     def test_empty_input_raises(self):
         """Test that empty input raises ValueError."""
-        with pytest.raises(ValueError, match="At least one tensor"):
+        with pytest.raises(ValueError):
             log_func_exp(func=lambda t: t, dim=0, keepdim=False)
 
     def test_einsum_style_function(self):

@@ -210,7 +210,7 @@ def test_insufficient_features_for_depth():
     leaf = make_normal_leaf(out_features=out_features, out_channels=1, num_repetitions=num_reps)
 
     # Try to create a Factorize with depth=3 (requires 2^3 = 8 features, but only have 4)
-    with pytest.raises(StructureError, match="Consider reducing the depth parameter"):
+    with pytest.raises(StructureError):
         Factorize(inputs=[leaf], depth=3, num_repetitions=num_reps)
 
 

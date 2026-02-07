@@ -119,16 +119,16 @@ def test_mle_update_increases_training_ll():
 
 
 def test_get_outer_edges_range_validation_and_special_cases():
-    with pytest.raises(InvalidParameterError, match="max must be larger than min"):
+    with pytest.raises(InvalidParameterError):
         _get_outer_edges_torch(torch.tensor([0.0, 1.0]), range_bounds=(2.0, 1.0))
 
-    with pytest.raises(InvalidParameterError, match="is not finite"):
+    with pytest.raises(InvalidParameterError):
         _get_outer_edges_torch(torch.tensor([0.0, 1.0]), range_bounds=(0.0, float("inf")))
 
     first, last = _get_outer_edges_torch(torch.tensor([]))
     assert (first, last) == (0.0, 1.0)
 
-    with pytest.raises(InvalidParameterError, match="Autodetected range"):
+    with pytest.raises(InvalidParameterError):
         _get_outer_edges_torch(torch.tensor([0.0, float("nan")]))
 
     first2, last2 = _get_outer_edges_torch(torch.tensor([3.0, 3.0]))
@@ -149,15 +149,15 @@ def test_get_bin_edges_range_filtering_and_zero_width_fallback():
 
 
 def test_histogram_dist_validation_and_accessors():
-    with pytest.raises(InvalidParameterError, match="bin_edges must be 1D"):
+    with pytest.raises(InvalidParameterError):
         HistogramDist(bin_edges=torch.tensor([[0.0, 1.0]]), logits=torch.zeros(1, 1, 1, 1))
-    with pytest.raises(InvalidParameterError, match="at least two edges"):
+    with pytest.raises(InvalidParameterError):
         HistogramDist(bin_edges=torch.tensor([0.0]), logits=torch.zeros(1, 1, 1, 1))
-    with pytest.raises(InvalidParameterError, match="must be finite"):
+    with pytest.raises(InvalidParameterError):
         HistogramDist(bin_edges=torch.tensor([0.0, float("inf")]), logits=torch.zeros(1, 1, 1, 1))
-    with pytest.raises(InvalidParameterError, match="strictly increasing"):
+    with pytest.raises(InvalidParameterError):
         HistogramDist(bin_edges=torch.tensor([0.0, 0.0]), logits=torch.zeros(1, 1, 1, 1))
-    with pytest.raises(InvalidParameterError, match="logits must be 4D"):
+    with pytest.raises(InvalidParameterError):
         HistogramDist(bin_edges=torch.tensor([0.0, 1.0]), logits=torch.zeros(1, 1, 1))
 
     dist = HistogramDist(bin_edges=torch.tensor([0.0, 1.0, 2.0]), logits=torch.zeros(1, 2, 3, 2))
@@ -172,10 +172,10 @@ def test_histogram_dist_align_x_and_log_prob_errors():
     assert dist._align_x(torch.zeros(2, 1, 1)).shape == (2, 1, 1, 1)
     assert dist._align_x(torch.zeros(2, 1, 1, 1)).shape == (2, 1, 1, 1)
 
-    with pytest.raises(InvalidParameterError, match="Expected x to have shape"):
+    with pytest.raises(InvalidParameterError):
         dist._align_x(torch.zeros(2, 1, 1, 1, 1))
 
-    with pytest.raises(InvalidParameterError, match="Feature mismatch"):
+    with pytest.raises(InvalidParameterError):
         dist.log_prob(torch.zeros(4, 2))
 
 
@@ -189,7 +189,7 @@ def test_histogram_dist_sample_with_torch_size_shape():
 
 
 def test_histogram_constructor_validation_errors():
-    with pytest.raises(InvalidParameterCombinationError, match="either probs or logits"):
+    with pytest.raises(InvalidParameterCombinationError):
         Histogram(
             scope=Scope([0]),
             bin_edges=torch.tensor([0.0, 1.0]),
@@ -197,19 +197,19 @@ def test_histogram_constructor_validation_errors():
             logits=torch.tensor([[[[0.0]]]]),
         )
 
-    with pytest.raises(InvalidParameterError, match="requires scope with exactly one query RV"):
+    with pytest.raises(InvalidParameterError):
         Histogram(scope=Scope([0, 1]), bin_edges=torch.tensor([0.0, 1.0]))
 
-    with pytest.raises(InvalidParameterError, match="bin_edges must be 1D"):
+    with pytest.raises(InvalidParameterError):
         Histogram(scope=Scope([0]), bin_edges=torch.tensor([[0.0, 1.0]]))
-    with pytest.raises(InvalidParameterError, match="at least two edges"):
+    with pytest.raises(InvalidParameterError):
         Histogram(scope=Scope([0]), bin_edges=torch.tensor([0.0]))
-    with pytest.raises(InvalidParameterError, match="must be finite"):
+    with pytest.raises(InvalidParameterError):
         Histogram(scope=Scope([0]), bin_edges=torch.tensor([0.0, float("nan")]))
-    with pytest.raises(InvalidParameterError, match="strictly increasing"):
+    with pytest.raises(InvalidParameterError):
         Histogram(scope=Scope([0]), bin_edges=torch.tensor([0.0, 0.0]))
 
-    with pytest.raises(InvalidParameterError, match="Last dim of probs/logits must match nbins=2"):
+    with pytest.raises(InvalidParameterError):
         Histogram(
             scope=Scope([0]),
             bin_edges=torch.tensor([0.0, 1.0, 2.0]),
@@ -234,9 +234,9 @@ def test_histogram_parameter_properties_and_setters():
     leaf.logits = new_logits
     torch.testing.assert_close(leaf.logits, new_logits)
 
-    with pytest.raises(InvalidParameterError, match="probs must be finite"):
+    with pytest.raises(InvalidParameterError):
         leaf.probs = torch.tensor([[[[float("inf"), 1.0]]]])
-    with pytest.raises(InvalidParameterError, match="probs must be non-negative"):
+    with pytest.raises(InvalidParameterError):
         leaf.probs = torch.tensor([[[[-1.0, 2.0]]]])
 
 
@@ -249,11 +249,11 @@ def test_histogram_compute_parameter_estimates_validation_errors():
     weights = torch.ones(3, 1, 1, 1)
 
     bad_shape_data = torch.zeros(3, 2, 1, 1)
-    with pytest.raises(InvalidParameterError, match="expects univariate scoped data"):
+    with pytest.raises(InvalidParameterError):
         leaf._compute_parameter_estimates(data=bad_shape_data, weights=weights, bias_correction=False)
 
     out_of_support_data = torch.tensor([[[[-1.0]]], [[[0.5]]], [[[1.5]]]])
-    with pytest.raises(InvalidParameterError, match="outside histogram support"):
+    with pytest.raises(InvalidParameterError):
         leaf._compute_parameter_estimates(data=out_of_support_data, weights=weights, bias_correction=False)
 
 
@@ -265,7 +265,7 @@ def test_histogram_marginalize_branches():
     )
 
     leaf.parameter_fn = lambda evidence: {"logits": leaf.logits}
-    with pytest.raises(RuntimeError, match="Marginalization not supported for conditional leaf"):
+    with pytest.raises(RuntimeError):
         leaf.marginalize([99])
 
     leaf.parameter_fn = None

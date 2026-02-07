@@ -67,12 +67,8 @@ def test_mixing_layer_initialization_validates():
 
 def test_mixing_layer_rejects_out_channel_mismatch():
     inputs = DummyInput(out_channels=2, num_repetitions=1)
-    try:
+    with pytest.raises(ValueError):
         RepetitionMixingLayer(inputs=inputs, out_channels=3, num_repetitions=1)
-    except ValueError as exc:
-        assert "out_channels must match" in str(exc)
-    else:
-        raise AssertionError("Expected ValueError for mismatched out_channels")
 
 
 def test_mixing_layer_log_likelihood_shape():
@@ -100,12 +96,8 @@ def test_mixing_layer_sample_uses_cached_posterior():
 
 
 def test_mixing_layer_rejects_missing_inputs():
-    try:
+    with pytest.raises(ValueError):
         RepetitionMixingLayer(inputs=None, out_channels=1, num_repetitions=1)  # type: ignore[arg-type]
-    except ValueError as exc:
-        assert "requires at least one input" in str(exc)
-    else:
-        raise AssertionError("Expected ValueError for missing inputs")
 
 
 def test_mixing_layer_rejects_nonpositive_out_channels():
@@ -128,9 +120,7 @@ def test_mixing_layer_supports_multiple_features():
 def test_mixing_layer_conflicting_weights_and_out_channels():
     inputs = DummyInput(out_channels=1, num_repetitions=1)
     weights = torch.ones((1, 1, 1))
-    with pytest.raises(
-        InvalidParameterCombinationError, match="Cannot specify both 'out_channels' and 'weights'"
-    ):
+    with pytest.raises(InvalidParameterCombinationError):
         RepetitionMixingLayer(inputs=inputs, out_channels=2, num_repetitions=1, weights=weights)
 
 

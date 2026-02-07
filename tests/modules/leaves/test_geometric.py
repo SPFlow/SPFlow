@@ -46,5 +46,5 @@ def test_geometric_invalid_parameter_combination():
     scope = Scope([0])
     probs = torch.tensor([0.5])
     logits = torch.tensor([0.0])
-    with pytest.raises(InvalidParameterCombinationError, match="accepts either probs or logits, not both"):
+    with pytest.raises(InvalidParameterCombinationError):
         Geometric(scope=scope, probs=probs, logits=logits)

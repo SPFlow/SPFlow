@@ -26,13 +26,17 @@ from spflow.modules.products import Product
 from spflow.modules.sums import Sum
 
 
+def _randn(*size: int) -> torch.Tensor:
+    return torch.randn(*size)
+
+
 def _single_cluster(_data: torch.Tensor, n_clusters: int = 1) -> torch.Tensor:
     del n_clusters
     return torch.zeros((_data.shape[0],), dtype=torch.long, device=_data.device)
 
 
 def test_prometheus_smoke():
-    data = torch.randn(400, 4)
+    data = _randn(400, 4)
     scope = Scope(list(range(4)))
     leaf = Normal(scope=scope, out_channels=2)
 
@@ -54,13 +58,13 @@ def test_prometheus_smoke():
 
 def test_prometheus_reuses_scopes_within_cluster():
     # Create mildly correlated data so the MST is non-degenerate, but the exact ordering does not matter.
-    base = torch.randn(300, 1)
+    base = _randn(300, 1)
     data = torch.cat(
         [
-            base + 0.05 * torch.randn(300, 1),
-            base + 0.05 * torch.randn(300, 1),
-            torch.randn(300, 1),
-            torch.randn(300, 1),
+            base + 0.05 * _randn(300, 1),
+            base + 0.05 * _randn(300, 1),
+            _randn(300, 1),
+            _randn(300, 1),
         ],
         dim=1,
     ).float()
@@ -117,7 +121,7 @@ def test_prometheus_options_smoke(
     sampling_seed: int | None,
     sampling_per_var: int | None,
 ):
-    data = torch.randn(120, 5)
+    data = _randn(120, 5)
     scope = Scope(list(range(5)))
     leaf = Normal(scope=scope, out_channels=1)
 
@@ -141,7 +145,7 @@ def test_prometheus_options_smoke(
 
 @pytest.mark.parametrize("affinity_mode", ["full", "sampled"])
 def test_prometheus_rejects_unknown_affinity_mode(affinity_mode: str):
-    data = torch.randn(50, 3)
+    data = _randn(50, 3)
     scope = Scope(list(range(3)))
     leaf = Normal(scope=scope, out_channels=1)
 
@@ -154,7 +158,7 @@ def test_prometheus_rejects_unknown_affinity_mode(affinity_mode: str):
 
 
 def test_prometheus_sampled_rejects_custom_similarity():
-    data = torch.randn(50, 3)
+    data = _randn(50, 3)
     scope = Scope(list(range(3)))
     leaf = Normal(scope=scope, out_channels=1)
 
@@ -171,7 +175,7 @@ def test_prometheus_sampled_rejects_custom_similarity():
 
 
 def test_prometheus_rejects_invalid_sampling_per_var():
-    data = torch.randn(50, 3)
+    data = _randn(50, 3)
     scope = Scope(list(range(3)))
     leaf = Normal(scope=scope, out_channels=1)
 
@@ -185,7 +189,7 @@ def test_prometheus_rejects_invalid_sampling_per_var():
 
 
 def test_prometheus_sampled_deterministic_with_seed():
-    data = torch.randn(140, 6)
+    data = _randn(140, 6)
     scope = Scope(list(range(6)))
     leaf = Normal(scope=scope, out_channels=1)
 
@@ -218,7 +222,7 @@ def test_prometheus_sampled_deterministic_with_seed():
 
 
 def test_prometheus_sampled_complete_matches_full_corr():
-    data = torch.randn(160, 5)
+    data = _randn(160, 5)
     scope = Scope(list(range(5)))
     leaf = Normal(scope=scope, out_channels=1)
 
@@ -252,7 +256,7 @@ def test_prometheus_sampled_complete_matches_full_corr():
 
 @pytest.mark.parametrize("num_features", [1, 2])
 def test_prometheus_sampled_small_feature_counts(num_features: int):
-    data = torch.randn(80, num_features)
+    data = _randn(80, num_features)
     scope = Scope(list(range(num_features)))
     leaf = Normal(scope=scope, out_channels=1)
 
@@ -277,7 +281,7 @@ def test_prometheus_sampled_small_feature_counts(num_features: int):
 
 
 def test_prometheus_sampled_clamps_sampling_per_var():
-    data = torch.randn(100, 4)
+    data = _randn(100, 4)
     scope = Scope(list(range(4)))
     leaf = Normal(scope=scope, out_channels=1)
 
@@ -298,7 +302,7 @@ def test_prometheus_sampled_clamps_sampling_per_var():
 
 
 def test_prometheus_sampled_rdc_deterministic_with_seed():
-    data = torch.randn(90, 4)
+    data = _randn(90, 4)
     scope = Scope(list(range(4)))
     leaf = Normal(scope=scope, out_channels=1)
 
@@ -333,7 +337,7 @@ def test_prometheus_sampled_rdc_deterministic_with_seed():
 
 
 def test_cluster_by_kmeans_uses_preprocessing(monkeypatch):
-    data = torch.randn(12, 3)
+    data = _randn(12, 3)
     seen: dict[str, torch.Tensor] = {}
 
     class _DummyKMeans:
@@ -355,7 +359,7 @@ def test_cluster_by_kmeans_uses_preprocessing(monkeypatch):
 
 
 def test_cluster_by_kmeans_without_preprocessing(monkeypatch):
-    data = torch.randn(9, 2)
+    data = _randn(9, 2)
     seen: dict[str, torch.Tensor] = {}
 
     class _DummyKMeans:
@@ -390,20 +394,20 @@ def test_adapt_product_inputs_wraps_smaller_channels():
 
 def test_affinity_helpers_validate_and_handle_degenerate_cases():
     with pytest.raises(InvalidParameterError):
-        _affinity_corr(torch.randn(3))
+        _affinity_corr(_randn(3))
     with pytest.raises(UnsupportedOperationError):
         _affinity_corr(torch.tensor([[1.0], [float("nan")]]))
-    assert torch.allclose(_affinity_corr(torch.randn(10, 1)), torch.ones(1, 1))
+    assert torch.allclose(_affinity_corr(_randn(10, 1)), torch.ones(1, 1))
 
     with pytest.raises(InvalidParameterError):
-        _affinity_rdc(torch.randn(3))
+        _affinity_rdc(_randn(3))
     with pytest.raises(UnsupportedOperationError):
         _affinity_rdc(torch.tensor([[1.0], [float("nan")]]))
 
 
 def test_mst_partitions_affinity_validation_and_small_graph():
     with pytest.raises(InvalidParameterError):
-        _mst_partitions_from_affinity(torch.randn(2, 3))
+        _mst_partitions_from_affinity(_randn(2, 3))
     assert _mst_partitions_from_affinity(torch.ones(1, 1)) == []
 
 
@@ -415,16 +419,16 @@ def test_default_samples_per_var_small_counts():
 
 def test_sampled_edges_helpers_validate_and_handle_small_inputs():
     with pytest.raises(InvalidParameterError):
-        _sampled_edges_corr(torch.randn(3), samples_per_var=1, seed=0)
+        _sampled_edges_corr(_randn(3), samples_per_var=1, seed=0)
     with pytest.raises(UnsupportedOperationError):
         _sampled_edges_corr(torch.tensor([[1.0], [float("nan")]]), samples_per_var=1, seed=0)
-    assert _sampled_edges_corr(torch.randn(8, 1), samples_per_var=1, seed=0) == []
+    assert _sampled_edges_corr(_randn(8, 1), samples_per_var=1, seed=0) == []
 
     with pytest.raises(InvalidParameterError):
-        _sampled_edges_rdc(torch.randn(3), samples_per_var=1, seed=0)
+        _sampled_edges_rdc(_randn(3), samples_per_var=1, seed=0)
     with pytest.raises(UnsupportedOperationError):
         _sampled_edges_rdc(torch.tensor([[1.0], [float("nan")]]), samples_per_var=1, seed=0)
-    assert _sampled_edges_rdc(torch.randn(8, 1), samples_per_var=1, seed=0) == []
+    assert _sampled_edges_rdc(_randn(8, 1), samples_per_var=1, seed=0) == []
 
 
 def test_mst_partitions_sampled_edges_disconnected_components():
@@ -452,7 +456,7 @@ def test_infer_scope_from_leaf_modules_list_and_empty_validation():
 
 
 def test_create_partitioned_mv_leaf_handles_partitions_and_errors():
-    data = torch.randn(64, 4)
+    data = _randn(64, 4)
     leaf_01 = Normal(scope=Scope([0, 1]), out_channels=1)
     leaf_23 = Normal(scope=Scope([2, 3]), out_channels=1)
     leaf_0 = Normal(scope=Scope([0]), out_channels=1)
@@ -471,7 +475,7 @@ def test_create_partitioned_mv_leaf_handles_partitions_and_errors():
 
 
 def test_single_channel_falls_back_when_clusters_too_small():
-    data = torch.randn(6, 3)
+    data = _randn(6, 3)
     leaf = Normal(scope=Scope([0, 1, 2]), out_channels=1)
 
     def _all_singletons(scoped_data: torch.Tensor, n_clusters: int = 2) -> torch.Tensor:
@@ -497,7 +501,7 @@ def test_single_channel_falls_back_when_clusters_too_small():
 
 
 def test_single_channel_falls_back_when_no_partitions():
-    data = torch.randn(12, 1)
+    data = _randn(12, 1)
     leaf = Normal(scope=Scope([0]), out_channels=1)
 
     model = _learn_prometheus_single_channel(
@@ -519,7 +523,7 @@ def test_single_channel_falls_back_when_no_partitions():
 
 
 def test_single_channel_returns_single_product_when_only_one_partition():
-    data = torch.randn(40, 2)
+    data = _randn(40, 2)
     leaf = Normal(scope=Scope([0, 1]), out_channels=1)
 
     model = _learn_prometheus_single_channel(
@@ -541,7 +545,7 @@ def test_single_channel_returns_single_product_when_only_one_partition():
 
 
 def test_single_channel_falls_back_when_total_weight_non_positive(monkeypatch):
-    data = torch.randn(24, 2)
+    data = _randn(24, 2)
     leaf = Normal(scope=Scope([0, 1]), out_channels=1)
 
     class _ZeroChannelProduct:
@@ -558,7 +562,9 @@ def test_single_channel_falls_back_when_total_weight_non_positive(monkeypatch):
         return leaf
 
     monkeypatch.setattr("spflow.learn.prometheus.Product", _ZeroChannelProduct)
-    monkeypatch.setattr("spflow.learn.prometheus._create_partitioned_mv_leaf", _fake_create_partitioned_mv_leaf)
+    monkeypatch.setattr(
+        "spflow.learn.prometheus._create_partitioned_mv_leaf", _fake_create_partitioned_mv_leaf
+    )
 
     model = _learn_prometheus_single_channel(
         data=data,
@@ -579,19 +585,23 @@ def test_single_channel_falls_back_when_total_weight_non_positive(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    ("kwargs", "error_type"),
+    ("kwargs", "error_type", "error_match"),
     [
-        ({"leaf_modules": object()}, InvalidTypeError),
-        ({"out_channels": 0}, InvalidParameterError),
-        ({"min_features_slice": 0}, InvalidParameterError),
-        ({"min_instances_slice": 0}, InvalidParameterError),
-        ({"n_clusters": 0}, InvalidParameterError),
-        ({"clustering_method": "unknown"}, InvalidParameterError),
-        ({"similarity": "unknown"}, InvalidParameterError),
+        (
+            {"leaf_modules": object()},
+            InvalidTypeError,
+            "'leaf_modules' must be a LeafModule or list\\[LeafModule\\]",
+        ),
+        ({"out_channels": 0}, InvalidParameterError, "'out_channels' must be >= 1"),
+        ({"min_features_slice": 0}, InvalidParameterError, "'min_features_slice' must be >= 1"),
+        ({"min_instances_slice": 0}, InvalidParameterError, "'min_instances_slice' must be >= 1"),
+        ({"n_clusters": 0}, InvalidParameterError, "'n_clusters' must be >= 1"),
+        ({"clustering_method": "unknown"}, InvalidParameterError, "Unknown clustering_method"),
+        ({"similarity": "unknown"}, InvalidParameterError, "Unknown similarity"),
     ],
 )
-def test_prometheus_parameter_validation_branches(kwargs, error_type):
-    data = torch.randn(40, 3)
+def test_prometheus_parameter_validation_branches(kwargs, error_type, error_match):
+    data = _randn(40, 3)
     leaf = Normal(scope=Scope([0, 1, 2]), out_channels=1)
 
     params = {"data": data, "leaf_modules": leaf, "scope": Scope([0, 1, 2])}
@@ -601,7 +611,7 @@ def test_prometheus_parameter_validation_branches(kwargs, error_type):
 
 
 def test_prometheus_applies_partial_args_and_multi_channel_output():
-    data = torch.randn(80, 3)
+    data = _randn(80, 3)
     leaf = Normal(scope=Scope([0, 1, 2]), out_channels=1)
 
     def _cluster_with_shift(scoped_data: torch.Tensor, n_clusters: int = 1, shift: int = 0) -> torch.Tensor:
@@ -632,7 +642,7 @@ def test_prometheus_applies_partial_args_and_multi_channel_output():
 
 
 def test_prometheus_infers_scope_from_leaf_module_list():
-    data = torch.randn(64, 3)
+    data = _randn(64, 3)
     leaf_01 = Normal(scope=Scope([0, 1]), out_channels=1)
     leaf_2 = Normal(scope=Scope([2]), out_channels=1)
 

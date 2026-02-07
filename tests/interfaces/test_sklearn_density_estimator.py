@@ -30,8 +30,12 @@ def _independent_normals_model(n_features: int) -> Product:
     return Product(leaves)
 
 
+def _randn(*shape: int) -> np.ndarray:
+    return np.random.standard_normal(shape).astype(np.float32)
+
+
 def test_fit_and_score_samples_shapes():
-    X = np.random.randn(128, 3).astype(np.float32)
+    X = _randn(128, 3)
 
     est = SPFlowDensityEstimator(structure_learner="learn_spn", dtype="float32", min_instances_slice=20)
     est.fit(X)
@@ -42,7 +46,7 @@ def test_fit_and_score_samples_shapes():
 
 
 def test_score_samples_matches_direct_log_likelihood():
-    X = np.random.randn(64, 4).astype(np.float32)
+    X = _randn(64, 4)
     x_tensor = torch.tensor(X, dtype=torch.float32)
 
     model = _independent_normals_model(n_features=X.shape[1])
@@ -56,7 +60,7 @@ def test_score_samples_matches_direct_log_likelihood():
 
 
 def test_sample_shape_and_dtype():
-    X = np.random.randn(128, 2).astype(np.float32)
+    X = _randn(128, 2)
     est = SPFlowDensityEstimator(structure_learner="learn_spn", dtype="float32", min_instances_slice=20)
     est.fit(X)
 
@@ -66,7 +70,7 @@ def test_sample_shape_and_dtype():
 
 
 def test_pipeline_compatibility_smoke():
-    X = np.random.randn(200, 2).astype(np.float32)
+    X = _randn(200, 2)
 
     pipe = Pipeline(
         [
@@ -85,7 +89,7 @@ def test_pipeline_compatibility_smoke():
 
 
 def test_clone_and_pickle_roundtrip():
-    X = np.random.randn(64, 3).astype(np.float32)
+    X = _randn(64, 3)
 
     est = SPFlowDensityEstimator(structure_learner="learn_spn", dtype="float32", min_instances_slice=20)
     cloned = clone(est)
@@ -145,7 +149,7 @@ def test_reduce_log_likelihood_reductions_and_errors():
 
 
 def test_fit_prometheus_forwards_kwargs(monkeypatch):
-    X = np.random.randn(20, 2).astype(np.float32)
+    X = _randn(20, 2)
     captured: dict[str, object] = {}
 
     def _fake_learn_prometheus(x_tensor, *, leaf_modules, **kwargs):
@@ -167,7 +171,7 @@ def test_fit_prometheus_forwards_kwargs(monkeypatch):
 
 
 def test_fit_rejects_unknown_leaf_and_structure_learner():
-    X = np.random.randn(8, 2).astype(np.float32)
+    X = _randn(8, 2)
 
     with pytest.raises(InvalidParameterError):
         SPFlowDensityEstimator(leaf="bad").fit(X)  # type: ignore[arg-type]
@@ -180,13 +184,13 @@ def test_fit_rejects_non_module_model():
     class _NonModule:
         device = "cpu"
 
-    X = np.random.randn(6, 2).astype(np.float32)
+    X = _randn(6, 2)
     with pytest.raises(InvalidTypeError):
         SPFlowDensityEstimator(model=_NonModule()).fit(X)
 
 
 def test_fit_calls_mle_when_fit_params_enabled(monkeypatch):
-    X = np.random.randn(16, 2).astype(np.float32)
+    X = _randn(16, 2)
     model = _independent_normals_model(n_features=2)
     called: dict[str, object] = {}
 
@@ -202,14 +206,14 @@ def test_fit_calls_mle_when_fit_params_enabled(monkeypatch):
 
 
 def test_fit_uses_explicit_device_override():
-    X = np.random.randn(10, 2).astype(np.float32)
+    X = _randn(10, 2)
     est = SPFlowDensityEstimator(structure_learner="learn_spn", device="cpu", dtype="float32")
     est.fit(X)
     assert est.n_features_in_ == 2
 
 
 def test_sample_validates_arguments():
-    X = np.random.randn(24, 2).astype(np.float32)
+    X = _randn(24, 2)
     est = SPFlowDensityEstimator(structure_learner="learn_spn", dtype="float32", min_instances_slice=12)
     est.fit(X)
 

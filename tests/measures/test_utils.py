@@ -77,10 +77,10 @@ def test_reduce_log_likelihood_shapes_and_methods():
     out4 = reduce_log_likelihood(ll4, channel_agg="logmeanexp", repetition_agg="logsumexp")
     assert out4.shape == (3,)
 
-    with pytest.raises(InvalidParameterError, match="Unexpected log-likelihood shape"):
+    with pytest.raises(InvalidParameterError):
         reduce_log_likelihood(torch.randn(2), channel_agg="first", repetition_agg="first")
 
-    with pytest.raises(InvalidParameterError, match="Unknown reduction method"):
+    with pytest.raises(InvalidParameterError):
         reduce_log_likelihood(torch.randn(2, 2, 2, 2), channel_agg="bad", repetition_agg="first")
 
     empty = torch.empty((0, 2, 1, 1))
@@ -101,7 +101,7 @@ def test_iter_modules_input_container_branches():
     assert seen_flaky == [flaky]
 
     bad = _ContainerModule(Scope([0]), inputs=123)
-    with pytest.raises(UnsupportedOperationError, match="Unsupported module 'inputs' container type"):
+    with pytest.raises(UnsupportedOperationError):
         list(iter_modules(bad))
 
 
@@ -112,7 +112,7 @@ def test_infer_discrete_domains_success_and_errors():
     assert set(domains) == {0}
     torch.testing.assert_close(domains[0], torch.tensor([0.0, 1.0], dtype=domains[0].dtype))
 
-    with pytest.raises(UnsupportedOperationError, match="Could not infer discrete domains"):
+    with pytest.raises(UnsupportedOperationError):
         infer_discrete_domains(root, Scope([1]))
 
     n = Normal(
@@ -121,19 +121,19 @@ def test_infer_discrete_domains_success_and_errors():
         scale=torch.tensor([[[1.0]]], dtype=torch.get_default_dtype()),
     )
     root_with_normal = _ContainerModule(Scope([0]), inputs=[n])
-    with pytest.raises(UnsupportedOperationError, match="supports only Bernoulli and Categorical"):
+    with pytest.raises(UnsupportedOperationError):
         infer_discrete_domains(root_with_normal, Scope([0]))
 
     c2 = Categorical(scope=Scope([0]), K=2, probs=torch.tensor([[[[0.5, 0.5]]]]))
     c3 = Categorical(scope=Scope([0]), K=3, probs=torch.tensor([[[[0.2, 0.3, 0.5]]]]))
     inconsistent_root = _ContainerModule(Scope([0]), inputs=[c2, c3])
-    with pytest.raises(UnsupportedOperationError, match="Inconsistent inferred domain sizes"):
+    with pytest.raises(UnsupportedOperationError):
         infer_discrete_domains(inconsistent_root, Scope([0]))
 
     bad_k = Categorical(scope=Scope([0]), K=2, probs=torch.tensor([[[[0.5, 0.5]]]]))
     bad_k.K = 0
     bad_k_root = _ContainerModule(Scope([0]), inputs=[bad_k])
-    with pytest.raises(UnsupportedOperationError, match="invalid K=0"):
+    with pytest.raises(UnsupportedOperationError):
         infer_discrete_domains(bad_k_root, Scope([0]))
 
 

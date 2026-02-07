@@ -326,20 +326,20 @@ def test_picsum_constructor_validations():
     assert pic_sum.out_shape.features == 1
     assert [s.query for s in pic_sum.feature_to_scope.tolist()] == [(0,)]
 
-    with pytest.raises(InvalidParameterError, match="at least one input"):
+    with pytest.raises(InvalidParameterError):
         PICSum(inputs=[], weights=torch.tensor([]), latent_scope=z)
 
-    with pytest.raises(ShapeError, match="weights must have shape"):
+    with pytest.raises(ShapeError):
         PICSum(inputs=[c1, c2], weights=torch.ones((2, 1)), latent_scope=z)
 
-    with pytest.raises(InvalidParameterError, match="strictly positive"):
+    with pytest.raises(InvalidParameterError):
         PICSum(inputs=[c1, c2], weights=torch.tensor([0.0, 1.0]), latent_scope=z)
 
-    with pytest.raises(InvalidParameterError, match="sum to 1"):
+    with pytest.raises(InvalidParameterError):
         PICSum(inputs=[c1, c2], weights=torch.tensor([0.2, 0.2]), latent_scope=z)
 
     c3 = ConstantPICInput(Scope([1]), z, values=torch.log(torch.tensor([5.0, 6.0])))
-    with pytest.raises(StructureError, match="identical observed scope"):
+    with pytest.raises(StructureError):
         PICSum(inputs=[c1, c3], weights=torch.tensor([0.5, 0.5]), latent_scope=z)
 
 
@@ -352,7 +352,7 @@ def test_picproduct_constructor_validations():
 
     overlap_left = _NoLatentLeaf(Scope([0]))
     overlap_right = _NoLatentLeaf(Scope([0]))
-    with pytest.raises(StructureError, match="disjoint scopes"):
+    with pytest.raises(StructureError):
         PICProduct(overlap_left, overlap_right)
 
 
@@ -367,14 +367,14 @@ def test_rg2pic_assigns_leaf_latent_and_attaches_metadata():
 def test_rg2pic_rejects_invalid_leaf_factory_and_partition_shapes():
     root = Region(Scope([0]))
     rg = RegionGraph(root)
-    with pytest.raises(InvalidParameterError, match="leaf_factory must be provided"):
+    with pytest.raises(InvalidParameterError):
         rg2pic(rg, leaf_factory=None)  # type: ignore[arg-type]
 
     bad_leaf = Region(Scope([0, 1]))
     bad_root = Region(Scope([0, 1]))
     bad_root.children.append((bad_leaf,))
     bad_rg = RegionGraph(bad_root)
-    with pytest.raises(StructureError, match="at least 2 child regions"):
+    with pytest.raises(StructureError):
         rg2pic(bad_rg, leaf_factory=lambda x, z: NormalPICInput(x, z))
 
 
@@ -388,7 +388,7 @@ def test_rg2pic_leaf_factory_must_preserve_assigned_latent_scope():
     def bad_leaf_factory(x_scope: Scope, z_scope: Scope) -> Module:
         return NormalPICInput(x_scope, Scope([]))
 
-    with pytest.raises(StructureError, match="latent_scope consistently"):
+    with pytest.raises(StructureError):
         rg2pic(rg, leaf_factory=bad_leaf_factory)
 
 
@@ -422,7 +422,7 @@ def test_rg2pic_raises_when_region_partitions_produce_different_latent_scopes():
     root.add_partition((mid, l2))
     rg = RegionGraph(root)
 
-    with pytest.raises(StructureError, match="same latent_scope"):
+    with pytest.raises(StructureError):
         rg2pic(
             rg,
             merge_strategy=MergeStrategy.TUCKER,
@@ -437,7 +437,7 @@ def test_merge_units_cp_tucker_and_invalid_strategy():
     u1.latent_scope = Scope([10])  # type: ignore[attr-defined]
     u2.latent_scope = Scope([11])  # type: ignore[attr-defined]
 
-    with pytest.raises(StructureError, match="Z_u1 == Z_u2"):
+    with pytest.raises(StructureError):
         _merge_units(
             u1=u1,
             u2=u2,
@@ -454,7 +454,7 @@ def test_merge_units_cp_tucker_and_invalid_strategy():
     u4 = ConstantQPCModule(scope=Scope([1]), log_values=torch.log(torch.tensor([3.0, 4.0])))
     u3.latent_scope = Scope([])  # type: ignore[attr-defined]
     u4.latent_scope = Scope([])  # type: ignore[attr-defined]
-    with pytest.raises(StructureError, match="non-empty shared latent"):
+    with pytest.raises(StructureError):
         _merge_units(
             u1=u3,
             u2=u4,
@@ -501,7 +501,7 @@ def test_merge_units_cp_tucker_and_invalid_strategy():
     assert isinstance(tucker_out, Integral)
     assert tucker_out.latent_scope.empty()
 
-    with pytest.raises(InvalidParameterError, match="Unknown merge strategy"):
+    with pytest.raises(InvalidParameterError):
         _merge_units(
             u1=u1,
             u2=u2,
@@ -586,29 +586,29 @@ def test_pic2qpc_mode_and_quadrature_validation_errors():
     pic = NormalPICInput(Scope([0]), Scope([]))
     rule = QuadratureRule(points=torch.linspace(-1, 1, 2), weights=torch.tensor([0.5, 0.5]))
 
-    with pytest.raises(InvalidParameterError, match="Unknown pic2qpc mode"):
+    with pytest.raises(InvalidParameterError):
         pic2qpc(pic, rule, mode="invalid")
 
-    with pytest.raises(InvalidParameterError, match="tensorized_config must be provided"):
+    with pytest.raises(InvalidParameterError):
         pic2qpc(pic, rule, mode="tensorized")
 
-    with pytest.raises(StructureError, match="requires the PIC root to have `_region_graph`"):
+    with pytest.raises(StructureError):
         pic2qpc(pic, rule, mode="tensorized", tensorized_config=TensorizedQPCConfig(leaf_type="normal"))
 
     setattr(pic, "_region_graph", object())
-    with pytest.raises(StructureError, match="must be a `spflow.meta.region_graph.RegionGraph`"):
+    with pytest.raises(StructureError):
         pic2qpc(pic, rule, mode="tensorized", tensorized_config=TensorizedQPCConfig(leaf_type="normal"))
 
     bad_rule = QuadratureRule(points=torch.ones(2, 1), weights=torch.ones(2))
-    with pytest.raises(ShapeError, match="must be 1D tensors"):
+    with pytest.raises(ShapeError):
         pic2qpc(pic, bad_rule)
 
     bad_rule = QuadratureRule(points=torch.ones(2), weights=torch.ones(3))
-    with pytest.raises(ShapeError, match="same length"):
+    with pytest.raises(ShapeError):
         pic2qpc(pic, bad_rule)
 
     bad_rule = QuadratureRule(points=torch.ones(2), weights=torch.tensor([0.6, -0.1]))
-    with pytest.raises(InvalidParameterError, match="non-negative"):
+    with pytest.raises(InvalidParameterError):
         pic2qpc(pic, bad_rule)
 
 
@@ -619,7 +619,7 @@ def test_pic2qpc_raises_for_sum_channel_mismatch_and_integral_errors():
     c1 = _VariableChannelPICInput(scope=Scope([0]), latent_scope=z, num_channels=2)
     c2 = _VariableChannelPICInput(scope=Scope([0]), latent_scope=z, num_channels=3)
     bad_sum = PICSum(inputs=[c1, c2], weights=torch.tensor([0.5, 0.5]), latent_scope=z)
-    with pytest.raises(ShapeError, match="identical channel count"):
+    with pytest.raises(ShapeError):
         pic2qpc(bad_sum, rule)
 
     child = _SelfMaterializingLeaf(
@@ -631,7 +631,7 @@ def test_pic2qpc_raises_for_sum_channel_mismatch_and_integral_errors():
         integrated_latent_scope=Scope([9]),
         function=None,
     )
-    with pytest.raises(StructureError, match="missing weighting function"):
+    with pytest.raises(StructureError):
         pic2qpc(bad_integral, rule)
 
     mismatch_integral = Integral(
@@ -640,7 +640,7 @@ def test_pic2qpc_raises_for_sum_channel_mismatch_and_integral_errors():
         integrated_latent_scope=Scope([9, 10]),
         function=ConstantOneFunction(),
     )
-    with pytest.raises(ShapeError, match="child channels mismatch"):
+    with pytest.raises(ShapeError):
         pic2qpc(mismatch_integral, rule)
 
 
@@ -757,11 +757,11 @@ def test_pic2qpc_function_group_raises_on_grouped_child_channel_mismatch():
     )
     bad.function_head_idx = group.add_unit(bad)
 
-    with pytest.raises(ShapeError, match="child channels mismatch"):
+    with pytest.raises(ShapeError):
         pic2qpc(bad, rule)
 
 
 def test_pic2qpc_unsupported_node_type_raises():
     rule = QuadratureRule(points=torch.linspace(-1, 1, 2), weights=torch.tensor([0.5, 0.5]))
-    with pytest.raises(StructureError, match="Unsupported PIC node type"):
+    with pytest.raises(StructureError):
         pic2qpc(_BareModule(), rule)

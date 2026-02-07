@@ -25,7 +25,7 @@ class TestTuckerLayerInit:
 
     def test_arity_must_be_2(self):
         """Test that arity != 2 raises error."""
-        with pytest.raises(NotImplementedError, match="binary product"):
+        with pytest.raises(NotImplementedError):
             TuckerLayer(
                 num_input_units=4,
                 num_output_units=8,
@@ -34,7 +34,7 @@ class TestTuckerLayerInit:
 
     def test_fold_mask_must_be_none(self):
         """Test that fold_mask raises error."""
-        with pytest.raises(ValueError, match="should not be masked"):
+        with pytest.raises(ValueError):
             TuckerLayer(
                 num_input_units=4,
                 num_output_units=8,

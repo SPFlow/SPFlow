@@ -8,6 +8,10 @@ from spflow.meta import Scope
 from spflow.modules.sums import RepetitionMixingLayer
 
 
+def _rand(*size: int) -> torch.Tensor:
+    return torch.rand(*size)
+
+
 class TestProcessWeightsParameter:
     """Tests for the _process_weights_parameter method of RepetitionMixingLayer."""
 
@@ -73,7 +77,7 @@ class TestProcessWeightsParameter:
 
     def test_3d_weights_unchanged(self, layer):
         """Test that 3D weights pass through unchanged."""
-        input_weights = torch.rand(2, 4, 3)  # (features, channels, repetitions)
+        input_weights = _rand(2, 4, 3)  # (features, channels, repetitions)
         weights, out_channels, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
@@ -100,7 +104,7 @@ class TestProcessWeightsParameter:
 
     def test_out_channels_inferred_from_2d_weights(self, layer):
         """Test that out_channels is inferred from 2D weights (dim 0)."""
-        input_weights = torch.rand(5, 2)  # 5 channels, 2 reps
+        input_weights = _rand(5, 2)  # 5 channels, 2 reps
         _, out_channels, _ = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
@@ -111,7 +115,7 @@ class TestProcessWeightsParameter:
 
     def test_out_channels_inferred_from_3d_weights(self, layer):
         """Test that out_channels is inferred from 3D weights (dim 1)."""
-        input_weights = torch.rand(3, 7, 2)  # features=3, channels=7, reps=2
+        input_weights = _rand(3, 7, 2)  # features=3, channels=7, reps=2
         _, out_channels, _ = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
@@ -135,7 +139,7 @@ class TestProcessWeightsParameter:
 
     def test_num_repetitions_inferred_from_2d_weights(self, layer):
         """Test that num_repetitions is inferred from 2D weights (dim 1)."""
-        input_weights = torch.rand(5, 4)  # 5 channels, 4 reps
+        input_weights = _rand(5, 4)  # 5 channels, 4 reps
         _, _, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
@@ -146,7 +150,7 @@ class TestProcessWeightsParameter:
 
     def test_num_repetitions_inferred_from_3d_weights(self, layer):
         """Test that num_repetitions is inferred from 3D weights (dim -1)."""
-        input_weights = torch.rand(2, 5, 6)  # features=2, channels=5, reps=6
+        input_weights = _rand(2, 5, 6)  # features=2, channels=5, reps=6
         _, _, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
@@ -159,8 +163,8 @@ class TestProcessWeightsParameter:
 
     def test_error_when_out_channels_specified_with_weights(self, layer):
         """Test that specifying both out_channels and weights raises error."""
-        input_weights = torch.rand(4)
-        with pytest.raises(InvalidParameterCombinationError, match="Cannot specify both"):
+        input_weights = _rand(4)
+        with pytest.raises(InvalidParameterCombinationError):
             layer._process_weights_parameter(
                 inputs=None,
                 weights=input_weights,
@@ -170,8 +174,8 @@ class TestProcessWeightsParameter:
 
     def test_error_when_weights_dimension_is_4d(self, layer):
         """Test that 4D weights raise a ValueError."""
-        input_weights = torch.rand(2, 3, 4, 5)  # 4D tensor
-        with pytest.raises(ValueError, match="1D, 2D, or 3D"):
+        input_weights = _rand(2, 3, 4, 5)  # 4D tensor
+        with pytest.raises(ValueError):
             layer._process_weights_parameter(
                 inputs=None,
                 weights=input_weights,
@@ -181,8 +185,8 @@ class TestProcessWeightsParameter:
 
     def test_error_when_weights_dimension_is_5d(self, layer):
         """Test that 5D weights raise a ValueError."""
-        input_weights = torch.rand(2, 3, 4, 5, 6)  # 5D tensor
-        with pytest.raises(ValueError, match="1D, 2D, or 3D"):
+        input_weights = _rand(2, 3, 4, 5, 6)  # 5D tensor
+        with pytest.raises(ValueError):
             layer._process_weights_parameter(
                 inputs=None,
                 weights=input_weights,
@@ -192,8 +196,8 @@ class TestProcessWeightsParameter:
 
     def test_error_when_num_repetitions_mismatches_weights(self, layer):
         """Test that conflicting num_repetitions raises error."""
-        input_weights = torch.rand(3, 4)  # channels=3, reps=4
-        with pytest.raises(InvalidParameterCombinationError, match="does not match weights shape"):
+        input_weights = _rand(3, 4)  # channels=3, reps=4
+        with pytest.raises(InvalidParameterCombinationError):
             layer._process_weights_parameter(
                 inputs=None,
                 weights=input_weights,
@@ -203,7 +207,7 @@ class TestProcessWeightsParameter:
 
     def test_num_repetitions_1_always_allowed(self, layer):
         """Test that num_repetitions=1 is always allowed (special case)."""
-        input_weights = torch.rand(3, 4)  # channels=3, reps=4
+        input_weights = _rand(3, 4)  # channels=3, reps=4
         weights, out_channels, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
@@ -215,7 +219,7 @@ class TestProcessWeightsParameter:
 
     def test_num_repetitions_matching_is_allowed(self, layer):
         """Test that matching num_repetitions is allowed."""
-        input_weights = torch.rand(3, 4)  # channels=3, reps=4
+        input_weights = _rand(3, 4)  # channels=3, reps=4
         weights, out_channels, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,

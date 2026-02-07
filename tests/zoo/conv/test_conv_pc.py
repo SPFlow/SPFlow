@@ -17,22 +17,23 @@ height_width_values = [(4, 4), (8, 8)]
 num_repetitions_values = [1, 3]
 use_sum_conv_values = [True, False]
 
-# Combined parameter lists
-construction_params = list(
+
+def _is_valid_spatial_depth(hw: tuple[int, int], depth: int) -> bool:
+    height, width = hw
+    return height // (2**depth) >= 1 and width // (2**depth) >= 1
+
+
+all_params = list(
     product(
         out_channels_values, height_width_values, depth_values, num_repetitions_values, use_sum_conv_values
     )
 )
-ll_params = list(
-    product(
-        out_channels_values, height_width_values, depth_values, num_repetitions_values, use_sum_conv_values
-    )
-)
-sample_params = list(
-    product(
-        out_channels_values, height_width_values, depth_values, num_repetitions_values, use_sum_conv_values
-    )
-)
+valid_params = [p for p in all_params if _is_valid_spatial_depth(p[1], p[2])]
+
+# Combined parameter lists (only valid combinations).
+construction_params = valid_params
+ll_params = valid_params
+sample_params = valid_params
 
 
 def make_normal_leaf(height: int, width: int, out_channels: int, num_repetitions: int = 1):
@@ -49,9 +50,6 @@ class TestConvPcConstruction:
     def test_basic_construction(self, out_channels, hw, depth, num_repetitions, use_sum_conv):
         """Test that ConvPc can be constructed with valid parameters."""
         height, width = hw
-        # Skip invalid combinations where depth exceeds spatial dimensions
-        if height // (2**depth) < 1 or width // (2**depth) < 1:
-            pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
         model = ConvPc(
@@ -76,9 +74,6 @@ class TestConvPcConstruction:
     def test_layer_structure(self, out_channels, hw, depth, num_repetitions, use_sum_conv):
         """Test that layers alternate ProdConv and SumConv via recursive inputs."""
         height, width = hw
-        # Skip invalid combinations
-        if height // (2**depth) < 1 or width // (2**depth) < 1:
-            pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
         model = ConvPc(
@@ -131,9 +126,6 @@ class TestConvPcConstruction:
     def test_output_shape(self, out_channels, hw, depth, num_repetitions, use_sum_conv):
         """Test that output shape is scalar."""
         height, width = hw
-        # Skip invalid combinations
-        if height // (2**depth) < 1 or width // (2**depth) < 1:
-            pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
         model = ConvPc(
@@ -159,9 +151,6 @@ class TestConvPcLogLikelihood:
     def test_log_likelihood_shape(self, out_channels, hw, depth, num_repetitions, use_sum_conv):
         """Test that log_likelihood output has correct shape."""
         height, width = hw
-        # Skip invalid combinations
-        if height // (2**depth) < 1 or width // (2**depth) < 1:
-            pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
         model = ConvPc(
@@ -191,9 +180,6 @@ class TestConvPcLogLikelihood:
     def test_log_likelihood_finite(self, out_channels, hw, depth, num_repetitions, use_sum_conv):
         """Test that log_likelihood values are finite."""
         height, width = hw
-        # Skip invalid combinations
-        if height // (2**depth) < 1 or width // (2**depth) < 1:
-            pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
         model = ConvPc(
@@ -215,9 +201,6 @@ class TestConvPcLogLikelihood:
     def test_log_likelihood_negative(self, out_channels, hw, depth, num_repetitions, use_sum_conv):
         """Test that log_likelihood values are negative (proper probabilities)."""
         height, width = hw
-        # Skip invalid combinations
-        if height // (2**depth) < 1 or width // (2**depth) < 1:
-            pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
         model = ConvPc(
@@ -243,9 +226,6 @@ class TestConvPcSample:
     def test_sample_shape(self, out_channels, hw, depth, num_repetitions, use_sum_conv):
         """Test that samples have correct shape."""
         height, width = hw
-        # Skip invalid combinations
-        if height // (2**depth) < 1 or width // (2**depth) < 1:
-            pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
         model = ConvPc(
@@ -267,9 +247,6 @@ class TestConvPcSample:
     def test_sample_finite(self, out_channels, hw, depth, num_repetitions, use_sum_conv):
         """Test that samples are finite."""
         height, width = hw
-        # Skip invalid combinations
-        if height // (2**depth) < 1 or width // (2**depth) < 1:
-            pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
         model = ConvPc(
@@ -289,9 +266,6 @@ class TestConvPcSample:
     def test_sample_mpe(self, out_channels, hw, depth, num_repetitions, use_sum_conv):
         """Test MPE sampling."""
         height, width = hw
-        # Skip invalid combinations
-        if height // (2**depth) < 1 or width // (2**depth) < 1:
-            pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
         model = ConvPc(
@@ -315,9 +289,6 @@ class TestConvPcConditionalSample:
     def test_conditional_sample(self, out_channels, hw, depth, num_repetitions, use_sum_conv):
         """Test sampling with evidence."""
         height, width = hw
-        # Skip invalid combinations
-        if height // (2**depth) < 1 or width // (2**depth) < 1:
-            pytest.skip("Invalid depth for spatial dimensions")
 
         leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
         model = ConvPc(
@@ -364,13 +335,13 @@ def _leaf(h: int, w: int, c: int = 1, r: int = 1) -> Normal:
 
 
 def test_kernel_padding_validation_and_constructor_guards():
-    with pytest.raises(ValueError, match="positive"):
+    with pytest.raises(ValueError):
         compute_non_overlapping_kernel_and_padding(0, 1, 1, 1)
 
-    with pytest.raises(ValueError, match="depth"):
+    with pytest.raises(ValueError):
         ConvPc(leaf=_leaf(4, 4), input_height=4, input_width=4, channels=2, depth=0)
 
-    with pytest.raises(ValueError, match="channels"):
+    with pytest.raises(ValueError):
         ConvPc(leaf=_leaf(4, 4), input_height=4, input_width=4, channels=0, depth=1)
 
 

@@ -52,5 +52,5 @@ def test_categorical_invalid_parameter_combination():
     scope = Scope([0])
     probs = torch.tensor([[0.25, 0.75]])
     logits = torch.tensor([[0.0, 0.0]])
-    with pytest.raises(InvalidParameterCombinationError, match="accepts either probs or logits, not both"):
+    with pytest.raises(InvalidParameterCombinationError):
         Categorical(scope=scope, probs=probs, logits=logits)

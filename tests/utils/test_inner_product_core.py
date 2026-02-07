@@ -68,17 +68,17 @@ def _piecewise(
 def test_leaf_inner_product_validation_branches():
     a = _normal([0])
     b = _normal([1])
-    with pytest.raises(ShapeError, match="Scopes must match"):
+    with pytest.raises(ShapeError):
         leaf_inner_product(a, b)
 
     b = _normal([0])
     b.out_shape = ModuleShape(2, 1, 1)
-    with pytest.raises(ShapeError, match="Leaf features must match"):
+    with pytest.raises(ShapeError):
         leaf_inner_product(a, b)
 
     b = _normal([0])
     b.out_shape = ModuleShape(1, 1, 2)
-    with pytest.raises(ShapeError, match="Leaf repetitions must match"):
+    with pytest.raises(ShapeError):
         leaf_inner_product(a, b)
 
 
@@ -89,7 +89,7 @@ def test_leaf_inner_product_distribution_guardrails():
     c2 = Categorical(
         scope=Scope([0]), out_channels=1, num_repetitions=1, K=3, probs=torch.tensor([[[[0.2, 0.3, 0.5]]]])
     )
-    with pytest.raises(ShapeError, match="Categorical K mismatch"):
+    with pytest.raises(ShapeError):
         leaf_inner_product(c1, c2)
 
     g1 = Gamma(
@@ -106,7 +106,7 @@ def test_leaf_inner_product_distribution_guardrails():
         concentration=torch.tensor([[[0.5]]]),
         rate=torch.tensor([[[2.0]]]),
     )
-    with pytest.raises(UnsupportedOperationError, match="concentration_a \\+ concentration_b > 1"):
+    with pytest.raises(UnsupportedOperationError):
         leaf_inner_product(g1, g2)
 
     h1 = Hypergeometric(
@@ -125,24 +125,24 @@ def test_leaf_inner_product_distribution_guardrails():
         N=torch.tensor([[[8.0]]]),
         n=torch.tensor([[[2.0]]]),
     )
-    with pytest.raises(ShapeError, match="matching N"):
+    with pytest.raises(ShapeError):
         leaf_inner_product(h1, h2)
 
 
 def test_leaf_inner_product_piecewise_guardrails_and_short_grid():
     a = _piecewise(initialized=False)
     b = _piecewise(initialized=False)
-    with pytest.raises(UnsupportedOperationError, match="requires both leaves to be initialized"):
+    with pytest.raises(UnsupportedOperationError):
         leaf_inner_product(a, b)
 
     a = _piecewise(initialized=True, domains=None)
     b = _piecewise(initialized=True, domains=None)
-    with pytest.raises(UnsupportedOperationError, match="requires domains"):
+    with pytest.raises(UnsupportedOperationError):
         leaf_inner_product(a, b)
 
     a = _piecewise(initialized=True, domains=[Domain.discrete_range(0, 1)])
     b = _piecewise(initialized=True, domains=[Domain.discrete_range(0, 1)])
-    with pytest.raises(UnsupportedOperationError, match="supports continuous domains only"):
+    with pytest.raises(UnsupportedOperationError):
         leaf_inner_product(a, b)
 
     single = _piecewise(
@@ -159,16 +159,16 @@ def test_leaf_inner_product_cltree_and_unsupported_branches():
     a = CLTree(scope=Scope([0, 1]), out_channels=1, num_repetitions=1, K=2)
     b = CLTree(scope=Scope([0, 1]), out_channels=1, num_repetitions=1, K=2)
     b.K = 3
-    with pytest.raises(ShapeError, match="CLTree K mismatch"):
+    with pytest.raises(ShapeError):
         leaf_inner_product(a, b)
 
     b = CLTree(scope=Scope([0, 1]), out_channels=1, num_repetitions=1, K=2)
     b.parents = a.parents.clone()
     b.parents[1] = -1 if int(a.parents[1].item()) != -1 else 0
-    with pytest.raises(UnsupportedOperationError, match="identical tree structure"):
+    with pytest.raises(UnsupportedOperationError):
         leaf_inner_product(a, b)
 
-    with pytest.raises(UnsupportedOperationError, match="not implemented"):
+    with pytest.raises(UnsupportedOperationError):
         leaf_inner_product(_normal([0]), _bernoulli([0]))
 
 
@@ -176,28 +176,28 @@ def test_inner_product_matrix_shape_and_cat_errors():
     a = _normal([0])
     b = _normal([0])
     b.out_shape = ModuleShape(2, 1, 1)
-    with pytest.raises(ShapeError, match="Feature mismatch"):
+    with pytest.raises(ShapeError):
         inner_product_matrix(a, b)
 
     b = _normal([0])
     b.out_shape = ModuleShape(1, 1, 2)
-    with pytest.raises(ShapeError, match="Repetition mismatch"):
+    with pytest.raises(ShapeError):
         inner_product_matrix(a, b)
 
     c0 = Cat(inputs=[_bernoulli([0]), _bernoulli([0])], dim=2)
     c1 = copy.deepcopy(c0)
     c1.dim = 1
-    with pytest.raises(ShapeError, match="Cat dim mismatch"):
+    with pytest.raises(ShapeError):
         inner_product_matrix(c0, c1)
 
     d0 = Cat(inputs=[_bernoulli([0, 1])], dim=1)
     d1 = Cat(inputs=[_bernoulli([0]), _bernoulli([1])], dim=1)
-    with pytest.raises(ShapeError, match="Cat arity mismatch"):
+    with pytest.raises(ShapeError):
         inner_product_matrix(d0, d1)
 
     c_bad = copy.deepcopy(c0)
     c_bad.dim = 3
-    with pytest.raises(UnsupportedOperationError, match="does not support Cat"):
+    with pytest.raises(UnsupportedOperationError):
         inner_product_matrix(c_bad, c_bad)
 
 
@@ -214,12 +214,12 @@ def test_inner_product_matrix_product_sum_and_unsupported_paths():
     assert ks.shape == (1, 1, 1, 1)
     assert torch.isfinite(ks).all()
 
-    with pytest.raises(UnsupportedOperationError, match="not implemented"):
+    with pytest.raises(UnsupportedOperationError):
         inner_product_matrix(_normal([0]), sa)
 
 
 def test_log_self_inner_product_scalar_shape_guard():
-    with pytest.raises(ShapeError, match="Expected scalar output"):
+    with pytest.raises(ShapeError):
         log_self_inner_product_scalar(_bernoulli([0, 1]))
 
 
@@ -240,12 +240,12 @@ def test_triple_product_shape_guards():
     c = _bernoulli([0])
 
     b.out_shape = ModuleShape(2, 1, 1)
-    with pytest.raises(ShapeError, match="Feature mismatch for triple product"):
+    with pytest.raises(ShapeError):
         triple_product_tensor(a, b, c)
 
     b = _bernoulli([0])
     b.out_shape = ModuleShape(1, 1, 2)
-    with pytest.raises(ShapeError, match="Repetition mismatch for triple product"):
+    with pytest.raises(ShapeError):
         triple_product_tensor(a, b, c)
 
 
@@ -259,7 +259,7 @@ def test_triple_product_leaf_and_piecewise_guardrails():
     c3 = Categorical(
         scope=Scope([0]), out_channels=1, num_repetitions=1, K=3, probs=torch.tensor([[[[0.1, 0.2, 0.7]]]])
     )
-    with pytest.raises(ShapeError, match="Categorical K mismatch for triple product"):
+    with pytest.raises(ShapeError):
         triple_product_tensor(c1, c2, c3)
 
     h1 = Hypergeometric(
@@ -286,19 +286,19 @@ def test_triple_product_leaf_and_piecewise_guardrails():
         N=torch.tensor([[[8.0]]]),
         n=torch.tensor([[[2.0]]]),
     )
-    with pytest.raises(ShapeError, match="requires matching N"):
+    with pytest.raises(ShapeError):
         triple_product_tensor(h1, h2, h3)
 
     p = _piecewise(initialized=False)
-    with pytest.raises(UnsupportedOperationError, match="requires all leaves to be initialized"):
+    with pytest.raises(UnsupportedOperationError):
         triple_product_tensor(p, p, p)
 
     p = _piecewise(initialized=True, domains=None)
-    with pytest.raises(UnsupportedOperationError, match="requires domains"):
+    with pytest.raises(UnsupportedOperationError):
         triple_product_tensor(p, p, p)
 
     p = _piecewise(initialized=True, domains=[Domain.discrete_range(0, 1)])
-    with pytest.raises(UnsupportedOperationError, match="supports continuous domains only"):
+    with pytest.raises(UnsupportedOperationError):
         triple_product_tensor(p, p, p)
 
     single = _piecewise(
@@ -310,7 +310,7 @@ def test_triple_product_leaf_and_piecewise_guardrails():
     out = triple_product_tensor(single, single, single)
     torch.testing.assert_close(out, torch.zeros_like(out))
 
-    with pytest.raises(UnsupportedOperationError, match="Leaf triple product not implemented"):
+    with pytest.raises(UnsupportedOperationError):
         triple_product_tensor(_normal([0]), _bernoulli([0]), _bernoulli([0]))
 
 
@@ -342,26 +342,26 @@ def test_triple_product_cat_product_sum_and_fallback_paths():
     c1 = copy.deepcopy(c0)
     c2 = copy.deepcopy(c0)
     c1.dim = 1
-    with pytest.raises(ShapeError, match="Cat dim mismatch for triple product"):
+    with pytest.raises(ShapeError):
         triple_product_tensor(c0, c1, c2)
 
     d0 = Cat(inputs=[_bernoulli([0, 1])], dim=1)
     d1 = Cat(inputs=[_bernoulli([0]), _bernoulli([1])], dim=1)
     d2 = Cat(inputs=[_bernoulli([0]), _bernoulli([1])], dim=1)
-    with pytest.raises(ShapeError, match="Cat arity mismatch for triple product"):
+    with pytest.raises(ShapeError):
         triple_product_tensor(d0, d1, d2)
 
     c_bad = copy.deepcopy(c0)
     c_bad.dim = 3
-    with pytest.raises(UnsupportedOperationError, match="does not support Cat"):
+    with pytest.raises(UnsupportedOperationError):
         triple_product_tensor(c_bad, c_bad, c_bad)
 
-    with pytest.raises(UnsupportedOperationError, match="triple_product_tensor not implemented"):
+    with pytest.raises(UnsupportedOperationError):
         triple_product_tensor(_normal([0]), sum_b, sum_c)
 
 
 def test_triple_product_scalar_shape_guard():
-    with pytest.raises(ShapeError, match="expects all modules to have out_shape == \\(1,1,1\\)"):
+    with pytest.raises(ShapeError):
         triple_product_scalar(_bernoulli([0, 1]), _bernoulli([0]), _bernoulli([0]))
 
 

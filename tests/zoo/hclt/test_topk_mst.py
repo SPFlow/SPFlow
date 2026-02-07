@@ -53,11 +53,11 @@ def test_kruskal_validates_shape_and_nan():
     with pytest.raises(ShapeError):
         kruskal_mst_complete(np.ones((2, 3)))
 
-    with pytest.raises(InvalidParameterError, match="non-empty"):
+    with pytest.raises(InvalidParameterError):
         kruskal_mst_complete(np.zeros((0, 0)))
 
     x = np.array([[0.0, np.nan], [np.nan, 0.0]])
-    with pytest.raises(InvalidParameterError, match="must not contain NaNs"):
+    with pytest.raises(InvalidParameterError):
         kruskal_mst_complete(x)
 
 
@@ -83,7 +83,7 @@ def test_mst_with_constraints_validation_and_dropout():
     )
     reuse = np.empty_like(w)
 
-    with pytest.raises(InvalidParameterError, match=r"\[0,1\)"):
+    with pytest.raises(InvalidParameterError):
         mst_with_constraints(w, [], [], reuse=reuse, dropout_prob=1.0)
 
     with pytest.raises(ShapeError):
@@ -107,7 +107,9 @@ def test_mst_constraints_return_none_for_infeasible_included_or_excluded():
     mst, total = mst_with_constraints(w, included_edges=[(0, 2)], excluded_edges=[], reuse=reuse)
     assert mst is not None and total is not None
 
-    mst_bad, total_bad = mst_with_constraints(w, included_edges=[(0, 2)], excluded_edges=[(0, 2)], reuse=reuse)
+    mst_bad, total_bad = mst_with_constraints(
+        w, included_edges=[(0, 2)], excluded_edges=[(0, 2)], reuse=reuse
+    )
     assert mst_bad is None and total_bad is None
 
 

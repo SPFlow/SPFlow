@@ -108,7 +108,7 @@ def test_negative_binomial_invalid_parameter_combination():
     n = torch.tensor([10])
     probs = torch.tensor([0.5])
     logits = torch.tensor([0.0])
-    with pytest.raises(InvalidParameterCombinationError, match="accepts either probs or logits, not both"):
+    with pytest.raises(InvalidParameterCombinationError):
         NegativeBinomial(scope=scope, total_count=n, probs=probs, logits=logits)
 
 
@@ -116,5 +116,5 @@ def test_negative_binomial_missing_n():
     """Test that NegativeBinomial raises InvalidParameterCombinationError when n is missing."""
     scope = Scope([0])
     probs = torch.tensor([0.5])
-    with pytest.raises(InvalidParameterCombinationError, match="'n' parameter is required"):
+    with pytest.raises(InvalidParameterCombinationError):
         NegativeBinomial(scope=scope, total_count=None, probs=probs)

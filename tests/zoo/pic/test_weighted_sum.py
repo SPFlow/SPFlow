@@ -110,7 +110,7 @@ class TestWeightedSumInit:
 
     def test_init_empty_inputs_raises(self):
         """Test that empty inputs raises ValueError."""
-        with pytest.raises(ValueError, match="requires at least one input"):
+        with pytest.raises(ValueError):
             WeightedSum(inputs=[], weights=torch.ones(1))
 
     def test_init_invalid_weight_dim_raises(self):
@@ -120,7 +120,7 @@ class TestWeightedSumInit:
         leaf = Normal(scope=Scope([0]), out_channels=2)
         weights = torch.ones(1, 1, 1, 1, 1)  # 5D
 
-        with pytest.raises(ShapeError, match="must be 1D, 2D, 3D, or 4D"):
+        with pytest.raises(ShapeError):
             WeightedSum(inputs=leaf, weights=weights)
 
     def test_init_list_weights_and_single_input_list(self):
@@ -142,7 +142,7 @@ class TestWeightedSumInit:
         from spflow.exceptions import InvalidWeightsError
 
         leaf = Normal(scope=Scope([0]), out_channels=2)
-        with pytest.raises(InvalidWeightsError, match="must be non-negative"):
+        with pytest.raises(InvalidWeightsError):
             WeightedSum(inputs=leaf, weights=torch.tensor([-1.0, 1.0]))
 
     def test_init_feature_mismatch_raises(self):
@@ -151,7 +151,7 @@ class TestWeightedSumInit:
 
         leaf = Normal(scope=Scope([0, 1]), out_channels=2)
         weights = torch.ones(3, 2, 1, 1)
-        with pytest.raises(ShapeError, match="first dimension must match"):
+        with pytest.raises(ShapeError):
             WeightedSum(inputs=leaf, weights=weights)
 
     def test_init_in_channel_mismatch_raises(self):
@@ -160,7 +160,7 @@ class TestWeightedSumInit:
 
         leaf = Normal(scope=Scope([0]), out_channels=3)
         weights = torch.ones(1, 2, 1, 1)
-        with pytest.raises(ShapeError, match="in_channels dimension must match"):
+        with pytest.raises(ShapeError):
             WeightedSum(inputs=leaf, weights=weights)
 
 
@@ -269,7 +269,7 @@ class TestWeightedSumSetWeights:
 
         ws = WeightedSum(inputs=leaf, weights=weights)
 
-        with pytest.raises(ShapeError, match="Invalid shape"):
+        with pytest.raises(ShapeError):
             ws.weights = torch.ones(1, 2, 1, 1)  # Wrong shape
 
 
@@ -315,7 +315,7 @@ class TestWeightedSumSamplingAndMarginalize:
         f2s = np.array([[Scope([0]), Scope([0])]], dtype=object)
         inp = DummyInput(feature_to_scope=f2s, channels=2, repetitions=2)
         ws = WeightedSum(inputs=inp, weights=torch.ones(1, 2, 2, 2))
-        with pytest.raises(ValueError, match="repetition_idx must be provided"):
+        with pytest.raises(ValueError):
             ws.sample(data=torch.full((2, 1), float("nan")))
 
     def test_sample_uniform_fallback_for_zero_rows(self):

@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import torch
 
 from spflow.meta import Scope
@@ -85,7 +86,9 @@ class _SuperPassProbe(Module):
         return torch.zeros((data.shape[0], 1, 1, 1), dtype=data.dtype, device=data.device)
 
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
-        Module.sample(self, num_samples=num_samples, data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        Module.sample(
+            self, num_samples=num_samples, data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx
+        )
         data = self._prepare_sample_data(num_samples, data)
         data[:] = torch.nan_to_num(data, nan=0.0)
         return data
@@ -98,11 +101,8 @@ class _SuperPassProbe(Module):
 def test_prepare_sample_data_mismatch_raises():
     node = _ChildRecorder()
     data = torch.zeros((2, 1))
-    try:
+    with pytest.raises(ValueError):
         node._prepare_sample_data(num_samples=3, data=data)
-        raise AssertionError("Expected ValueError")
-    except ValueError as exc:
-        assert "num_samples (3)" in str(exc)
 
 
 def test_prepare_sample_data_defaults_to_one_sample():

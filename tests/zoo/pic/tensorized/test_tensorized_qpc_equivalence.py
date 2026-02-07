@@ -170,7 +170,9 @@ def _expanded_from_tensorized(qpc: TensorizedQPC) -> Module:
         leaf_param=leaf_param,
     )
 
-    region_out: dict[Region, Module] = {r: m for r, m in zip(qpc._leaf_regions, leaf_modules)}  # pylint: disable=protected-access
+    region_out: dict[Region, Module] = {
+        r: m for r, m in zip(qpc._leaf_regions, leaf_modules)
+    }  # pylint: disable=protected-access
 
     # Height dict insertion order should match TensorizedQPC builder.
     height: dict[Region, int] = {}

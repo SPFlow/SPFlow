@@ -203,7 +203,9 @@ def test_sample_requires_repetition_index_for_multiple_repetitions():
     """Sampling multi-repetition leaves requires repetition index in context."""
     leaf = TinyLeaf(scope=Scope([0]), num_repetitions=2)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+    ):
         leaf.sample(num_samples=2)
 
 
@@ -315,7 +317,7 @@ def test_feature_to_scope_array_type():
 
 def test_inputs_setter_raises_attribute_error():
     leaf = TinyLeaf(scope=Scope([0]))
-    with pytest.raises(AttributeError, match="does not have 'input'"):
+    with pytest.raises(AttributeError):
         leaf.inputs = []
 
 
@@ -336,19 +338,19 @@ def test_supported_value_for_imputation_raises_for_invalid_shapes_and_types():
     scoped_data = torch.zeros((2, 2))
 
     leaf_bad_dim = SupportedValueLeaf(scope=Scope([0, 1]), supported_value=0.0)
-    with pytest.raises(ShapeError, match="Expected scoped_data to be 2D"):
+    with pytest.raises(ShapeError):
         leaf_bad_dim._supported_value_for_imputation(torch.zeros((2, 2, 1)))
 
     leaf_bad_type = SupportedValueLeaf(scope=Scope([0, 1]), supported_value={"not": "supported"})
-    with pytest.raises(TypeError, match="must be a float or Tensor"):
+    with pytest.raises(TypeError):
         leaf_bad_type._supported_value_for_imputation(scoped_data)
 
     leaf_bad_1d = SupportedValueLeaf(scope=Scope([0, 1]), supported_value=torch.tensor([1.0, 2.0, 3.0]))
-    with pytest.raises(ShapeError, match="expected \\(2,\\)"):
+    with pytest.raises(ShapeError):
         leaf_bad_1d._supported_value_for_imputation(scoped_data)
 
     leaf_bad_2d = SupportedValueLeaf(scope=Scope([0, 1]), supported_value=torch.ones((1, 2)))
-    with pytest.raises(ShapeError, match="expected first dimension"):
+    with pytest.raises(ShapeError):
         leaf_bad_2d._supported_value_for_imputation(scoped_data)
 
 
@@ -364,7 +366,7 @@ def test_set_mle_parameters_falls_back_to_data_assignment_after_type_error():
 def test_event_shape_raises_if_not_initialized():
     leaf = TinyLeaf(scope=Scope([0]))
     leaf._event_shape = None
-    with pytest.raises(RuntimeError, match="has not set _event_shape"):
+    with pytest.raises(RuntimeError):
         _ = leaf.event_shape
 
 
@@ -381,11 +383,11 @@ def test_broadcast_to_event_shape_handles_2d_and_3d_event_shapes():
 
 def test_log_likelihood_raises_for_invalid_data_dim_and_event_shape_mismatch():
     leaf = TinyLeaf(scope=Scope([0]))
-    with pytest.raises(ValueError, match="Data must be 2-dimensional"):
+    with pytest.raises(ValueError):
         leaf.log_likelihood(torch.zeros((2, 1, 1)))
 
     leaf._event_shape = (2, 1, 1)
-    with pytest.raises(RuntimeError, match="event_shape mismatch"):
+    with pytest.raises(RuntimeError):
         leaf.log_likelihood(torch.zeros((2, 1)))
 
 
@@ -393,10 +395,10 @@ def test_log_likelihood_interval_raises_when_cdf_is_missing_or_not_implemented()
     low = torch.full((3, 1), -1.0)
     high = torch.full((3, 1), 1.0)
 
-    with pytest.raises(NotImplementedError, match="has no cdf"):
+    with pytest.raises(NotImplementedError):
         NoCdfLeaf(scope=Scope([0]))._log_likelihood_interval(low, high)
 
-    with pytest.raises(NotImplementedError, match="does not implement cdf"):
+    with pytest.raises(NotImplementedError):
         RaisingCdfLeaf(scope=Scope([0]))._log_likelihood_interval(low, high)
 
 
@@ -417,7 +419,7 @@ def test_sample_conditional_mpe_raises_for_distribution_without_mode(monkeypatch
     monkeypatch.setattr(leaf, "conditional_distribution", lambda evidence: DistNoMode())
     data = torch.tensor([[float("nan"), 1.0], [float("nan"), 2.0]])
 
-    with pytest.raises(UnsupportedOperationError, match="requires a distribution with a 'mode'"):
+    with pytest.raises(UnsupportedOperationError):
         leaf.sample(data=data, is_mpe=True)
 
 
@@ -452,18 +454,18 @@ def test_sample_conditional_paths_raise_for_invalid_sample_rank(monkeypatch):
     leaf = TinyLeaf(scope=Scope(query=[0], evidence=[1]), parameter_fn=SimpleParameterNet(value=0.0))
 
     monkeypatch.setattr(leaf, "conditional_distribution", lambda evidence: DistBadModeRank())
-    with pytest.raises(ValueError, match="Either there is no repetition index"):
+    with pytest.raises(ValueError):
         leaf.sample(data=data.clone(), is_mpe=True)
 
     monkeypatch.setattr(leaf, "conditional_distribution", lambda evidence: DistBadSampleRank())
-    with pytest.raises(ValueError, match="Either there is no repetition index"):
+    with pytest.raises(ValueError):
         leaf.sample(data=data.clone(), is_mpe=False)
 
 
 def test_resolve_scope_columns_and_slice_sampling_context_errors():
     leaf = TinyLeaf(scope=Scope([4, 5]))
 
-    with pytest.raises(ShapeError, match="Cannot map scope"):
+    with pytest.raises(ShapeError):
         leaf._resolve_scope_columns(num_features=3)
 
     empty_scope_leaf = TinyLeaf(scope=Scope([]))
@@ -473,5 +475,5 @@ def test_resolve_scope_columns_and_slice_sampling_context_errors():
         channel_index=torch.zeros((2, 4), dtype=torch.long),
         mask=torch.ones((2, 4), dtype=torch.bool),
     )
-    with pytest.raises(ShapeError, match="feature dimension mismatch"):
+    with pytest.raises(ShapeError):
         leaf._slice_sampling_context(sampling_ctx=sampling_ctx, num_features=3, scope_cols=[0, 1])

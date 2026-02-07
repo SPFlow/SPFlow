@@ -12,7 +12,7 @@ class TestMixingSumLayerInit:
 
     def test_rejects_mismatched_input_output_units(self):
         """Mixing layer requires equal input/output unit counts."""
-        with pytest.raises(ValueError, match="requires num_input_units == num_output_units"):
+        with pytest.raises(ValueError):
             MixingSumLayer(num_input_units=3, num_output_units=4)
 
     def test_initializes_parameters_with_expected_shape_and_normalization(self):

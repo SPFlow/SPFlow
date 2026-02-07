@@ -1,5 +1,6 @@
 """Tests for functional sharing utilities."""
 
+import pytest
 import torch
 
 from spflow.zoo.pic.functional_sharing import (
@@ -10,13 +11,17 @@ from spflow.zoo.pic.functional_sharing import (
 )
 
 
+def _randn(*size: int) -> torch.Tensor:
+    return torch.randn(*size)
+
+
 class TestFourierFeatures:
     """Tests for FourierFeatures layer."""
 
     def test_output_shape(self):
         """Test output has correct shape (2x input due to sin+cos)."""
         ff = FourierFeatures(in_features=3, out_features=16)
-        x = torch.randn(10, 3)
+        x = _randn(10, 3)
 
         out = ff(x)
 
@@ -25,7 +30,7 @@ class TestFourierFeatures:
     def test_deterministic_with_same_input(self):
         """Test that same input produces same output."""
         ff = FourierFeatures(in_features=2, out_features=8)
-        x = torch.randn(5, 2)
+        x = _randn(5, 2)
 
         out1 = ff(x)
         out2 = ff(x)
@@ -39,7 +44,7 @@ class TestSharedMLP:
     def test_output_shape(self):
         """Test output has hidden_dim shape."""
         mlp = SharedMLP(input_dim=2, hidden_dim=32, num_layers=2)
-        x = torch.randn(10, 2)
+        x = _randn(10, 2)
 
         out = mlp(x)
 
@@ -48,7 +53,7 @@ class TestSharedMLP:
     def test_forward_no_nan(self):
         """Test forward pass produces no NaN values."""
         mlp = SharedMLP(input_dim=3, hidden_dim=16, num_layers=3)
-        x = torch.randn(20, 3)
+        x = _randn(20, 3)
 
         out = mlp(x)
 
@@ -62,7 +67,7 @@ class TestMultiHeadedMLP:
         """Test all-heads output has correct shape."""
         shared = SharedMLP(input_dim=2, hidden_dim=16)
         multi = MultiHeadedMLP(shared, num_heads=5)
-        x = torch.randn(10, 2)
+        x = _randn(10, 2)
 
         out = multi(x)  # All heads
 
@@ -72,7 +77,7 @@ class TestMultiHeadedMLP:
         """Test single-head output has correct shape."""
         shared = SharedMLP(input_dim=2, hidden_dim=16)
         multi = MultiHeadedMLP(shared, num_heads=5)
-        x = torch.randn(10, 2)
+        x = _randn(10, 2)
 
         out = multi(x, head_idx=2)
 
@@ -82,7 +87,7 @@ class TestMultiHeadedMLP:
         """Test outputs are positive (softplus activation)."""
         shared = SharedMLP(input_dim=2, hidden_dim=16)
         multi = MultiHeadedMLP(shared, num_heads=3)
-        x = torch.randn(10, 2)
+        x = _randn(10, 2)
 
         out = multi(x)
 
@@ -103,6 +108,11 @@ class TestFunctionGroup:
         assert idx2 == 1
         assert len(group.units) == 2
 
+    def test_invalid_sharing_type_raises(self):
+        """Test invalid sharing type raises a clear validation error."""
+        with pytest.raises(ValueError):
+            FunctionGroup(sharing_type="invalid")
+
     def test_get_function_c_sharing(self):
         """Test getting C-shared function."""
         group = FunctionGroup(sharing_type="c", input_dim=2, hidden_dim=8)
@@ -116,8 +126,8 @@ class TestFunctionGroup:
         assert callable(func)
 
         # Should work with tensor inputs
-        z = torch.randn(3, 3, 1)
-        y = torch.randn(3, 3, 1)
+        z = _randn(3, 3, 1)
+        y = _randn(3, 3, 1)
         out = func(z, y)
 
         assert out.shape == (3, 3)
@@ -138,8 +148,8 @@ class TestFunctionGroup:
         idx1 = group.add_unit("unit2")
         group.finalize()
 
-        z = torch.randn(4, 5, 1)
-        y = torch.randn(4, 5, 1)
+        z = _randn(4, 5, 1)
+        y = _randn(4, 5, 1)
 
         batched = group.evaluate_batched(z, y)
         assert batched.shape == (2, 4, 5)

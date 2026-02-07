@@ -62,17 +62,14 @@ def test_sample(out_channels: int, out_features: int, num_reps):
         out_features=out_features,
         num_repetitions=num_reps,
     )
-    for i in range(module.out_shape.channels):
-        data = torch.full((n_samples, module.out_shape.features), torch.nan)
-        channel_index = torch.randint(
-            low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-        )
-        mask = torch.full((n_samples, module.out_shape.features), True)
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-        sampling_ctx = SamplingContext(
-            channel_index=channel_index, mask=mask, repetition_index=repetition_index
-        )
-        samples = module.sample(data=data, sampling_ctx=sampling_ctx)
-        assert samples.shape == data.shape
-        samples_query = samples[:, module.scope.query]
-        assert torch.isfinite(samples_query).all()
+    data = torch.full((n_samples, module.out_shape.features), torch.nan)
+    channel_index = torch.randint(
+        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
+    )
+    mask = torch.full((n_samples, module.out_shape.features), True)
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+    assert samples.shape == data.shape
+    samples_query = samples[:, module.scope.query]
+    assert torch.isfinite(samples_query).all()

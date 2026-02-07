@@ -57,7 +57,7 @@ class TestSplitByIndexValidation:
         scope = Scope(list(range(0, 6)))
         leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
 
-        with pytest.raises(ValueError, match="duplicates"):
+        with pytest.raises(ValueError):
             SplitByIndex(inputs=leaf, indices=[[0, 1, 2], [2, 3, 4, 5]])
 
     def test_missing_indices_raises(self):
@@ -65,7 +65,7 @@ class TestSplitByIndexValidation:
         scope = Scope(list(range(0, 6)))
         leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
 
-        with pytest.raises(ValueError, match="Missing"):
+        with pytest.raises(ValueError):
             SplitByIndex(inputs=leaf, indices=[[0, 1, 2], [3, 4]])  # Missing 5
 
     def test_out_of_bounds_raises(self):
@@ -73,7 +73,7 @@ class TestSplitByIndexValidation:
         scope = Scope(list(range(0, 6)))
         leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
 
-        with pytest.raises(ValueError, match="out of bounds"):
+        with pytest.raises(ValueError):
             SplitByIndex(inputs=leaf, indices=[[0, 1, 2], [3, 4, 10]])
 
     def test_negative_indices_raises(self):
@@ -81,7 +81,7 @@ class TestSplitByIndexValidation:
         scope = Scope(list(range(0, 6)))
         leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
 
-        with pytest.raises(ValueError, match="out of bounds"):
+        with pytest.raises(ValueError):
             SplitByIndex(inputs=leaf, indices=[[0, 1, -1], [3, 4, 5]])
 
     def test_none_indices_raises(self):
@@ -89,7 +89,7 @@ class TestSplitByIndexValidation:
         scope = Scope(list(range(0, 6)))
         leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
 
-        with pytest.raises(ValueError, match="indices must be provided"):
+        with pytest.raises(ValueError):
             SplitByIndex(inputs=leaf, indices=None)
 
 

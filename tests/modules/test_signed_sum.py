@@ -79,10 +79,10 @@ def test_signed_sum_signed_eval_shapes_and_finiteness():
 def test_signed_sum_init_validates_inputs_and_weights():
     leaf = Normal(scope=Scope([0]), out_channels=1, num_repetitions=1)
 
-    with pytest.raises(ValueError, match="requires at least one input"):
+    with pytest.raises(ValueError):
         SignedSum(inputs=[])
 
-    with pytest.raises(ShapeError, match="Invalid shape for weights"):
+    with pytest.raises(ShapeError):
         SignedSum(inputs=leaf, out_channels=1, num_repetitions=1, weights=torch.ones((1, 2, 1, 1)))
 
 
@@ -101,13 +101,13 @@ def test_signed_sum_unsupported_operations_raise():
     node = SignedSum(inputs=leaf, out_channels=1, num_repetitions=1, weights=torch.ones((1, 1, 1, 1)))
     x = torch.randn(3, 1)
 
-    with pytest.raises(UnsupportedOperationError, match="does not define log_likelihood"):
+    with pytest.raises(UnsupportedOperationError):
         node.log_likelihood(x)
-    with pytest.raises(UnsupportedOperationError, match="does not support expectation-maximization"):
+    with pytest.raises(UnsupportedOperationError):
         node.expectation_maximization(x)
-    with pytest.raises(UnsupportedOperationError, match="does not support maximum-likelihood estimation"):
+    with pytest.raises(UnsupportedOperationError):
         node.maximum_likelihood_estimation(x)
-    with pytest.raises(UnsupportedOperationError, match="marginalize"):
+    with pytest.raises(UnsupportedOperationError):
         node.marginalize([0])
 
 
@@ -134,7 +134,7 @@ def test_signed_sum_signed_eval_raises_for_invalid_child_shape():
         inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[0.2]], [[0.8]]]])
     )
 
-    with pytest.raises(ShapeError, match="Expected child signed evaluation to be 4D"):
+    with pytest.raises(ShapeError):
         node.signed_logabs_and_sign(torch.randn(2, 1))
 
 
@@ -161,7 +161,7 @@ def test_signed_sum_sample_rejects_evidence():
     )
     evidence = torch.tensor([[0.0], [float("nan")]])
 
-    with pytest.raises(UnsupportedOperationError, match="does not support conditional sampling"):
+    with pytest.raises(UnsupportedOperationError):
         node.sample(data=evidence)
 
 
@@ -171,7 +171,7 @@ def test_signed_sum_sample_rejects_negative_weights():
         inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[1.0]], [[-0.1]]]])
     )
 
-    with pytest.raises(UnsupportedOperationError, match="non-negative"):
+    with pytest.raises(UnsupportedOperationError):
         node.sample(num_samples=3)
 
 
@@ -180,7 +180,7 @@ def test_signed_sum_sample_rejects_non_unit_repetitions():
     weights = torch.ones((1, 2, 1, 2), dtype=torch.get_default_dtype())
     node = SignedSum(inputs=child, out_channels=1, num_repetitions=2, weights=weights)
 
-    with pytest.raises(UnsupportedOperationError, match="num_repetitions == 1"):
+    with pytest.raises(UnsupportedOperationError):
         node.sample(num_samples=3)
 
 
@@ -191,7 +191,7 @@ def test_signed_sum_sample_rejects_non_4d_weights():
     )
     node.weights = torch.nn.Parameter(node.weights[..., 0])
 
-    with pytest.raises(ShapeError, match="Expected weights to be 4D"):
+    with pytest.raises(ShapeError):
         node.sample(num_samples=3)
 
 

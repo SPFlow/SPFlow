@@ -8,14 +8,22 @@ import spflow.utils.rdc as rdc_module
 from spflow.utils.rdc import cca_loop, cca_loop_np, rdc, rdc_np, rankdata_ordinal
 
 
+def _randn(*size: int, **kwargs) -> torch.Tensor:
+    return torch.randn(*size, **kwargs)
+
+
+def _np_randn(*size: int) -> np.ndarray:
+    return np.random.standard_normal(size)
+
+
 class TestRDCBasicFunctionality:
     """Test basic functionality of rdc."""
 
     def test_rdc_basic_2d(self):
         """Test rdc with simple 2D data."""
         # 100 samples, 2 features with some correlation
-        x = torch.randn(100, 1)
-        y = x + 0.5 * torch.randn(100, 1)
+        x = _randn(100, 1)
+        y = x + 0.5 * _randn(100, 1)
 
         result = rdc(x, y, k=10, s=1 / 6.0, n=1)
 
@@ -27,8 +35,8 @@ class TestRDCBasicFunctionality:
     def test_rdc_independent_features(self):
         """Test rdc with independent features."""
         # Two completely independent features
-        x = torch.randn(100, 1)
-        y = torch.randn(100, 1)
+        x = _randn(100, 1)
+        y = _randn(100, 1)
 
         result = rdc(x, y, k=10, s=1 / 6.0, n=1)
 
@@ -40,7 +48,7 @@ class TestRDCBasicFunctionality:
     def test_rdc_dependent_features(self):
         """Test rdc with dependent features."""
         # x and y = x^2 (nonlinear relationship)
-        x = torch.randn(100, 1)
+        x = _randn(100, 1)
         y = x**2
 
         result = rdc(x, y, k=10, s=1 / 6.0, n=1)
@@ -53,8 +61,8 @@ class TestRDCBasicFunctionality:
     def test_rdc_identical_features(self):
         """Test rdc with identical features."""
         # x and y = x + small noise (strong linear dependence)
-        x = torch.randn(100, 1)
-        y = x + 0.01 * torch.randn(100, 1)
+        x = _randn(100, 1)
+        y = x + 0.01 * _randn(100, 1)
 
         result = rdc(x, y, k=10, s=1 / 6.0, n=1)
 
@@ -67,8 +75,8 @@ class TestRDCParameters:
 
     def test_rdc_with_n_equals_1(self):
         """Test rdc with n=1 (single run)."""
-        x = torch.randn(100, 1)
-        y = x + 0.5 * torch.randn(100, 1)
+        x = _randn(100, 1)
+        y = x + 0.5 * _randn(100, 1)
 
         result = rdc(x, y, k=10, n=1)
 
@@ -77,8 +85,8 @@ class TestRDCParameters:
 
     def test_rdc_with_n_greater_than_1(self):
         """Test rdc with n=5 (median of multiple runs)."""
-        x = torch.randn(100, 1)
-        y = x + 0.5 * torch.randn(100, 1)
+        x = _randn(100, 1)
+        y = x + 0.5 * _randn(100, 1)
 
         result = rdc(x, y, k=10, n=5)
 
@@ -87,8 +95,8 @@ class TestRDCParameters:
 
     def test_rdc_with_custom_k(self):
         """Test rdc with different k parameters."""
-        x = torch.randn(100, 1)
-        y = x + 0.5 * torch.randn(100, 1)
+        x = _randn(100, 1)
+        y = x + 0.5 * _randn(100, 1)
 
         # Test with different k values
         result_k2 = rdc(x, y, k=2, n=1)
@@ -102,8 +110,8 @@ class TestRDCParameters:
 
     def test_rdc_with_custom_function(self):
         """Test rdc with custom function f."""
-        x = torch.randn(100, 1)
-        y = x + 0.5 * torch.randn(100, 1)
+        x = _randn(100, 1)
+        y = x + 0.5 * _randn(100, 1)
 
         # Test with cos instead of sin
         result = rdc(x, y, f=torch.cos, k=10, n=1)
@@ -168,8 +176,8 @@ class TestCCALoop:
         k = 10
 
         # Create a random covariance matrix
-        fX = torch.randn(100, k)
-        fY = torch.randn(100, k)
+        fX = _randn(100, k)
+        fY = _randn(100, k)
         C = torch.cov(torch.hstack([fX, fY]).T)
 
         result = cca_loop(k, C)
@@ -181,8 +189,8 @@ class TestCCALoop:
         """Test cca_loop with different k values."""
 
         for k in [5, 10, 15]:
-            fX = torch.randn(100, k)
-            fY = torch.randn(100, k)
+            fX = _randn(100, k)
+            fY = _randn(100, k)
             C = torch.cov(torch.hstack([fX, fY]).T)
 
             result = cca_loop(k, C)
@@ -194,11 +202,9 @@ class TestRDCNumPyVersion:
 
     def test_rdc_np_basic(self):
         """Test rdc_np with NumPy arrays."""
-        np.random.seed(42)
-
         # NumPy arrays
-        x = np.random.randn(100, 1)
-        y = x + 0.5 * np.random.randn(100, 1)
+        x = _np_randn(100, 1)
+        y = x + 0.5 * _np_randn(100, 1)
 
         result = rdc_np(x, y, k=10, s=1 / 6.0, n=1)
 
@@ -207,10 +213,8 @@ class TestRDCNumPyVersion:
 
     def test_rdc_np_independent(self):
         """Test rdc_np with independent features."""
-        np.random.seed(42)
-
-        x = np.random.randn(100, 1)
-        y = np.random.randn(100, 1)
+        x = _np_randn(100, 1)
+        y = _np_randn(100, 1)
 
         result = rdc_np(x, y, k=10, n=1)
 
@@ -218,11 +222,10 @@ class TestRDCNumPyVersion:
 
     def test_cca_loop_np_basic(self):
         """Test cca_loop_np with NumPy arrays."""
-        np.random.seed(42)
         k = 10
 
-        fX = np.random.randn(100, k)
-        fY = np.random.randn(100, k)
+        fX = _np_randn(100, k)
+        fY = _np_randn(100, k)
         C = np.cov(np.hstack([fX, fY]).T)
 
         result = cca_loop_np(k, C)
@@ -235,8 +238,8 @@ class TestRDCEdgeCases:
 
     def test_rdc_1d_input(self):
         """Test rdc with 1D input (should be reshaped to 2D)."""
-        x = torch.randn(100)
-        y = x + 0.5 * torch.randn(100)
+        x = _randn(100)
+        y = x + 0.5 * _randn(100)
 
         result = rdc(x, y, k=10, n=1)
 
@@ -244,8 +247,8 @@ class TestRDCEdgeCases:
 
     def test_rdc_perfect_collinearity(self):
         """Test rdc with perfect collinearity."""
-        x = torch.randn(100, 1)
-        y = 2.0 * x + 0.01 * torch.randn(100, 1)  # near-perfect linear dependence
+        x = _randn(100, 1)
+        y = 2.0 * x + 0.01 * _randn(100, 1)  # near-perfect linear dependence
 
         result = rdc(x, y, k=10, n=1)
 
@@ -254,8 +257,8 @@ class TestRDCEdgeCases:
 
     def test_rdc_small_sample_size(self):
         """Test rdc with small sample size."""
-        x = torch.randn(10, 1)
-        y = x + 0.5 * torch.randn(10, 1)
+        x = _randn(10, 1)
+        y = x + 0.5 * _randn(10, 1)
 
         # Should work but with lower k
         result = rdc(x, y, k=3, n=1)
@@ -266,8 +269,8 @@ class TestRDCEdgeCases:
         """Test rdc with multivariate data (single columns extracted)."""
         # RDC computes correlation between two sets of variables
         # Each should be treated as a single unit
-        x = torch.randn(100, 1)
-        y = torch.randn(100, 1)
+        x = _randn(100, 1)
+        y = _randn(100, 1)
 
         result = rdc(x, y, k=10, n=1)
 
@@ -279,8 +282,8 @@ class TestRDCReproducibility:
 
     def test_rdc_multiple_runs_consistency(self):
         """Test rdc with n>1 gives reasonable results."""
-        x = torch.randn(100, 1)
-        y = x + 0.5 * torch.randn(100, 1)
+        x = _randn(100, 1)
+        y = x + 0.5 * _randn(100, 1)
 
         # Run with n=10 to get median
         result = rdc(x, y, k=10, n=10)
@@ -296,8 +299,8 @@ class TestRDCNumericalStability:
     def test_rdc_binary_search_k_adjustment(self):
         """Test k adjustment logic in rdc."""
         # Large k might require adjustment
-        x = torch.randn(50, 1)
-        y = x + 0.5 * torch.randn(50, 1)
+        x = _randn(50, 1)
+        y = x + 0.5 * _randn(50, 1)
 
         # k=20 might be too large for 50 samples, should adjust
         result = rdc(x, y, k=20, n=1)
@@ -307,8 +310,8 @@ class TestRDCNumericalStability:
     def test_rdc_handles_complex_eigenvalues(self):
         """Test rdc handles complex eigenvalues gracefully."""
         # Create data that might produce complex eigenvalues
-        x = torch.randn(100, 1)
-        y = torch.randn(100, 1)
+        x = _randn(100, 1)
+        y = _randn(100, 1)
 
         # Should handle gracefully
         result = rdc(x, y, k=10, n=1)
@@ -322,8 +325,8 @@ class TestRDCMathematicalProperties:
 
     def test_rdc_symmetry(self):
         """Test that rdc(x, y) ≈ rdc(y, x)."""
-        x = torch.randn(100, 1)
-        y = x + 0.5 * torch.randn(100, 1)
+        x = _randn(100, 1)
+        y = x + 0.5 * _randn(100, 1)
 
         result_xy = rdc(x, y, k=10, n=1)
 
@@ -337,8 +340,8 @@ class TestRDCMathematicalProperties:
 
     def test_rdc_scale_invariance(self):
         """Test that rdc is scale invariant."""
-        x = torch.randn(100, 1)
-        y = x + 0.5 * torch.randn(100, 1)
+        x = _randn(100, 1)
+        y = x + 0.5 * _randn(100, 1)
 
         result1 = rdc(x, y, k=10, n=1)
 
@@ -351,7 +354,7 @@ class TestRDCMathematicalProperties:
 
     def test_rdc_detects_nonlinear_relationships(self):
         """Test that rdc can detect various nonlinear relationships."""
-        x = torch.randn(100, 1)
+        x = _randn(100, 1)
 
         # Various nonlinear relationships
         relationships = [
@@ -373,8 +376,8 @@ class TestRDCDifferentDataTypes:
 
     def test_rdc_float32(self):
         """Test rdc with float32 data."""
-        x = torch.randn(100, 1, dtype=torch.float32)
-        y = x + 0.5 * torch.randn(100, 1, dtype=torch.float32)
+        x = _randn(100, 1, dtype=torch.float32)
+        y = x + 0.5 * _randn(100, 1, dtype=torch.float32)
 
         result = rdc(x, y, k=10, n=1)
 
@@ -382,8 +385,8 @@ class TestRDCDifferentDataTypes:
 
     def test_rdc_float64(self):
         """Test rdc with float64 data."""
-        x = torch.randn(100, 1, dtype=torch.float64)
-        y = x + 0.5 * torch.randn(100, 1, dtype=torch.float64)
+        x = _randn(100, 1, dtype=torch.float64)
+        y = x + 0.5 * _randn(100, 1, dtype=torch.float64)
 
         result = rdc(x, y, k=10, n=1)
 
@@ -395,8 +398,8 @@ class TestRDCLinAlgErrorHandling:
 
     def test_rdc_with_n_greater_1_handles_errors(self):
         """Test that rdc with n>1 handles LinAlgError gracefully."""
-        x = torch.randn(100, 1)
-        y = x + 0.5 * torch.randn(100, 1)
+        x = _randn(100, 1)
+        y = x + 0.5 * _randn(100, 1)
 
         # Even if some runs fail, should return median of successful ones
         result = rdc(x, y, k=10, n=5)
@@ -426,8 +429,8 @@ class TestRDCBranchCoverage:
             return value
 
         monkeypatch.setattr(rdc_module, "rdc", fake_recursive_call)
-        x = torch.randn(20, 1)
-        y = torch.randn(20, 1)
+        x = _randn(20, 1)
+        y = _randn(20, 1)
 
         result = original_rdc(x, y, n=4)
 
@@ -441,8 +444,8 @@ class TestRDCBranchCoverage:
 
         monkeypatch.setattr(torch.linalg, "eigvals", fake_eigvals)
 
-        x = torch.randn(30, 1)
-        y = torch.randn(30, 1)
+        x = _randn(30, 1)
+        y = _randn(30, 1)
         result = rdc(x, y, k=1, n=1)
 
         torch.testing.assert_close(result, torch.tensor(0.5, dtype=result.dtype), rtol=0.0, atol=1e-6)
@@ -509,17 +512,16 @@ class TestRDCBranchCoverage:
 
         monkeypatch.setattr(rdc_module, "rdc", fake_recursive_call)
 
-        x = np.random.randn(20, 1)
-        y = np.random.randn(20, 1)
+        x = _np_randn(20, 1)
+        y = _np_randn(20, 1)
         result = original_rdc_np(x, y, n=4)
 
         assert result == pytest.approx(0.4, abs=1e-8)
 
     def test_rdc_np_accepts_1d_inputs(self):
         """rdc_np should reshape 1D arrays internally."""
-        np.random.seed(0)
-        x = np.random.randn(50)
-        y = np.random.randn(50)
+        x = _np_randn(50)
+        y = _np_randn(50)
 
         result = rdc_np(x, y, k=5, n=1)
 

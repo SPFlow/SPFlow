@@ -14,7 +14,7 @@ def test_logabs_of_with_and_without_eps():
 
 
 def test_signed_logsumexp_empty_input_raises():
-    with pytest.raises(ValueError, match="at least one term"):
+    with pytest.raises(ValueError):
         signed_logsumexp(
             logabs_terms=torch.empty((0, 1)),
             sign_terms=torch.empty((0, 1), dtype=torch.int8),

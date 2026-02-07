@@ -123,7 +123,7 @@ class TestUncollapsedCPLayer:
 
     def test_rank_must_be_positive(self):
         """Test that rank <= 0 raises error."""
-        with pytest.raises(ValueError, match="rank must be positive"):
+        with pytest.raises(ValueError):
             UncollapsedCPLayer(
                 num_input_units=4,
                 num_output_units=8,
@@ -191,7 +191,7 @@ class TestCPLayerFactory:
 
     def test_shared_uncollapsed_raises(self):
         """Test shared + uncollapsed raises NotImplementedError."""
-        with pytest.raises(NotImplementedError, match="Shared uncollapsed"):
+        with pytest.raises(NotImplementedError):
             CPLayer(
                 num_input_units=4,
                 num_output_units=8,

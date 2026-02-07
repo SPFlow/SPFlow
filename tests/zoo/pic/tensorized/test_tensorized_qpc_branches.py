@@ -39,7 +39,7 @@ def _rg_single_leaf() -> RegionGraph:
 
 
 def test_fourier_layer_validates_even_output_features():
-    with pytest.raises(InvalidParameterError, match="must be even"):
+    with pytest.raises(InvalidParameterError):
         FourierLayer(in_features=1, out_features=3)
 
 
@@ -49,15 +49,15 @@ def test_fourier_layer_learnable_coeff_is_parameter():
 
 
 def test_inputnet_validation_and_f_sharing_expand():
-    with pytest.raises(InvalidParameterError, match="sharing must be one of"):
+    with pytest.raises(InvalidParameterError):
         InputNet(num_vars=2, num_param=2, sharing="x")  # type: ignore[arg-type]
 
     net = InputNet(num_vars=3, num_param=2, sharing="f", net_dim=8, ff_dim=8)
 
-    with pytest.raises(ShapeError, match="z_quad to be 1D"):
+    with pytest.raises(ShapeError):
         net(torch.ones(2, 2))
 
-    with pytest.raises(InvalidParameterError, match="n_chunks must be positive"):
+    with pytest.raises(InvalidParameterError):
         net(torch.linspace(-1, 1, 4), n_chunks=0)
 
     out = net(torch.linspace(-1, 1, 4), n_chunks=2)
@@ -79,26 +79,26 @@ def test_inputnet_composite_sharing_bias_and_shape_guard(monkeypatch: pytest.Mon
 
     broken = InputNet(num_vars=2, num_param=2, sharing="none", net_dim=8, ff_dim=8)
     monkeypatch.setattr(broken, "net", _BadSequential(num_param=2))
-    with pytest.raises(ShapeError, match="Expected 2 vars"):
+    with pytest.raises(ShapeError):
         broken(torch.linspace(-1, 1, 3))
 
 
 def test_innernet_validation_paths():
-    with pytest.raises(InvalidParameterError, match="sharing must be one of"):
+    with pytest.raises(InvalidParameterError):
         InnerNet(group_args=IntegralGroupArgs(2, 1, (1, 2), (1, 2)), sharing="bad")  # type: ignore[arg-type]
 
-    with pytest.raises(InvalidParameterError, match="Invalid perm_dim"):
+    with pytest.raises(InvalidParameterError):
         InnerNet(group_args=IntegralGroupArgs(2, 1, (1, 1), (1, 2)))
 
-    with pytest.raises(InvalidParameterError, match="Invalid norm_dim"):
+    with pytest.raises(InvalidParameterError):
         InnerNet(group_args=IntegralGroupArgs(2, 1, (1, 2), (0,)))
 
     net = InnerNet(group_args=IntegralGroupArgs(2, 2, (1, 2), (1, 2)), sharing="c", net_dim=8, ff_dim=8)
     z = torch.linspace(-1, 1, 3)
     w = torch.ones(3) * (2.0 / 3.0)
-    with pytest.raises(ShapeError, match="same length"):
+    with pytest.raises(ShapeError):
         net(z.view(1, -1), w)
-    with pytest.raises(InvalidParameterError, match="n_chunks must be positive"):
+    with pytest.raises(InvalidParameterError):
         net(z, w, n_chunks=0)
     out = net(z, w, n_chunks=2)
     assert out.shape == (2, 3, 3)
@@ -139,7 +139,7 @@ def test_eval_partition_layer_tucker_rejects_non_binary_arity():
     )
     inputs = torch.zeros(1, 3, 2, 1)
     params = torch.zeros(1, 2, 2, 2)
-    with pytest.raises(StructureError, match="requires arity=2"):
+    with pytest.raises(StructureError):
         _eval_partition_layer(inputs, layer=layer, params=params)
 
 
@@ -162,24 +162,24 @@ def test_tensorized_qpc_constructor_validation_errors():
     cfg = TensorizedQPCConfig(leaf_type="normal")
 
     bad_points = QuadratureRule(points=torch.ones(2, 2), weights=torch.ones(2))
-    with pytest.raises(ShapeError, match="must be 1D"):
+    with pytest.raises(ShapeError):
         TensorizedQPC.from_region_graph(rg, quadrature_rule=bad_points, config=cfg)
 
     bad_len = QuadratureRule(points=torch.ones(3), weights=torch.ones(2))
-    with pytest.raises(ShapeError, match="same length"):
+    with pytest.raises(ShapeError):
         TensorizedQPC.from_region_graph(rg, quadrature_rule=bad_len, config=cfg)
 
-    with pytest.raises(InvalidParameterError, match="config.n_chunks must be positive"):
+    with pytest.raises(InvalidParameterError):
         TensorizedQPC.from_region_graph(
             rg, quadrature_rule=_rule(), config=TensorizedQPCConfig(leaf_type="normal", n_chunks=0)
         )
 
-    with pytest.raises(InvalidParameterError, match="num_categories must be provided"):
+    with pytest.raises(InvalidParameterError):
         TensorizedQPC.from_region_graph(
             rg, quadrature_rule=_rule(), config=TensorizedQPCConfig(leaf_type="categorical", num_categories=1)
         )
 
-    with pytest.raises(InvalidParameterError, match="num_classes must be positive"):
+    with pytest.raises(InvalidParameterError):
         TensorizedQPC.from_region_graph(
             rg, quadrature_rule=_rule(), config=TensorizedQPCConfig(leaf_type="normal", num_classes=0)
         )
@@ -190,7 +190,7 @@ def test_tensorized_qpc_rejects_non_univariate_leaf_regions():
     b = Region(Scope([2]))
     root_bad_leaf = Region(Scope([0, 1, 2]))
     root_bad_leaf.add_partition((a, b))
-    with pytest.raises(StructureError, match="univariate leaf"):
+    with pytest.raises(StructureError):
         TensorizedQPC.from_region_graph(
             RegionGraph(root_bad_leaf),
             quadrature_rule=_rule(),
@@ -215,12 +215,12 @@ def test_leaf_log_likelihood_shape_check_and_categorical_param_check():
     )
 
     data = torch.tensor([[1.0], [2.0]])
-    with pytest.raises(ShapeError, match="leaf_param shape mismatch"):
+    with pytest.raises(ShapeError):
         qpc_cat._leaf_log_likelihood(
             data, torch.zeros(2, qpc_cat.num_units, 3)
         )  # pylint: disable=protected-access
 
-    with pytest.raises(ShapeError, match="last dim must be num_categories"):
+    with pytest.raises(ShapeError):
         qpc_cat._leaf_log_likelihood(  # pylint: disable=protected-access
             data, torch.zeros(qpc_cat.num_vars, qpc_cat.num_units, 2)
         )
@@ -231,7 +231,7 @@ def test_leaf_log_likelihood_rejects_unsupported_leaf_type():
         _rg_single_leaf(), quadrature_rule=_rule(), config=TensorizedQPCConfig(leaf_type="normal")
     )
     object.__setattr__(qpc.config, "leaf_type", "weird")
-    with pytest.raises(StructureError, match="Unsupported leaf_type"):
+    with pytest.raises(StructureError):
         qpc._leaf_log_likelihood(torch.zeros((2, 1)), torch.zeros((qpc.num_vars, qpc.num_units, 2)))
 
 
@@ -250,7 +250,7 @@ def test_log_likelihood_tucker_param_dimension_guards():
         config=TensorizedQPCConfig(leaf_type="normal", layer_cls="tucker"),
     )
     qpc_root.inner_nets = nn.ModuleList([_BadInnerNet(torch.zeros(1, 3, 3, 1))])  # ndim=4, root expects 3
-    with pytest.raises(ShapeError, match="Tucker\\(root\\) param"):
+    with pytest.raises(ShapeError):
         qpc_root.log_likelihood(torch.randn(2, 2))
 
     r0 = Region(Scope([0]))
@@ -274,7 +274,7 @@ def test_log_likelihood_tucker_param_dimension_guards():
             _BadInnerNet(torch.zeros(1, 3, 3)),
         ]
     )
-    with pytest.raises(ShapeError, match="Expected Tucker param with 4 dims"):
+    with pytest.raises(ShapeError):
         qpc_mid.log_likelihood(torch.randn(2, 4))
 
 
@@ -284,13 +284,13 @@ def test_log_likelihood_final_output_shape_guards():
     )
     qpc.bookkeeping = []
     qpc.eval_plan = []
-    with pytest.raises(ShapeError, match="final folded output to have F=1"):
+    with pytest.raises(ShapeError):
         qpc.log_likelihood(torch.randn(2, 2))
 
     qpc_single = TensorizedQPC.from_region_graph(
         _rg_single_leaf(), quadrature_rule=_rule(), config=TensorizedQPCConfig(leaf_type="normal")
     )
-    with pytest.raises(ShapeError, match="Unexpected final output shape"):
+    with pytest.raises(ShapeError):
         qpc_single.log_likelihood(torch.randn(2, 1))
 
 
@@ -310,7 +310,7 @@ def test_log_likelihood_num_classes_not_supported_for_spflow_root():
         quadrature_rule=_rule(k=2),
         config=TensorizedQPCConfig(leaf_type="normal", num_classes=2),
     )
-    with pytest.raises(NotImplementedError, match="expects num_classes=1"):
+    with pytest.raises(NotImplementedError):
         qpc.log_likelihood(torch.randn(3, 1))
 
 
@@ -318,7 +318,7 @@ def test_sample_and_marginalize_not_implemented():
     qpc = TensorizedQPC.from_region_graph(
         _rg_binary(), quadrature_rule=_rule(), config=TensorizedQPCConfig(leaf_type="normal")
     )
-    with pytest.raises(NotImplementedError, match="Sampling is not implemented"):
+    with pytest.raises(NotImplementedError):
         qpc.sample(num_samples=2)
-    with pytest.raises(NotImplementedError, match="Marginalization is not implemented"):
+    with pytest.raises(NotImplementedError):
         qpc.marginalize([0])

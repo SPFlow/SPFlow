@@ -72,7 +72,9 @@ def test_constructor_zero_rate(out_features: int, out_channels: int, num_repetit
 def test_constructor_missing_concentration(out_features: int, out_channels: int, num_repetitions: int):
     """Test the constructor of a Gamma distribution with missing concentration (only rate provided)."""
     concentration, rate = make_params(out_features, out_channels, num_repetitions)
-    with pytest.raises(InvalidParameterCombinationError):
+    with pytest.raises(
+        InvalidParameterCombinationError,
+    ):
         scope = Scope(list(range(out_features)))
         Gamma(scope=scope, concentration=None, rate=rate)
 
@@ -84,6 +86,8 @@ def test_constructor_missing_concentration(out_features: int, out_channels: int,
 def test_constructor_missing_rate(out_features: int, out_channels: int, num_repetitions: int):
     """Test the constructor of a Gamma distribution with missing rate (only concentration provided)."""
     concentration, rate = make_params(out_features, out_channels, num_repetitions)
-    with pytest.raises(InvalidParameterCombinationError):
+    with pytest.raises(
+        InvalidParameterCombinationError,
+    ):
         scope = Scope(list(range(out_features)))
         Gamma(scope=scope, concentration=concentration, rate=None)

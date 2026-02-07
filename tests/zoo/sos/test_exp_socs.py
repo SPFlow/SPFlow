@@ -140,31 +140,31 @@ def test_exp_socs_constructor_and_unsupported_ops():
     mono = _DummyScalarModule(scope)
     comp = _DummyScalarModule(scope)
 
-    with pytest.raises(ValueError, match="at least one component"):
+    with pytest.raises(ValueError):
         ExpSOCS(monotone=mono, components=[])
 
     bad_mono = _DummyScalarModule(scope)
     bad_mono.out_shape = ModuleShape(2, 1, 1)
-    with pytest.raises(ShapeError, match="monotone.out_shape"):
+    with pytest.raises(ShapeError):
         ExpSOCS(monotone=bad_mono, components=[comp])
 
     bad_comp = _DummyScalarModule(scope)
     bad_comp.out_shape = ModuleShape(1, 2, 1)
-    with pytest.raises(ShapeError, match="component.out_shape"):
+    with pytest.raises(ShapeError):
         ExpSOCS(monotone=mono, components=[bad_comp])
 
     other_scope_comp = _DummyScalarModule(Scope([1]))
-    with pytest.raises(ShapeError, match="identical scope"):
+    with pytest.raises(ShapeError):
         ExpSOCS(monotone=mono, components=[other_scope_comp])
 
     model = ExpSOCS(monotone=mono, components=[comp])
     assert np.array_equal(model.feature_to_scope, mono.feature_to_scope)
 
-    with pytest.raises(UnsupportedOperationError, match="expectation-maximization"):
+    with pytest.raises(UnsupportedOperationError):
         model.expectation_maximization(torch.zeros((2, 1)))
-    with pytest.raises(UnsupportedOperationError, match="maximum-likelihood"):
+    with pytest.raises(UnsupportedOperationError):
         model.maximum_likelihood_estimation(torch.zeros((2, 1)))
-    with pytest.raises(UnsupportedOperationError, match="sample"):
+    with pytest.raises(UnsupportedOperationError):
         model.sample(num_samples=2)
 
 

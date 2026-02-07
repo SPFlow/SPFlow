@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 import torch
 
+
 def has_graphviz_dot():
     """Check if the graphviz 'dot' binary is available on the system."""
     return shutil.which("dot") is not None
@@ -24,22 +25,31 @@ def _get_test_device() -> str:
     device = os.getenv("SPFLOW_TEST_DEVICE", "auto")
     if device == "auto":
         return "cuda" if torch.cuda.is_available() else "cpu"
-    assert device == "cpu" or "cuda" in device, (
-        "SPFLOW_TEST_DEVICE must be 'cpu', 'cuda', 'cuda:<id>', or 'auto'"
-    )
+    assert (
+        device == "cpu" or "cuda" in device
+    ), "SPFLOW_TEST_DEVICE must be 'cpu', 'cuda', 'cuda:<id>', or 'auto'"
     return device
 
+
+@pytest.fixture(scope="function")
+def test_seed() -> int:
+    """Canonical deterministic seed for tests.
+
+    Tests can override this fixture locally to opt into a different fixed seed
+    while preserving reproducibility.
+    """
+    return 0
 
 
 @pytest.fixture(
     scope="function",
     autouse=True,
 )
-def auto_set_test_seed():
-    np.random.seed(0)
-    torch.manual_seed(0)
+def auto_set_test_seed(test_seed: int):
+    np.random.seed(test_seed)
+    torch.manual_seed(test_seed)
     if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(0)
+        torch.cuda.manual_seed_all(test_seed)
     yield
 
 

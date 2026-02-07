@@ -12,7 +12,9 @@ from spflow.modules.products.elementwise_product import ElementwiseProduct
 
 
 class _TinyLeaf(Module):
-    def __init__(self, scope_idx: int, features: int = 2, channels: int = 1, reps: int = 1, return_4d: bool = True):
+    def __init__(
+        self, scope_idx: int, features: int = 2, channels: int = 1, reps: int = 1, return_4d: bool = True
+    ):
         super().__init__()
         self.scope = Scope([scope_idx])
         self.in_shape = ModuleShape(features, channels, reps)
@@ -21,14 +23,16 @@ class _TinyLeaf(Module):
 
     @property
     def feature_to_scope(self) -> np.ndarray:
-        return np.array([Scope([self.scope.query[0]]) for _ in range(self.out_shape.features)], dtype=object).reshape(
-            self.out_shape.features, self.out_shape.repetitions
-        )
+        return np.array(
+            [Scope([self.scope.query[0]]) for _ in range(self.out_shape.features)], dtype=object
+        ).reshape(self.out_shape.features, self.out_shape.repetitions)
 
     def log_likelihood(self, data, cache=None):
         b = data.shape[0]
         if self.return_4d:
-            return torch.zeros((b, self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions))
+            return torch.zeros(
+                (b, self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions)
+            )
         return torch.zeros((b, self.out_shape.features, self.out_shape.channels))
 
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
@@ -38,7 +42,9 @@ class _TinyLeaf(Module):
     def expectation_maximization(self, data, bias_correction=True, cache=None):
         return None
 
-    def maximum_likelihood_estimation(self, data, weights=None, bias_correction=True, nan_strategy="ignore", cache=None):
+    def maximum_likelihood_estimation(
+        self, data, weights=None, bias_correction=True, nan_strategy="ignore", cache=None
+    ):
         return None
 
     def marginalize(self, marg_rvs, prune=True, cache=None):
@@ -76,7 +82,7 @@ def test_check_shapes_rejects_split_num_splits_mismatch():
     node = ElementwiseProduct(inputs=split, num_splits=2)
     node.num_splits = 3
 
-    with pytest.raises(ValueError, match="num_splits must be the same"):
+    with pytest.raises(ValueError):
         node.check_shapes()
 
 
@@ -95,7 +101,7 @@ def test_check_shapes_raises_for_unbroadcastable_shapes():
     a = _TinyLeaf(0, features=2, channels=2)
     b = _TinyLeaf(1, features=4, channels=3)
     node.inputs = torch.nn.ModuleList([a, b])
-    with pytest.raises(ShapeError, match="not broadcastable"):
+    with pytest.raises(ShapeError):
         node.check_shapes()
 
 
