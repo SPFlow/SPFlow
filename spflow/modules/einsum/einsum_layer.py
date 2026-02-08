@@ -20,6 +20,8 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.split import Split, SplitMode
 from spflow.modules.ops.split_consecutive import SplitConsecutive
 from spflow.utils.cache import Cache, cached
+from spflow.utils.diff_sampling import DiffSampleMethod, sample_categorical_differentiably
+from spflow.utils.diff_sampling_context import DifferentiableSamplingContext
 from spflow.utils.projections import proj_convex_to_real
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
@@ -426,6 +428,146 @@ class EinsumLayer(Module):
             self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=child_ctx)
 
         return data
+
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> Tensor:
+        """Differentiable sampling for EinsumLayer."""
+        data = self._prepare_sample_data(num_samples, data)
+        if cache is None:
+            cache = Cache()
+        if sampling_ctx is None or not isinstance(sampling_ctx, DifferentiableSamplingContext):
+            sampling_ctx = DifferentiableSamplingContext(
+                channel_index=torch.zeros(
+                    (data.shape[0], self.out_shape.features), dtype=torch.long, device=data.device
+                ),
+                mask=torch.ones(
+                    (data.shape[0], self.out_shape.features), dtype=torch.bool, device=data.device
+                ),
+                repetition_index=getattr(sampling_ctx, "repetition_idx", None),
+                method=DiffSampleMethod(method),
+                tau=tau,
+                hard=hard,
+            )
+
+        batch_size = data.shape[0]
+        logits = self.logits.unsqueeze(0).expand(batch_size, -1, -1, -1, -1, -1)  # (B,D,O,R,I,J)
+        idx = sampling_ctx.channel_index.view(batch_size, self.out_shape.features, 1, 1, 1, 1)
+        idx = idx.expand(-1, -1, -1, self.out_shape.repetitions, self._left_channels, self._right_channels)
+        logits = logits.gather(dim=2, index=idx).squeeze(2)  # (B,D,R,I,J)
+
+        if sampling_ctx.repetition_idx is not None:
+            rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1).expand(
+                -1, self.out_shape.features, -1, self._left_channels, self._right_channels
+            )
+            logits = logits.gather(dim=2, index=rep_idx).squeeze(2)  # (B,D,I,J)
+        else:
+            if self.out_shape.repetitions > 1:
+                raise ValueError("repetition_idx must be provided when sampling with num_repetitions > 1")
+            logits = logits[:, :, 0, :, :]
+
+        logits_flat = logits.view(batch_size, self.out_shape.features, -1)  # (B,D,I*J)
+
+        left_cache_key = self.inputs[0] if self._two_inputs else "einsum_left"
+        right_cache_key = self.inputs[1] if self._two_inputs else "einsum_right"
+        if (
+            cache is not None
+            and "log_likelihood" in cache
+            and cache["log_likelihood"].get(left_cache_key) is not None
+            and cache["log_likelihood"].get(right_cache_key) is not None
+        ):
+            left_ll = cache["log_likelihood"][left_cache_key]
+            right_ll = cache["log_likelihood"][right_cache_key]
+            if sampling_ctx.repetition_idx is not None:
+                rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1)
+                rep_idx_l = rep_idx.expand(-1, left_ll.shape[1], left_ll.shape[2], -1)
+                left_ll = left_ll.gather(dim=-1, index=rep_idx_l).squeeze(-1)
+                right_ll = right_ll.gather(dim=-1, index=rep_idx_l).squeeze(-1)
+
+            joint_ll = left_ll.unsqueeze(-1) + right_ll.unsqueeze(-2)
+            joint_ll_flat = joint_ll.view(batch_size, self.out_shape.features, -1)
+            logits_flat = logits_flat + joint_ll_flat
+            logits_flat = logits_flat - torch.logsumexp(logits_flat, dim=-1, keepdim=True)
+
+        selector = sample_categorical_differentiably(
+            dim=-1,
+            is_mpe=is_mpe,
+            hard=hard,
+            tau=tau,
+            logits=logits_flat,
+            method=DiffSampleMethod(method),
+        )
+        indices = selector.argmax(dim=-1)  # (B,D)
+
+        # Build soft selectors for left/right channels from flattened selector.
+        unraveled = self.unraveled_channel_indices.to(selector.device)  # (I*J,2)
+        left_oh = torch.nn.functional.one_hot(unraveled[:, 0], num_classes=self._left_channels).to(
+            selector.dtype
+        )
+        right_oh = torch.nn.functional.one_hot(unraveled[:, 1], num_classes=self._right_channels).to(
+            selector.dtype
+        )
+        left_select = torch.einsum("bdk,ki->bdi", selector, left_oh)
+        right_select = torch.einsum("bdk,kj->bdj", selector, right_oh)
+
+        ij_indices = self.unraveled_channel_indices[indices]
+        left_indices = ij_indices[..., 0]
+        right_indices = ij_indices[..., 1]
+
+        if self._two_inputs:
+            left_ctx = sampling_ctx.copy()
+            left_ctx.channel_index = left_indices
+            left_ctx.channel_select = left_select
+            left = self.inputs[0].rsample(
+                data=data.clone(),
+                is_mpe=is_mpe,
+                cache=cache,
+                sampling_ctx=left_ctx,
+                method=method,
+                tau=tau,
+                hard=hard,
+            )
+
+            right_ctx = sampling_ctx.copy()
+            right_ctx.channel_index = right_indices
+            right_ctx.channel_select = right_select
+            right = self.inputs[1].rsample(
+                data=data.clone(),
+                is_mpe=is_mpe,
+                cache=cache,
+                sampling_ctx=right_ctx,
+                method=method,
+                tau=tau,
+                hard=hard,
+            )
+
+            out = left.clone()
+            missing = torch.isnan(out)
+            out[missing] = right[missing]
+            return out
+
+        full_indices = self.inputs.merge_split_indices(left_indices, right_indices)
+        full_mask = sampling_ctx.mask.repeat(1, 2)
+        child_ctx = sampling_ctx.copy()
+        child_ctx.update(channel_index=full_indices, mask=full_mask)
+        child_ctx.channel_select = None
+        return self.inputs.rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=child_ctx,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )
 
     def expectation_maximization(
         self,

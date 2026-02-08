@@ -416,6 +416,12 @@ def test_socs_log_partition_cache_hit_and_unsupported_methods():
         model.maximum_likelihood_estimation(x)
 
 
+def test_socs_rsample_is_explicitly_unsupported():
+    model = SOCS([_make_normal_component(mu=0.0, sigma=1.0)])
+    with pytest.raises(UnsupportedOperationError):
+        model.rsample(num_samples=2)
+
+
 def test_socs_marginalize_none_and_prune_paths():
     model_none = SOCS([_MargNoneModule(scope=Scope([0]))])
     assert model_none.marginalize([0], prune=True) is None

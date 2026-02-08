@@ -8,6 +8,8 @@ from spflow.exceptions import InvalidParameterCombinationError, MissingCacheErro
 from spflow.modules.module import Module
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
+from spflow.utils.diff_sampling import DiffSampleMethod, sample_categorical_differentiably
+from spflow.utils.diff_sampling_context import DifferentiableSamplingContext
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -164,6 +166,76 @@ class RepetitionMixingLayer(Sum):
         )
 
         return data
+
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> Tensor:
+        """Differentiable repetition routing."""
+        if data is None:
+            if num_samples is None:
+                num_samples = 1
+            data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
+        if cache is None:
+            cache = Cache()
+        if sampling_ctx is None or not isinstance(sampling_ctx, DifferentiableSamplingContext):
+            sampling_ctx = DifferentiableSamplingContext(
+                channel_index=torch.zeros(
+                    (data.shape[0], self.out_shape.features), dtype=torch.long, device=data.device
+                ),
+                mask=torch.ones(
+                    (data.shape[0], self.out_shape.features), dtype=torch.bool, device=data.device
+                ),
+                repetition_index=None,
+                method=DiffSampleMethod(method),
+                tau=tau,
+                hard=hard,
+            )
+        else:
+            sampling_ctx = sampling_ctx
+
+        logits = self.logits.unsqueeze(0).expand(data.shape[0], -1, -1, -1)
+
+        if (
+            cache is not None
+            and "log_likelihood" in cache
+            and cache["log_likelihood"].get(self.inputs) is not None
+        ):
+            input_lls = cache["log_likelihood"][self.inputs]
+            if input_lls.dim() < logits.dim():
+                input_lls = input_lls.unsqueeze(3)
+            logits = (logits + input_lls).log_softmax(dim=3)
+
+        rep_selector = sample_categorical_differentiably(
+            dim=-1,
+            is_mpe=is_mpe,
+            hard=hard,
+            tau=tau,
+            logits=logits.sum(-2),
+            method=DiffSampleMethod(method),
+        )
+        sampling_ctx.repetition_select = rep_selector
+        sampling_ctx.repetition_idx = rep_selector.argmax(dim=-1)
+        sampling_ctx.method = DiffSampleMethod(method)
+        sampling_ctx.tau = tau
+        sampling_ctx.hard = hard
+
+        return self.inputs.rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )
 
     @cached
     def log_likelihood(

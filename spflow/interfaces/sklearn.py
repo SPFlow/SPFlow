@@ -267,6 +267,46 @@ class SPFlowDensityEstimator(BaseEstimator, DensityMixin):
                 samples = self.model_.sample(num_samples=n_samples)
         return samples.detach().cpu().numpy()
 
+    def rsample(
+        self,
+        n_samples: int = 1,
+        *,
+        random_state: int | None = None,
+        method: Literal["simple", "gumbel"] = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+        return_tensor: bool = False,
+    ) -> np.ndarray | torch.Tensor:
+        """Generate differentiable samples from the fitted model."""
+        check_is_fitted(self, attributes=["model_"])
+        if not isinstance(n_samples, int) or n_samples < 1:
+            raise InvalidParameterError(f"n_samples must be a positive integer, got {n_samples}.")
+        if not isinstance(tau, (float, int)) or tau <= 0:
+            raise InvalidParameterError(f"tau must be positive, got {tau}.")
+        if method not in ("simple", "gumbel"):
+            raise InvalidParameterError(f"method must be 'simple' or 'gumbel', got {method}.")
+        if random_state is not None and not isinstance(random_state, (int, np.integer)):
+            raise InvalidTypeError(f"random_state must be an int or None, got {type(random_state)}.")
+
+        seed = int(random_state) if random_state is not None else None
+        device = self._device()
+        cuda_devices: list[int] = []
+        if device.type == "cuda":
+            cuda_devices = [device.index or 0]
+
+        with torch.random.fork_rng(devices=cuda_devices):
+            if seed is not None:
+                torch.manual_seed(seed)
+            samples = self.model_.rsample(
+                num_samples=n_samples,
+                method=method,
+                tau=float(tau),
+                hard=hard,
+            )
+        if return_tensor:
+            return samples
+        return samples.detach().cpu().numpy()
+
 
 class SPFlowClassifier(BaseEstimator, ClassifierMixin):
     """scikit-learn compatible classifier wrapper for SPFlow classifiers.

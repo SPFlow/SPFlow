@@ -113,6 +113,45 @@ Related references
 - :doc:`FAQ <faq>`
 - :doc:`API Reference <api/index>`
 
+.. _concepts-differentiable-sampling:
+
+Differentiable Sampling (``rsample``)
+=====================================
+
+SPFlow provides differentiable sampling via ``rsample`` for modules that implement
+reparameterized sampling paths. This is useful when samples participate in a training
+objective and gradients must flow through sampling decisions.
+
+Basic pattern
+-------------
+
+Use ``rsample`` instead of ``sample`` and backpropagate through the returned tensor::
+
+    out = model.rsample(num_samples=32, method="simple", tau=1.0, hard=True)
+    loss = out.mean()
+    loss.backward()
+
+Routing and straight-through behavior
+-------------------------------------
+
+For sum-style routing choices, SPFlow supports differentiable selectors including
+straight-through behavior (``hard=True``) so the forward pass can stay discrete while
+backward uses a continuous relaxation.
+
+Key controls
+------------
+
+- ``method``: categorical relaxation backend (for example ``"simple"`` or ``"gumbel"`` where supported).
+- ``tau``: temperature of the relaxation (lower values are sharper, but can increase gradient variance).
+- ``hard``: straight-through mode for hard one-hot routing in the forward pass.
+
+Reference
+---------
+
+SPFlow's differentiable sampling setup is based on:
+
+- Lang, S., Mundt, M., Ventola, F., Peharz, R., and Kersting, K. (2022). *Elevating Perceptual Sample Quality in Probabilistic Circuits through Differentiable Sampling*. Proceedings of Machine Learning Research, Workshop on Pre-registration in Machine Learning (NeurIPS). `PDF <https://proceedings.mlr.press/v181/lang22a/lang22a.pdf>`_.
+
 .. _concepts-caching-and-dispatch:
 
 Caching and Dispatch

@@ -125,6 +125,36 @@ class Product(Module):
         )
         return data
 
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> Tensor:
+        """Differentiable routing variant of sample()."""
+        if data is None:
+            if num_samples is None:
+                num_samples = 1
+            data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+        mask = sampling_ctx.mask.expand(data.shape[0], self.inputs.out_shape.features)
+        channel_index = sampling_ctx.channel_index.expand(data.shape[0], self.inputs.out_shape.features)
+        sampling_ctx.update(channel_index=channel_index, mask=mask)
+        return self.inputs.rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )
+
     def expectation_maximization(
         self,
         data: Tensor,

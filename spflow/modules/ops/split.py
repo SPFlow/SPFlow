@@ -267,6 +267,33 @@ class Split(Module, ABC):
         )
         return data
 
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Optional[Dict[str, Any]] = None,
+        sampling_ctx: SamplingContext | None = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> Tensor:
+        """Differentiable routing variant of sample()."""
+        data = self._prepare_sample_data(num_samples, data)
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        mask = sampling_ctx.mask.expand(data.shape[0], self.inputs.out_shape.features)
+        channel_index = sampling_ctx.channel_index.expand(data.shape[0], self.inputs.out_shape.features)
+        sampling_ctx.update(channel_index=channel_index, mask=mask)
+        return self.inputs.rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )
+
     def marginalize(
         self,
         marg_rvs: list[int],

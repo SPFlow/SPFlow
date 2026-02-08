@@ -298,6 +298,59 @@ class ProdConv(Module):
 
         return data
 
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> Tensor:
+        """Differentiable routing variant of sample()."""
+        if cache is None:
+            cache = Cache()
+        if data is None:
+            if num_samples is None:
+                num_samples = 1
+            data = torch.full((num_samples, len(self.scope.query)), float("nan")).to(self.device)
+
+        batch_size = data.shape[0]
+        sampling_ctx = init_default_sampling_context(sampling_ctx, batch_size, data.device)
+
+        in_features = self.in_shape.features
+        out_features = self.out_shape.features
+        current_features = sampling_ctx.channel_index.shape[1]
+        if current_features < in_features:
+            if current_features == 1:
+                expand_sampling_context(sampling_ctx, in_features)
+            elif current_features == out_features:
+                upsample_sampling_context(
+                    sampling_ctx,
+                    current_height=self._output_h,
+                    current_width=self._output_w,
+                    scale_h=self.kernel_size_h,
+                    scale_w=self.kernel_size_w,
+                )
+                if sampling_ctx.channel_index.shape[1] > in_features:
+                    channel_idx = sampling_ctx.channel_index[:, :in_features].contiguous()
+                    mask = sampling_ctx.mask[:, :in_features].contiguous()
+                    sampling_ctx.update(channel_index=channel_idx, mask=mask)
+            else:
+                expand_sampling_context(sampling_ctx, in_features)
+
+        return self.inputs.rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )
+
     def expectation_maximization(
         self,
         data: Tensor,

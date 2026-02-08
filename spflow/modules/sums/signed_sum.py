@@ -11,6 +11,8 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache
+from spflow.utils.diff_sampling import DiffSampleMethod, sample_categorical_differentiably
+from spflow.utils.diff_sampling_context import DifferentiableSamplingContext
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 from spflow.utils.signed_semiring import signed_logsumexp, sign_of
 
@@ -237,3 +239,87 @@ class SignedSum(Module):
         )
         self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
         return data
+
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> Tensor:
+        """Differentiable sampling for non-negative SignedSum subset."""
+        if cache is None:
+            cache = Cache()
+        if data is None:
+            if num_samples is None:
+                num_samples = 1
+            data = torch.full((num_samples, len(self.scope.query)), float("nan"), device=self.device)
+
+        if torch.isfinite(data).any():
+            raise UnsupportedOperationError("SignedSum.rsample() does not support conditional evidence.")
+        if (self.weights < 0).any():
+            raise UnsupportedOperationError("SignedSum.rsample() only supports non-negative weights.")
+        if self.out_shape.repetitions != 1:
+            raise UnsupportedOperationError(
+                "SignedSum.rsample() currently supports num_repetitions == 1 only."
+            )
+
+        if sampling_ctx is None or not isinstance(sampling_ctx, DifferentiableSamplingContext):
+            sampling_ctx = DifferentiableSamplingContext(
+                channel_index=torch.zeros(
+                    (data.shape[0], self.out_shape.features), dtype=torch.long, device=data.device
+                ),
+                mask=torch.ones(
+                    (data.shape[0], self.out_shape.features), dtype=torch.bool, device=data.device
+                ),
+                repetition_index=None,
+                method=DiffSampleMethod(method),
+                tau=tau,
+                hard=hard,
+            )
+        else:
+            sampling_ctx = sampling_ctx
+
+        oidx = sampling_ctx.channel_index[..., None, None]
+        in_channels_total = self.weights.shape[1]
+        oidx = oidx.expand(-1, self.weights.shape[0], in_channels_total, -1)
+        w_sel = (
+            self.weights[..., 0]
+            .unsqueeze(0)
+            .expand(data.shape[0], -1, -1, -1)
+            .gather(dim=3, index=oidx)
+            .squeeze(3)
+        )
+        probs = w_sel / w_sel.sum(dim=2, keepdim=True).clamp_min(1e-12)
+        logits = torch.log(probs.clamp_min(1e-12))
+
+        selector = sample_categorical_differentiably(
+            dim=-1,
+            is_mpe=is_mpe,
+            hard=hard,
+            tau=tau,
+            logits=logits,
+            method=DiffSampleMethod(method),
+        )
+        new_channel_index = selector.argmax(dim=-1)
+        sampling_ctx.update(
+            channel_index=new_channel_index, mask=sampling_ctx.mask.expand_as(new_channel_index)
+        )
+        sampling_ctx.channel_select = selector
+        sampling_ctx.method = DiffSampleMethod(method)
+        sampling_ctx.tau = tau
+        sampling_ctx.hard = hard
+
+        return self.inputs.rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )

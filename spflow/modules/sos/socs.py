@@ -285,3 +285,17 @@ class SOCS(Module):
             out[mask] = x
 
         return out
+
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> Tensor:
+        del num_samples, data, is_mpe, cache, sampling_ctx, method, tau, hard
+        raise UnsupportedOperationError("SOCS.rsample() is not implemented in V1.")

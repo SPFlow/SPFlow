@@ -17,6 +17,8 @@ from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
+from spflow.utils.diff_sampling import DiffSampleMethod, sample_categorical_differentiably
+from spflow.utils.diff_sampling_context import DifferentiableSamplingContext
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
@@ -390,6 +392,135 @@ class ElementwiseSum(Module):
             )
 
         return data
+
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: Optional[SamplingContext] = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> Tensor:
+        """Differentiable sampling with soft dispatch over all child inputs."""
+        data = self._prepare_sample_data(num_samples, data)
+
+        if cache is None:
+            cache = Cache()
+        if sampling_ctx is None or not isinstance(sampling_ctx, DifferentiableSamplingContext):
+            sampling_ctx = DifferentiableSamplingContext(
+                channel_index=torch.zeros(
+                    (data.shape[0], self.out_shape.features), dtype=torch.long, device=data.device
+                ),
+                mask=torch.ones(
+                    (data.shape[0], self.out_shape.features), dtype=torch.bool, device=data.device
+                ),
+                repetition_index=getattr(sampling_ctx, "repetition_idx", None),
+                method=DiffSampleMethod(method),
+                tau=tau,
+                hard=hard,
+            )
+
+        # Prepare logits as in sample().
+        if sampling_ctx.repetition_idx is not None:
+            logits = self.logits.unsqueeze(0).expand(data.shape[0], -1, -1, -1, -1, -1)
+            rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1, 1).expand(
+                -1, logits.shape[1], logits.shape[2], logits.shape[3], logits.shape[4], -1
+            )
+            logits = torch.gather(logits, dim=-1, index=rep_idx).squeeze(-1)
+        else:
+            if self.out_shape.repetitions > 1:
+                raise ValueError(
+                    "sampling_ctx.repetition_idx must be provided when sampling from a module with num_repetitions > 1."
+                )
+            logits = self.logits[..., 0].unsqueeze(0).expand(data.shape[0], -1, -1, -1, -1)
+
+        cids_mapped = self.unraveled_channel_indices[sampling_ctx.channel_index]
+        cids_in_channels_per_input = cids_mapped[..., 0]
+        cids_num_sums = cids_mapped[..., 1]
+
+        cids_num_sums = cids_num_sums[..., None, None, None].expand(
+            -1, -1, logits.shape[-3], -1, logits.shape[-1]
+        )
+        logits = logits.gather(dim=3, index=cids_num_sums).squeeze(3)
+        logits = logits.gather(
+            dim=2, index=cids_in_channels_per_input[..., None, None].expand(-1, -1, -1, logits.shape[-1])
+        ).squeeze(2)
+
+        if (
+            cache is not None
+            and "log_likelihood" in cache
+            and all(cache["log_likelihood"].get(inp) is not None for inp in self.inputs)
+        ):
+            input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
+            input_lls = torch.stack(input_lls, dim=self.sum_dim)
+            if sampling_ctx.repetition_idx is not None:
+                rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1).expand(
+                    -1, input_lls.shape[1], input_lls.shape[2], input_lls.shape[3], -1
+                )
+                input_lls = torch.gather(input_lls, dim=-1, index=rep_idx).squeeze(-1)
+
+            cids_in_channels_input_lls = (
+                cids_in_channels_per_input.unsqueeze(2).unsqueeze(3).expand(-1, -1, -1, input_lls.shape[3])
+            )
+            input_lls = input_lls.gather(dim=2, index=cids_in_channels_input_lls).squeeze(2)
+            logits = (logits + input_lls).log_softmax(dim=2)
+
+        # Soft stack routing across inputs.
+        stack_select = sample_categorical_differentiably(
+            dim=-1,
+            is_mpe=is_mpe,
+            hard=hard,
+            tau=tau,
+            logits=logits,
+            method=DiffSampleMethod(method),
+        )
+        stack_hard = stack_select.argmax(dim=-1)
+        sampling_ctx.channel_index = cids_in_channels_per_input
+        sampling_ctx.channel_select = None
+        sampling_ctx.branch_weight = stack_select
+        sampling_ctx.method = DiffSampleMethod(method)
+        sampling_ctx.tau = tau
+        sampling_ctx.hard = hard
+
+        # Run all children and blend outputs with stack selector.
+        base_data = data.clone()
+        child_samples = []
+        for inp in self.inputs:
+            child_ctx = sampling_ctx.copy()
+            child_ctx.mask = sampling_ctx.mask
+            child_samples.append(
+                inp.rsample(
+                    data=base_data.clone(),
+                    is_mpe=is_mpe,
+                    cache=cache,
+                    sampling_ctx=child_ctx,
+                    method=method,
+                    tau=tau,
+                    hard=hard,
+                )
+            )
+
+        # Weighted sum only over this node's scope columns.
+        result = data.clone()
+        scope_cols = torch.tensor(self.scope.query, dtype=torch.long, device=data.device)
+        if scope_cols.numel() > 0:
+            stacked = torch.stack([s[:, scope_cols] for s in child_samples], dim=-1)
+            weights = stack_select
+            # If features differ due to upstream context, broadcast first feature weight.
+            if weights.shape[1] != stacked.shape[1]:
+                weights = weights[:, :1].expand(-1, stacked.shape[1], -1)
+            blended = (stacked * weights).sum(dim=-1)
+            result[:, scope_cols] = blended
+
+        # Preserve hard branch metadata for compatibility.
+        sampling_ctx.branch_weight = stack_select
+        sampling_ctx.channel_index = cids_in_channels_per_input
+        # For compatibility with debug tooling; not used in soft dispatch.
+        sampling_ctx.mask = sampling_ctx.mask & (stack_hard >= 0)
+        return result
 
     @cached
     def log_likelihood(

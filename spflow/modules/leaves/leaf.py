@@ -13,6 +13,7 @@ from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
+from spflow.utils.diff_sampling import select_with_soft_or_hard
 from spflow.utils.leaves import apply_nan_strategy, parse_leaf_args
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
@@ -738,6 +739,149 @@ class LeafModule(Module, ABC):
         data[rows[mask_subset], cols[mask_subset]] = samples[mask_subset].to(data.dtype)
 
         return data
+
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: Optional[SamplingContext] = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> Tensor:
+        """Differentiable sampling for leaf distributions when possible."""
+        del cache, method, tau, hard
+        data = self._prepare_sample_data(num_samples, data)
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+
+        scope_cols = self._resolve_scope_columns(num_features=data.shape[1])
+        out_of_scope = [idx for idx in range(data.shape[1]) if idx not in scope_cols]
+        marg_mask = torch.isnan(data)
+        marg_mask[:, out_of_scope] = False
+
+        samples_mask = marg_mask
+        ctx_channel_index, ctx_mask = self._slice_sampling_context(
+            sampling_ctx=sampling_ctx, num_features=data.shape[1], scope_cols=scope_cols
+        )
+        samples_mask[:, scope_cols] &= ctx_mask
+
+        instance_mask = samples_mask.sum(1) > 0
+        n_samples = int(instance_mask.sum().item())
+        if n_samples == 0:
+            return data
+
+        if sampling_ctx.repetition_idx is None:
+            if self.out_shape.repetitions > 1:
+                raise ValueError(
+                    "Repetition index must be provided in sampling context for leaves with multiple repetitions."
+                )
+            sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
+
+        if is_mpe:
+            if self.is_conditional:
+                evidence = data[instance_mask][:, self.scope.evidence]
+                dist = self.conditional_distribution(evidence)
+                if not hasattr(dist, "mode"):
+                    raise UnsupportedOperationError(
+                        f"MPE sampling requires a distribution with a 'mode' attribute, but "
+                        f"{dist.__class__.__name__} does not provide one."
+                    )
+                samples = dist.mode
+                if samples.dim() == 2:
+                    samples = samples.unsqueeze(2).unsqueeze(-1)
+                elif samples.dim() == 3:
+                    samples = samples.unsqueeze(-1)
+            else:
+                samples = self.mode.unsqueeze(0)
+                if samples.ndim == 4:
+                    samples = samples.repeat(n_samples, 1, 1, 1)
+                else:
+                    samples = samples.repeat(n_samples, 1, 1)
+        else:
+            if self.is_conditional:
+                evidence = data[instance_mask][:, self.scope.evidence]
+                dist = self.conditional_distribution(evidence)
+            else:
+                dist = self.distribution
+            has_rsample = getattr(dist, "has_rsample", None)
+            if has_rsample is True:
+                samples = dist.rsample((n_samples,))
+            elif has_rsample is False:
+                raise UnsupportedOperationError(
+                    f"{self.__class__.__name__} cannot rsample: distribution {dist.__class__.__name__} has no rsample()."
+                )
+            elif hasattr(dist, "rsample"):
+                try:
+                    samples = dist.rsample((n_samples,))
+                except NotImplementedError as e:
+                    raise UnsupportedOperationError(
+                        f"{self.__class__.__name__} cannot rsample: distribution "
+                        f"{dist.__class__.__name__} does not implement rsample()."
+                    ) from e
+            else:
+                raise UnsupportedOperationError(
+                    f"{self.__class__.__name__} cannot rsample: distribution {dist.__class__.__name__} has no rsample()."
+                )
+
+        # Select repetition: prefer soft selection when available to preserve gradients.
+        repetition_select = getattr(sampling_ctx, "repetition_select", None)
+        if repetition_select is not None and samples.ndim == 4:
+            if repetition_select.shape[1] == data.shape[1]:
+                repetition_select = repetition_select[:, scope_cols]
+            elif repetition_select.shape[1] != len(scope_cols):
+                repetition_select = repetition_select[:, :1].expand(-1, len(scope_cols), -1)
+            repetition_select = repetition_select[instance_mask]
+            repetition_select = (
+                repetition_select.unsqueeze(0) if repetition_select.ndim == 2 else repetition_select
+            )
+            repetition_select = repetition_select.unsqueeze(2)  # (B, F, 1, R)
+            samples = select_with_soft_or_hard(samples, selector=repetition_select, dim=3)
+        elif sampling_ctx.repetition_idx is not None and samples.ndim == 4:
+            repetition_idx = sampling_ctx.repetition_idx[instance_mask]
+            r_idxs = repetition_idx.view(-1, 1, 1, 1).expand(-1, samples.shape[1], samples.shape[2], -1)
+            samples = torch.gather(samples, dim=-1, index=r_idxs).squeeze(-1)
+        elif (sampling_ctx.repetition_idx is not None and samples.ndim != 4) or (
+            sampling_ctx.repetition_idx is None and samples.ndim == 4
+        ):
+            raise ValueError("Repetition index/sample dimensionality mismatch.")
+
+        if samples.shape[0] != ctx_channel_index[instance_mask].shape[0]:
+            raise ValueError(
+                f"Sample shape mismatch: got {samples.shape[0]}, expected {ctx_channel_index[instance_mask].shape[0]}"
+            )
+
+        if self.out_shape.channels == 1:
+            sampling_ctx.channel_index.zero_()
+            ctx_channel_index = torch.zeros_like(ctx_channel_index)
+
+        # Channel selection: soft if available, else hard gather.
+        samples_selected: Tensor
+        channel_select = getattr(sampling_ctx, "channel_select", None)
+        if channel_select is not None:
+            if channel_select.shape[1] == data.shape[1]:
+                channel_select = channel_select[:, scope_cols]
+            elif channel_select.shape[1] != len(scope_cols):
+                channel_select = channel_select[:, :1].expand(-1, len(scope_cols), -1)
+            channel_select = channel_select[instance_mask]
+            channel_select = channel_select.unsqueeze(0) if channel_select.ndim == 2 else channel_select
+            samples_selected = select_with_soft_or_hard(samples, selector=channel_select, dim=2)
+        else:
+            c_idxs = ctx_channel_index[instance_mask].unsqueeze(-1)
+            samples_selected = samples.gather(dim=2, index=c_idxs).squeeze(2)
+
+        if data[samples_mask].isfinite().any():
+            raise RuntimeError("Data already contains values at the specified mask. This should not happen.")
+
+        result = data.clone()
+        row_indices = instance_mask.nonzero(as_tuple=True)[0]
+        scope_idx = torch.tensor(scope_cols, dtype=torch.long, device=data.device)
+        rows = row_indices.unsqueeze(1).expand(-1, len(scope_idx))
+        cols = scope_idx.unsqueeze(0).expand(n_samples, -1)
+        mask_subset = samples_mask[instance_mask][:, scope_cols]
+        result[rows[mask_subset], cols[mask_subset]] = samples_selected[mask_subset].to(result.dtype)
+        return result
 
     def _resolve_scope_columns(self, num_features: int) -> list[int]:
         """Resolve the column indices in `data` that correspond to this leaf's scope.

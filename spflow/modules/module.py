@@ -228,6 +228,31 @@ class Module(nn.Module, ABC):
         """
         pass
 
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> Tensor:
+        """Differentiable sampling entrypoint.
+
+        Subclasses can override this to provide reparameterized/straight-through sampling.
+        Default implementation falls back to discrete ``sample`` for backwards compatibility.
+        """
+        del method, tau, hard
+        return self.sample(
+            num_samples=num_samples,
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
+
     def mpe(
         self,
         num_samples: int | None = None,

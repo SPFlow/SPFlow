@@ -284,6 +284,32 @@ class ImageWrapper(Wrapper):
         )
         return self.to_image_format(flat_data)
 
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: Optional[SamplingContext] = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> Tensor:
+        """Differentiable sampling variant in image format."""
+        data = self._prepare_sample_data(num_samples, data)
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        flat_data = self.flatten(data)
+        out = self.module.rsample(
+            data=flat_data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )
+        return self.to_image_format(out)
+
     def marginalize(
         self,
         marg_ctx: MarginalizationContext,

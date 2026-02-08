@@ -182,6 +182,57 @@ class Cat(Module):
 
         return data
 
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: Optional[SamplingContext] = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> Tensor:
+        """Differentiable routing variant of sample()."""
+        data = self._prepare_sample_data(num_samples, data)
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+
+        if self.dim == 1:
+            channel_index_per_module = []
+            mask_per_module = []
+            feature_offset = 0
+            for module in self.inputs:
+                num_features = module.out_shape.features
+                feature_indices = list(range(feature_offset, feature_offset + num_features))
+                channel_index_per_module.append(sampling_ctx.channel_index[:, feature_indices])
+                mask_per_module.append(sampling_ctx.mask[:, feature_indices])
+                feature_offset += num_features
+        elif self.dim == 2:
+            channel_index_per_module = []
+            mask_per_module = []
+            split_size = self.out_shape.channels // len(self.inputs)
+            split_assignment = sampling_ctx.channel_index // split_size
+            for i, _ in enumerate(self.inputs):
+                oids_mod = sampling_ctx.channel_index.remainder(split_size)
+                channel_index_per_module.append(oids_mod)
+                mask_per_module.append((split_assignment == i) & sampling_ctx.mask)
+        else:
+            raise ValueError("Invalid dimension for concatenation.")
+
+        for i in range(len(self.inputs)):
+            child_ctx = sampling_ctx.copy()
+            child_ctx.update(channel_index=channel_index_per_module[i], mask=mask_per_module[i])
+            data = self.inputs[i].rsample(
+                data=data,
+                is_mpe=is_mpe,
+                cache=cache,
+                sampling_ctx=child_ctx,
+                method=method,
+                tau=tau,
+                hard=hard,
+            )
+        return data
+
     def marginalize(
         self,
         marg_rvs: list[int],
