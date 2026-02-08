@@ -108,10 +108,14 @@ def _series_logsumexp(
     return logS
 
 
-def leaf_inner_product(a: LeafModule, b: LeafModule) -> Tensor:
+def leaf_inner_product(a: Module, b: Module) -> Tensor:
     """Compute per-feature/channel inner products ∫ f_a(x) f_b(x) dx for leaves."""
     _ensure_same_scope(a, b)
     _leaf_event_shape_ok(a, b)
+    try:
+        from spflow.zoo.sos.signed_categorical import SignedCategorical as _SignedCategorical
+    except Exception:  # pragma: no cover - optional zoo import
+        _SignedCategorical = None  # type: ignore[assignment]
 
     if isinstance(a, Normal) and isinstance(b, Normal):
         mu1 = a.loc.to(dtype=torch.float64)
@@ -138,6 +142,28 @@ def leaf_inner_product(a: LeafModule, b: LeafModule) -> Tensor:
         p1 = a.probs.to(dtype=torch.float64).unsqueeze(2)  # (F, Ca, 1, R, K)
         p2 = b.probs.to(dtype=torch.float64).unsqueeze(1)  # (F, 1, Cb, R, K)
         return torch.sum(p1 * p2, dim=-1)
+
+    if _SignedCategorical is not None:
+        if isinstance(a, _SignedCategorical) and isinstance(b, _SignedCategorical):
+            if a.K != b.K:
+                raise ShapeError(f"SignedCategorical K mismatch: {a.K} vs {b.K}.")
+            w1 = a.weights.to(dtype=torch.float64).unsqueeze(2)  # (F, Ca, 1, R, K)
+            w2 = b.weights.to(dtype=torch.float64).unsqueeze(1)  # (F, 1, Cb, R, K)
+            return torch.sum(w1 * w2, dim=-1)
+
+        if isinstance(a, _SignedCategorical) and isinstance(b, Categorical):
+            if a.K != b.K:
+                raise ShapeError(f"Categorical K mismatch: {a.K} vs {b.K}.")
+            w1 = a.weights.to(dtype=torch.float64).unsqueeze(2)  # (F, Ca, 1, R, K)
+            p2 = b.probs.to(dtype=torch.float64).unsqueeze(1)  # (F, 1, Cb, R, K)
+            return torch.sum(w1 * p2, dim=-1)
+
+        if isinstance(a, Categorical) and isinstance(b, _SignedCategorical):
+            if a.K != b.K:
+                raise ShapeError(f"Categorical K mismatch: {a.K} vs {b.K}.")
+            p1 = a.probs.to(dtype=torch.float64).unsqueeze(2)  # (F, Ca, 1, R, K)
+            w2 = b.weights.to(dtype=torch.float64).unsqueeze(1)  # (F, 1, Cb, R, K)
+            return torch.sum(p1 * w2, dim=-1)
 
     if isinstance(a, Exponential) and isinstance(b, Exponential):
         r1 = a.rate.to(dtype=torch.float64).unsqueeze(2)
@@ -457,7 +483,19 @@ def inner_product_matrix(
     if a.out_shape.repetitions != b.out_shape.repetitions:
         raise ShapeError("Repetition mismatch for inner product.")
 
-    if isinstance(a, LeafModule) and isinstance(b, LeafModule):
+    try:
+        from spflow.zoo.sos.signed_categorical import SignedCategorical as _SignedCategorical
+    except Exception:  # pragma: no cover - optional zoo import
+        _SignedCategorical = None  # type: ignore[assignment]
+
+    a_is_leaf_like = isinstance(a, LeafModule) or (
+        _SignedCategorical is not None and isinstance(a, _SignedCategorical)
+    )
+    b_is_leaf_like = isinstance(b, LeafModule) or (
+        _SignedCategorical is not None and isinstance(b, _SignedCategorical)
+    )
+
+    if a_is_leaf_like and b_is_leaf_like:
         out = leaf_inner_product(a, b)
         if cache is not None:
             memo[(id(a), id(b))] = out
@@ -601,9 +639,43 @@ def triple_product_tensor(
     ):
         raise ShapeError("Repetition mismatch for triple product.")
 
-    if isinstance(a, LeafModule) and isinstance(b, LeafModule) and isinstance(c, LeafModule):
+    try:
+        from spflow.zoo.sos.signed_categorical import SignedCategorical as _SignedCategorical
+    except Exception:  # pragma: no cover - optional zoo import
+        _SignedCategorical = None  # type: ignore[assignment]
+
+    a_is_leaf_like = isinstance(a, LeafModule) or (
+        _SignedCategorical is not None and isinstance(a, _SignedCategorical)
+    )
+    b_is_leaf_like = isinstance(b, LeafModule) or (
+        _SignedCategorical is not None and isinstance(b, _SignedCategorical)
+    )
+    c_is_leaf_like = isinstance(c, LeafModule) or (
+        _SignedCategorical is not None and isinstance(c, _SignedCategorical)
+    )
+
+    if a_is_leaf_like and b_is_leaf_like and c_is_leaf_like:
         # Handle a subset of leaf triples explicitly; otherwise reduce to finite sums/interval overlap where possible.
-        if isinstance(a, Normal) and isinstance(b, Normal) and isinstance(c, Normal):
+        if (
+            _SignedCategorical is not None
+            and isinstance(a, (Categorical, _SignedCategorical))
+            and isinstance(b, (Categorical, _SignedCategorical))
+            and isinstance(c, (Categorical, _SignedCategorical))
+        ):
+            Ks = (a.K, b.K, c.K)  # type: ignore[attr-defined]
+            if len(set(Ks)) != 1:
+                raise ShapeError(f"Categorical K mismatch for triple product: {Ks}.")
+
+            def _cat_tensor(x: LeafModule) -> Tensor:
+                if isinstance(x, Categorical):
+                    return x.probs.to(dtype=torch.float64)
+                return cast(_SignedCategorical, x).weights.to(dtype=torch.float64)
+
+            p1 = _cat_tensor(a).unsqueeze(2).unsqueeze(3)
+            p2 = _cat_tensor(b).unsqueeze(1).unsqueeze(3)
+            p3 = _cat_tensor(c).unsqueeze(1).unsqueeze(2)
+            out = torch.sum(p1 * p2 * p3, dim=-1)
+        elif isinstance(a, Normal) and isinstance(b, Normal) and isinstance(c, Normal):
             mu1 = a.loc.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3)
             mu2 = b.loc.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3)
             mu3 = c.loc.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2)

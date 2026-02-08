@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 import torch
 from torch import Tensor, nn
@@ -140,9 +142,10 @@ class SignedSum(Module):
         if hasattr(child, "signed_logabs_and_sign"):
             child_logabs, child_sign = child.signed_logabs_and_sign(data, cache=cache)  # type: ignore[attr-defined]
         else:
-            # Non-negative modules: log|x| = log x; sign = +1
-            child_logabs = child.log_likelihood(data, cache=cache)
-            child_sign = torch.ones_like(child_logabs, dtype=torch.int8)
+            # Recursively evaluate mixed sub-graphs (e.g., Product/Cat containing SignedSum leaves).
+            from spflow.zoo.sos.socs import _signed_eval
+
+            child_logabs, child_sign = _signed_eval(cast(Module, child), data, cache)
 
         # child_* shapes: (B, F, IC, R)
         if child_logabs.dim() != 4:

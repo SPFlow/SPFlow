@@ -29,6 +29,7 @@ from spflow.modules.module import Module
 from spflow.modules.ops.cat import Cat
 from spflow.modules.products.product import Product
 from spflow.zoo.sos.socs import SOCS
+from spflow.zoo.sos.signed_categorical import SignedCategorical
 from spflow.zoo.sos.signed_sum import SignedSum
 from spflow.modules.sums.sum import Sum
 
@@ -82,6 +83,12 @@ def _check_pair(a: Module, b: Module, *, path: str, visited: set[tuple[int, int]
     if isinstance(a, Categorical):
         if a.K != cast(Categorical, b).K:
             raise ShapeError(f"{path}: Categorical K mismatch: {a.K} vs {cast(Categorical, b).K}.")
+
+    if isinstance(a, SignedCategorical):
+        if a.K != cast(SignedCategorical, b).K:
+            raise ShapeError(
+                f"{path}: SignedCategorical K mismatch: {a.K} vs {cast(SignedCategorical, b).K}."
+            )
 
     if isinstance(a, CLTree):
         bb = cast(CLTree, b)

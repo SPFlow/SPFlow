@@ -12,8 +12,10 @@ Example::
 
 from spflow.zoo.sos.socs import SOCS
 from spflow.zoo.sos.signed_sum import SignedSum
+from spflow.zoo.sos.signed_categorical import SignedCategorical
 from spflow.zoo.sos.build_socs import build_socs, build_abs_weight_proposal, build_complex_socs
 from spflow.zoo.sos.exp_socs import ExpSOCS
+from spflow.zoo.sos.models import SOSModel, ExpSOSModel
 from spflow.zoo.sos.compatibility import check_compatible_components, check_socs_compatibility
 from spflow.zoo.sos.inner_product import (
     inner_product_matrix,
@@ -26,10 +28,13 @@ from spflow.zoo.sos.signed_semiring import signed_logsumexp, sign_of, logabs_of
 __all__ = [
     "SOCS",
     "SignedSum",
+    "SignedCategorical",
     "build_socs",
     "build_abs_weight_proposal",
     "build_complex_socs",
     "ExpSOCS",
+    "SOSModel",
+    "ExpSOSModel",
     "check_compatible_components",
     "check_socs_compatibility",
     "inner_product_matrix",

@@ -13,16 +13,16 @@ from spflow.modules.module import Module
 from spflow.modules.ops.cat import Cat
 from spflow.modules.products.product import Product
 from spflow.zoo.sos.signed_sum import SignedSum
+from spflow.zoo.sos.signed_categorical import SignedCategorical
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
 from spflow.zoo.sos.inner_product import inner_product_matrix, log_self_inner_product_scalar
-from spflow.zoo.sos.signed_semiring import signed_logsumexp, sign_of
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
 def _contains_signed_sum(module: Module) -> bool:
     for m in module.modules():
-        if isinstance(m, SignedSum):
+        if isinstance(m, (SignedSum, SignedCategorical)):
             return True
     return False
 
@@ -37,8 +37,8 @@ def _signed_eval(module: Module, data: Tensor, cache: Cache) -> tuple[Tensor, Te
     if cached is not None:
         return cached
 
-    if isinstance(module, SignedSum):
-        out = module.signed_logabs_and_sign(data, cache=cache)
+    if hasattr(module, "signed_logabs_and_sign"):
+        out = module.signed_logabs_and_sign(data, cache=cache)  # type: ignore[attr-defined]
         cache.set("signed_eval", module, out)
         return out
 

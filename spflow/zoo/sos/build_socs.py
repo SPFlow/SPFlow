@@ -13,8 +13,10 @@ import copy
 import torch
 
 from spflow.exceptions import InvalidParameterError
+from spflow.modules.leaves.categorical import Categorical
 from spflow.modules.module import Module
 from spflow.zoo.sos.socs import SOCS
+from spflow.zoo.sos.signed_categorical import SignedCategorical
 from spflow.zoo.sos.signed_sum import SignedSum
 from spflow.modules.sums.sum import Sum
 from spflow.zoo.sos.compatibility import check_compatible_components
@@ -130,13 +132,29 @@ def build_abs_weight_proposal(component: Module, *, eps: float = 1e-8) -> Module
             weights=w,
         )
 
+    def _convert_signed_categorical(node: SignedCategorical) -> Categorical:
+        probs = torch.abs(node.weights.detach()) + node.weights.new_tensor(float(eps))
+        probs = probs / probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+        return Categorical(
+            scope=node.scope,
+            out_channels=node.out_shape.channels,
+            num_repetitions=node.out_shape.repetitions,
+            K=node.K,
+            probs=probs,
+        )
+
     if isinstance(prop, SignedSum):
         prop = _convert_signed(prop)
+    if isinstance(prop, SignedCategorical):
+        prop = _convert_signed_categorical(prop)
 
     def _transform(root: torch.nn.Module) -> None:
         for name, child in list(root.named_children()):
             if isinstance(child, SignedSum):
                 root._modules[name] = _convert_signed(child)
+                child = root._modules[name]
+            elif isinstance(child, SignedCategorical):
+                root._modules[name] = _convert_signed_categorical(child)
                 child = root._modules[name]
             _transform(child)
 
