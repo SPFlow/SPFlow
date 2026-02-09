@@ -13,6 +13,7 @@ import copy
 import torch
 
 from spflow.exceptions import InvalidParameterError
+from spflow.modules.leaves.categorical import Categorical
 from spflow.modules.module import Module
 from spflow.modules.sos.socs import SOCS
 from spflow.modules.sums.signed_sum import SignedSum
@@ -130,15 +131,64 @@ def build_abs_weight_proposal(component: Module, *, eps: float = 1e-8) -> Module
             weights=w,
         )
 
+    def _is_signed_categorical(node: torch.nn.Module) -> bool:
+        return node.__class__.__name__ == "SignedCategorical" and hasattr(node, "weights") and hasattr(node, "K")
+
+    def _convert_signed_categorical(node: torch.nn.Module) -> Categorical:
+        probs = torch.abs(node.weights.detach()) + node.weights.new_tensor(float(eps))  # type: ignore[attr-defined]
+        probs = probs / probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+        return Categorical(
+            scope=node.scope,  # type: ignore[attr-defined]
+            out_channels=node.out_shape.channels,  # type: ignore[attr-defined]
+            num_repetitions=node.out_shape.repetitions,  # type: ignore[attr-defined]
+            K=node.K,  # type: ignore[attr-defined]
+            probs=probs,
+        )
+
     if isinstance(prop, SignedSum):
         prop = _convert_signed(prop)
+    if _is_signed_categorical(prop):
+        prop = _convert_signed_categorical(prop)
 
     def _transform(root: torch.nn.Module) -> None:
         for name, child in list(root.named_children()):
             if isinstance(child, SignedSum):
                 root._modules[name] = _convert_signed(child)
                 child = root._modules[name]
+            elif _is_signed_categorical(child):
+                root._modules[name] = _convert_signed_categorical(child)
+                child = root._modules[name]
             _transform(child)
 
     _transform(prop)
     return prop
+
+
+def build_complex_socs(real: Module, imag: Module) -> SOCS:
+    """Build a SOCS model equivalent to a complex squared circuit |c|^2.
+
+    This implements the paper-aligned reduction:
+
+        c(x) = a(x) + i b(x)  =>  |c(x)|^2 = a(x)^2 + b(x)^2
+
+    by constructing a SOCS with two components `[a, b]`. This avoids introducing
+    complex-valued parameters/semirings in SPFlow while still matching the
+    squared-magnitude semantics used by complex SOS models.
+
+    Args:
+        real: Circuit computing a(x).
+        imag: Circuit computing b(x).
+
+    Returns:
+        A `SOCS` module with two components.
+    """
+    if real.scope != imag.scope:
+        raise InvalidParameterError(
+            "build_complex_socs requires real and imag circuits to have identical scope."
+        )
+    if tuple(real.out_shape) != tuple(imag.out_shape):
+        raise InvalidParameterError(
+            "build_complex_socs requires real and imag circuits to have identical out_shape; "
+            f"got {tuple(real.out_shape)} vs {tuple(imag.out_shape)}."
+        )
+    return SOCS([real, imag])

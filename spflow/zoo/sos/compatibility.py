@@ -28,9 +28,9 @@ from spflow.modules.leaves.leaf import LeafModule
 from spflow.modules.module import Module
 from spflow.modules.ops.cat import Cat
 from spflow.modules.products.product import Product
-from spflow.zoo.sos.socs import SOCS
+from spflow.modules.sos.socs import SOCS
 from spflow.zoo.sos.signed_categorical import SignedCategorical
-from spflow.zoo.sos.signed_sum import SignedSum
+from spflow.modules.sums.signed_sum import SignedSum
 from spflow.modules.sums.sum import Sum
 
 

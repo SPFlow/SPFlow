@@ -18,7 +18,7 @@ from spflow.utils.inner_product_core import (
     triple_product_scalar as _triple_product_scalar,
     triple_product_tensor as _triple_product_tensor,
 )
-from spflow.zoo.sos.signed_sum import SignedSum
+from spflow.modules.sums.signed_sum import SignedSum
 
 
 def inner_product_matrix(a: Module, b: Module, *, cache: Cache | None = None) -> Tensor:
@@ -70,4 +70,3 @@ __all__ = [
     "triple_product_tensor",
     "triple_product_scalar",
 ]
-

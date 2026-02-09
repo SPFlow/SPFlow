@@ -15,7 +15,7 @@ from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
 from spflow.zoo.sos import ExpSOCS
 from spflow.zoo.sos import SignedSum
-from spflow.zoo.sos.socs import _signed_eval
+from spflow.modules.sos.socs import _signed_eval
 
 
 def test_exp_socs_discrete_bernoulli_matches_exact_enumeration():

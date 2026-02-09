@@ -16,13 +16,16 @@ from spflow.modules.sums.signed_sum import SignedSum
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
 from spflow.utils.inner_product import inner_product_matrix, log_self_inner_product_scalar
-from spflow.utils.signed_semiring import signed_logsumexp, sign_of
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+
+
+def _is_signed_categorical(module: Module) -> bool:
+    return module.__class__.__name__ == "SignedCategorical" and hasattr(module, "signed_logabs_and_sign")
 
 
 def _contains_signed_sum(module: Module) -> bool:
     for m in module.modules():
-        if isinstance(m, SignedSum):
+        if isinstance(m, SignedSum) or _is_signed_categorical(cast(Module, m)):
             return True
     return False
 
@@ -37,8 +40,8 @@ def _signed_eval(module: Module, data: Tensor, cache: Cache) -> tuple[Tensor, Te
     if cached is not None:
         return cached
 
-    if isinstance(module, SignedSum):
-        out = module.signed_logabs_and_sign(data, cache=cache)
+    if hasattr(module, "signed_logabs_and_sign"):
+        out = module.signed_logabs_and_sign(data, cache=cache)  # type: ignore[attr-defined]
         cache.set("signed_eval", module, out)
         return out
 

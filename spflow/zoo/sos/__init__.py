@@ -10,10 +10,10 @@ Example::
     model = build_socs(template, num_components=3, signed=True)
 """
 
-from spflow.zoo.sos.socs import SOCS
-from spflow.zoo.sos.signed_sum import SignedSum
+from spflow.modules.sos.socs import SOCS
+from spflow.modules.sums.signed_sum import SignedSum
 from spflow.zoo.sos.signed_categorical import SignedCategorical
-from spflow.zoo.sos.build_socs import build_socs, build_abs_weight_proposal, build_complex_socs
+from spflow.learn.build_socs import build_socs, build_abs_weight_proposal, build_complex_socs
 from spflow.zoo.sos.exp_socs import ExpSOCS
 from spflow.zoo.sos.models import SOSModel, ExpSOSModel
 from spflow.zoo.sos.compatibility import check_compatible_components, check_socs_compatibility

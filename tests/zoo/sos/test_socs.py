@@ -16,7 +16,7 @@ from spflow.zoo.sos import SOCS
 from spflow.zoo.sos import SignedSum
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
-from spflow.zoo.sos.socs import _signed_eval
+from spflow.modules.sos.socs import _signed_eval
 
 
 def _make_normal_component(mu: float, sigma: float) -> Normal:

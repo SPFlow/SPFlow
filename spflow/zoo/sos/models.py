@@ -19,8 +19,8 @@ from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from spflow.zoo.sos.exp_socs import ExpSOCS
 from spflow.zoo.sos.signed_categorical import SignedCategorical
-from spflow.zoo.sos.signed_sum import SignedSum
-from spflow.zoo.sos.socs import SOCS
+from spflow.modules.sums.signed_sum import SignedSum
+from spflow.modules.sos.socs import SOCS
 
 
 @dataclass(frozen=True)

@@ -6,7 +6,7 @@ import torch
 from spflow.utils.cache import Cache
 from spflow.zoo.sos import ExpSOCS, ExpSOSModel, SOCS, SOSModel
 from spflow.zoo.sos.signed_categorical import SignedCategorical
-from spflow.zoo.sos.socs import _signed_eval
+from spflow.modules.sos.socs import _signed_eval
 
 
 def _all_nary(num_variables: int, arity: int) -> torch.Tensor:
