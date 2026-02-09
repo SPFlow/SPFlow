@@ -377,6 +377,11 @@ class Einet(Module, Classifier):
         log_post = self.log_posterior(data)
         return torch.exp(log_post)
 
+    @staticmethod
+    def _has_partial_evidence(data: torch.Tensor) -> bool:
+        """Return whether data contains both observed values and missing entries."""
+        return bool(torch.isnan(data).any().item() and torch.isfinite(data).any().item())
+
     def sample(
         self,
         num_samples: int | None = None,
@@ -413,6 +418,13 @@ class Einet(Module, Classifier):
             if num_samples is None:
                 num_samples = 1
             data = torch.full((num_samples, self.num_features), torch.nan, device=self.device)
+
+        if cache is None:
+            cache = Cache()
+
+        # Conditional sampling needs forward log-likelihoods in the cache.
+        if self._has_partial_evidence(data):
+            self.log_likelihood(data, cache=cache)
 
         batch_size = data.shape[0]
 
@@ -453,6 +465,68 @@ class Einet(Module, Classifier):
             is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
+        )
+
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: torch.Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> torch.Tensor:
+        """Differentiable sampling passthrough to the underlying circuit."""
+        if self.structure == "bottom-up":
+            raise NotImplementedError(
+                "Differentiable sampling from bottom-up Einet structure is not yet implemented. "
+                "Use structure='top-down' for sampling, or use log_likelihood() which "
+                "works for both structures."
+            )
+
+        if data is None:
+            if num_samples is None:
+                num_samples = 1
+            data = torch.full((num_samples, self.num_features), torch.nan, device=self.device)
+
+        if cache is None:
+            cache = Cache()
+
+        # Conditional sampling needs forward log-likelihoods in the cache.
+        if self._has_partial_evidence(data):
+            self.log_likelihood(data, cache=cache)
+
+        batch_size = data.shape[0]
+        if sampling_ctx is None:
+            sampling_ctx = init_default_sampling_context(None, batch_size, data.device)
+
+        if sampling_ctx.repetition_idx is None and self.num_repetitions == 1:
+            sampling_ctx.repetition_idx = torch.zeros(batch_size, dtype=torch.long, device=data.device)
+
+        if self.num_classes > 1:
+            logits = self.root_node.logits
+            if logits.shape != (1, self.num_classes, 1):
+                raise InvalidParameterError(
+                    f"Expected logits shape (1, {self.num_classes}, 1), got {logits.shape}"
+                )
+            logits = logits.squeeze(-1)
+            logits = logits.unsqueeze(0).expand(batch_size, -1, -1)
+            if is_mpe:
+                sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
+            else:
+                sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
+
+        sample_root = self.root_node.inputs if self.num_classes > 1 else self.root_node
+        return sample_root.rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+            method=method,
+            tau=tau,
+            hard=hard,
         )
 
     def expectation_maximization(

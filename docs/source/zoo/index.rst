@@ -11,6 +11,7 @@ The **Paper Zoo** (``spflow.zoo``) contains reference implementations of various
    einet
    hclt
    conv_pc
+   apc
    cms
    socs
    pic

@@ -19,7 +19,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.sums import Sum
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
 def compute_non_overlapping_kernel_and_padding(
@@ -246,6 +246,11 @@ class ConvPc(Module):
             f"depth={self.depth}, kernel_size={self.kernel_size}"
         )
 
+    @staticmethod
+    def _has_partial_evidence(data: Tensor) -> bool:
+        """Return whether data contains both observed values and missing entries."""
+        return bool(torch.isnan(data).any().item() and torch.isfinite(data).any().item())
+
     @cached
     def log_likelihood(
         self,
@@ -301,6 +306,10 @@ class ConvPc(Module):
                 num_samples = 1
             data = torch.full((num_samples, len(self.scope.query)), float("nan")).to(self.device)
 
+        # Conditional sampling needs forward log-likelihoods in the cache.
+        if self._has_partial_evidence(data):
+            self.log_likelihood(data, cache=cache)
+
         # Delegate to root (RepetitionMixingLayer or Sum)
         # which handles channel/repetition sampling internally
         self.inputs.sample(
@@ -311,6 +320,41 @@ class ConvPc(Module):
         )
 
         return data
+
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
+        method: str = "simple",
+        tau: float = 1.0,
+        hard: bool = True,
+    ) -> Tensor:
+        """Differentiable sampling passthrough to the underlying circuit."""
+        if cache is None:
+            cache = Cache()
+
+        if data is None:
+            if num_samples is None:
+                num_samples = 1
+            data = torch.full((num_samples, len(self.scope.query)), float("nan")).to(self.device)
+
+        if self._has_partial_evidence(data):
+            self.log_likelihood(data, cache=cache)
+
+        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+
+        return self.inputs.rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )
 
     def expectation_maximization(
         self,

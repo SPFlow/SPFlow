@@ -341,24 +341,19 @@ class LinsumLayer(Module):
                 raise ValueError("repetition_idx must be provided when sampling with num_repetitions > 1")
             logits = logits[:, :, 0, :]  # (B, D, C)
 
-        # Condition on evidence if cache has log-likelihoods
-        if self._two_inputs:
-            left_cache_key = self.inputs[0]
-            right_cache_key = self.inputs[1]
-        else:
-            left_cache_key = "linsum_left"
-            right_cache_key = "linsum_right"
+        # Condition on evidence if cache has log-likelihoods.
+        left_ll = None
+        right_ll = None
+        if cache is not None and "log_likelihood" in cache:
+            if self._two_inputs:
+                left_ll = cache["log_likelihood"].get(self.inputs[0])
+                right_ll = cache["log_likelihood"].get(self.inputs[1])
+            else:
+                split_ll = cache["log_likelihood"].get(self.inputs)
+                if isinstance(split_ll, (list, tuple)) and len(split_ll) == 2:
+                    left_ll, right_ll = split_ll
 
-        if (
-            cache is not None
-            and "log_likelihood" in cache
-            and cache["log_likelihood"].get(left_cache_key) is not None
-            and cache["log_likelihood"].get(right_cache_key) is not None
-        ):
-            # Get cached log-likelihoods
-            left_ll = cache["log_likelihood"][left_cache_key]  # (B, D, C, R)
-            right_ll = cache["log_likelihood"][right_cache_key]  # (B, D, C, R)
-
+        if left_ll is not None and right_ll is not None:
             # Select repetition
             if sampling_ctx.repetition_idx is not None:
                 rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1)
@@ -450,16 +445,18 @@ class LinsumLayer(Module):
                 raise ValueError("repetition_idx must be provided when sampling with num_repetitions > 1")
             logits = logits[:, :, 0, :]
 
-        left_cache_key = self.inputs[0] if self._two_inputs else "linsum_left"
-        right_cache_key = self.inputs[1] if self._two_inputs else "linsum_right"
-        if (
-            cache is not None
-            and "log_likelihood" in cache
-            and cache["log_likelihood"].get(left_cache_key) is not None
-            and cache["log_likelihood"].get(right_cache_key) is not None
-        ):
-            left_ll = cache["log_likelihood"][left_cache_key]
-            right_ll = cache["log_likelihood"][right_cache_key]
+        left_ll = None
+        right_ll = None
+        if cache is not None and "log_likelihood" in cache:
+            if self._two_inputs:
+                left_ll = cache["log_likelihood"].get(self.inputs[0])
+                right_ll = cache["log_likelihood"].get(self.inputs[1])
+            else:
+                split_ll = cache["log_likelihood"].get(self.inputs)
+                if isinstance(split_ll, (list, tuple)) and len(split_ll) == 2:
+                    left_ll, right_ll = split_ll
+
+        if left_ll is not None and right_ll is not None:
             if sampling_ctx.repetition_idx is not None:
                 rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1)
                 rep_idx_l = rep_idx.expand(-1, left_ll.shape[1], left_ll.shape[2], -1)
