@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 import torch
 
+from spflow.exceptions import UnsupportedOperationError
 from spflow.meta import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -175,3 +176,9 @@ def test_super_pass_probe_executes_abstract_super_bodies():
     probe.log_likelihood(x)
     probe.sample(num_samples=2)
     probe.marginalize([0])
+
+
+def test_base_rsample_requires_explicit_module_support():
+    node = _ChildRecorder()
+    with pytest.raises(UnsupportedOperationError, match=r"_ChildRecorder\.rsample\(\) is not implemented"):
+        node.rsample(num_samples=2)

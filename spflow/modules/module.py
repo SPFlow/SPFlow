@@ -14,6 +14,7 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
+from spflow.exceptions import UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
@@ -241,16 +242,12 @@ class Module(nn.Module, ABC):
     ) -> Tensor:
         """Differentiable sampling entrypoint.
 
-        Subclasses can override this to provide reparameterized/straight-through sampling.
-        Default implementation falls back to discrete ``sample`` for backwards compatibility.
+        Subclasses must override this to provide reparameterized/straight-through sampling.
         """
-        del method, tau, hard
-        return self.sample(
-            num_samples=num_samples,
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
+        del num_samples, data, is_mpe, cache, sampling_ctx, method, tau, hard
+        raise UnsupportedOperationError(
+            f"{self.__class__.__name__}.rsample() is not implemented. "
+            "Differentiable sampling is only available for modules with explicit rsample support."
         )
 
     def mpe(

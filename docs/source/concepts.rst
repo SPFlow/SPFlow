@@ -122,6 +122,9 @@ SPFlow provides differentiable sampling via ``rsample`` for modules that impleme
 reparameterized sampling paths. This is useful when samples participate in a training
 objective and gradients must flow through sampling decisions.
 
+If a module does not implement ``rsample``, SPFlow raises an
+``UnsupportedOperationError`` instead of silently falling back to ``sample``.
+
 Basic pattern
 -------------
 
