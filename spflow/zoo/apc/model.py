@@ -1,6 +1,9 @@
-"""APC orchestrator model skeleton.
+"""High-level APC model orchestration.
 
-The full implementation is completed in later APC tasks.
+This module combines an APC encoder (tractable probabilistic circuit over ``X,Z``)
+with an optional neural decoder and exposes the paper-style composite objective:
+
+``total = w_rec * rec + w_kld * kld + w_nll * nll``.
 """
 
 from __future__ import annotations
@@ -16,7 +19,11 @@ from spflow.zoo.apc.encoders.base import ApcEncoder, LatentStats
 
 
 class AutoencodingPC(nn.Module):
-    """APC model combining a tractable encoder and a pluggable decoder."""
+    """APC model combining a tractable encoder and an optional decoder.
+
+    If ``decoder`` is ``None``, decoding is delegated to the encoder's
+    evidence-conditioned ``decode`` method.
+    """
 
     def __init__(
         self,
@@ -24,35 +31,66 @@ class AutoencodingPC(nn.Module):
         decoder: nn.Module | None,
         config: ApcConfig,
     ) -> None:
+        """Initialize an APC model.
+
+        Args:
+            encoder: APC-compatible encoder implementation.
+            decoder: Optional neural decoder mapping ``z -> x``.
+            config: APC model and loss configuration.
+        """
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.config = config
 
     def encode(self, x: Tensor, *, mpe: bool = False, tau: float | None = None) -> Tensor:
+        """Encode observed data into latent samples.
+
+        Args:
+            x: Observation tensor.
+            mpe: Whether to use deterministic MPE routing.
+            tau: Optional sampling temperature override.
+
+        Returns:
+            Latent samples ``z``.
+        """
         tau_eff = self.config.sample_tau if tau is None else tau
         return self.encoder.encode(x, mpe=mpe, tau=tau_eff)  # type: ignore[return-value]
 
     def decode(self, z: Tensor, *, mpe: bool = False, tau: float | None = None) -> Tensor:
+        """Decode latents into reconstructions/samples in data space.
+
+        Args:
+            z: Latent samples.
+            mpe: Whether to use deterministic MPE routing when using encoder decode.
+            tau: Optional sampling temperature override.
+
+        Returns:
+            Reconstructed/sample ``x`` tensor.
+        """
         tau_eff = self.config.sample_tau if tau is None else tau
         if self.decoder is None:
             return self.encoder.decode(z, mpe=mpe, tau=tau_eff)
         return self.decoder(z)
 
     def reconstruct(self, x: Tensor, *, mpe: bool = False, tau: float | None = None) -> Tensor:
+        """Reconstruct ``x`` by encoding to ``z`` and decoding back to data space."""
         z = self.encode(x, mpe=mpe, tau=tau)
         return self.decode(z, mpe=mpe, tau=tau)
 
     def sample_x(self, num_samples: int, *, tau: float | None = None) -> Tensor:
+        """Sample synthetic observations by sampling ``z`` and decoding."""
         z = self.sample_z(num_samples=num_samples, tau=tau)
         return self.decode(z, mpe=False, tau=tau)
 
     def sample_z(self, num_samples: int, *, tau: float | None = None) -> Tensor:
+        """Sample latents from the encoder prior."""
         tau_eff = self.config.sample_tau if tau is None else tau
         return self.encoder.sample_prior_z(num_samples=num_samples, tau=tau_eff)
 
     @staticmethod
     def _flatten_tensor(tensor: Tensor) -> Tensor:
+        """Flatten all non-batch axes into a single feature axis."""
         if tensor.dim() < 2:
             raise InvalidParameterError(
                 f"Expected tensor with batch dimension and at least one feature axis, got shape {tuple(tensor.shape)}."
@@ -60,6 +98,11 @@ class AutoencodingPC(nn.Module):
         return tensor.reshape(tensor.shape[0], -1)
 
     def _reconstruction_loss(self, x: Tensor, x_rec: Tensor) -> Tensor:
+        """Compute reconstruction loss on observed entries only.
+
+        Any ``NaN`` in ``x`` is treated as missing evidence and excluded from
+        the reconstruction term.
+        """
         x_flat = self._flatten_tensor(x)
         x_rec_flat = self._flatten_tensor(x_rec)
 
@@ -84,6 +127,7 @@ class AutoencodingPC(nn.Module):
 
     @staticmethod
     def _kld_from_stats(stats: LatentStats) -> Tensor:
+        """Compute mean KL divergence to standard Normal from moment stats."""
         if stats.mu.shape != stats.logvar.shape:
             raise InvalidParameterError(
                 f"Latent stats shape mismatch: mu {tuple(stats.mu.shape)} vs logvar {tuple(stats.logvar.shape)}."
@@ -97,6 +141,15 @@ class AutoencodingPC(nn.Module):
         return kld_per_sample.mean()
 
     def loss_components(self, x: Tensor) -> dict[str, Tensor]:
+        """Compute APC loss components and intermediate tensors.
+
+        Args:
+            x: Observation tensor.
+
+        Returns:
+            Dictionary with scalar terms ``rec``, ``kld``, ``nll``, ``total``
+            and helpful intermediates ``z``, ``x_rec``, ``mu``, ``logvar``.
+        """
         tau = self.config.sample_tau
         latent_out = self.encoder.encode(x, mpe=False, tau=tau, return_latent_stats=True)
         if not isinstance(latent_out, tuple) or len(latent_out) != 2:
@@ -128,15 +181,19 @@ class AutoencodingPC(nn.Module):
         }
 
     def loss(self, x: Tensor) -> Tensor:
+        """Return only the weighted total APC loss."""
         return self.loss_components(x)["total"]
 
     def log_likelihood_x(self, x: Tensor) -> Tensor:
+        """Compute encoder marginal log-likelihood ``log p(x)`` per sample."""
         return self.encoder.log_likelihood_x(x)
 
     def joint_log_likelihood(self, x: Tensor, z: Tensor) -> Tensor:
+        """Compute encoder joint log-likelihood ``log p(x, z)`` per sample."""
         return self.encoder.joint_log_likelihood(x, z)
 
     def forward(self, x: Tensor) -> dict[str, Tensor]:
+        """Alias for :meth:`loss_components` to integrate with training loops."""
         return self.loss_components(x)
 
     def extra_repr(self) -> str:

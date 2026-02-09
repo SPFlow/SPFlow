@@ -1,4 +1,4 @@
-"""Shared encoder protocol for APC implementations."""
+"""Shared interfaces and latent-stat containers for APC encoders."""
 
 from __future__ import annotations
 
@@ -10,7 +10,12 @@ from torch import Tensor
 
 @dataclass(frozen=True)
 class LatentStats:
-    """Latent distribution parameters used for KL regularization."""
+    """Latent distribution moments used in KL regularization.
+
+    Attributes:
+        mu: Approximate posterior mean, typically shaped ``(B, latent_dim)``.
+        logvar: Approximate posterior log-variance with the same shape as ``mu``.
+    """
 
     mu: Tensor
     logvar: Tensor
@@ -18,7 +23,11 @@ class LatentStats:
 
 @runtime_checkable
 class ApcEncoder(Protocol):
-    """Protocol implemented by APC-compatible probabilistic circuit encoders."""
+    """Protocol implemented by APC-compatible probabilistic-circuit encoders.
+
+    Implementations expose posterior sampling (``encode``), evidence-conditioned
+    reconstruction (``decode``), likelihood queries, and latent-moment extraction.
+    """
 
     num_x_features: int
     latent_dim: int

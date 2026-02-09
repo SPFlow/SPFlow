@@ -1,4 +1,4 @@
-"""Configuration objects for Autoencoding Probabilistic Circuits (APC)."""
+"""Typed configuration objects for Autoencoding Probabilistic Circuits (APC)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,13 @@ from spflow.exceptions import InvalidParameterError
 
 @dataclass(frozen=True)
 class ApcLossWeights:
-    """Loss term weights for APC training."""
+    """Weights for the APC training objective terms.
+
+    Attributes:
+        rec: Weight for the reconstruction loss.
+        kld: Weight for the latent KL term.
+        nll: Weight for the joint negative log-likelihood term.
+    """
 
     rec: float = 1.0
     kld: float = 1.0
@@ -24,7 +30,14 @@ class ApcLossWeights:
 
 @dataclass(frozen=True)
 class ApcConfig:
-    """Core APC model configuration."""
+    """Core APC model configuration.
+
+    Attributes:
+        latent_dim: Dimensionality of the latent variable block ``Z``.
+        rec_loss: Reconstruction criterion used by :class:`AutoencodingPC`.
+        sample_tau: Temperature for differentiable sampling (SIMPLE/Gumbel style paths).
+        loss_weights: Weights for ``rec``, ``kld``, and ``nll`` objective terms.
+    """
 
     latent_dim: int
     rec_loss: Literal["mse", "bce"] = "mse"
@@ -40,7 +53,15 @@ class ApcConfig:
 
 @dataclass(frozen=True)
 class ApcTrainConfig:
-    """Lightweight APC trainer configuration."""
+    """Configuration for lightweight APC trainer helpers.
+
+    Attributes:
+        epochs: Number of training epochs.
+        batch_size: Batch size used for tensor-backed training/evaluation inputs.
+        learning_rate: Optimizer learning rate when an optimizer is not provided.
+        weight_decay: Adam weight decay when an optimizer is not provided.
+        grad_clip_norm: Optional gradient clipping threshold (L2 norm).
+    """
 
     epochs: int = 1
     batch_size: int = 64

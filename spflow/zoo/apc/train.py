@@ -1,7 +1,4 @@
-"""Training utilities for APC models.
-
-Concrete implementation is provided in Task T06.
-"""
+"""Lightweight training utilities for APC models."""
 
 from __future__ import annotations
 
@@ -19,6 +16,12 @@ from spflow.zoo.apc.model import AutoencodingPC
 
 
 def _extract_batch_tensor(batch: Tensor | tuple | list) -> Tensor:
+    """Extract the input tensor from a batch object.
+
+    Accepts:
+    - a plain tensor batch,
+    - tuple/list batches where the first element is the input tensor.
+    """
     if isinstance(batch, Tensor):
         return batch
     if isinstance(batch, (tuple, list)) and len(batch) > 0 and isinstance(batch[0], Tensor):
@@ -29,12 +32,14 @@ def _extract_batch_tensor(batch: Tensor | tuple | list) -> Tensor:
 
 
 def _to_loader(data: Tensor | Iterable, batch_size: int, shuffle: bool) -> Iterable:
+    """Convert tensor data into a DataLoader, otherwise pass iterables through."""
     if isinstance(data, Tensor):
         return DataLoader(TensorDataset(data), batch_size=batch_size, shuffle=shuffle)
     return data
 
 
 def _model_device(model: nn.Module) -> torch.device:
+    """Infer the model device from parameters, defaulting to CPU for parameterless modules."""
     try:
         return next(model.parameters()).device
     except StopIteration:
@@ -48,7 +53,17 @@ def train_apc_step(
     *,
     grad_clip_norm: float | None = None,
 ) -> dict[str, Tensor]:
-    """Run one optimization step for APC training."""
+    """Run a single APC optimization step.
+
+    Args:
+        model: APC model to optimize.
+        batch: Input batch (tensor or tuple/list with tensor in index 0).
+        optimizer: Optimizer instance.
+        grad_clip_norm: Optional gradient clipping threshold.
+
+    Returns:
+        Detached tensor metrics produced by ``model.loss_components``.
+    """
     model.train()
     x = _extract_batch_tensor(batch).to(_model_device(model))
 
@@ -71,7 +86,16 @@ def evaluate_apc(
     *,
     batch_size: int = 256,
 ) -> dict[str, float]:
-    """Evaluate APC model metrics."""
+    """Evaluate mean APC losses on a dataset/iterator.
+
+    Args:
+        model: APC model to evaluate.
+        data: Tensor dataset or iterable of batches.
+        batch_size: Loader batch size when ``data`` is a tensor.
+
+    Returns:
+        Mean ``rec``, ``kld``, ``nll``, and ``total`` metrics.
+    """
     loader = _to_loader(data, batch_size=batch_size, shuffle=False)
     model.eval()
 
@@ -100,7 +124,19 @@ def fit_apc(
     optimizer: Optimizer | None = None,
     val_data: Tensor | Iterable | None = None,
 ) -> list[dict[str, float]]:
-    """Fit APC model over a dataset."""
+    """Fit an APC model and return epoch-level metrics.
+
+    Args:
+        model: APC model to train.
+        train_data: Tensor dataset or iterable of batches.
+        config: Training hyperparameters.
+        optimizer: Optional optimizer override. Defaults to Adam.
+        val_data: Optional validation data source.
+
+    Returns:
+        Per-epoch metric dictionaries including train metrics and, when provided,
+        validation metrics.
+    """
     if optimizer is None:
         optimizer = Adam(
             params=model.parameters(),
@@ -112,6 +148,7 @@ def fit_apc(
 
     history: list[dict[str, float]] = []
     for epoch in range(config.epochs):
+        # Accumulate per-batch means and normalize once per epoch.
         epoch_totals = {"rec": 0.0, "kld": 0.0, "nll": 0.0, "total": 0.0}
         num_batches = 0
 

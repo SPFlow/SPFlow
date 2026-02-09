@@ -1,4 +1,8 @@
-"""Conv-PC-based APC joint encoder over data and latent variables."""
+"""Conv-PC-based APC joint encoder over data and latent variables.
+
+This encoder constructs a Conv-PC over a flattened joint variable block ``[X, Z]``
+and injects the latent branch at a configurable depth in the Conv-PC hierarchy.
+"""
 
 from __future__ import annotations
 
@@ -53,6 +57,26 @@ class ConvPcJointEncoder(nn.Module):
         posterior_stat_samples: int = 4,
         posterior_var_floor: float = 1e-6,
     ) -> None:
+        """Initialize a Conv-PC APC encoder.
+
+        Args:
+            input_height: Input image height.
+            input_width: Input image width.
+            input_channels: Input image channels.
+            latent_dim: Number of latent dimensions in ``Z``.
+            channels: Internal Conv-PC channel count.
+            depth: Conv-PC depth.
+            kernel_size: Product/sum kernel size.
+            num_repetitions: Number of repetitions/channels in the circuit.
+            use_sum_conv: Whether to use ``SumConv`` layers instead of dense ``Sum``.
+            latent_depth: Sum-stage depth where the latent branch is fused.
+            latent_channels: Latent leaf channels (defaults to ``channels``).
+            x_leaf_channels: Data leaf channels (defaults to ``channels``).
+            x_leaf_factory: Factory to create the ``X`` leaf module.
+            z_leaf_factory: Factory to create the ``Z`` leaf module.
+            posterior_stat_samples: Number of posterior samples used to estimate moments.
+            posterior_var_floor: Numerical floor for latent variance estimates.
+        """
         super().__init__()
 
         if input_height <= 0 or input_width <= 0:
@@ -118,6 +142,7 @@ class ConvPcJointEncoder(nn.Module):
 
     @staticmethod
     def _validate_leaf_scope(*, leaf: LeafModule, expected_scope: list[int], role: str) -> None:
+        """Validate that a leaf covers exactly the expected variable scope."""
         if not isinstance(leaf, LeafModule):
             raise InvalidParameterError(
                 f"{role}_leaf_factory must return LeafModule instances, got {type(leaf)}."
@@ -140,7 +165,12 @@ class ConvPcJointEncoder(nn.Module):
         use_sum_conv: bool,
         latent_depth: int,
     ) -> nn.Module:
-        """Build Conv-PC chain and inject latent branch at configured depth."""
+        """Build a joint Conv-PC chain and inject latent branch at configured depth.
+
+        The latent branch is fused through :class:`ElementwiseProduct`. This requires
+        matching feature cardinality at the injection node, so ``latent_dim`` must
+        equal the target node feature count.
+        """
         layer_specs: list[tuple[str, dict[str, int]]] = []
         layer_specs.append(("sum_root", {"out_channels": 1}))
 
@@ -203,6 +233,7 @@ class ConvPcJointEncoder(nn.Module):
 
                 sum_stage += 1
                 if sum_stage == latent_depth:
+                    # Latent evidence is represented as one latent variable per target feature.
                     target_features = current.out_shape.features
                     if target_features != self.latent_dim:
                         raise InvalidParameterError(
@@ -212,6 +243,7 @@ class ConvPcJointEncoder(nn.Module):
 
                     latent_stream: nn.Module = z_leaf
                     if z_leaf.out_shape.channels != current.out_shape.channels:
+                        # Align channels before multiplicative fusion.
                         latent_stream = Sum(
                             inputs=latent_stream,
                             out_channels=current.out_shape.channels,
@@ -249,6 +281,7 @@ class ConvPcJointEncoder(nn.Module):
         return current
 
     def _flatten_x(self, x: Tensor) -> Tensor:
+        """Flatten 2D/4D input ``x`` to ``(B, num_x_features)`` and validate shape."""
         if x.dim() == 2:
             x_flat = x
         elif x.dim() == 4:
@@ -273,11 +306,13 @@ class ConvPcJointEncoder(nn.Module):
         return x_flat
 
     def _reshape_x_like(self, x_flat: Tensor, x_like: Tensor | None) -> Tensor:
+        """Reshape flattened ``x`` back to image shape when needed."""
         if x_like is not None and x_like.dim() == 2:
             return x_flat
         return x_flat.view(-1, self.input_channels, self.input_height, self.input_width)
 
     def _flatten_z(self, z: Tensor) -> Tensor:
+        """Flatten ``z`` to ``(B, latent_dim)`` and validate dimensionality."""
         if z.dim() < 2:
             raise ShapeError(f"z must have at least 2 dimensions, got shape {tuple(z.shape)}.")
         z_flat = z.reshape(z.shape[0], -1)
@@ -287,6 +322,7 @@ class ConvPcJointEncoder(nn.Module):
 
     @staticmethod
     def _evidence_dtype(*, x_flat: Tensor | None, z_flat: Tensor | None) -> torch.dtype:
+        """Select an evidence dtype from provided tensors, falling back to default dtype."""
         if x_flat is not None and x_flat.is_floating_point():
             return x_flat.dtype
         if z_flat is not None and z_flat.is_floating_point():
@@ -301,6 +337,7 @@ class ConvPcJointEncoder(nn.Module):
         num_samples: int | None = None,
         device: torch.device | None = None,
     ) -> Tensor:
+        """Build a joint evidence tensor over ``[X, Z]`` with ``NaN`` for missing blocks."""
         if x_flat is None and z_flat is None and num_samples is None:
             raise InvalidParameterError("num_samples must be provided when x_flat and z_flat are None.")
 
@@ -342,6 +379,7 @@ class ConvPcJointEncoder(nn.Module):
 
     @staticmethod
     def _flatten_ll(ll: Tensor) -> Tensor:
+        """Normalize PC log-likelihood outputs to shape ``(B,)``."""
         if ll.dim() < 1:
             raise ShapeError(f"Expected log-likelihood with batch dimension, got shape {tuple(ll.shape)}.")
         ll_flat = ll.reshape(ll.shape[0], -1)
@@ -352,6 +390,7 @@ class ConvPcJointEncoder(nn.Module):
         return ll_flat[:, 0]
 
     def _posterior_sample(self, x_flat: Tensor, *, mpe: bool, tau: float) -> Tensor:
+        """Sample ``z ~ p(Z|X=x)`` with runtime fallback to non-differentiable sampling."""
         evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
         if mpe:
             joint = self.pc.sample(data=evidence, is_mpe=True)
@@ -371,6 +410,17 @@ class ConvPcJointEncoder(nn.Module):
         tau: float = 1.0,
         return_latent_stats: bool = False,
     ) -> Tensor | tuple[LatentStats, Tensor]:
+        """Encode observations into latent samples.
+
+        Args:
+            x: Observation tensor (flattened or image-shaped).
+            mpe: Whether to use deterministic MPE routing.
+            tau: Temperature for differentiable sampling.
+            return_latent_stats: When ``True``, return ``(LatentStats, z)``.
+
+        Returns:
+            Either ``z`` or ``(LatentStats, z)``.
+        """
         x_flat = self._flatten_x(x)
         z = self._posterior_sample(x_flat, mpe=mpe, tau=tau)
         if return_latent_stats:
@@ -386,6 +436,7 @@ class ConvPcJointEncoder(nn.Module):
         tau: float = 1.0,
         fill_evidence: bool = False,
     ) -> Tensor:
+        """Decode latents by sampling/imputing the ``X`` block given ``Z`` evidence."""
         z_flat = self._flatten_z(z)
         x_flat = None if x is None else self._flatten_x(x)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=z_flat)
@@ -405,6 +456,7 @@ class ConvPcJointEncoder(nn.Module):
         return self._reshape_x_like(x_rec_flat, x)
 
     def joint_log_likelihood(self, x: Tensor, z: Tensor) -> Tensor:
+        """Compute per-sample joint log-likelihood ``log p(x, z)``."""
         x_flat = self._flatten_x(x)
         z_flat = self._flatten_z(z)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=z_flat)
@@ -412,12 +464,14 @@ class ConvPcJointEncoder(nn.Module):
         return self._flatten_ll(ll)
 
     def log_likelihood_x(self, x: Tensor) -> Tensor:
+        """Compute per-sample marginal log-likelihood ``log p(x)``."""
         x_flat = self._flatten_x(x)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
         ll = self.pc.log_likelihood(evidence)
         return self._flatten_ll(ll)
 
     def sample_prior_z(self, num_samples: int, *, tau: float = 1.0) -> Tensor:
+        """Sample latent variables from the model prior over ``Z``."""
         if num_samples <= 0:
             raise InvalidParameterError(f"num_samples must be >= 1, got {num_samples}.")
         evidence = self._build_evidence(
@@ -435,6 +489,7 @@ class ConvPcJointEncoder(nn.Module):
         return joint[:, self._z_cols]
 
     def latent_stats(self, x: Tensor, *, tau: float = 1.0) -> LatentStats:
+        """Estimate posterior moments for ``p(Z|X=x)`` via Monte Carlo samples."""
         x_flat = self._flatten_x(x)
         samples = [
             self._posterior_sample(x_flat, mpe=False, tau=tau) for _ in range(self.posterior_stat_samples)

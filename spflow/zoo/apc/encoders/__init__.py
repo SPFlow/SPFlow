@@ -1,4 +1,4 @@
-"""APC encoder interfaces and implementations."""
+"""APC encoder public exports."""
 
 from spflow.zoo.apc.encoders.base import ApcEncoder, LatentStats
 

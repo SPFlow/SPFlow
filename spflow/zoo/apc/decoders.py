@@ -1,4 +1,4 @@
-"""Decoder modules for APC models."""
+"""Neural decoder modules used by APC models."""
 
 from __future__ import annotations
 
@@ -13,7 +13,11 @@ from spflow.exceptions import InvalidParameterError
 
 
 class MLPDecoder1D(nn.Module):
-    """MLP decoder mapping latent vectors to 1D reconstructions."""
+    """MLP decoder mapping latent vectors to flat feature vectors.
+
+    The module expects latent input shaped ``(B, latent_dim)`` (or reshape-compatible)
+    and returns reconstructed vectors shaped ``(B, output_dim)``.
+    """
 
     def __init__(
         self,
@@ -22,6 +26,14 @@ class MLPDecoder1D(nn.Module):
         hidden_dims: tuple[int, ...] = (256, 256),
         out_activation: Literal["identity", "tanh", "sigmoid"] = "identity",
     ) -> None:
+        """Initialize an MLP decoder for 1D/tabular reconstructions.
+
+        Args:
+            latent_dim: Size of the latent representation.
+            output_dim: Number of output reconstruction features.
+            hidden_dims: Width of hidden layers.
+            out_activation: Final output activation.
+        """
         super().__init__()
         if latent_dim <= 0:
             raise InvalidParameterError(f"latent_dim must be >= 1, got {latent_dim}.")
@@ -54,6 +66,14 @@ class MLPDecoder1D(nn.Module):
         self.net = nn.Sequential(*layers)
 
     def forward(self, z: Tensor) -> Tensor:
+        """Decode latent vectors into reconstruction vectors.
+
+        Args:
+            z: Latent tensor of shape ``(B, latent_dim)`` (or reshape-compatible).
+
+        Returns:
+            Tensor of shape ``(B, output_dim)``.
+        """
         z = z.reshape(z.shape[0], -1)
         if z.shape[1] != self.latent_dim:
             raise InvalidParameterError(f"Expected latent feature size {self.latent_dim}, got {z.shape[1]}.")
@@ -61,7 +81,11 @@ class MLPDecoder1D(nn.Module):
 
 
 class ConvDecoder2D(nn.Module):
-    """Convolutional decoder mapping latent vectors to image-shaped outputs."""
+    """Convolutional decoder mapping latent vectors to image-shaped outputs.
+
+    The decoder projects ``z`` to a coarse feature map, upsamples through small
+    convolutional blocks, and resizes to the exact configured output image size.
+    """
 
     def __init__(
         self,
@@ -71,6 +95,15 @@ class ConvDecoder2D(nn.Module):
         num_upsamples: int = 2,
         out_activation: Literal["identity", "tanh", "sigmoid"] = "identity",
     ) -> None:
+        """Initialize a convolutional image decoder.
+
+        Args:
+            latent_dim: Size of the latent representation.
+            output_shape: Target output shape ``(channels, height, width)``.
+            base_channels: Initial projected channel count.
+            num_upsamples: Number of nearest-neighbor upsampling blocks.
+            out_activation: Final output activation.
+        """
         super().__init__()
         if latent_dim <= 0:
             raise InvalidParameterError(f"latent_dim must be >= 1, got {latent_dim}.")
@@ -127,6 +160,14 @@ class ConvDecoder2D(nn.Module):
             )
 
     def forward(self, z: Tensor) -> Tensor:
+        """Decode latent vectors into image-shaped reconstructions.
+
+        Args:
+            z: Latent tensor of shape ``(B, latent_dim)`` (or reshape-compatible).
+
+        Returns:
+            Tensor of shape ``(B, C, H, W)`` matching ``output_shape``.
+        """
         z = z.reshape(z.shape[0], -1)
         if z.shape[1] != self.latent_dim:
             raise InvalidParameterError(f"Expected latent feature size {self.latent_dim}, got {z.shape[1]}.")
@@ -139,6 +180,7 @@ class ConvDecoder2D(nn.Module):
         target_h = self.output_shape[1]
         target_w = self.output_shape[2]
         if x.shape[-2] != target_h or x.shape[-1] != target_w:
+            # Projection + discrete upsampling may overshoot/undershoot by one pixel.
             x = F.interpolate(x, size=(target_h, target_w), mode="bilinear", align_corners=False)
 
         return self.out_activation(x)

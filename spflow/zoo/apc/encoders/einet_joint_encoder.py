@@ -1,4 +1,10 @@
-"""Einet-based APC joint encoder over data and latent variables."""
+"""Einet-based APC joint encoder over data and latent variables.
+
+The encoder builds a joint PC over concatenated variables ``[X, Z]`` using two
+leaf modules:
+- one leaf that covers all observed ``X`` columns,
+- one leaf that covers all latent ``Z`` columns.
+"""
 
 from __future__ import annotations
 
@@ -26,7 +32,7 @@ def _default_normal_leaf(scope_indices: list[int], out_channels: int, num_repeti
 
 
 class EinetJointEncoder(nn.Module):
-    """Joint APC encoder using an Einet over concatenated features [x, z]."""
+    """Joint APC encoder using an Einet over concatenated features ``[x, z]``."""
 
     def __init__(
         self,
@@ -44,6 +50,22 @@ class EinetJointEncoder(nn.Module):
         posterior_stat_samples: int = 4,
         posterior_var_floor: float = 1e-6,
     ) -> None:
+        """Initialize a joint Einet-based APC encoder.
+
+        Args:
+            num_x_features: Number of flattened data features in ``X``.
+            latent_dim: Number of latent dimensions in ``Z``.
+            num_sums: Number of sum units per sum layer.
+            num_leaves: Number of leaf channels/components.
+            depth: Number of internal Einet product/sum stages.
+            num_repetitions: Number of repetitions/channels in the circuit.
+            layer_type: Internal sum-product implementation type.
+            structure: Einet structure type. Must be ``"top-down"`` for APC sampling.
+            x_leaf_factory: Factory to create the ``X`` leaf module.
+            z_leaf_factory: Factory to create the ``Z`` leaf module.
+            posterior_stat_samples: Number of posterior samples used to estimate moments.
+            posterior_var_floor: Numerical floor for latent variance estimates.
+        """
         super().__init__()
 
         if num_x_features <= 0:
@@ -89,6 +111,7 @@ class EinetJointEncoder(nn.Module):
 
     @staticmethod
     def _validate_leaf_scope(*, leaf: LeafModule, expected_scope: list[int], role: str) -> None:
+        """Validate that a leaf covers exactly the expected variable scope."""
         if not isinstance(leaf, LeafModule):
             raise InvalidParameterError(
                 f"{role}_leaf_factory must return LeafModule instances, got {type(leaf)}."
@@ -100,6 +123,7 @@ class EinetJointEncoder(nn.Module):
             )
 
     def _flatten_x(self, x: Tensor) -> Tensor:
+        """Flatten ``x`` to ``(B, num_x_features)`` and validate dimensionality."""
         if x.dim() < 2:
             raise ShapeError(f"x must have at least 2 dimensions, got shape {tuple(x.shape)}.")
         x_flat = x.reshape(x.shape[0], -1)
@@ -110,6 +134,7 @@ class EinetJointEncoder(nn.Module):
         return x_flat
 
     def _flatten_z(self, z: Tensor) -> Tensor:
+        """Flatten ``z`` to ``(B, latent_dim)`` and validate dimensionality."""
         if z.dim() < 2:
             raise ShapeError(f"z must have at least 2 dimensions, got shape {tuple(z.shape)}.")
         z_flat = z.reshape(z.shape[0], -1)
@@ -119,6 +144,7 @@ class EinetJointEncoder(nn.Module):
 
     @staticmethod
     def _evidence_dtype(*, x_flat: Tensor | None, z_flat: Tensor | None) -> torch.dtype:
+        """Select an evidence dtype from provided tensors, falling back to default dtype."""
         if x_flat is not None and x_flat.is_floating_point():
             return x_flat.dtype
         if z_flat is not None and z_flat.is_floating_point():
@@ -133,6 +159,11 @@ class EinetJointEncoder(nn.Module):
         num_samples: int | None = None,
         device: torch.device | None = None,
     ) -> Tensor:
+        """Build a joint evidence tensor over ``[X, Z]`` with ``NaN`` for missing blocks.
+
+        ``None`` inputs are converted to all-``NaN`` blocks, enabling conditional
+        likelihood/sampling in the underlying PC.
+        """
         if x_flat is None and z_flat is None and num_samples is None:
             raise InvalidParameterError("num_samples must be provided when x_flat and z_flat are None.")
 
@@ -174,6 +205,7 @@ class EinetJointEncoder(nn.Module):
 
     @staticmethod
     def _flatten_ll(ll: Tensor) -> Tensor:
+        """Normalize PC log-likelihood outputs to shape ``(B,)``."""
         if ll.dim() < 1:
             raise ShapeError(f"Expected log-likelihood with batch dimension, got shape {tuple(ll.shape)}.")
         ll_flat = ll.reshape(ll.shape[0], -1)
@@ -184,6 +216,7 @@ class EinetJointEncoder(nn.Module):
         return ll_flat[:, 0]
 
     def _posterior_sample(self, x_flat: Tensor, *, mpe: bool, tau: float) -> Tensor:
+        """Sample ``z ~ p(Z|X=x)`` using NaN-evidence completion on latent columns."""
         evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
         if mpe:
             joint = self.pc.sample(data=evidence, is_mpe=True)
@@ -199,6 +232,17 @@ class EinetJointEncoder(nn.Module):
         tau: float = 1.0,
         return_latent_stats: bool = False,
     ) -> Tensor | tuple[LatentStats, Tensor]:
+        """Encode observations into latent samples.
+
+        Args:
+            x: Observation tensor.
+            mpe: Whether to use deterministic MPE routing.
+            tau: Temperature for differentiable sampling.
+            return_latent_stats: When ``True``, return ``(LatentStats, z)``.
+
+        Returns:
+            Either ``z`` or ``(LatentStats, z)``.
+        """
         x_flat = self._flatten_x(x)
         z = self._posterior_sample(x_flat, mpe=mpe, tau=tau)
         if return_latent_stats:
@@ -214,6 +258,15 @@ class EinetJointEncoder(nn.Module):
         tau: float = 1.0,
         fill_evidence: bool = False,
     ) -> Tensor:
+        """Decode latents by sampling/imputing the ``X`` block given ``Z`` evidence.
+
+        Args:
+            z: Latent tensor.
+            x: Optional partial data evidence. Finite values are observed entries.
+            mpe: Whether to use deterministic MPE routing.
+            tau: Temperature for differentiable sampling.
+            fill_evidence: If ``True``, preserve finite entries from ``x`` in output.
+        """
         z_flat = self._flatten_z(z)
         x_flat = None if x is None else self._flatten_x(x)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=z_flat)
@@ -230,6 +283,7 @@ class EinetJointEncoder(nn.Module):
         return x_rec
 
     def joint_log_likelihood(self, x: Tensor, z: Tensor) -> Tensor:
+        """Compute per-sample joint log-likelihood ``log p(x, z)``."""
         x_flat = self._flatten_x(x)
         z_flat = self._flatten_z(z)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=z_flat)
@@ -237,12 +291,14 @@ class EinetJointEncoder(nn.Module):
         return self._flatten_ll(ll)
 
     def log_likelihood_x(self, x: Tensor) -> Tensor:
+        """Compute per-sample marginal log-likelihood ``log p(x)``."""
         x_flat = self._flatten_x(x)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
         ll = self.pc.log_likelihood(evidence)
         return self._flatten_ll(ll)
 
     def sample_prior_z(self, num_samples: int, *, tau: float = 1.0) -> Tensor:
+        """Sample latent variables from the model prior over ``Z``."""
         if num_samples <= 0:
             raise InvalidParameterError(f"num_samples must be >= 1, got {num_samples}.")
         evidence = self._build_evidence(
@@ -257,6 +313,7 @@ class EinetJointEncoder(nn.Module):
         return joint[:, self._z_cols]
 
     def latent_stats(self, x: Tensor, *, tau: float = 1.0) -> LatentStats:
+        """Estimate posterior moments for ``p(Z|X=x)`` via Monte Carlo samples."""
         x_flat = self._flatten_x(x)
 
         samples = [
