@@ -231,9 +231,7 @@ class WeightedSum(Module):
 
         # Index into the correct weight channels given by parent module
         if sampling_ctx.repetition_idx is not None:
-            weights = weights.unsqueeze(0).expand(
-                sampling_ctx.channel_index.shape[0], -1, -1, -1, -1
-            )
+            weights = weights.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
             indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1).expand(
                 -1, weights.shape[1], weights.shape[2], weights.shape[3], -1
             )

@@ -11,7 +11,11 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache
-from spflow.utils.diff_sampling import DiffSampleMethod, sample_categorical_differentiably, select_with_soft_or_hard
+from spflow.utils.diff_sampling import (
+    DiffSampleMethod,
+    sample_categorical_differentiably,
+    select_with_soft_or_hard,
+)
 from spflow.utils.diff_sampling_context import DifferentiableSamplingContext
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 from spflow.utils.signed_semiring import signed_logsumexp, sign_of
@@ -289,7 +293,9 @@ class SignedSum(Module):
             parent_select = parent_select.unsqueeze(2).unsqueeze(-1)  # (B, F, 1, OC, 1)
             w_sel = select_with_soft_or_hard(w, selector=parent_select, dim=3)  # (B, F, IC, R)
         else:
-            oidx = sampling_ctx.channel_index[..., None, None, None].expand(-1, w.shape[1], w.shape[2], -1, w.shape[4])
+            oidx = sampling_ctx.channel_index[..., None, None, None].expand(
+                -1, w.shape[1], w.shape[2], -1, w.shape[4]
+            )
             w_sel = torch.gather(w, dim=3, index=oidx).squeeze(3)  # (B, F, IC, R)
 
         repetition_select = getattr(sampling_ctx, "repetition_select", None)
@@ -299,7 +305,9 @@ class SignedSum(Module):
             rep_select = repetition_select.unsqueeze(2)  # (B, F, 1, R)
             w_sel = select_with_soft_or_hard(w_sel, selector=rep_select, dim=3)  # (B, F, IC)
         elif sampling_ctx.repetition_idx is not None:
-            rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1).expand(-1, w_sel.shape[1], w_sel.shape[2], -1)
+            rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1).expand(
+                -1, w_sel.shape[1], w_sel.shape[2], -1
+            )
             w_sel = torch.gather(w_sel, dim=3, index=rep_idx).squeeze(3)  # (B, F, IC)
         else:
             if self.out_shape.repetitions > 1:

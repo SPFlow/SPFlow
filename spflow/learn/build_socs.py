@@ -132,7 +132,9 @@ def build_abs_weight_proposal(component: Module, *, eps: float = 1e-8) -> Module
         )
 
     def _is_signed_categorical(node: torch.nn.Module) -> bool:
-        return node.__class__.__name__ == "SignedCategorical" and hasattr(node, "weights") and hasattr(node, "K")
+        return (
+            node.__class__.__name__ == "SignedCategorical" and hasattr(node, "weights") and hasattr(node, "K")
+        )
 
     def _convert_signed_categorical(node: torch.nn.Module) -> Categorical:
         probs = torch.abs(node.weights.detach()) + node.weights.new_tensor(float(eps))  # type: ignore[attr-defined]

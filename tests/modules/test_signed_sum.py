@@ -257,9 +257,7 @@ def test_signed_sum_sample_rejects_non_unit_repetitions():
 
 def test_signed_sum_sample_rejects_bad_weight_dim_and_repetitions():
     child = _SignedInput()
-    rep_node = SignedSum(
-        inputs=child, out_channels=1, num_repetitions=2, weights=torch.ones((1, 2, 1, 2))
-    )
+    rep_node = SignedSum(inputs=child, out_channels=1, num_repetitions=2, weights=torch.ones((1, 2, 1, 2)))
     with pytest.raises(UnsupportedOperationError):
         rep_node.sample(num_samples=2)
 

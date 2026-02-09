@@ -168,7 +168,9 @@ def _factorized_component_ll(
             log_probs.unsqueeze(1).expand(-1, B, -1, -1),
             dim=3,
             index=x_long.unsqueeze(0).unsqueeze(-1).expand(log_probs.shape[0], -1, -1, 1),
-        ).squeeze(-1)  # (I,B,F)
+        ).squeeze(
+            -1
+        )  # (I,B,F)
         gathered = torch.where(mask.unsqueeze(0), gathered, torch.zeros_like(gathered))
         return gathered.sum(dim=2)  # (I,B)
 

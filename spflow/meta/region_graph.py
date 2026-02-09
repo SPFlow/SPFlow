@@ -15,6 +15,7 @@ class Region:
         children (List[Tuple[Region, ...]]): List of partitions. Each partition
             is a tuple of disjoint child Regions that form this Region.
     """
+
     scope: Scope
     children: List[Tuple[Region, ...]] = dataclasses.field(default_factory=list, hash=False)
 
@@ -35,7 +36,7 @@ class Region:
 
 class RegionGraph:
     """Region Graph structure representing hierarchical variable decomposition.
-    
+
     Attributes:
         root (Region): The root region containing all variables.
     """
