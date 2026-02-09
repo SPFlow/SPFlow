@@ -1,9 +1,11 @@
 import torch
 
-from spflow.learn.build_socs import build_socs
+from spflow.learn.build_socs import build_abs_weight_proposal, build_complex_socs, build_socs
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.bernoulli import Bernoulli
+from spflow.modules.leaves.normal import Normal
 from spflow.modules.ops.cat import Cat
+from spflow.modules.products.product import Product
 from spflow.modules.sums.signed_sum import SignedSum
 from spflow.modules.sums.sum import Sum
 from spflow.utils.compatibility import check_socs_compatibility
@@ -30,12 +32,9 @@ def test_build_socs_creates_compatible_components_and_signed_sums():
     assert torch.isfinite(ll).all()
 
 
-# Additional branch-focused build_socs tests
 import pytest
 
 from spflow.exceptions import InvalidParameterError
-from spflow.learn.build_socs import build_abs_weight_proposal
-from spflow.modules.products.product import Product
 
 
 def _make_template() -> Product:
@@ -53,6 +52,9 @@ def test_build_socs_parameter_validation_and_rng_none_paths():
         build_socs(template, num_components=1, noise_scale=-1.0)
     with pytest.raises(InvalidParameterError):
         build_socs(template, num_components=1, flip_prob=2.0)
+
+    unsigned = build_socs(template, num_components=2, signed=False)
+    assert not any(isinstance(m, SignedSum) for c in unsigned.components for m in c.modules())
 
     # seed=None exercises rand_like/randn_like branch in conversion.
     model = build_socs(template, num_components=2, signed=True, noise_scale=0.1, flip_prob=0.5, seed=None)
@@ -72,3 +74,34 @@ def test_build_abs_weight_proposal_validation_and_recursive_signed_replacement()
     proposal = build_abs_weight_proposal(signed_component, eps=1e-6)
     assert not any(isinstance(m, SignedSum) for m in proposal.modules())
     assert any(isinstance(m, Sum) for m in proposal.modules())
+
+
+def test_build_complex_socs_validation_and_success():
+    real = Normal(scope=Scope([0]), out_channels=1, num_repetitions=1)
+    imag_same = Normal(scope=Scope([0]), out_channels=1, num_repetitions=1)
+    imag_scope = Normal(scope=Scope([1]), out_channels=1, num_repetitions=1)
+    imag_shape = Normal(scope=Scope([0]), out_channels=2, num_repetitions=1)
+
+    with pytest.raises(InvalidParameterError):
+        build_complex_socs(real, imag_scope)
+    with pytest.raises(InvalidParameterError):
+        build_complex_socs(real, imag_shape)
+
+    model = build_complex_socs(real, imag_same)
+    assert len(model.components) == 2
+
+
+def test_build_socs_replaces_nested_sum_nodes():
+    same_scope = Scope([0])
+    sum_branch = Sum(
+        inputs=[
+            Bernoulli(scope=same_scope, out_channels=1, num_repetitions=1),
+            Bernoulli(scope=same_scope, out_channels=1, num_repetitions=1),
+        ],
+        out_channels=1,
+        num_repetitions=1,
+    )
+    template = Product([sum_branch, Normal(scope=Scope([1]), out_channels=1, num_repetitions=1)])
+
+    model = build_socs(template, num_components=1, signed=True, noise_scale=0.0, flip_prob=0.5, seed=7)
+    assert any(isinstance(m, SignedSum) for m in model.components[0].modules())

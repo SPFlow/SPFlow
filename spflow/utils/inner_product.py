@@ -24,45 +24,80 @@ from spflow.utils.inner_product_core import (
 )
 
 
+def _prepare_legacy_memo_alias(cache: Cache | None, primary: str, legacy: str) -> None:
+    if cache is None:
+        return
+    if primary not in cache.extras and legacy in cache.extras:
+        cache.extras[primary] = cache.extras[legacy]
+
+
+def _sync_legacy_memo_alias(cache: Cache | None, primary: str, legacy: str) -> None:
+    if cache is None:
+        return
+    memo = cache.extras.get(primary)
+    if isinstance(memo, dict):
+        cache.extras[legacy] = memo
+
+
 def inner_product_matrix(a: Module, b: Module, *, cache: Cache | None = None) -> Tensor:
-    return _inner_product_matrix(
+    primary_key = "_inner_product_memo"
+    legacy_key = "_sos_inner_product_memo"
+    _prepare_legacy_memo_alias(cache, primary_key, legacy_key)
+    out = _inner_product_matrix(
         a,
         b,
         cache=cache,
         signed_sum_types=(SignedSum,),
-        memo_key="_inner_product_memo",
+        memo_key=primary_key,
     )
+    _sync_legacy_memo_alias(cache, primary_key, legacy_key)
+    return out
 
 
 def log_self_inner_product_scalar(module: Module, *, cache: Cache | None = None) -> Tensor:
-    return _log_self_inner_product_scalar(
+    primary_key = "_inner_product_memo"
+    legacy_key = "_sos_inner_product_memo"
+    _prepare_legacy_memo_alias(cache, primary_key, legacy_key)
+    out = _log_self_inner_product_scalar(
         module,
         cache=cache,
         signed_sum_types=(SignedSum,),
-        memo_key="_inner_product_memo",
+        memo_key=primary_key,
     )
+    _sync_legacy_memo_alias(cache, primary_key, legacy_key)
+    return out
 
 
 def triple_product_tensor(a: Module, b: Module, c: Module, *, cache: Cache | None = None) -> Tensor:
-    return _triple_product_tensor(
+    primary_key = "_inner_product_memo"
+    legacy_key = "_sos_triple_product_memo"
+    _prepare_legacy_memo_alias(cache, primary_key, legacy_key)
+    out = _triple_product_tensor(
         a,
         b,
         c,
         cache=cache,
         signed_sum_types=(SignedSum,),
-        memo_key="_inner_product_memo",
+        memo_key=primary_key,
     )
+    _sync_legacy_memo_alias(cache, primary_key, legacy_key)
+    return out
 
 
 def triple_product_scalar(a: Module, b: Module, c: Module, *, cache: Cache | None = None) -> Tensor:
-    return _triple_product_scalar(
+    primary_key = "_inner_product_memo"
+    legacy_key = "_sos_triple_product_memo"
+    _prepare_legacy_memo_alias(cache, primary_key, legacy_key)
+    out = _triple_product_scalar(
         a,
         b,
         c,
         cache=cache,
         signed_sum_types=(SignedSum,),
-        memo_key="_inner_product_memo",
+        memo_key=primary_key,
     )
+    _sync_legacy_memo_alias(cache, primary_key, legacy_key)
+    return out
 
 
 __all__ = [
