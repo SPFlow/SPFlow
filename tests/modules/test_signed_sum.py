@@ -86,6 +86,23 @@ def test_signed_sum_init_validates_inputs_and_weights():
         SignedSum(inputs=leaf, out_channels=1, num_repetitions=1, weights=torch.ones((1, 2, 1, 1)))
 
 
+def test_signed_sum_init_single_input_and_repr_and_scope_mapping():
+    leaf = Normal(scope=Scope([0]), out_channels=1, num_repetitions=1)
+    node = SignedSum(inputs=[leaf], out_channels=1, num_repetitions=1, weights=None)
+
+    assert node.inputs is leaf
+    assert node.feature_to_scope.shape == leaf.feature_to_scope.shape
+    assert f"weights={node.weights_shape}" in node.extra_repr()
+
+
+def test_signed_sum_init_validates_inputs_and_weight_shape():
+    leaf = Normal(scope=Scope([0]), out_channels=1, num_repetitions=1)
+    with pytest.raises(ValueError):
+        SignedSum(inputs=[])
+    with pytest.raises(ShapeError):
+        SignedSum(inputs=leaf, out_channels=1, num_repetitions=1, weights=torch.ones((1, 2, 1, 1)))
+
+
 def test_signed_sum_init_single_item_input_list_and_repr():
     leaf = Normal(scope=Scope([0]), out_channels=1, num_repetitions=1)
     node = SignedSum(inputs=[leaf], out_channels=1, num_repetitions=1, weights=None)
@@ -100,6 +117,21 @@ def test_signed_sum_unsupported_operations_raise():
     leaf = Normal(scope=Scope([0]), out_channels=1, num_repetitions=1)
     node = SignedSum(inputs=leaf, out_channels=1, num_repetitions=1, weights=torch.ones((1, 1, 1, 1)))
     x = torch.randn(3, 1)
+
+    with pytest.raises(UnsupportedOperationError):
+        node.log_likelihood(x)
+    with pytest.raises(UnsupportedOperationError):
+        node.expectation_maximization(x)
+    with pytest.raises(UnsupportedOperationError):
+        node.maximum_likelihood_estimation(x)
+    with pytest.raises(UnsupportedOperationError):
+        node.marginalize([0])
+
+
+def test_signed_sum_unsupported_methods_raise():
+    leaf = Normal(scope=Scope([0]), out_channels=1, num_repetitions=1)
+    node = SignedSum(inputs=leaf, out_channels=1, num_repetitions=1, weights=torch.ones((1, 1, 1, 1)))
+    x = torch.randn(2, 1)
 
     with pytest.raises(UnsupportedOperationError):
         node.log_likelihood(x)
@@ -128,6 +160,20 @@ def test_signed_sum_signed_eval_uses_cache_and_signed_child_path():
     assert out0[1].data_ptr() == out1[1].data_ptr()
 
 
+def test_signed_sum_signed_eval_cache_hit_uses_cached_result():
+    child = _SignedInput()
+    node = SignedSum(
+        inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[0.4]], [[0.6]]]])
+    )
+    x = torch.randn(3, 1)
+    cache = Cache()
+
+    first = node.signed_logabs_and_sign(x, cache=cache)
+    second = node.signed_logabs_and_sign(x, cache=cache)
+    assert first[0].data_ptr() == second[0].data_ptr()
+    assert first[1].data_ptr() == second[1].data_ptr()
+
+
 def test_signed_sum_signed_eval_raises_for_invalid_child_shape():
     child = _SignedInput(bad_signed_shape=True)
     node = SignedSum(
@@ -136,6 +182,16 @@ def test_signed_sum_signed_eval_raises_for_invalid_child_shape():
 
     with pytest.raises(ShapeError):
         node.signed_logabs_and_sign(torch.randn(2, 1))
+
+
+def test_signed_sum_signed_eval_without_cache_and_bad_child_shape_raises():
+    child = _SignedInput(bad_signed_shape=True)
+    node = SignedSum(
+        inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[0.2]], [[0.8]]]])
+    )
+
+    with pytest.raises(ShapeError):
+        node.signed_logabs_and_sign(torch.randn(2, 1), cache=Cache())
 
 
 @pytest.mark.parametrize("is_mpe", [True, False])
@@ -165,6 +221,21 @@ def test_signed_sum_sample_rejects_evidence():
         node.sample(data=evidence)
 
 
+def test_signed_sum_sample_rejects_evidence_and_negative_weights():
+    child = _SignedInput()
+    node_pos = SignedSum(
+        inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[0.9]], [[0.1]]]])
+    )
+    with pytest.raises(UnsupportedOperationError):
+        node_pos.sample(data=torch.tensor([[0.0], [float("nan")]]))
+
+    node_neg = SignedSum(
+        inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[1.0]], [[-0.1]]]])
+    )
+    with pytest.raises(UnsupportedOperationError):
+        node_neg.sample(num_samples=3)
+
+
 def test_signed_sum_sample_rejects_negative_weights():
     child = _SignedInput()
     node = SignedSum(
@@ -182,6 +253,22 @@ def test_signed_sum_sample_rejects_non_unit_repetitions():
 
     with pytest.raises(UnsupportedOperationError):
         node.sample(num_samples=3)
+
+
+def test_signed_sum_sample_rejects_bad_weight_dim_and_repetitions():
+    child = _SignedInput()
+    rep_node = SignedSum(
+        inputs=child, out_channels=1, num_repetitions=2, weights=torch.ones((1, 2, 1, 2))
+    )
+    with pytest.raises(UnsupportedOperationError):
+        rep_node.sample(num_samples=2)
+
+    bad_dim_node = SignedSum(
+        inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[0.7]], [[0.3]]]])
+    )
+    bad_dim_node.weights = torch.nn.Parameter(bad_dim_node.weights[..., 0])
+    with pytest.raises(ShapeError):
+        bad_dim_node.sample(num_samples=2)
 
 
 def test_signed_sum_sample_rejects_non_4d_weights():

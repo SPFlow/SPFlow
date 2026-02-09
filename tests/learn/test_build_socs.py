@@ -62,6 +62,28 @@ def test_build_socs_parameter_validation_and_rng_none_paths():
         assert any(isinstance(m, SignedSum) for m in comp.modules())
 
 
+def test_build_socs_invalid_parameters_raise():
+    template = Normal(scope=Scope([0]), out_channels=1, num_repetitions=1)
+    with pytest.raises(InvalidParameterError):
+        build_socs(template, num_components=0)
+    with pytest.raises(InvalidParameterError):
+        build_socs(template, num_components=1, noise_scale=-0.1)
+    with pytest.raises(InvalidParameterError):
+        build_socs(template, num_components=1, flip_prob=1.1)
+
+
+def test_build_socs_unsigned_and_random_generator_none_branch():
+    leaf_a = Bernoulli(scope=Scope([0]), out_channels=1, num_repetitions=1, probs=torch.tensor([[[0.3]]]))
+    leaf_b = Bernoulli(scope=Scope([0]), out_channels=1, num_repetitions=1, probs=torch.tensor([[[0.7]]]))
+    template = Sum(inputs=Cat(inputs=[leaf_a, leaf_b], dim=2), out_channels=1, num_repetitions=1)
+
+    unsigned = build_socs(template, num_components=2, signed=False)
+    assert not any(isinstance(m, SignedSum) for c in unsigned.components for m in c.modules())
+
+    signed = build_socs(template, num_components=2, signed=True, noise_scale=0.1, flip_prob=0.5, seed=None)
+    assert any(isinstance(m, SignedSum) for c in signed.components for m in c.modules())
+
+
 def test_build_abs_weight_proposal_validation_and_recursive_signed_replacement():
     template = _make_template()
     signed_component = build_socs(
@@ -74,6 +96,23 @@ def test_build_abs_weight_proposal_validation_and_recursive_signed_replacement()
     proposal = build_abs_weight_proposal(signed_component, eps=1e-6)
     assert not any(isinstance(m, SignedSum) for m in proposal.modules())
     assert any(isinstance(m, Sum) for m in proposal.modules())
+
+
+def test_build_abs_weight_proposal_eps_and_nested_signedsum_conversion():
+    leaf_a = Bernoulli(scope=Scope([0]), out_channels=1, num_repetitions=1, probs=torch.tensor([[[0.2]]]))
+    leaf_b = Bernoulli(scope=Scope([0]), out_channels=1, num_repetitions=1, probs=torch.tensor([[[0.8]]]))
+    signed = SignedSum(
+        inputs=Cat(inputs=[leaf_a, leaf_b], dim=2),
+        out_channels=1,
+        num_repetitions=1,
+        weights=torch.tensor([[[[1.0]], [[-0.5]]]]),
+    )
+
+    with pytest.raises(InvalidParameterError):
+        build_abs_weight_proposal(signed, eps=0.0)
+
+    proposal = build_abs_weight_proposal(signed, eps=1e-5)
+    assert not any(isinstance(m, SignedSum) for m in proposal.modules())
 
 
 def test_build_complex_socs_validation_and_success():
@@ -105,3 +144,19 @@ def test_build_socs_replaces_nested_sum_nodes():
 
     model = build_socs(template, num_components=1, signed=True, noise_scale=0.0, flip_prob=0.5, seed=7)
     assert any(isinstance(m, SignedSum) for m in model.components[0].modules())
+
+
+def test_build_abs_weight_proposal_replaces_nested_signedsum_nodes():
+    same_scope = Scope([0])
+    signed_branch = SignedSum(
+        inputs=[
+            Bernoulli(scope=same_scope, out_channels=1, num_repetitions=1),
+            Bernoulli(scope=same_scope, out_channels=1, num_repetitions=1),
+        ],
+        out_channels=1,
+        num_repetitions=1,
+        weights=torch.tensor([[[[1.0]], [[-0.5]]]]),
+    )
+    component = Product([signed_branch, Normal(scope=Scope([1]), out_channels=1, num_repetitions=1)])
+    proposal = build_abs_weight_proposal(component)
+    assert not any(isinstance(m, SignedSum) for m in proposal.modules())

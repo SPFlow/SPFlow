@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 
 import torch
@@ -79,6 +81,12 @@ def test_compatibility_issue_str_and_short_circuit_return():
     check_compatible_components([_normal(0)])
 
 
+def test_compatibility_issue_str_and_short_list_return():
+    issue = CompatibilityIssue(path="root", message="problem")
+    assert str(issue) == "root: problem"
+    check_compatible_components([Normal(scope=Scope([0]), out_channels=1)])
+
+
 def test_check_pair_respects_visited_guard():
     a = _normal(0)
     b = _normal(0)
@@ -142,3 +150,74 @@ def test_cltree_specific_branches_and_child_count_mismatch(monkeypatch):
     monkeypatch.setattr(compatibility_mod, "_children", _fake_children)
     with pytest.raises(StructureError):
         compatibility_mod._check_pair(a, b, path="root", visited=set())
+
+
+def test_compatibility_rejects_out_shape_cat_and_leaf_parameter_mismatches():
+    with pytest.raises(ShapeError):
+        check_compatible_components(
+            [
+                Normal(scope=Scope([0]), out_channels=1, num_repetitions=1),
+                Normal(scope=Scope([0]), out_channels=2, num_repetitions=1),
+            ]
+        )
+
+    base = Sum(inputs=[Normal(scope=0), Normal(scope=0)], out_channels=1, num_repetitions=1)
+    cat_dim2 = base.inputs
+    cat_dim1 = copy.deepcopy(base.inputs)
+    cat_dim1.dim = 1
+    with pytest.raises(StructureError):
+        check_compatible_components([cat_dim2, cat_dim1])
+
+    c1 = Categorical(
+        scope=Scope([0]),
+        out_channels=1,
+        num_repetitions=1,
+        K=2,
+        probs=torch.tensor([[[[0.4, 0.6]]]]),
+    )
+    c2 = Categorical(
+        scope=Scope([0]),
+        out_channels=1,
+        num_repetitions=1,
+        K=3,
+        probs=torch.tensor([[[[0.2, 0.3, 0.5]]]]),
+    )
+    with pytest.raises(ShapeError):
+        check_compatible_components([c1, c2])
+
+
+def test_compatibility_rejects_cltree_mismatches():
+    data = torch.randint(0, 2, (64, 2)).float()
+    cl1 = CLTree(scope=Scope([0, 1]), out_channels=1, num_repetitions=1, K=2)
+    cl2 = CLTree(scope=Scope([0, 1]), out_channels=1, num_repetitions=1, K=2)
+    cl1.maximum_likelihood_estimation(data)
+    cl2.maximum_likelihood_estimation(data)
+    cl2.parents = torch.tensor([-1, -1], dtype=cl2.parents.dtype, device=cl2.parents.device)
+    with pytest.raises(StructureError):
+        check_compatible_components([cl1, cl2])
+
+    cl3 = CLTree(scope=Scope([0, 1]), out_channels=1, num_repetitions=1, K=3)
+    cl3.maximum_likelihood_estimation(data)
+    with pytest.raises(ShapeError):
+        check_compatible_components([cl1, cl3])
+
+
+def test_compatibility_private_visited_and_child_count_branches(monkeypatch):
+    a = Normal(scope=Scope([0]), out_channels=1)
+    b = Normal(scope=Scope([0]), out_channels=1)
+    visited = {(id(a), id(b))}
+    compatibility_mod._check_pair(a, b, path="root", visited=visited)
+
+    def _children(module):
+        return [a] if module is a else []
+
+    monkeypatch.setattr(compatibility_mod, "_children", _children)
+    with pytest.raises(StructureError):
+        compatibility_mod._check_pair(a, b, path="root", visited=set())
+
+
+def test_compatibility_rejects_cat_arity_mismatch():
+    c0 = Cat(inputs=[Normal(scope=0, out_channels=1), Normal(scope=0, out_channels=1)], dim=2)
+    c1 = Cat(inputs=[Normal(scope=0, out_channels=2)], dim=2)
+    with pytest.raises(StructureError):
+        check_compatible_components([c0, c1])
