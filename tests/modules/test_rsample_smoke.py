@@ -25,6 +25,7 @@ from spflow.modules.sums.sum import Sum
 from spflow.modules.wrapper.image_wrapper import ImageWrapper
 from spflow.exceptions import UnsupportedOperationError
 from spflow.utils.cache import Cache
+from spflow.utils.diff_sampling_context import DifferentiableSamplingContext
 from spflow.utils.sampling_context import SamplingContext
 from spflow.utils.sampling_context import init_default_sampling_context
 
@@ -270,19 +271,26 @@ def test_signed_sum_rsample_raises_for_negative_weights():
         module.rsample(data=data, sampling_ctx=ctx, method="simple")
 
 
-def test_signed_sum_rsample_raises_for_multiple_repetitions():
+def test_signed_sum_rsample_has_gradient_for_multiple_repetitions():
     leaf = Normal(scope=Scope([0]), out_channels=2, num_repetitions=2)
     weights = torch.rand(1, 2, 1, 2)
     module = SignedSum(inputs=leaf, out_channels=1, num_repetitions=2, weights=weights)
-    data = torch.full((3, 1), torch.nan)
-    ctx = SamplingContext(
-        channel_index=torch.zeros((3, 1), dtype=torch.long),
-        mask=torch.ones((3, 1), dtype=torch.bool),
-        repetition_index=torch.zeros((3,), dtype=torch.long),
+    n = 3
+    data = torch.full((n, 1), torch.nan)
+    rep_logits = torch.randn(n, 1, 2, requires_grad=True)
+    ctx = DifferentiableSamplingContext(
+        channel_index=torch.zeros((n, 1), dtype=torch.long),
+        mask=torch.ones((n, 1), dtype=torch.bool),
+        repetition_index=torch.zeros((n,), dtype=torch.long),
+        repetition_select=torch.softmax(rep_logits, dim=-1),
     )
 
-    with pytest.raises(UnsupportedOperationError):
-        module.rsample(data=data, sampling_ctx=ctx, method="simple")
+    out = module.rsample(data=data, sampling_ctx=ctx, method="simple")
+    loss = out.mean()
+    loss.backward()
+
+    _assert_has_finite_grad(module.weights)
+    _assert_has_finite_grad(rep_logits)
 
 
 def test_product_rsample_propagates_gradient_to_descendant_params():

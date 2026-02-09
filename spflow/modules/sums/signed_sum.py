@@ -11,7 +11,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache
-from spflow.utils.diff_sampling import DiffSampleMethod, sample_categorical_differentiably
+from spflow.utils.diff_sampling import DiffSampleMethod, sample_categorical_differentiably, select_with_soft_or_hard
 from spflow.utils.diff_sampling_context import DifferentiableSamplingContext
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 from spflow.utils.signed_semiring import signed_logsumexp, sign_of
@@ -263,11 +263,6 @@ class SignedSum(Module):
             raise UnsupportedOperationError("SignedSum.rsample() does not support conditional evidence.")
         if (self.weights < 0).any():
             raise UnsupportedOperationError("SignedSum.rsample() only supports non-negative weights.")
-        if self.out_shape.repetitions != 1:
-            raise UnsupportedOperationError(
-                "SignedSum.rsample() currently supports num_repetitions == 1 only."
-            )
-
         if sampling_ctx is None or not isinstance(sampling_ctx, DifferentiableSamplingContext):
             sampling_ctx = DifferentiableSamplingContext(
                 channel_index=torch.zeros(
@@ -284,16 +279,35 @@ class SignedSum(Module):
         else:
             sampling_ctx = sampling_ctx
 
-        oidx = sampling_ctx.channel_index[..., None, None]
-        in_channels_total = self.weights.shape[1]
-        oidx = oidx.expand(-1, self.weights.shape[0], in_channels_total, -1)
-        w_sel = (
-            self.weights[..., 0]
-            .unsqueeze(0)
-            .expand(data.shape[0], -1, -1, -1)
-            .gather(dim=3, index=oidx)
-            .squeeze(3)
-        )
+        # Select parent output channel first, then repetition.
+        w = self.weights.unsqueeze(0).expand(data.shape[0], -1, -1, -1, -1)  # (B, F, IC, OC, R)
+
+        if sampling_ctx.channel_select is not None:
+            parent_select = sampling_ctx.channel_select
+            if parent_select.shape[1] == 1 and self.out_shape.features > 1:
+                parent_select = parent_select.expand(-1, self.out_shape.features, -1)
+            parent_select = parent_select.unsqueeze(2).unsqueeze(-1)  # (B, F, 1, OC, 1)
+            w_sel = select_with_soft_or_hard(w, selector=parent_select, dim=3)  # (B, F, IC, R)
+        else:
+            oidx = sampling_ctx.channel_index[..., None, None, None].expand(-1, w.shape[1], w.shape[2], -1, w.shape[4])
+            w_sel = torch.gather(w, dim=3, index=oidx).squeeze(3)  # (B, F, IC, R)
+
+        repetition_select = getattr(sampling_ctx, "repetition_select", None)
+        if repetition_select is not None:
+            if repetition_select.shape[1] == 1 and self.out_shape.features > 1:
+                repetition_select = repetition_select.expand(-1, self.out_shape.features, -1)
+            rep_select = repetition_select.unsqueeze(2)  # (B, F, 1, R)
+            w_sel = select_with_soft_or_hard(w_sel, selector=rep_select, dim=3)  # (B, F, IC)
+        elif sampling_ctx.repetition_idx is not None:
+            rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1).expand(-1, w_sel.shape[1], w_sel.shape[2], -1)
+            w_sel = torch.gather(w_sel, dim=3, index=rep_idx).squeeze(3)  # (B, F, IC)
+        else:
+            if self.out_shape.repetitions > 1:
+                raise ValueError(
+                    "sampling_ctx.repetition_idx must be provided when sampling from a module with num_repetitions > 1."
+                )
+            w_sel = w_sel[..., 0]
+
         probs = w_sel / w_sel.sum(dim=2, keepdim=True).clamp_min(1e-12)
         logits = torch.log(probs.clamp_min(1e-12))
 
@@ -306,9 +320,15 @@ class SignedSum(Module):
             method=DiffSampleMethod(method),
         )
         new_channel_index = selector.argmax(dim=-1)
-        sampling_ctx.update(
-            channel_index=new_channel_index, mask=sampling_ctx.mask.expand_as(new_channel_index)
-        )
+        if new_channel_index.shape != sampling_ctx.mask.shape:
+            new_mask = sampling_ctx.mask.expand_as(new_channel_index).contiguous()
+            if new_mask.shape != new_channel_index.shape:
+                new_mask = torch.ones(
+                    new_channel_index.shape, dtype=torch.bool, device=new_channel_index.device
+                )
+            sampling_ctx.update(channel_index=new_channel_index, mask=new_mask)
+        else:
+            sampling_ctx.channel_index = new_channel_index
         sampling_ctx.channel_select = selector
         sampling_ctx.method = DiffSampleMethod(method)
         sampling_ctx.tau = tau
