@@ -15,8 +15,8 @@ from spflow.modules.module import Module
 from spflow.modules.ops.cat import Cat
 from spflow.modules.products.product import Product
 from spflow.modules.sums.sum import Sum
-from spflow.zoo.sos.compatibility import CompatibilityIssue
-from spflow.zoo.sos import compatibility as compatibility_mod
+from spflow.utils.compatibility import CompatibilityIssue
+from spflow.utils import compatibility as compatibility_mod
 from spflow.zoo.sos import check_compatible_components
 
 

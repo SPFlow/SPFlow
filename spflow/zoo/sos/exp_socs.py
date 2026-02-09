@@ -8,7 +8,7 @@ from torch import Tensor
 
 from spflow.exceptions import ShapeError, UnsupportedOperationError
 from spflow.modules.module import Module
-from spflow.zoo.sos.inner_product import triple_product_scalar
+from spflow.utils.inner_product import triple_product_scalar
 from spflow.utils.cache import Cache
 from spflow.modules.sos.socs import _signed_eval
 from spflow.utils.sampling_context import SamplingContext

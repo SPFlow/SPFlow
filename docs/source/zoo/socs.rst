@@ -54,7 +54,7 @@ SOCS needs the normalization terms:
    Z_i = \int c_i(x)^2 \, dx.
 
 Rather than building an explicit "squared circuit", SPFlow computes these terms using an exact,
-bottom-up **inner-product dynamic program** implemented in :mod:`spflow.zoo.sos.inner_product`.
+bottom-up **inner-product dynamic program** implemented in :mod:`spflow.utils.inner_product`.
 
 The implementation supports exact inner products for common leaves (and can be extended by adding
 new closed-form formulas in ``spflow/exp/sos/inner_product.py``). Currently supported include:
@@ -123,7 +123,7 @@ Compatibility checks
 --------------------
 
 SOCS assumes component circuits are compatible (same decomposition / region graph).
-SPFlow provides conservative structural checks in :mod:`spflow.zoo.sos.compatibility`:
+SPFlow provides conservative structural checks in :mod:`spflow.utils.compatibility`:
 
 - :func:`spflow.zoo.sos.check_compatible_components`
 - :func:`spflow.zoo.sos.check_socs_compatibility`

@@ -57,6 +57,10 @@ def _children(module: Module) -> list[Module]:
     return []
 
 
+def _is_signed_categorical(module: Module) -> bool:
+    return module.__class__.__name__ == "SignedCategorical" and hasattr(module, "K")
+
+
 def _check_pair(a: Module, b: Module, *, path: str, visited: set[tuple[int, int]]) -> None:
     key = (id(a), id(b))
     if key in visited:
@@ -82,6 +86,12 @@ def _check_pair(a: Module, b: Module, *, path: str, visited: set[tuple[int, int]
     if isinstance(a, Categorical):
         if a.K != cast(Categorical, b).K:
             raise ShapeError(f"{path}: Categorical K mismatch: {a.K} vs {cast(Categorical, b).K}.")
+
+    if _is_signed_categorical(a):
+        k_a = cast(int, getattr(a, "K"))
+        k_b = cast(int, getattr(b, "K"))
+        if k_a != k_b:
+            raise ShapeError(f"{path}: SignedCategorical K mismatch: {k_a} vs {k_b}.")
 
     if isinstance(a, CLTree):
         bb = cast(CLTree, b)

@@ -1,8 +1,8 @@
 import pytest
 import torch
 
-from spflow.zoo.sos.signed_semiring import logabs_of
-from spflow.zoo.sos.signed_semiring import signed_logsumexp
+from spflow.utils.signed_semiring import logabs_of
+from spflow.utils.signed_semiring import signed_logsumexp
 
 
 def test_logabs_of_with_and_without_eps():

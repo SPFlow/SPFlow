@@ -16,14 +16,14 @@ from spflow.zoo.sos.signed_categorical import SignedCategorical
 from spflow.learn.build_socs import build_socs, build_abs_weight_proposal, build_complex_socs
 from spflow.zoo.sos.exp_socs import ExpSOCS
 from spflow.zoo.sos.models import SOSModel, ExpSOSModel
-from spflow.zoo.sos.compatibility import check_compatible_components, check_socs_compatibility
-from spflow.zoo.sos.inner_product import (
+from spflow.utils.compatibility import check_compatible_components, check_socs_compatibility
+from spflow.utils.inner_product import (
     inner_product_matrix,
     leaf_inner_product,
     log_self_inner_product_scalar,
     triple_product_scalar,
 )
-from spflow.zoo.sos.signed_semiring import signed_logsumexp, sign_of, logabs_of
+from spflow.utils.signed_semiring import signed_logsumexp, sign_of, logabs_of
 
 __all__ = [
     "SOCS",

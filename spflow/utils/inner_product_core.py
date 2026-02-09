@@ -10,7 +10,7 @@ and analytic leaf integrals when available.
 
 Two wrappers use this core:
 - `spflow.utils.inner_product` (for `spflow.modules.sos`)
-- `spflow.zoo.sos.inner_product` (for `spflow.zoo.sos`)
+- `spflow.utils.inner_product` (canonical SOS/SOCS entry point)
 """
 
 from __future__ import annotations
