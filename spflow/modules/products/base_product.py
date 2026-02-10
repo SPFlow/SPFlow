@@ -164,49 +164,6 @@ class BaseProduct(Module, ABC):
 
         return data
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: Optional[SamplingContext] = None,
-        method: str = "simple",
-        tau: float = 1.0,
-        hard: bool = True,
-    ) -> Tensor:
-        """Differentiable routing variant of sample()."""
-        data = self._prepare_sample_data(num_samples, data)
-        if cache is None:
-            cache = Cache()
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
-
-        channel_index = self.map_out_channels_to_in_channels(sampling_ctx.channel_index)
-        mask = self.map_out_mask_to_in_mask(sampling_ctx.mask)
-
-        cid_per_module = []
-        mask_per_module = []
-        for i in range(len(self.inputs)):
-            cid_per_module.append(channel_index[..., i])
-            mask_per_module.append(mask[..., i])
-
-        for inp, cid, m in zip(self.inputs, cid_per_module, mask_per_module):
-            if cid.ndim == 1:
-                cid = cid.unsqueeze(1)
-            if m.ndim == 1:
-                m = m.unsqueeze(1)
-            child_ctx = sampling_ctx.copy()
-            child_ctx.update(channel_index=cid, mask=m)
-            data = inp.rsample(
-                data=data,
-                is_mpe=is_mpe,
-                cache=cache,
-                sampling_ctx=child_ctx,
-                method=method,
-                tau=tau,
-                hard=hard,
-            )
-        return data
 
     def marginalize(
         self,

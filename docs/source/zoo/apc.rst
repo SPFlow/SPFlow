@@ -14,6 +14,12 @@ APC is described in:
 
 - `Autoencoding Probabilistic Circuits (ICLR 2025) <https://arxiv.org/abs/2502.05554>`_
 
+Status Note
+-----------
+
+APC inference APIs remain available (encode/decode/sampling/likelihood). Latent-stat extraction and KL-style
+training helpers are currently unsupported.
+
 Main Components
 ---------------
 

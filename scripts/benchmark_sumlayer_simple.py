@@ -144,6 +144,9 @@ def run_benchmark(
 
 
 def main() -> None:
+    raise RuntimeError(
+        "This benchmark targets differentiable-sampling paths that are unavailable after the rollback."
+    )
     parser = argparse.ArgumentParser(description="Benchmark SIMPLE differentiable sampling in SumLayer.")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--seed", type=int, default=0)

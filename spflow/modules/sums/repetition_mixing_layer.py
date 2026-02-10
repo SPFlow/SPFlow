@@ -8,14 +8,6 @@ from spflow.exceptions import InvalidParameterCombinationError, MissingCacheErro
 from spflow.modules.module import Module
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
-from spflow.utils.diff_sampling import DiffSampleMethod
-from spflow.utils.rsample_routing import (
-    condition_logits_with_evidence,
-    ensure_diff_ctx,
-    sample_selector_and_index,
-    update_ctx_channel_routing,
-    update_ctx_repetition_routing,
-)
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -173,80 +165,6 @@ class RepetitionMixingLayer(Sum):
 
         return data
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
-        method: str = "simple",
-        tau: float = 1.0,
-        hard: bool = True,
-    ) -> Tensor:
-        """Differentiable repetition routing."""
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
-        if cache is None:
-            cache = Cache()
-        sampling_ctx = ensure_diff_ctx(
-            sampling_ctx,
-            batch_size=data.shape[0],
-            features=self.out_shape.features,
-            device=data.device,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
-
-        logits = self.logits.unsqueeze(0).expand(data.shape[0], -1, -1, -1)
-
-        input_lls = None
-        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
-            input_lls = cache["log_likelihood"][self.inputs]
-            if input_lls.dim() < logits.dim():
-                input_lls = input_lls.unsqueeze(3)
-        logits = condition_logits_with_evidence(logits, input_lls, dim=3)
-
-        rep_selector, rep_index = sample_selector_and_index(
-            logits=logits.sum(-2),
-            dim=-1,
-            is_mpe=is_mpe,
-            method=DiffSampleMethod(method),
-            tau=tau,
-            hard=hard,
-        )
-        update_ctx_repetition_routing(
-            sampling_ctx,
-            repetition_index=rep_index,
-            repetition_select=rep_selector,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
-        channel_selector = torch.nn.functional.one_hot(
-            sampling_ctx.channel_index, num_classes=self.out_shape.channels
-        ).to(dtype=logits.dtype)
-        update_ctx_channel_routing(
-            sampling_ctx,
-            channel_index=sampling_ctx.channel_index,
-            channel_select=channel_selector,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
-
-        return self.inputs.rsample(
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
 
     @cached
     def log_likelihood(

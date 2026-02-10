@@ -20,7 +20,6 @@ from spflow.modules.ops.cat import Cat
 from spflow.modules.products.base_product import BaseProduct
 from spflow.modules.products.product import Product
 from spflow.utils.cache import Cache, cached
-from spflow.utils.diff_sampling_context_ops import map_or_expand_feature_selectors_inplace
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -209,52 +208,6 @@ class Factorize(BaseProduct):
 
         return data
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: Optional[SamplingContext] = None,
-        method: str = "simple",
-        tau: float = 1.0,
-        hard: bool = True,
-    ) -> Tensor:
-        """Differentiable routing variant of sample()."""
-        data = self._prepare_sample_data(num_samples, data)
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
-
-        rep_indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1).expand(
-            -1, self.indices.shape[0], self.indices.shape[1], -1
-        )
-        indices = (
-            self.indices.unsqueeze(0)
-            .expand(data.shape[0], -1, -1, -1)
-            .to(dtype=torch.long, device=self.device)
-        )
-        indices = torch.gather(indices, dim=-1, index=rep_indices).squeeze(-1)
-
-        channel_index = torch.sum(sampling_ctx.channel_index.unsqueeze(1) * indices, dim=-1)
-        mask = torch.sum(sampling_ctx.mask.unsqueeze(1) * indices, dim=-1).bool()
-        out_features = indices.shape[2]
-        in_features = indices.shape[1]
-        map_or_expand_feature_selectors_inplace(
-            sampling_ctx,
-            mapping=indices,
-            out_features=out_features,
-            in_features=in_features,
-        )
-        sampling_ctx.update(channel_index=channel_index, mask=mask)
-
-        return self.inputs[0].rsample(
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
 
     def marginalize(
         self,

@@ -229,26 +229,6 @@ class Module(nn.Module, ABC):
         """
         pass
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
-        method: str = "simple",
-        tau: float = 1.0,
-        hard: bool = True,
-    ) -> Tensor:
-        """Differentiable sampling entrypoint.
-
-        Subclasses must override this to provide reparameterized/straight-through sampling.
-        """
-        del num_samples, data, is_mpe, cache, sampling_ctx, method, tau, hard
-        raise UnsupportedOperationError(
-            f"{self.__class__.__name__}.rsample() is not implemented. "
-            "Differentiable sampling is only available for modules with explicit rsample support."
-        )
 
     def mpe(
         self,

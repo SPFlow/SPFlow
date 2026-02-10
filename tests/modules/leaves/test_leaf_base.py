@@ -463,54 +463,6 @@ def test_sample_conditional_paths_raise_for_invalid_sample_rank(monkeypatch):
         leaf.sample(data=data.clone(), is_mpe=False)
 
 
-def test_rsample_allows_gradient_for_reparameterized_distribution():
-    leaf = TinyLeaf(scope=Scope([0]), out_channels=2, num_repetitions=1)
-    data = torch.full((6, 1), torch.nan)
-    ctx = SamplingContext(
-        channel_index=torch.zeros((6, 1), dtype=torch.long),
-        mask=torch.ones((6, 1), dtype=torch.bool),
-    )
-
-    out = leaf.rsample(data=data, sampling_ctx=ctx)
-    loss = out.mean()
-    loss.backward()
-
-    assert leaf.loc.grad is not None
-    assert out.shape == (6, 1)
-
-
-def test_rsample_raises_for_non_reparameterized_distribution():
-    leaf = Categorical(scope=Scope([0]), out_channels=2, num_repetitions=1, K=3)
-    data = torch.full((4, 1), torch.nan)
-    ctx = SamplingContext(
-        channel_index=torch.zeros((4, 1), dtype=torch.long),
-        mask=torch.ones((4, 1), dtype=torch.bool),
-    )
-
-    with pytest.raises(UnsupportedOperationError):
-        leaf.rsample(data=data, sampling_ctx=ctx)
-
-
-def test_rsample_repetition_select_propagates_gradient_to_repetition_logits():
-    leaf = TinyLeaf(scope=Scope([0]), out_channels=2, num_repetitions=2)
-    data = torch.full((6, 1), torch.nan)
-    rep_logits = torch.randn((6, 1, 2), requires_grad=True)
-    repetition_select = torch.softmax(rep_logits, dim=-1)
-    ctx = SamplingContext(
-        channel_index=torch.zeros((6, 1), dtype=torch.long),
-        mask=torch.ones((6, 1), dtype=torch.bool),
-        repetition_index=torch.zeros((6,), dtype=torch.long),
-    )
-    ctx.repetition_select = repetition_select
-
-    out = leaf.rsample(data=data, sampling_ctx=ctx)
-    loss = out.mean()
-    loss.backward()
-
-    assert rep_logits.grad is not None
-    assert torch.isfinite(rep_logits.grad).all()
-
-
 def test_resolve_scope_columns_and_slice_sampling_context_errors():
     leaf = TinyLeaf(scope=Scope([4, 5]))
 

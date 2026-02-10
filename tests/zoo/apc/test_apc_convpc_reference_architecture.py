@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 
 from spflow.modules.conv.prod_conv import ProdConv
 from spflow.modules.products.elementwise_product import ElementwiseProduct
 from spflow.modules.sums import Sum
+from spflow.exceptions import UnsupportedOperationError
 from spflow.zoo.apc.decoders import NeuralDecoder2D
 from spflow.zoo.apc.encoders.convpc_joint_encoder import ConvPcJointEncoder
 
@@ -57,13 +59,8 @@ def test_convpc_reference_latent_dim_larger_than_injection_uses_latent_prod_laye
     assert len(encoder.latent_prod_layers) == 2  # 256 -> 128 -> 64
 
     x = torch.randn(4, 1, 32, 32)
-    stats, z = encoder.encode(x, return_latent_stats=True)
-    assert stats.mu.shape == (4, 256)
-    assert stats.logvar.shape == (4, 256)
-    assert z.shape == (4, 256)
-    assert torch.isfinite(stats.mu).all()
-    assert torch.isfinite(stats.logvar).all()
-    assert torch.isfinite(z).all()
+    with pytest.raises(UnsupportedOperationError):
+        encoder.encode(x, return_latent_stats=True)
 
 
 def test_convpc_reference_latent_dim_smaller_than_injection_uses_packing_and_perm_buffers() -> None:

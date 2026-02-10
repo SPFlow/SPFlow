@@ -945,6 +945,9 @@ def train_apc_iters(
 
 def main() -> None:
     """Run APC training on MNIST and persist artifacts."""
+    raise RuntimeError(
+        "APC KL-style training is unavailable after the differentiable-sampling rollback."
+    )
     args = parse_args()
     seed_everything(args.seed)
 

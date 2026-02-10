@@ -14,19 +14,8 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
-from spflow.utils.diff_sampling import (
-    DiffSampleMethod,
-)
 from spflow.utils.projections import (
     proj_convex_to_real,
-)
-from spflow.utils.rsample_routing import (
-    condition_logits_with_evidence,
-    ensure_diff_ctx,
-    sample_selector_and_index,
-    select_parent_axis,
-    select_repetition_axis,
-    update_ctx_channel_routing,
 )
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
@@ -419,78 +408,6 @@ class Sum(Module):
 
         return data
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
-        method: str = "simple",
-        tau: float = 1.0,
-        hard: bool = True,
-    ) -> Tensor:
-        """Differentiable sampling with SIMPLE-style straight-through selectors."""
-        if cache is None:
-            cache = Cache()
-        data = self._prepare_sample_data(num_samples, data)
-        sampling_ctx = ensure_diff_ctx(
-            sampling_ctx,
-            batch_size=data.shape[0],
-            features=self.out_shape.features,
-            device=data.device,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
-
-        logits = self.logits.unsqueeze(0).expand(data.shape[0], -1, -1, -1, -1)
-        logits = select_repetition_axis(
-            logits,
-            sampling_ctx=sampling_ctx,
-            dim=-1,
-            num_repetitions=self.out_shape.repetitions,
-        )
-        logits = select_parent_axis(logits, sampling_ctx=sampling_ctx, dim=3)
-
-        input_lls = None
-        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
-            input_lls = cache["log_likelihood"][self.inputs]
-            if input_lls.dim() == 4:
-                input_lls = select_repetition_axis(
-                    input_lls,
-                    sampling_ctx=sampling_ctx,
-                    dim=-1,
-                    num_repetitions=self.out_shape.repetitions,
-                )
-        logits = condition_logits_with_evidence(logits, input_lls, dim=2)
-
-        selector, new_channel_index = sample_selector_and_index(
-            logits=logits,
-            dim=2,
-            is_mpe=is_mpe,
-            method=DiffSampleMethod(method),
-            tau=tau,
-            hard=hard,
-        )
-        update_ctx_channel_routing(
-            sampling_ctx,
-            channel_index=new_channel_index,
-            channel_select=selector,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
-
-        return self.inputs.rsample(
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
 
     def expectation_maximization(
         self,

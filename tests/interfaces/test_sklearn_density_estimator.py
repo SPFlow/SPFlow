@@ -69,34 +69,6 @@ def test_sample_shape_and_dtype():
     assert samples.dtype == np.float32
 
 
-def test_rsample_shape_and_dtype():
-    X = _randn(128, 2)
-    est = SPFlowDensityEstimator(structure_learner="learn_spn", dtype="float32", min_instances_slice=20)
-    est.fit(X)
-
-    samples = est.rsample(7, random_state=0)
-    assert samples.shape == (7, 2)
-    assert samples.dtype == np.float32
-
-
-def test_rsample_backward_with_tensor_return():
-    model = _independent_normals_model(n_features=2)
-    est = SPFlowDensityEstimator(model=model, fit_params=False, dtype="float32")
-    est.fit(_randn(8, 2))
-
-    samples = est.rsample(5, random_state=0, return_tensor=True)
-    loss = samples.mean()
-    loss.backward()
-    # Each leaf branch should receive gradients through rsample.
-    leaves = list(model.inputs.inputs)
-    assert len(leaves) == 2
-    for leaf in leaves:
-        assert leaf.loc.grad is not None
-        assert torch.isfinite(leaf.loc.grad).all()
-        assert leaf.log_scale.grad is not None
-        assert torch.isfinite(leaf.log_scale.grad).all()
-
-
 def test_pipeline_compatibility_smoke():
     X = _randn(200, 2)
 
@@ -250,15 +222,6 @@ def test_sample_validates_arguments():
 
     with pytest.raises(InvalidTypeError):
         est.sample(1, random_state="bad")  # type: ignore[arg-type]
-
-    with pytest.raises(InvalidParameterError):
-        est.rsample(0)
-
-    with pytest.raises(InvalidParameterError):
-        est.rsample(1, tau=0.0)
-
-    with pytest.raises(InvalidParameterError):
-        est.rsample(1, method="bad")  # type: ignore[arg-type]
 
 
 def test_sample_uses_cuda_device_index_for_fork_rng(monkeypatch):

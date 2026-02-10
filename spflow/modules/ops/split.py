@@ -21,7 +21,6 @@ from spflow.utils.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
-from spflow.utils.diff_sampling_context_ops import expand_singleton_feature_selectors_inplace
 
 
 class SplitMode:
@@ -283,34 +282,6 @@ class Split(Module, ABC):
         )
         return data
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Optional[Dict[str, Any]] = None,
-        sampling_ctx: SamplingContext | None = None,
-        method: str = "simple",
-        tau: float = 1.0,
-        hard: bool = True,
-    ) -> Tensor:
-        """Differentiable routing variant of sample()."""
-        data = self._prepare_sample_data(num_samples, data)
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
-        input_features = self.inputs.out_shape.features
-        mask = sampling_ctx.mask.expand(data.shape[0], input_features)
-        channel_index = sampling_ctx.channel_index.expand(data.shape[0], input_features)
-        sampling_ctx.update(channel_index=channel_index, mask=mask)
-        expand_singleton_feature_selectors_inplace(sampling_ctx, target_features=input_features)
-        return self.inputs.rsample(
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
 
     def marginalize(
         self,

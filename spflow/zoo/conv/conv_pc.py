@@ -321,40 +321,6 @@ class ConvPc(Module):
 
         return data
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
-        method: str = "simple",
-        tau: float = 1.0,
-        hard: bool = True,
-    ) -> Tensor:
-        """Differentiable sampling passthrough to the underlying circuit."""
-        if cache is None:
-            cache = Cache()
-
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, len(self.scope.query)), float("nan")).to(self.device)
-
-        if self._has_partial_evidence(data):
-            self.log_likelihood(data, cache=cache)
-
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
-
-        return self.inputs.rsample(
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
 
     def expectation_maximization(
         self,

@@ -13,7 +13,7 @@ from torch import Tensor
 from torch import nn
 from torch.nn import functional as F
 
-from spflow.exceptions import InvalidParameterError
+from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
 from spflow.zoo.apc.debug_trace import trace_tensor
 from spflow.zoo.apc.config import ApcConfig
 from spflow.zoo.apc.encoders.base import ApcEncoder, LatentStats
@@ -162,48 +162,18 @@ class AutoencodingPC(nn.Module):
             Dictionary with scalar terms ``rec``, ``kld``, ``nll``, ``total``
             and helpful intermediates ``z``, ``x_rec``, ``mu``, ``logvar``.
         """
-        trace_tensor("apc.loss.data_in", x)
-        tau = self.config.sample_tau
-        latent_out = self.encoder.encode(x, mpe=False, tau=tau, return_latent_stats=True)
-        if not isinstance(latent_out, tuple) or len(latent_out) != 2:
-            raise InvalidParameterError("Encoder must return (LatentStats, z) when return_latent_stats=True.")
-        stats, z = latent_out
-        if not isinstance(stats, LatentStats):
-            raise InvalidParameterError(
-                f"Encoder returned invalid latent stats type: {type(stats)}. Expected LatentStats."
-            )
-
-        x_rec = self.decode(z, mpe=False, tau=tau)
-        trace_tensor("apc.loss.z_samples", z)
-        trace_tensor("apc.loss.mu", stats.mu)
-        trace_tensor("apc.loss.logvar", stats.logvar)
-        trace_tensor("apc.loss.x_rec", x_rec)
-
-        rec = self._reconstruction_loss(x=x, x_rec=x_rec)
-        kld = self._kld_from_stats(stats)
-        nll = -self.encoder.joint_log_likelihood(x, z).mean()
-
-        w = self.config.loss_weights
-        total = w.rec * rec + w.kld * kld + w.nll * nll
-        trace_tensor("apc.loss.term.rec", rec)
-        trace_tensor("apc.loss.term.kld", kld)
-        trace_tensor("apc.loss.term.nll", nll)
-        trace_tensor("apc.loss.term.total", total)
-
-        return {
-            "rec": rec,
-            "kld": kld,
-            "nll": nll,
-            "total": total,
-            "z": z,
-            "x_rec": x_rec,
-            "mu": stats.mu,
-            "logvar": stats.logvar,
-        }
+        del x
+        raise UnsupportedOperationError(
+            "APC KL-style training is unavailable after sample rollback. "
+            "loss_components() is currently unsupported."
+        )
 
     def loss(self, x: Tensor) -> Tensor:
         """Return only the weighted total APC loss."""
-        return self.loss_components(x)["total"]
+        del x
+        raise UnsupportedOperationError(
+            "APC KL-style training is unavailable after sample rollback. loss() is currently unsupported."
+        )
 
     def log_likelihood_x(self, x: Tensor) -> Tensor:
         """Compute encoder marginal log-likelihood ``log p(x)`` per sample."""

@@ -3,8 +3,7 @@
 import pytest
 import torch
 
-from spflow.exceptions import InvalidParameterError
-from spflow.zoo.apc.encoders.base import LatentStats
+from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
 from spflow.zoo.apc.encoders.convpc_joint_encoder import ConvPcJointEncoder
 
 
@@ -48,19 +47,16 @@ def test_convpc_apc_encode_decode_and_likelihood_shapes():
     assert torch.isfinite(z_prior).all()
 
 
-def test_convpc_apc_encode_returns_latent_stats():
+def test_convpc_apc_encode_latent_stats_is_unsupported():
     torch.manual_seed(11)
     encoder = _build_encoder()
     x = torch.randn(4, 1, 4, 4)
 
-    stats, z = encoder.encode(x, return_latent_stats=True)
-    assert isinstance(stats, LatentStats)
-    assert stats.mu.shape == (4, 4)
-    assert stats.logvar.shape == (4, 4)
-    assert z.shape == (4, 4)
-    assert torch.isfinite(stats.mu).all()
-    assert torch.isfinite(stats.logvar).all()
-    assert torch.isfinite(z).all()
+    with pytest.raises(UnsupportedOperationError):
+        encoder.encode(x, return_latent_stats=True)
+
+    with pytest.raises(UnsupportedOperationError):
+        encoder.latent_stats(x)
 
 
 def test_convpc_apc_decode_fill_evidence_keeps_observed_entries():

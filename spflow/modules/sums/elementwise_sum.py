@@ -17,17 +17,8 @@ from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
-from spflow.utils.diff_sampling import DiffSampleMethod
 from spflow.utils.projections import (
     proj_convex_to_real,
-)
-from spflow.utils.rsample_routing import (
-    blend_same_scope_child_outputs,
-    condition_logits_with_evidence,
-    ensure_diff_ctx,
-    sample_selector_and_index,
-    select_repetition_axis,
-    update_ctx_channel_routing,
 )
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
@@ -400,127 +391,6 @@ class ElementwiseSum(Module):
 
         return data
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: Optional[SamplingContext] = None,
-        method: str = "simple",
-        tau: float = 1.0,
-        hard: bool = True,
-    ) -> Tensor:
-        """Differentiable sampling with soft dispatch over all child inputs."""
-        data = self._prepare_sample_data(num_samples, data)
-
-        if cache is None:
-            cache = Cache()
-        sampling_ctx = ensure_diff_ctx(
-            sampling_ctx,
-            batch_size=data.shape[0],
-            features=self.out_shape.features,
-            device=data.device,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
-
-        # Prepare logits as in sample().
-        logits = self.logits.unsqueeze(0).expand(data.shape[0], -1, -1, -1, -1, -1)
-        logits = select_repetition_axis(
-            logits,
-            sampling_ctx=sampling_ctx,
-            dim=-1,
-            num_repetitions=self.out_shape.repetitions,
-        )
-
-        cids_mapped = self.unraveled_channel_indices[sampling_ctx.channel_index]
-        cids_in_channels_per_input = cids_mapped[..., 0]
-        cids_num_sums = cids_mapped[..., 1]
-
-        cids_num_sums = cids_num_sums[..., None, None, None].expand(
-            -1, -1, logits.shape[-3], -1, logits.shape[-1]
-        )
-        logits = logits.gather(dim=3, index=cids_num_sums).squeeze(3)
-        logits = logits.gather(
-            dim=2, index=cids_in_channels_per_input[..., None, None].expand(-1, -1, -1, logits.shape[-1])
-        ).squeeze(2)
-
-        input_lls = None
-        if "log_likelihood" in cache and all(
-            cache["log_likelihood"].get(inp) is not None for inp in self.inputs
-        ):
-            input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
-            input_lls = torch.stack(input_lls, dim=self.sum_dim)
-            input_lls = select_repetition_axis(
-                input_lls,
-                sampling_ctx=sampling_ctx,
-                dim=-1,
-                num_repetitions=self.out_shape.repetitions,
-            )
-
-            cids_in_channels_input_lls = (
-                cids_in_channels_per_input.unsqueeze(2).unsqueeze(3).expand(-1, -1, -1, input_lls.shape[3])
-            )
-            input_lls = input_lls.gather(dim=2, index=cids_in_channels_input_lls).squeeze(2)
-        logits = condition_logits_with_evidence(logits, input_lls, dim=2)
-
-        # Soft stack routing across inputs.
-        stack_select, stack_hard = sample_selector_and_index(
-            logits=logits,
-            dim=-1,
-            is_mpe=is_mpe,
-            method=DiffSampleMethod(method),
-            tau=tau,
-            hard=hard,
-        )
-        channel_select = torch.nn.functional.one_hot(
-            cids_in_channels_per_input, num_classes=self.in_shape.channels
-        ).to(dtype=logits.dtype)
-        update_ctx_channel_routing(
-            sampling_ctx,
-            channel_index=cids_in_channels_per_input,
-            channel_select=channel_select,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
-        sampling_ctx.branch_weight = stack_select
-
-        # Run all children and blend outputs with stack selector.
-        base_data = data.clone()
-        child_samples = []
-        for inp in self.inputs:
-            child_ctx = sampling_ctx.copy()
-            child_ctx.mask = sampling_ctx.mask
-            child_samples.append(
-                inp.rsample(
-                    data=base_data.clone(),
-                    is_mpe=is_mpe,
-                    cache=cache,
-                    sampling_ctx=child_ctx,
-                    method=method,
-                    tau=tau,
-                    hard=hard,
-                )
-            )
-
-        # Weighted sum only over this node's scope columns.
-        scope_cols = torch.tensor(self.scope.query, dtype=torch.long, device=data.device)
-        result = blend_same_scope_child_outputs(
-            data,
-            child_outputs=child_samples,
-            branch_weights=stack_select,
-            scope_cols=scope_cols,
-        )
-
-        # Preserve hard branch metadata for compatibility.
-        sampling_ctx.branch_weight = stack_select
-        sampling_ctx.channel_index = cids_in_channels_per_input
-        # For compatibility with debug tooling; not used in soft dispatch.
-        sampling_ctx.mask = sampling_ctx.mask & (stack_hard >= 0)
-        return result
 
     @cached
     def log_likelihood(

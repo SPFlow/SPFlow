@@ -1,8 +1,9 @@
-"""Tests for APC model losses and gradients."""
+"""Tests for APC loss API rollback behavior."""
 
+import pytest
 import torch
-from torch.testing import assert_close
 
+from spflow.exceptions import UnsupportedOperationError
 from spflow.zoo.apc.config import ApcConfig, ApcLossWeights
 from spflow.zoo.apc.decoders import MLPDecoder1D
 from spflow.zoo.apc.encoders.convpc_joint_encoder import ConvPcJointEncoder
@@ -54,115 +55,19 @@ def _build_conv_model() -> AutoencodingPC:
     return AutoencodingPC(encoder=encoder, decoder=decoder, config=config)
 
 
-def test_apc_loss_components_are_finite_and_consistent():
-    torch.manual_seed(20)
-    model = _build_model()
-    x = torch.randn(7, 4)
+@pytest.mark.parametrize("builder,shape", [(_build_model, (7, 4)), (_build_conv_model, (7, 1, 4, 4))])
+def test_apc_loss_components_is_unsupported(builder, shape):
+    model = builder()
+    x = torch.randn(*shape)
 
-    losses = model.loss_components(x)
-    expected_keys = {"rec", "kld", "nll", "total", "z", "x_rec", "mu", "logvar"}
-    assert expected_keys.issubset(losses.keys())
-
-    for key in ("rec", "kld", "nll", "total"):
-        assert losses[key].shape == torch.Size([])
-        assert torch.isfinite(losses[key])
-
-    assert losses["z"].shape == (7, 2)
-    assert losses["x_rec"].shape == (7, 4)
-    assert losses["mu"].shape == (7, 2)
-    assert losses["logvar"].shape == (7, 2)
-
-    weights = model.config.loss_weights
-    expected_total = weights.rec * losses["rec"] + weights.kld * losses["kld"] + weights.nll * losses["nll"]
-    assert_close(losses["total"], expected_total)
+    with pytest.raises(UnsupportedOperationError):
+        model.loss_components(x)
 
 
-def test_apc_loss_backward_populates_gradients():
-    torch.manual_seed(21)
-    model = _build_model()
-    x = torch.randn(8, 4)
+@pytest.mark.parametrize("builder,shape", [(_build_model, (8, 4)), (_build_conv_model, (8, 1, 4, 4))])
+def test_apc_loss_is_unsupported(builder, shape):
+    model = builder()
+    x = torch.randn(*shape)
 
-    total = model.loss(x)
-    total.backward()
-
-    grads = [p.grad for p in model.parameters() if p.requires_grad]
-    assert any(g is not None for g in grads)
-    assert all(g is None or torch.isfinite(g).all() for g in grads)
-
-
-def _has_finite_nonzero_grad(module: torch.nn.Module) -> bool:
-    """Return whether a module has at least one finite, non-zero gradient tensor."""
-    for p in module.parameters():
-        if p.grad is None:
-            continue
-        if torch.isfinite(p.grad).all() and p.grad.abs().sum() > 0:
-            return True
-    return False
-
-
-def _has_finite_nonzero_grad_matching_name(module: torch.nn.Module, name_substring: str) -> bool:
-    """Return whether any parameter whose name contains substring has finite non-zero grad."""
-    for name, param in module.named_parameters():
-        if name_substring not in name:
-            continue
-        if param.grad is None:
-            continue
-        if torch.isfinite(param.grad).all() and param.grad.abs().sum() > 0:
-            return True
-    return False
-
-
-def test_apc_each_loss_term_has_working_gradients():
-    torch.manual_seed(22)
-    model = _build_model()
-    x = torch.randn(10, 4)
-
-    # Reconstruction loss should train both encoder and decoder.
-    model.zero_grad(set_to_none=True)
-    rec = model.loss_components(x)["rec"]
-    rec.backward()
-    assert _has_finite_nonzero_grad(model.encoder)
-    assert _has_finite_nonzero_grad(model.decoder)
-    assert _has_finite_nonzero_grad_matching_name(model.encoder, "logits")
-
-    # NLL term flows through encoder likelihood only (no decoder path).
-    model.zero_grad(set_to_none=True)
-    nll = model.loss_components(x)["nll"]
-    nll.backward()
-    assert _has_finite_nonzero_grad(model.encoder)
-    assert not _has_finite_nonzero_grad(model.decoder)
-
-    # KL term uses encoder latent stats only (no decoder path).
-    model.zero_grad(set_to_none=True)
-    kld = model.loss_components(x)["kld"]
-    kld.backward()
-    assert _has_finite_nonzero_grad(model.encoder)
-    assert not _has_finite_nonzero_grad(model.decoder)
-
-
-def test_apc_each_loss_term_has_working_gradients_conv_encoder():
-    torch.manual_seed(23)
-    model = _build_conv_model()
-    x = torch.randn(10, 1, 4, 4)
-
-    # Reconstruction loss should train both encoder and decoder.
-    model.zero_grad(set_to_none=True)
-    rec = model.loss_components(x)["rec"]
-    rec.backward()
-    assert _has_finite_nonzero_grad(model.encoder)
-    assert _has_finite_nonzero_grad(model.decoder)
-    assert _has_finite_nonzero_grad_matching_name(model.encoder, "logits")
-
-    # NLL term flows through encoder likelihood only (no decoder path).
-    model.zero_grad(set_to_none=True)
-    nll = model.loss_components(x)["nll"]
-    nll.backward()
-    assert _has_finite_nonzero_grad(model.encoder)
-    assert not _has_finite_nonzero_grad(model.decoder)
-
-    # KL term uses encoder latent stats only (no decoder path).
-    model.zero_grad(set_to_none=True)
-    kld = model.loss_components(x)["kld"]
-    kld.backward()
-    assert _has_finite_nonzero_grad(model.encoder)
-    assert not _has_finite_nonzero_grad(model.decoder)
+    with pytest.raises(UnsupportedOperationError):
+        model.loss(x)

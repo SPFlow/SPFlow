@@ -14,7 +14,7 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
-from spflow.exceptions import InvalidParameterError, ShapeError
+from spflow.exceptions import InvalidParameterError, ShapeError, UnsupportedOperationError
 from spflow.meta.data import Scope
 from spflow.modules.conv.prod_conv import ProdConv
 from spflow.modules.conv.sum_conv import SumConv
@@ -26,8 +26,6 @@ from spflow.modules.products.elementwise_product import ElementwiseProduct
 from spflow.modules.sums import Sum
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.utils.cache import Cache
-from spflow.utils.diff_sampling import DiffSampleMethod, select_with_soft_or_hard
-from spflow.utils.diff_sampling_context import DifferentiableSamplingContext
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 from spflow.zoo.apc.debug_trace import trace_sampling_context, trace_tensor
 from spflow.zoo.apc.encoders.base import LatentStats
@@ -137,57 +135,6 @@ class _PairwiseLatentProduct(Module):
         sampling_ctx.update(child_idx, child_mask)
         return self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
-        method: str = "simple",
-        tau: float = 1.0,
-        hard: bool = True,
-    ) -> Tensor:
-        if cache is None:
-            cache = Cache()
-        data = self._prepare_sample_data(num_samples, data)
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
-
-        ctx_features = sampling_ctx.channel_index.shape[1]
-        if ctx_features == self.in_shape.features:
-            return self.inputs.rsample(
-                data=data,
-                is_mpe=is_mpe,
-                cache=cache,
-                sampling_ctx=sampling_ctx,
-                method=method,
-                tau=tau,
-                hard=hard,
-            )
-        if ctx_features == 1:
-            parent_idx = sampling_ctx.channel_index.expand(-1, self.out_shape.features)
-            parent_mask = sampling_ctx.mask.expand(-1, self.out_shape.features)
-        elif ctx_features == self.out_shape.features:
-            parent_idx = sampling_ctx.channel_index
-            parent_mask = sampling_ctx.mask
-        else:
-            raise ShapeError(
-                "SamplingContext feature dimension mismatch in latent product layer: "
-                f"got {ctx_features}, expected 1, {self.out_shape.features}, or {self.in_shape.features}."
-            )
-
-        child_idx = parent_idx.repeat_interleave(2, dim=1)
-        child_mask = parent_mask.repeat_interleave(2, dim=1)
-        sampling_ctx.update(child_idx, child_mask)
-        return self.inputs.rsample(
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
 
     def marginalize(
         self,
@@ -301,62 +248,6 @@ class _LatentFeaturePacking(Module):
         sampling_ctx.update(child_idx, child_mask)
         return self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
-        method: str = "simple",
-        tau: float = 1.0,
-        hard: bool = True,
-    ) -> Tensor:
-        if cache is None:
-            cache = Cache()
-        data = self._prepare_sample_data(num_samples, data)
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
-
-        ctx_features = sampling_ctx.channel_index.shape[1]
-        if ctx_features == self.in_shape.features:
-            return self.inputs.rsample(
-                data=data,
-                is_mpe=is_mpe,
-                cache=cache,
-                sampling_ctx=sampling_ctx,
-                method=method,
-                tau=tau,
-                hard=hard,
-            )
-        if ctx_features == 1:
-            parent_idx = sampling_ctx.channel_index.expand(-1, self.target_features)
-            parent_mask = sampling_ctx.mask.expand(-1, self.target_features)
-        elif ctx_features == self.target_features:
-            parent_idx = sampling_ctx.channel_index
-            parent_mask = sampling_ctx.mask
-        else:
-            raise ShapeError(
-                "SamplingContext feature dimension mismatch in latent packing layer: "
-                f"got {ctx_features}, expected 1, {self.target_features}, or {self.in_shape.features}."
-            )
-
-        if self.perm_inv is not None:
-            perm_inv = self.perm_inv.to(device=parent_idx.device)
-            parent_idx = parent_idx[:, perm_inv]
-            parent_mask = parent_mask[:, perm_inv]
-
-        child_idx = parent_idx[:, : self.in_shape.features]
-        child_mask = parent_mask[:, : self.in_shape.features]
-        sampling_ctx.update(child_idx, child_mask)
-        return self.inputs.rsample(
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
 
     def marginalize(
         self,
@@ -447,7 +338,7 @@ class _LatentSelectionCapture(Module):
         else:
             repetition_select = None
 
-        keep_selectors_attached = isinstance(sampling_ctx, DifferentiableSamplingContext)
+        keep_selectors_attached = False
 
         self._capture_fn(
             channel_idx.detach().clone().to(dtype=torch.long),
@@ -477,31 +368,6 @@ class _LatentSelectionCapture(Module):
         self._capture(sampling_ctx, data.shape[1])
         return self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
-        method: str = "simple",
-        tau: float = 1.0,
-        hard: bool = True,
-    ) -> Tensor:
-        if cache is None:
-            cache = Cache()
-        data = self._prepare_sample_data(num_samples, data)
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
-        self._capture(sampling_ctx, data.shape[1])
-        return self.inputs.rsample(
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
 
     def marginalize(
         self,
@@ -1088,30 +954,14 @@ class ConvPcJointEncoder(nn.Module):
         self, x_flat: Tensor, *, mpe: bool, tau: float, return_sampling_ctx: bool = False
     ) -> Tensor | tuple[Tensor, SamplingContext]:
         """Sample ``z ~ p(Z|X=x)`` and optionally return sampling context."""
+        del tau
         self._reset_latent_leaf_selection()
         trace_tensor("convpc.posterior.x_flat", x_flat)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
         trace_tensor("convpc.posterior.evidence", evidence)
-        if mpe:
-            sampling_ctx: SamplingContext = SamplingContext(num_samples=x_flat.shape[0], device=x_flat.device)
-        else:
-            # Keep one shared differentiable context so routing selectors propagate back
-            # to APC latent-stat extraction and tracing.
-            sampling_ctx = DifferentiableSamplingContext(
-                num_samples=x_flat.shape[0],
-                device=x_flat.device,
-                method=DiffSampleMethod.SIMPLE,
-                tau=tau,
-                hard=True,
-                skip_rsample_noise=return_sampling_ctx and isinstance(self._z_leaf, Normal),
-            )
+        sampling_ctx = SamplingContext(num_samples=x_flat.shape[0], device=x_flat.device)
         trace_sampling_context("convpc.posterior.ctx_init", sampling_ctx)
-        if mpe:
-            joint = self.pc.sample(data=evidence, is_mpe=True, sampling_ctx=sampling_ctx)
-        else:
-            joint = self.pc.rsample(
-                data=evidence, is_mpe=False, tau=tau, hard=True, sampling_ctx=sampling_ctx
-            )
+        joint = self.pc.sample(data=evidence, is_mpe=mpe, sampling_ctx=sampling_ctx)
         trace_tensor("convpc.posterior.joint", joint)
         trace_sampling_context("convpc.posterior.ctx_out", sampling_ctx)
         z = joint[:, self._z_cols]
@@ -1274,74 +1124,10 @@ class ConvPcJointEncoder(nn.Module):
 
     def _latent_stats_from_leaf_params(self, sampling_ctx: SamplingContext, batch_size: int) -> LatentStats:
         """Extract posterior ``mu/logvar`` from selected latent leaf parameters."""
-        if not isinstance(self._z_leaf, Normal):
-            raise InvalidParameterError("Latent stats from leaf params require a Normal latent leaf.")
-
-        loc = self._z_leaf.loc
-        scale = self._z_leaf.scale.clamp_min(self.posterior_var_floor**0.5)
-        if loc.dim() != 3 or scale.dim() != 3:
-            raise InvalidParameterError("Unexpected latent leaf parameter shape for Normal leaf.")
-
-        loc_selected = loc.unsqueeze(0).expand(batch_size, -1, -1, -1)
-        scale_selected = scale.unsqueeze(0).expand(batch_size, -1, -1, -1)
-
-        repetition_selector = self._resolve_latent_repetition_selector(
-            sampling_ctx=sampling_ctx,
-            batch_size=batch_size,
-            loc=loc,
+        del sampling_ctx, batch_size
+        raise UnsupportedOperationError(
+            "APC latent stats are not available after sample rollback."
         )
-        if repetition_selector is not None:
-            repetition_selector = repetition_selector.unsqueeze(2)  # (B, latent_dim, 1, repetitions)
-            loc_selected = select_with_soft_or_hard(
-                loc_selected,
-                selector=repetition_selector,
-                dim=3,
-            )
-            scale_selected = select_with_soft_or_hard(
-                scale_selected,
-                selector=repetition_selector,
-                dim=3,
-            )
-        else:
-            repetition_idx = self._resolve_latent_repetition_indices(
-                sampling_ctx=sampling_ctx,
-                batch_size=batch_size,
-                loc=loc,
-            )
-            repetition_gather = (
-                repetition_idx.unsqueeze(2).unsqueeze(3).expand(-1, -1, loc_selected.shape[2], 1)
-            )
-            loc_selected = loc_selected.gather(dim=3, index=repetition_gather).squeeze(3)
-            scale_selected = scale_selected.gather(dim=3, index=repetition_gather).squeeze(3)
-
-        channel_selector = self._resolve_latent_channel_selector(
-            sampling_ctx=sampling_ctx,
-            batch_size=batch_size,
-            loc=loc,
-        )
-        if channel_selector is not None:
-            mu = select_with_soft_or_hard(
-                loc_selected,
-                selector=channel_selector,
-                dim=2,
-            )
-            sel_scale = select_with_soft_or_hard(
-                scale_selected,
-                selector=channel_selector,
-                dim=2,
-            )
-        else:
-            channel_idx = self._resolve_latent_channel_indices(
-                sampling_ctx=sampling_ctx,
-                batch_size=batch_size,
-                loc=loc,
-            )
-            channel_gather = channel_idx.unsqueeze(2)
-            mu = loc_selected.gather(dim=2, index=channel_gather).squeeze(2)
-            sel_scale = scale_selected.gather(dim=2, index=channel_gather).squeeze(2)
-
-        logvar = (sel_scale.pow(2)).clamp_min(self.posterior_var_floor).log()
-        return LatentStats(mu=mu, logvar=logvar)
 
     def _latent_stats_mc_fallback(
         self,
@@ -1373,34 +1159,17 @@ class ConvPcJointEncoder(nn.Module):
         return_latent_stats: bool = False,
     ) -> Tensor | tuple[LatentStats, Tensor]:
         """Encode observations into latent samples."""
+        if return_latent_stats:
+            raise UnsupportedOperationError(
+                "APC latent stats are not available after sample rollback. "
+                "Use encode(return_latent_stats=False)."
+            )
         trace_tensor("convpc.encode.x_in", x)
         x_flat = self._flatten_x(x)
-        z_out = self._posterior_sample(x_flat, mpe=mpe, tau=tau, return_sampling_ctx=return_latent_stats)
-
-        if not return_latent_stats:
-            if isinstance(z_out, Tensor):
-                trace_tensor("convpc.encode.z_out", z_out)
-            return z_out
-
-        z_sample, sampling_ctx = z_out
-        if isinstance(self._z_leaf, Normal):
-            stats = self._latent_stats_from_leaf_params(
-                sampling_ctx=sampling_ctx,
-                batch_size=z_sample.shape[0],
-            )
-            # Match reference contract: reparameterize from selected leaf parameters.
-            z = tau * torch.randn_like(stats.mu) * torch.exp(0.5 * stats.logvar) + stats.mu
-            trace_tensor("convpc.encode.stats.mu", stats.mu)
-            trace_tensor("convpc.encode.stats.logvar", stats.logvar)
+        z = self._posterior_sample(x_flat, mpe=mpe, tau=tau, return_sampling_ctx=False)
+        if isinstance(z, Tensor):
             trace_tensor("convpc.encode.z_out", z)
-            return stats, z
-
-        # Explicit fallback only for non-Normal latent leaves.
-        stats = self._latent_stats_mc_fallback(x_flat=x_flat, first_sample=z_sample, mpe=mpe, tau=tau)
-        trace_tensor("convpc.encode.stats.mu", stats.mu)
-        trace_tensor("convpc.encode.stats.logvar", stats.logvar)
-        trace_tensor("convpc.encode.z_out", z_sample)
-        return stats, z_sample
+        return z
 
     def decode(
         self,
@@ -1422,7 +1191,7 @@ class ConvPcJointEncoder(nn.Module):
         if mpe:
             joint = self.pc.sample(data=evidence, is_mpe=True)
         else:
-            joint = self.pc.rsample(data=evidence, is_mpe=False, tau=tau, hard=True)
+            joint = self.pc.sample(data=evidence, is_mpe=False)
         trace_tensor("convpc.decode.joint", joint)
 
         x_rec_flat = joint[:, self._x_cols]
@@ -1455,7 +1224,7 @@ class ConvPcJointEncoder(nn.Module):
             x_flat=None, z_flat=None, num_samples=num_samples, device=self.pc.device
         )
         trace_tensor("convpc.prior.evidence", evidence)
-        joint = self.pc.rsample(data=evidence, is_mpe=False, tau=tau, hard=True)
+        joint = self.pc.sample(data=evidence, is_mpe=False)
         trace_tensor("convpc.prior.joint", joint)
         z = joint[:, self._z_cols]
         trace_tensor("convpc.prior.z", z)
@@ -1463,8 +1232,7 @@ class ConvPcJointEncoder(nn.Module):
 
     def latent_stats(self, x: Tensor, *, tau: float = 1.0) -> LatentStats:
         """Return latent posterior stats for ``x``."""
-        x_flat = self._flatten_x(x)
-        z, sampling_ctx = self._posterior_sample(x_flat, mpe=False, tau=tau, return_sampling_ctx=True)
-        if isinstance(self._z_leaf, Normal):
-            return self._latent_stats_from_leaf_params(sampling_ctx=sampling_ctx, batch_size=z.shape[0])
-        return self._latent_stats_mc_fallback(x_flat=x_flat, first_sample=z, mpe=False, tau=tau)
+        del x, tau
+        raise UnsupportedOperationError(
+            "APC latent stats are not available after sample rollback."
+        )

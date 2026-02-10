@@ -10,7 +10,7 @@ from torch import nn
 from torch.optim import Adam, Optimizer
 from torch.utils.data import DataLoader, TensorDataset
 
-from spflow.exceptions import InvalidParameterError
+from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
 from spflow.zoo.apc.config import ApcTrainConfig
 from spflow.zoo.apc.model import AutoencodingPC
 
@@ -64,20 +64,10 @@ def train_apc_step(
     Returns:
         Detached tensor metrics produced by ``model.loss_components``.
     """
-    model.train()
-    x = _extract_batch_tensor(batch).to(_model_device(model))
-
-    optimizer.zero_grad(set_to_none=True)
-    losses = model.loss_components(x)
-    total = losses["total"]
-    total.backward()
-
-    if grad_clip_norm is not None:
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=grad_clip_norm)
-
-    optimizer.step()
-
-    return {k: v.detach() for k, v in losses.items() if isinstance(v, Tensor)}
+    del model, batch, optimizer, grad_clip_norm
+    raise UnsupportedOperationError(
+        "APC training helpers are unavailable after sample rollback."
+    )
 
 
 def evaluate_apc(
@@ -96,24 +86,10 @@ def evaluate_apc(
     Returns:
         Mean ``rec``, ``kld``, ``nll``, and ``total`` metrics.
     """
-    loader = _to_loader(data, batch_size=batch_size, shuffle=False)
-    model.eval()
-
-    totals: dict[str, float] = {"rec": 0.0, "kld": 0.0, "nll": 0.0, "total": 0.0}
-    num_batches = 0
-
-    with torch.no_grad():
-        for batch in loader:
-            x = _extract_batch_tensor(batch).to(_model_device(model))
-            losses = model.loss_components(x)
-            for key in totals:
-                totals[key] += float(losses[key].item())
-            num_batches += 1
-
-    if num_batches == 0:
-        raise InvalidParameterError("evaluate_apc() received no batches.")
-
-    return {key: value / num_batches for key, value in totals.items()}
+    del model, data, batch_size
+    raise UnsupportedOperationError(
+        "APC training helpers are unavailable after sample rollback."
+    )
 
 
 def fit_apc(
@@ -137,43 +113,7 @@ def fit_apc(
         Per-epoch metric dictionaries including train metrics and, when provided,
         validation metrics.
     """
-    if optimizer is None:
-        optimizer = Adam(
-            params=model.parameters(),
-            lr=config.learning_rate,
-            weight_decay=config.weight_decay,
-        )
-
-    train_loader = _to_loader(train_data, batch_size=config.batch_size, shuffle=True)
-
-    history: list[dict[str, float]] = []
-    for epoch in range(config.epochs):
-        # Accumulate per-batch means and normalize once per epoch.
-        epoch_totals = {"rec": 0.0, "kld": 0.0, "nll": 0.0, "total": 0.0}
-        num_batches = 0
-
-        for batch in train_loader:
-            step_losses = train_apc_step(
-                model=model,
-                batch=batch,
-                optimizer=optimizer,
-                grad_clip_norm=config.grad_clip_norm,
-            )
-            for key in epoch_totals:
-                epoch_totals[key] += float(step_losses[key].item())
-            num_batches += 1
-
-        if num_batches == 0:
-            raise InvalidParameterError("fit_apc() received no training batches.")
-
-        epoch_metrics = {f"train_{k}": v / num_batches for k, v in epoch_totals.items()}
-        epoch_metrics["epoch"] = float(epoch + 1)
-
-        if val_data is not None:
-            val_metrics = evaluate_apc(model, val_data, batch_size=config.batch_size)
-            for key, value in val_metrics.items():
-                epoch_metrics[f"val_{key}"] = value
-
-        history.append(epoch_metrics)
-
-    return history
+    del model, train_data, config, optimizer, val_data
+    raise UnsupportedOperationError(
+        "APC training helpers are unavailable after sample rollback."
+    )

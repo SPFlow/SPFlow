@@ -15,10 +15,6 @@ from torch import Tensor
 from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache, cached
-from spflow.utils.diff_sampling_context_ops import (
-    expand_singleton_feature_selectors_inplace,
-    repeat_or_expand_feature_selectors_inplace,
-)
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -279,50 +275,4 @@ class SplitByIndex(Split):
         )
         return data
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Optional[Dict[str, Any]] = None,
-        sampling_ctx: SamplingContext | None = None,
-        method: str = "simple",
-        tau: float = 1.0,
-        hard: bool = True,
-    ) -> Tensor:
-        """Differentiable routing variant of sample()."""
-        data = self._prepare_sample_data(num_samples, data)
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
 
-        input_features = self.inputs.out_shape.features
-        ctx_features = sampling_ctx.channel_index.shape[1]
-        if ctx_features != input_features:
-            first_split_size = len(self._indices[0])
-            if ctx_features == first_split_size:
-                channel_index = sampling_ctx.channel_index.repeat(1, self.num_splits)
-                mask = sampling_ctx.mask.repeat(1, self.num_splits)
-                if channel_index.shape[1] > input_features:
-                    channel_index = channel_index[:, :input_features]
-                    mask = mask[:, :input_features]
-                sampling_ctx.update(channel_index=channel_index, mask=mask)
-                repeat_or_expand_feature_selectors_inplace(
-                    sampling_ctx,
-                    source_features=ctx_features,
-                    target_features=input_features,
-                    repeats=self.num_splits,
-                )
-            else:
-                mask = sampling_ctx.mask.expand(data.shape[0], input_features)
-                channel_index = sampling_ctx.channel_index.expand(data.shape[0], input_features)
-                sampling_ctx.update(channel_index=channel_index, mask=mask)
-                expand_singleton_feature_selectors_inplace(sampling_ctx, target_features=input_features)
-
-        return self.inputs.rsample(
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-            method=method,
-            tau=tau,
-            hard=hard,
-        )
