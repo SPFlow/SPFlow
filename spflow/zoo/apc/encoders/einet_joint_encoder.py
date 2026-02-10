@@ -16,6 +16,10 @@ from torch import Tensor, nn
 from spflow.exceptions import InvalidParameterError, ShapeError
 from spflow.modules.leaves import Normal
 from spflow.modules.leaves.leaf import LeafModule
+from spflow.utils.diff_sampling import DiffSampleMethod, select_with_soft_or_hard
+from spflow.utils.diff_sampling_context import DifferentiableSamplingContext
+from spflow.utils.sampling_context import SamplingContext
+from spflow.zoo.apc.debug_trace import trace_sampling_context, trace_tensor
 from spflow.zoo.apc.encoders.base import LatentStats
 from spflow.zoo.einet import Einet
 
@@ -23,11 +27,17 @@ LeafFactory = Callable[[list[int], int, int], LeafModule]
 
 
 def _default_normal_leaf(scope_indices: list[int], out_channels: int, num_repetitions: int) -> LeafModule:
-    """Create a normal leaf over a scope block."""
+    """Create a Normal leaf with reference-style ``(mu, logvar)`` init."""
+    event_shape = (len(scope_indices), out_channels, num_repetitions)
+    loc = torch.randn(event_shape)
+    logvar = torch.randn(event_shape)
+    scale = torch.exp(0.5 * logvar)
     return Normal(
         scope=scope_indices,
         out_channels=out_channels,
         num_repetitions=num_repetitions,
+        loc=loc,
+        scale=scale,
     )
 
 
@@ -97,6 +107,7 @@ class EinetJointEncoder(nn.Module):
 
         z_leaf = z_leaf_factory(self._z_cols, num_leaves, num_repetitions)
         self._validate_leaf_scope(leaf=z_leaf, expected_scope=self._z_cols, role="z")
+        self._z_leaf = z_leaf
 
         self.pc = Einet(
             leaf_modules=[x_leaf, z_leaf],
@@ -215,14 +226,136 @@ class EinetJointEncoder(nn.Module):
             )
         return ll_flat[:, 0]
 
-    def _posterior_sample(self, x_flat: Tensor, *, mpe: bool, tau: float) -> Tensor:
-        """Sample ``z ~ p(Z|X=x)`` using NaN-evidence completion on latent columns."""
+    def _posterior_sample(
+        self, x_flat: Tensor, *, mpe: bool, tau: float, return_sampling_ctx: bool = False
+    ) -> Tensor | tuple[Tensor, SamplingContext]:
+        """Sample ``z ~ p(Z|X=x)`` and optionally return sampling context."""
+        trace_tensor("einet.posterior.x_flat", x_flat)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
+        trace_tensor("einet.posterior.evidence", evidence)
         if mpe:
-            joint = self.pc.sample(data=evidence, is_mpe=True)
+            sampling_ctx: SamplingContext = SamplingContext(num_samples=x_flat.shape[0], device=x_flat.device)
         else:
-            joint = self.pc.rsample(data=evidence, is_mpe=False, tau=tau, hard=True)
-        return joint[:, self._z_cols]
+            # Keep differentiable routing selectors on the same context instance so
+            # posterior latent-stat extraction observes the sampled paths.
+            sampling_ctx = DifferentiableSamplingContext(
+                num_samples=x_flat.shape[0],
+                device=x_flat.device,
+                method=DiffSampleMethod.SIMPLE,
+                tau=tau,
+                hard=True,
+                skip_rsample_noise=return_sampling_ctx and isinstance(self._z_leaf, Normal),
+            )
+        trace_sampling_context("einet.posterior.ctx_init", sampling_ctx)
+        if mpe:
+            joint = self.pc.sample(data=evidence, is_mpe=True, sampling_ctx=sampling_ctx)
+        else:
+            joint = self.pc.rsample(
+                data=evidence, is_mpe=False, tau=tau, hard=True, sampling_ctx=sampling_ctx
+            )
+        trace_tensor("einet.posterior.joint", joint)
+        trace_sampling_context("einet.posterior.ctx_out", sampling_ctx)
+        z = joint[:, self._z_cols]
+        trace_tensor("einet.posterior.z", z)
+        if return_sampling_ctx:
+            return z, sampling_ctx
+        return z
+
+    def _latent_stats_from_leaf_params(self, sampling_ctx: SamplingContext, batch_size: int) -> LatentStats:
+        """Extract posterior ``mu/logvar`` from selected latent leaf parameters."""
+        if not isinstance(self._z_leaf, Normal):
+            raise InvalidParameterError("Latent stats require a Normal latent leaf.")
+
+        loc = self._z_leaf.loc
+        scale = self._z_leaf.scale.clamp_min(self.posterior_var_floor**0.5)
+        if loc.dim() != 3 or scale.dim() != 3:
+            raise InvalidParameterError("Unexpected latent leaf parameter shape for Normal leaf.")
+
+        def _resolve_selector(
+            selector: Tensor | None,
+            *,
+            num_classes: int,
+        ) -> Tensor | None:
+            if selector is None:
+                return None
+            if selector.dim() != 3:
+                return None
+            if selector.shape[0] != batch_size:
+                return None
+            if selector.shape[1] == 1:
+                selector = selector.expand(-1, self.latent_dim, -1)
+            elif selector.shape[1] == self.latent_dim:
+                pass
+            elif selector.shape[1] == (self.num_x_features + self.latent_dim):
+                selector = selector[:, self._z_cols, :]
+            else:
+                return None
+            if selector.shape[2] != num_classes:
+                return None
+            return selector.to(device=loc.device, dtype=loc.dtype)
+
+        loc_selected = loc.unsqueeze(0).expand(batch_size, -1, -1, -1)
+        scale_selected = scale.unsqueeze(0).expand(batch_size, -1, -1, -1)
+
+        rep_selector = _resolve_selector(
+            getattr(sampling_ctx, "repetition_select", None),
+            num_classes=loc.shape[2],
+        )
+        if rep_selector is not None:
+            rep_selector = rep_selector.unsqueeze(2)  # (B, latent_dim, 1, repetitions)
+            loc_selected = select_with_soft_or_hard(loc_selected, selector=rep_selector, dim=3)
+            scale_selected = select_with_soft_or_hard(scale_selected, selector=rep_selector, dim=3)
+        else:
+            if sampling_ctx.repetition_idx is None:
+                repetition_idx = torch.zeros(
+                    (batch_size, self.latent_dim), dtype=torch.long, device=loc.device
+                )
+            else:
+                rep = sampling_ctx.repetition_idx
+                if rep.dim() == 1:
+                    repetition_idx = rep.unsqueeze(1).expand(-1, self.latent_dim)
+                elif rep.shape[1] == 1:
+                    repetition_idx = rep.expand(-1, self.latent_dim)
+                elif rep.shape[1] == self.latent_dim:
+                    repetition_idx = rep
+                elif rep.shape[1] == (self.num_x_features + self.latent_dim):
+                    repetition_idx = rep[:, self._z_cols]
+                else:
+                    repetition_idx = rep[:, :1].expand(-1, self.latent_dim)
+                repetition_idx = repetition_idx.to(dtype=torch.long).clamp(min=0, max=loc.shape[2] - 1)
+
+            repetition_gather = (
+                repetition_idx.unsqueeze(2).unsqueeze(3).expand(-1, -1, loc_selected.shape[2], 1)
+            )
+            loc_selected = loc_selected.gather(dim=3, index=repetition_gather).squeeze(3)
+            scale_selected = scale_selected.gather(dim=3, index=repetition_gather).squeeze(3)
+
+        channel_selector = _resolve_selector(
+            getattr(sampling_ctx, "channel_select", None),
+            num_classes=loc.shape[1],
+        )
+        if channel_selector is not None:
+            mu = select_with_soft_or_hard(loc_selected, selector=channel_selector, dim=2)
+            sel_scale = select_with_soft_or_hard(scale_selected, selector=channel_selector, dim=2)
+        else:
+            channels = sampling_ctx.channel_index
+            ctx_features = channels.shape[1]
+            if ctx_features == 1:
+                channel_idx = channels.expand(-1, self.latent_dim)
+            elif ctx_features == self.latent_dim:
+                channel_idx = channels
+            elif ctx_features == (self.num_x_features + self.latent_dim):
+                channel_idx = channels[:, self._z_cols]
+            else:
+                raise InvalidParameterError(
+                    f"Unexpected sampling context feature width {ctx_features} for latent stats extraction."
+                )
+            channel_idx = channel_idx.to(dtype=torch.long).clamp(min=0, max=loc.shape[1] - 1)
+            mu = loc_selected.gather(dim=2, index=channel_idx.unsqueeze(2)).squeeze(2)
+            sel_scale = scale_selected.gather(dim=2, index=channel_idx.unsqueeze(2)).squeeze(2)
+
+        logvar = (sel_scale.pow(2)).clamp_min(self.posterior_var_floor).log()
+        return LatentStats(mu=mu, logvar=logvar)
 
     def encode(
         self,
@@ -243,11 +376,25 @@ class EinetJointEncoder(nn.Module):
         Returns:
             Either ``z`` or ``(LatentStats, z)``.
         """
+        trace_tensor("einet.encode.x_in", x)
         x_flat = self._flatten_x(x)
-        z = self._posterior_sample(x_flat, mpe=mpe, tau=tau)
+        z_out = self._posterior_sample(x_flat, mpe=mpe, tau=tau, return_sampling_ctx=return_latent_stats)
         if return_latent_stats:
-            return self.latent_stats(x_flat, tau=tau), z
-        return z
+            z_sample, sampling_ctx = z_out
+            stats = self._latent_stats_from_leaf_params(
+                sampling_ctx=sampling_ctx, batch_size=z_sample.shape[0]
+            )
+            z_reparam = tau * torch.randn_like(stats.mu) * torch.exp(0.5 * stats.logvar) + stats.mu
+            # Keep reference-style forward value from leaf-parameter reparameterization
+            # while preserving gradient connectivity through posterior routing samples.
+            z = z_reparam + (z_sample - z_sample.detach())
+            trace_tensor("einet.encode.stats.mu", stats.mu)
+            trace_tensor("einet.encode.stats.logvar", stats.logvar)
+            trace_tensor("einet.encode.z_out", z)
+            return stats, z
+        if isinstance(z_out, Tensor):
+            trace_tensor("einet.encode.z_out", z_out)
+        return z_out
 
     def decode(
         self,
@@ -267,19 +414,24 @@ class EinetJointEncoder(nn.Module):
             tau: Temperature for differentiable sampling.
             fill_evidence: If ``True``, preserve finite entries from ``x`` in output.
         """
+        trace_tensor("einet.decode.z_in", z)
+        trace_tensor("einet.decode.x_evidence_in", x)
         z_flat = self._flatten_z(z)
         x_flat = None if x is None else self._flatten_x(x)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=z_flat)
+        trace_tensor("einet.decode.evidence", evidence)
 
         if mpe:
             joint = self.pc.sample(data=evidence, is_mpe=True)
         else:
             joint = self.pc.rsample(data=evidence, is_mpe=False, tau=tau, hard=True)
+        trace_tensor("einet.decode.joint", joint)
 
         x_rec = joint[:, self._x_cols]
         if fill_evidence and x_flat is not None:
             finite_mask = torch.isfinite(x_flat)
             x_rec = torch.where(finite_mask, x_flat.to(x_rec.dtype), x_rec)
+        trace_tensor("einet.decode.x_rec", x_rec)
         return x_rec
 
     def joint_log_likelihood(self, x: Tensor, z: Tensor) -> Tensor:
@@ -304,24 +456,20 @@ class EinetJointEncoder(nn.Module):
         evidence = self._build_evidence(
             x_flat=None, z_flat=None, num_samples=num_samples, device=self.pc.device
         )
+        trace_tensor("einet.prior.evidence", evidence)
         joint = self.pc.rsample(
             data=evidence,
             is_mpe=False,
             tau=tau,
             hard=True,
         )
-        return joint[:, self._z_cols]
+        trace_tensor("einet.prior.joint", joint)
+        z = joint[:, self._z_cols]
+        trace_tensor("einet.prior.z", z)
+        return z
 
     def latent_stats(self, x: Tensor, *, tau: float = 1.0) -> LatentStats:
-        """Estimate posterior moments for ``p(Z|X=x)`` via Monte Carlo samples."""
+        """Return latent stats from selected latent leaf parameters."""
         x_flat = self._flatten_x(x)
-
-        samples = [
-            self._posterior_sample(x_flat, mpe=False, tau=tau) for _ in range(self.posterior_stat_samples)
-        ]
-        stacked = torch.stack(samples, dim=0)  # (K, B, latent_dim)
-
-        mu = stacked.mean(dim=0)
-        var = stacked.var(dim=0, unbiased=False).clamp_min(self.posterior_var_floor)
-        logvar = var.log()
-        return LatentStats(mu=mu, logvar=logvar)
+        z, sampling_ctx = self._posterior_sample(x_flat, mpe=False, tau=tau, return_sampling_ctx=True)
+        return self._latent_stats_from_leaf_params(sampling_ctx=sampling_ctx, batch_size=z.shape[0])

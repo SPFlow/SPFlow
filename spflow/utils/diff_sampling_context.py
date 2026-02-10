@@ -25,6 +25,7 @@ class DifferentiableSamplingContext(SamplingContext):
         channel_select: Tensor | None = None,
         repetition_select: Tensor | None = None,
         branch_weight: Tensor | None = None,
+        skip_rsample_noise: bool = False,
     ) -> None:
         super().__init__(
             num_samples=num_samples,
@@ -40,6 +41,7 @@ class DifferentiableSamplingContext(SamplingContext):
         self.channel_select = channel_select
         self.repetition_select = repetition_select
         self.branch_weight = branch_weight
+        self.skip_rsample_noise = skip_rsample_noise
 
     def copy(self) -> "DifferentiableSamplingContext":
         return DifferentiableSamplingContext(
@@ -53,4 +55,5 @@ class DifferentiableSamplingContext(SamplingContext):
             channel_select=self.channel_select.clone() if self.channel_select is not None else None,
             repetition_select=self.repetition_select.clone() if self.repetition_select is not None else None,
             branch_weight=self.branch_weight.clone() if self.branch_weight is not None else None,
+            skip_rsample_noise=self.skip_rsample_noise,
         )

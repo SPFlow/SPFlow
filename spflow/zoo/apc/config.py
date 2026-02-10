@@ -35,18 +35,22 @@ class ApcConfig:
     Attributes:
         latent_dim: Dimensionality of the latent variable block ``Z``.
         rec_loss: Reconstruction criterion used by :class:`AutoencodingPC`.
+        n_bits: Bit-depth used by reference-style image reconstruction scaling.
         sample_tau: Temperature for differentiable sampling (SIMPLE/Gumbel style paths).
         loss_weights: Weights for ``rec``, ``kld``, and ``nll`` objective terms.
     """
 
     latent_dim: int
     rec_loss: Literal["mse", "bce"] = "mse"
+    n_bits: int = 8
     sample_tau: float = 1.0
     loss_weights: ApcLossWeights = field(default_factory=ApcLossWeights)
 
     def __post_init__(self) -> None:
         if self.latent_dim <= 0:
             raise InvalidParameterError(f"latent_dim must be >= 1, got {self.latent_dim}.")
+        if self.n_bits <= 1:
+            raise InvalidParameterError(f"n_bits must be >= 2, got {self.n_bits}.")
         if self.sample_tau <= 0.0:
             raise InvalidParameterError(f"sample_tau must be > 0, got {self.sample_tau}.")
 

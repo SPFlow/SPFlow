@@ -15,7 +15,7 @@ def _build_encoder() -> ConvPcJointEncoder:
         input_channels=1,
         latent_dim=4,
         channels=4,
-        depth=1,
+        depth=2,
         kernel_size=2,
         num_repetitions=1,
         use_sum_conv=False,
@@ -78,7 +78,27 @@ def test_convpc_apc_decode_fill_evidence_keeps_observed_entries():
     assert torch.equal(x_rec[observed], x_partial[observed].to(x_rec.dtype))
 
 
-def test_convpc_apc_requires_matching_latent_dim_for_injection_depth():
+def test_convpc_reference_allows_latent_dim_mismatch_via_packing():
+    encoder = ConvPcJointEncoder(
+        input_height=4,
+        input_width=4,
+        input_channels=1,
+        latent_dim=3,
+        channels=4,
+        depth=2,
+        kernel_size=2,
+        num_repetitions=1,
+        use_sum_conv=False,
+        latent_depth=0,
+        architecture="reference",
+    )
+    x = torch.randn(2, 1, 4, 4)
+    z = encoder.encode(x, tau=1.0)
+    assert z.shape == (2, 3)
+    assert torch.isfinite(z).all()
+
+
+def test_convpc_legacy_requires_matching_latent_dim_for_injection_depth():
     with pytest.raises(InvalidParameterError, match="latent_dim must match the feature count"):
         ConvPcJointEncoder(
             input_height=4,
@@ -86,9 +106,10 @@ def test_convpc_apc_requires_matching_latent_dim_for_injection_depth():
             input_channels=1,
             latent_dim=3,
             channels=4,
-            depth=1,
+            depth=2,
             kernel_size=2,
             num_repetitions=1,
             use_sum_conv=False,
             latent_depth=0,
+            architecture="legacy",
         )

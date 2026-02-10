@@ -15,6 +15,10 @@ from torch import Tensor
 from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache, cached
+from spflow.utils.diff_sampling_context_ops import (
+    expand_singleton_feature_selectors_inplace,
+    repeat_or_expand_feature_selectors_inplace,
+)
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -206,6 +210,12 @@ class SplitByIndex(Split):
 
         return result
 
+    def merge_split_tensors(self, *split_tensors: Tensor) -> Tensor:
+        """Merge split feature tensors back to original layout."""
+        concat_tensors = torch.cat(split_tensors, dim=1)
+        inverse_order = self._inverse_order.to(concat_tensors.device)
+        return concat_tensors.index_select(dim=1, index=inverse_order)
+
     def sample(
         self,
         num_samples: int | None = None,
@@ -295,10 +305,17 @@ class SplitByIndex(Split):
                     channel_index = channel_index[:, :input_features]
                     mask = mask[:, :input_features]
                 sampling_ctx.update(channel_index=channel_index, mask=mask)
+                repeat_or_expand_feature_selectors_inplace(
+                    sampling_ctx,
+                    source_features=ctx_features,
+                    target_features=input_features,
+                    repeats=self.num_splits,
+                )
             else:
                 mask = sampling_ctx.mask.expand(data.shape[0], input_features)
                 channel_index = sampling_ctx.channel_index.expand(data.shape[0], input_features)
                 sampling_ctx.update(channel_index=channel_index, mask=mask)
+                expand_singleton_feature_selectors_inplace(sampling_ctx, target_features=input_features)
 
         return self.inputs.rsample(
             data=data,

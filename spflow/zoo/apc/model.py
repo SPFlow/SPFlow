@@ -14,6 +14,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from spflow.exceptions import InvalidParameterError
+from spflow.zoo.apc.debug_trace import trace_tensor
 from spflow.zoo.apc.config import ApcConfig
 from spflow.zoo.apc.encoders.base import ApcEncoder, LatentStats
 
@@ -54,8 +55,12 @@ class AutoencodingPC(nn.Module):
         Returns:
             Latent samples ``z``.
         """
+        trace_tensor("apc.encode.x_in", x)
         tau_eff = self.config.sample_tau if tau is None else tau
-        return self.encoder.encode(x, mpe=mpe, tau=tau_eff)  # type: ignore[return-value]
+        z = self.encoder.encode(x, mpe=mpe, tau=tau_eff)  # type: ignore[assignment]
+        if isinstance(z, Tensor):
+            trace_tensor("apc.encode.z_samples", z)
+        return z  # type: ignore[return-value]
 
     def decode(self, z: Tensor, *, mpe: bool = False, tau: float | None = None) -> Tensor:
         """Decode latents into reconstructions/samples in data space.
@@ -68,10 +73,17 @@ class AutoencodingPC(nn.Module):
         Returns:
             Reconstructed/sample ``x`` tensor.
         """
+        trace_tensor("apc.decode.z_in", z)
         tau_eff = self.config.sample_tau if tau is None else tau
         if self.decoder is None:
-            return self.encoder.decode(z, mpe=mpe, tau=tau_eff)
-        return self.decoder(z)
+            x_rec = self.encoder.decode(z, mpe=mpe, tau=tau_eff)
+            trace_tensor("apc.decode.x_rec", x_rec)
+            return x_rec
+        x_rec = self.decoder(z)
+        if x_rec.dim() > 2:
+            x_rec = (x_rec + 1.0) / 2.0 * (2**self.config.n_bits - 1)
+        trace_tensor("apc.decode.x_rec", x_rec)
+        return x_rec
 
     def reconstruct(self, x: Tensor, *, mpe: bool = False, tau: float | None = None) -> Tensor:
         """Reconstruct ``x`` by encoding to ``z`` and decoding back to data space."""
@@ -98,11 +110,18 @@ class AutoencodingPC(nn.Module):
         return tensor.reshape(tensor.shape[0], -1)
 
     def _reconstruction_loss(self, x: Tensor, x_rec: Tensor) -> Tensor:
-        """Compute reconstruction loss on observed entries only.
+        """Compute reconstruction loss following the reference APC reduction.
 
-        Any ``NaN`` in ``x`` is treated as missing evidence and excluded from
-        the reconstruction term.
+        For image-like tensors (rank > 2), this applies the same legacy scaling
+        used in the reference implementation before the reconstruction criterion.
         """
+        if x.dim() > 2:
+            # Preserve the reference APC's historical scaling behavior exactly.
+            # NOTE: This uses n_bits**2 - 1 (not 2**n_bits - 1).
+            denom = float(self.config.n_bits**2 - 1)
+            x = x / denom * 2.0 - 1.0
+            x_rec = x_rec / denom * 2.0 - 1.0
+
         x_flat = self._flatten_tensor(x)
         x_rec_flat = self._flatten_tensor(x_rec)
 
@@ -110,19 +129,12 @@ class AutoencodingPC(nn.Module):
             raise InvalidParameterError(
                 f"Reconstruction shape mismatch: x has {tuple(x_flat.shape)}, x_rec has {tuple(x_rec_flat.shape)}."
             )
-
-        observed = torch.isfinite(x_flat)
-        if not observed.any():
-            return x_flat.new_zeros(())
-
-        x_obs = x_flat[observed]
-        x_rec_obs = x_rec_flat[observed]
+        batch_size = x_flat.shape[0]
 
         if self.config.rec_loss == "mse":
-            return F.mse_loss(x_rec_obs, x_obs, reduction="mean")
+            return F.mse_loss(x_rec_flat, x_flat, reduction="sum") / batch_size
         if self.config.rec_loss == "bce":
-            x_rec_obs = x_rec_obs.clamp_min(1e-6).clamp_max(1.0 - 1e-6)
-            return F.binary_cross_entropy(x_rec_obs, x_obs, reduction="mean")
+            return F.binary_cross_entropy(x_rec_flat, x_flat, reduction="sum") / batch_size
         raise InvalidParameterError(f"Unsupported rec_loss '{self.config.rec_loss}'.")
 
     @staticmethod
@@ -150,6 +162,7 @@ class AutoencodingPC(nn.Module):
             Dictionary with scalar terms ``rec``, ``kld``, ``nll``, ``total``
             and helpful intermediates ``z``, ``x_rec``, ``mu``, ``logvar``.
         """
+        trace_tensor("apc.loss.data_in", x)
         tau = self.config.sample_tau
         latent_out = self.encoder.encode(x, mpe=False, tau=tau, return_latent_stats=True)
         if not isinstance(latent_out, tuple) or len(latent_out) != 2:
@@ -161,6 +174,10 @@ class AutoencodingPC(nn.Module):
             )
 
         x_rec = self.decode(z, mpe=False, tau=tau)
+        trace_tensor("apc.loss.z_samples", z)
+        trace_tensor("apc.loss.mu", stats.mu)
+        trace_tensor("apc.loss.logvar", stats.logvar)
+        trace_tensor("apc.loss.x_rec", x_rec)
 
         rec = self._reconstruction_loss(x=x, x_rec=x_rec)
         kld = self._kld_from_stats(stats)
@@ -168,6 +185,10 @@ class AutoencodingPC(nn.Module):
 
         w = self.config.loss_weights
         total = w.rec * rec + w.kld * kld + w.nll * nll
+        trace_tensor("apc.loss.term.rec", rec)
+        trace_tensor("apc.loss.term.kld", kld)
+        trace_tensor("apc.loss.term.nll", nll)
+        trace_tensor("apc.loss.term.total", total)
 
         return {
             "rec": rec,

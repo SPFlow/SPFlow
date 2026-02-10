@@ -9,6 +9,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
+from spflow.utils.diff_sampling_context_ops import expand_singleton_feature_selectors_inplace
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -142,9 +143,11 @@ class Product(Module):
                 num_samples = 1
             data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
-        mask = sampling_ctx.mask.expand(data.shape[0], self.inputs.out_shape.features)
-        channel_index = sampling_ctx.channel_index.expand(data.shape[0], self.inputs.out_shape.features)
+        input_features = self.inputs.out_shape.features
+        mask = sampling_ctx.mask.expand(data.shape[0], input_features)
+        channel_index = sampling_ctx.channel_index.expand(data.shape[0], input_features)
         sampling_ctx.update(channel_index=channel_index, mask=mask)
+        expand_singleton_feature_selectors_inplace(sampling_ctx, target_features=input_features)
         return self.inputs.rsample(
             data=data,
             is_mpe=is_mpe,

@@ -15,13 +15,18 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
 from spflow.utils.diff_sampling import (
-    sample_categorical_differentiably,
-    select_with_soft_or_hard,
     DiffSampleMethod,
 )
-from spflow.utils.diff_sampling_context import DifferentiableSamplingContext
 from spflow.utils.projections import (
     proj_convex_to_real,
+)
+from spflow.utils.rsample_routing import (
+    condition_logits_with_evidence,
+    ensure_diff_ctx,
+    sample_selector_and_index,
+    select_parent_axis,
+    select_repetition_axis,
+    update_ctx_channel_routing,
 )
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
@@ -429,83 +434,53 @@ class Sum(Module):
         if cache is None:
             cache = Cache()
         data = self._prepare_sample_data(num_samples, data)
+        sampling_ctx = ensure_diff_ctx(
+            sampling_ctx,
+            batch_size=data.shape[0],
+            features=self.out_shape.features,
+            device=data.device,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )
 
-        if sampling_ctx is None or not isinstance(sampling_ctx, DifferentiableSamplingContext):
-            sampling_ctx = DifferentiableSamplingContext(
-                channel_index=torch.zeros(
-                    (data.shape[0], self.out_shape.features), dtype=torch.long, device=data.device
-                ),
-                mask=torch.ones(
-                    (data.shape[0], self.out_shape.features), dtype=torch.bool, device=data.device
-                ),
-                repetition_index=getattr(sampling_ctx, "repetition_idx", None),
-                method=DiffSampleMethod(method),
-                tau=tau,
-                hard=hard,
-            )
+        logits = self.logits.unsqueeze(0).expand(data.shape[0], -1, -1, -1, -1)
+        logits = select_repetition_axis(
+            logits,
+            sampling_ctx=sampling_ctx,
+            dim=-1,
+            num_repetitions=self.out_shape.repetitions,
+        )
+        logits = select_parent_axis(logits, sampling_ctx=sampling_ctx, dim=3)
 
-        # Select repetition (if any) first.
-        if sampling_ctx.repetition_idx is not None:
-            logits = self.logits.unsqueeze(0).expand(data.shape[0], -1, -1, -1, -1)
-            indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1).expand(
-                -1, logits.shape[1], logits.shape[2], logits.shape[3], -1
-            )
-            logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
-        else:
-            if self.out_shape.repetitions > 1:
-                raise ValueError(
-                    "sampling_ctx.repetition_idx must be provided when sampling from a module with num_repetitions > 1."
-                )
-            logits = self.logits[..., 0].unsqueeze(0).expand(data.shape[0], -1, -1, -1)
-
-        # Parent selection: hard indices by default, soft selector if provided.
-        if sampling_ctx.channel_select is not None:
-            p_sel = sampling_ctx.channel_select.unsqueeze(2).expand(-1, -1, logits.shape[2], -1)
-            logits = select_with_soft_or_hard(logits, selector=p_sel, dim=3)
-        else:
-            idxs = sampling_ctx.channel_index[..., None, None].expand(-1, -1, logits.shape[2], -1)
-            logits = logits.gather(dim=3, index=idxs).squeeze(3)
-
-        # Optional conditioning on evidence.
-        if (
-            cache is not None
-            and "log_likelihood" in cache
-            and cache["log_likelihood"].get(self.inputs) is not None
-        ):
+        input_lls = None
+        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
             input_lls = cache["log_likelihood"][self.inputs]
-            if sampling_ctx.repetition_idx is not None:
-                rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1).expand(
-                    -1, input_lls.shape[1], input_lls.shape[2], 1
+            if input_lls.dim() == 4:
+                input_lls = select_repetition_axis(
+                    input_lls,
+                    sampling_ctx=sampling_ctx,
+                    dim=-1,
+                    num_repetitions=self.out_shape.repetitions,
                 )
-                input_lls = torch.gather(input_lls, dim=-1, index=rep_idx).squeeze(-1)
-            elif input_lls.dim() == 4 and input_lls.shape[-1] == 1:
-                input_lls = input_lls.squeeze(-1)
+        logits = condition_logits_with_evidence(logits, input_lls, dim=2)
 
-            logits = (logits + input_lls).log_softmax(dim=2)
-
-        selector = sample_categorical_differentiably(
+        selector, new_channel_index = sample_selector_and_index(
+            logits=logits,
             dim=2,
             is_mpe=is_mpe,
-            hard=hard,
-            tau=tau,
-            logits=logits,
             method=DiffSampleMethod(method),
+            tau=tau,
+            hard=hard,
         )
-        new_channel_index = selector.argmax(dim=2)
-
-        if new_channel_index.shape != sampling_ctx.mask.shape:
-            new_mask = sampling_ctx.mask.expand_as(new_channel_index).contiguous()
-            if new_mask.shape != new_channel_index.shape:
-                new_mask = torch.ones(
-                    new_channel_index.shape, dtype=torch.bool, device=new_channel_index.device
-                )
-            sampling_ctx.update(new_channel_index, new_mask)
-        else:
-            sampling_ctx.channel_index = new_channel_index
-        sampling_ctx.channel_select = selector
-        sampling_ctx.method = DiffSampleMethod(method)
-        sampling_ctx.tau = tau
-        sampling_ctx.hard = hard
+        update_ctx_channel_routing(
+            sampling_ctx,
+            channel_index=new_channel_index,
+            channel_select=selector,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )
 
         return self.inputs.rsample(
             data=data,

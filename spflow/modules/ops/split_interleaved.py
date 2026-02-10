@@ -102,3 +102,10 @@ class SplitInterleaved(Split):
         """
         stacked = torch.stack(split_indices, dim=2)  # (batch, features_per_split, num_splits)
         return stacked.reshape(stacked.shape[0], -1)  # (batch, total_features)
+
+    def merge_split_tensors(self, *split_tensors: Tensor) -> Tensor:
+        """Merge split feature tensors back to original layout (interleaved)."""
+        stacked = torch.stack(split_tensors, dim=2)  # (batch, features_per_split, num_splits, ...)
+        batch_size = stacked.shape[0]
+        trailing = stacked.shape[3:]
+        return stacked.reshape(batch_size, -1, *trailing)  # (batch, total_features, ...)

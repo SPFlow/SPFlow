@@ -13,9 +13,12 @@ from spflow.modules.leaves.normal import Normal
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
+from spflow.modules.ops.split import SplitMode
 from spflow.modules.ops.split_by_index import SplitByIndex
 from spflow.modules.ops.split_consecutive import SplitConsecutive
 from spflow.modules.ops.split_interleaved import SplitInterleaved
+from spflow.modules.products.elementwise_product import ElementwiseProduct
+from spflow.modules.products.outer_product import OuterProduct
 from spflow.modules.products.product import Product
 from spflow.modules.sums import sum as sum_module
 from spflow.modules.sums.elementwise_sum import ElementwiseSum
@@ -127,9 +130,136 @@ def _fake_diff_selector(
     return selector
 
 
+def _fake_selector_and_index(
+    *,
+    logits: torch.Tensor,
+    dim: int,
+    is_mpe: bool,
+    method,
+    tau: float,
+    hard: bool,
+):
+    selector = _fake_diff_selector(
+        dim=dim,
+        is_mpe=is_mpe,
+        hard=hard,
+        tau=tau,
+        logits=logits,
+        method=method,
+    )
+    return selector, selector.argmax(dim=dim)
+
+
 def _assert_has_finite_grad(param: torch.Tensor) -> None:
     assert param.grad is not None
     assert torch.isfinite(param.grad).all()
+
+
+def _assert_sum_logits_gradients_for_rsample(
+    module: Module,
+    *,
+    sum_layers: list[Sum],
+    method: str,
+    n_samples: int = 7,
+    require_nonzero: bool = True,
+) -> None:
+    torch.manual_seed(0)
+    module.zero_grad(set_to_none=True)
+
+    data = torch.full((n_samples, len(module.scope.query)), torch.nan)
+    ctx = _ctx(batch=n_samples, features=module.out_shape.features, channels=module.out_shape.channels)
+
+    out = module.rsample(data=data, sampling_ctx=ctx, method=method)
+    assert torch.isfinite(out).all()
+    out.sum().backward()
+
+    for sum_layer in sum_layers:
+        grad = sum_layer.logits.grad
+        assert grad is not None
+        assert torch.isfinite(grad).all()
+        if require_nonzero:
+            assert grad.abs().sum() > 0
+
+
+@pytest.mark.parametrize("method", ["simple", "gumbel"])
+def test_rsample_grad_sum_product_both_directions(method: str):
+    # Sum(Product(...))
+    left = Normal(scope=Scope([0]), out_channels=3, num_repetitions=1)
+    right = Normal(scope=Scope([1]), out_channels=3, num_repetitions=1)
+    product = Product(inputs=[left, right])
+    root_sum = Sum(inputs=product, out_channels=2, num_repetitions=1)
+    _assert_sum_logits_gradients_for_rsample(root_sum, sum_layers=[root_sum], method=method)
+
+    # Product(Sum(...))
+    leaf = Normal(scope=Scope([0, 1]), out_channels=4, num_repetitions=1)
+    child_sum = Sum(inputs=leaf, out_channels=3, num_repetitions=1)
+    root_product = Product(inputs=child_sum)
+    _assert_sum_logits_gradients_for_rsample(root_product, sum_layers=[child_sum], method=method)
+
+
+@pytest.mark.parametrize("method", ["simple", "gumbel"])
+def test_rsample_grad_sum_outer_product_both_directions(method: str):
+    # Sum(OuterProduct(...))
+    # NOTE: In current routing, parent channel selectors are not remapped through
+    # OuterProduct to child channel dimensions. Using single-channel children keeps
+    # selector dimensionality aligned for this composition.
+    left = Normal(scope=Scope([0, 1]), out_channels=1, num_repetitions=1)
+    right = Normal(scope=Scope([2, 3]), out_channels=1, num_repetitions=1)
+    outer = OuterProduct(inputs=[left, right])
+    root_sum = Sum(inputs=outer, out_channels=2, num_repetitions=1)
+    _assert_sum_logits_gradients_for_rsample(
+        root_sum, sum_layers=[root_sum], method=method, require_nonzero=False
+    )
+
+    # OuterProduct([Sum(...), leaf])
+    sum_leaf = Normal(scope=Scope([0, 1]), out_channels=4, num_repetitions=1)
+    child_sum = Sum(inputs=sum_leaf, out_channels=3, num_repetitions=1)
+    other_leaf = Normal(scope=Scope([2, 3]), out_channels=3, num_repetitions=1)
+    root_outer = OuterProduct(inputs=[child_sum, other_leaf])
+    _assert_sum_logits_gradients_for_rsample(root_outer, sum_layers=[child_sum], method=method)
+
+
+@pytest.mark.parametrize("method", ["simple", "gumbel"])
+def test_rsample_grad_sum_elementwise_product_both_directions(method: str):
+    # Sum(ElementwiseProduct(...))
+    left = Normal(scope=Scope([0, 1]), out_channels=3, num_repetitions=1)
+    right = Normal(scope=Scope([2, 3]), out_channels=3, num_repetitions=1)
+    elementwise = ElementwiseProduct(inputs=[left, right])
+    root_sum = Sum(inputs=elementwise, out_channels=2, num_repetitions=1)
+    _assert_sum_logits_gradients_for_rsample(root_sum, sum_layers=[root_sum], method=method)
+
+    # ElementwiseProduct([Sum(...), leaf])
+    sum_leaf = Normal(scope=Scope([0, 1]), out_channels=4, num_repetitions=1)
+    child_sum = Sum(inputs=sum_leaf, out_channels=3, num_repetitions=1)
+    other_leaf = Normal(scope=Scope([2, 3]), out_channels=3, num_repetitions=1)
+    root_elementwise = ElementwiseProduct(inputs=[child_sum, other_leaf])
+    _assert_sum_logits_gradients_for_rsample(root_elementwise, sum_layers=[child_sum], method=method)
+
+
+@pytest.mark.parametrize(
+    "split_mode",
+    [SplitMode.consecutive(num_splits=2), SplitMode.interleaved(num_splits=2)],
+    ids=["consecutive", "interleaved"],
+)
+@pytest.mark.parametrize("method", ["simple", "gumbel"])
+def test_rsample_grad_sum_outer_product_split_modes(split_mode: SplitMode, method: str):
+    leaf = Normal(scope=Scope([0, 1, 2, 3]), out_channels=4, num_repetitions=1)
+    child_sum = Sum(inputs=leaf, out_channels=3, num_repetitions=1)
+    root_outer = OuterProduct(inputs=child_sum, split_mode=split_mode)
+    _assert_sum_logits_gradients_for_rsample(root_outer, sum_layers=[child_sum], method=method)
+
+
+@pytest.mark.parametrize(
+    "split_mode",
+    [SplitMode.consecutive(num_splits=2), SplitMode.interleaved(num_splits=2)],
+    ids=["consecutive", "interleaved"],
+)
+@pytest.mark.parametrize("method", ["simple", "gumbel"])
+def test_rsample_grad_sum_elementwise_product_split_modes(split_mode: SplitMode, method: str):
+    leaf = Normal(scope=Scope([0, 1, 2, 3]), out_channels=4, num_repetitions=1)
+    child_sum = Sum(inputs=leaf, out_channels=2, num_repetitions=1)
+    root_elementwise = ElementwiseProduct(inputs=child_sum, split_mode=split_mode)
+    _assert_sum_logits_gradients_for_rsample(root_elementwise, sum_layers=[child_sum], method=method)
 
 
 def test_sum_rsample_has_gradient_on_logits():
@@ -233,6 +363,18 @@ def test_sum_conv_rsample_has_gradient_on_logits():
     loss.backward()
 
     _assert_has_finite_grad(module.logits)
+
+
+def test_prod_conv_rsample_upsamples_channel_select_for_child_sum():
+    leaf = Normal(scope=Scope(list(range(16))), out_channels=3, num_repetitions=1)
+    child_sum = Sum(inputs=leaf, out_channels=4, num_repetitions=1)
+    prod = ProdConv(inputs=child_sum, kernel_size_h=2, kernel_size_w=2, padding_h=0, padding_w=0)
+    module = Sum(inputs=prod, out_channels=2, num_repetitions=1)
+
+    data = torch.full((4, 16), torch.nan)
+    out = module.rsample(data=data, method="simple")
+    assert out.shape == (4, 16)
+    assert torch.isfinite(out).all()
 
 
 def test_signed_sum_rsample_has_gradient_on_weights_supported_case():
@@ -411,7 +553,7 @@ def test_image_wrapper_rsample_propagates_gradient_to_wrapped_params():
 
 def test_sum_sample_equals_rsample_with_patched_routing(monkeypatch):
     monkeypatch.setattr(torch.distributions.Categorical, "sample", _fake_categorical_sample)
-    monkeypatch.setattr(sum_module, "sample_categorical_differentiably", _fake_diff_selector)
+    monkeypatch.setattr(sum_module, "sample_selector_and_index", _fake_selector_and_index)
 
     leaf = _ChannelEchoLeaf(scope=Scope([0, 1, 2]), out_channels=4)
     module = Sum(inputs=leaf, out_channels=3, num_repetitions=1)
@@ -429,7 +571,7 @@ def test_sum_sample_equals_rsample_with_patched_routing(monkeypatch):
 
 def test_linsum_sample_equals_rsample_with_patched_routing(monkeypatch):
     monkeypatch.setattr(torch.distributions.Categorical, "sample", _fake_categorical_sample)
-    monkeypatch.setattr(linsum_layer_module, "sample_categorical_differentiably", _fake_diff_selector)
+    monkeypatch.setattr(linsum_layer_module, "sample_selector_and_index", _fake_selector_and_index)
 
     left = _ChannelEchoLeaf(scope=Scope([0, 1]), out_channels=3)
     right = _ChannelEchoLeaf(scope=Scope([2, 3]), out_channels=3)
@@ -448,7 +590,7 @@ def test_linsum_sample_equals_rsample_with_patched_routing(monkeypatch):
 
 def test_einsum_sample_equals_rsample_with_patched_routing(monkeypatch):
     monkeypatch.setattr(torch.distributions.Categorical, "sample", _fake_categorical_sample)
-    monkeypatch.setattr(einsum_layer_module, "sample_categorical_differentiably", _fake_diff_selector)
+    monkeypatch.setattr(einsum_layer_module, "sample_selector_and_index", _fake_selector_and_index)
 
     left = _ChannelEchoLeaf(scope=Scope([0, 1]), out_channels=2)
     right = _ChannelEchoLeaf(scope=Scope([2, 3]), out_channels=2)

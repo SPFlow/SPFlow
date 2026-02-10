@@ -10,6 +10,7 @@ from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
+from spflow.utils.diff_sampling_context_ops import select_or_expand_feature_selector
 from spflow.utils.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
@@ -196,14 +197,18 @@ class Cat(Module):
         """Differentiable routing variant of sample()."""
         data = self._prepare_sample_data(num_samples, data)
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        channel_select = getattr(sampling_ctx, "channel_select", None)
+        repetition_select = getattr(sampling_ctx, "repetition_select", None)
 
         if self.dim == 1:
             channel_index_per_module = []
             mask_per_module = []
+            feature_indices_per_module = []
             feature_offset = 0
             for module in self.inputs:
                 num_features = module.out_shape.features
                 feature_indices = list(range(feature_offset, feature_offset + num_features))
+                feature_indices_per_module.append(feature_indices)
                 channel_index_per_module.append(sampling_ctx.channel_index[:, feature_indices])
                 mask_per_module.append(sampling_ctx.mask[:, feature_indices])
                 feature_offset += num_features
@@ -222,6 +227,31 @@ class Cat(Module):
         for i in range(len(self.inputs)):
             child_ctx = sampling_ctx.copy()
             child_ctx.update(channel_index=channel_index_per_module[i], mask=mask_per_module[i])
+            if self.dim == 1:
+                num_features = self.inputs[i].out_shape.features
+                feature_indices = feature_indices_per_module[i]
+                child_channel_select = select_or_expand_feature_selector(
+                    channel_select,
+                    parent_features=self.out_shape.features,
+                    child_features=num_features,
+                    feature_indices=feature_indices,
+                )
+                if child_channel_select is not None:
+                    child_ctx.channel_select = child_channel_select
+
+                child_repetition_select = select_or_expand_feature_selector(
+                    repetition_select,
+                    parent_features=self.out_shape.features,
+                    child_features=num_features,
+                    feature_indices=feature_indices,
+                )
+                if child_repetition_select is not None:
+                    child_ctx.repetition_select = child_repetition_select
+            else:
+                if channel_select is not None and channel_select.dim() == 3:
+                    start = i * split_size
+                    end = start + split_size
+                    child_ctx.channel_select = channel_select[:, :, start:end]
             data = self.inputs[i].rsample(
                 data=data,
                 is_mpe=is_mpe,

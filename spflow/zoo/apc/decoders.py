@@ -12,6 +12,77 @@ from torch.nn import functional as F
 from spflow.exceptions import InvalidParameterError
 
 
+class _Residual(nn.Module):
+    """Single residual block used by the reference-style image decoder."""
+
+    def __init__(
+        self,
+        *,
+        in_channels: int,
+        num_hiddens: int,
+        num_residual_hiddens: int,
+        bn: bool,
+    ) -> None:
+        super().__init__()
+        layers: list[nn.Module] = [
+            nn.ReLU(True),
+            nn.Conv2d(
+                in_channels=in_channels,
+                out_channels=num_residual_hiddens,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                bias=False,
+            ),
+            nn.ReLU(True),
+            nn.Conv2d(
+                in_channels=num_residual_hiddens,
+                out_channels=num_hiddens,
+                kernel_size=1,
+                stride=1,
+                bias=False,
+            ),
+        ]
+        if bn:
+            layers.insert(2, nn.BatchNorm2d(num_residual_hiddens))
+            layers.insert(5, nn.BatchNorm2d(num_hiddens))
+        self._block = nn.Sequential(*layers)
+
+    def forward(self, x: Tensor) -> Tensor:
+        return x + self._block(x)
+
+
+class _ResidualStack(nn.Module):
+    """Residual stack used by the reference-style image decoder."""
+
+    def __init__(
+        self,
+        *,
+        in_channels: int,
+        num_hiddens: int,
+        num_residual_layers: int,
+        num_residual_hiddens: int,
+        bn: bool,
+    ) -> None:
+        super().__init__()
+        self._layers = nn.ModuleList(
+            [
+                _Residual(
+                    in_channels=in_channels,
+                    num_hiddens=num_hiddens,
+                    num_residual_hiddens=num_residual_hiddens,
+                    bn=bn,
+                )
+                for _ in range(num_residual_layers)
+            ]
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        for layer in self._layers:
+            x = layer(x)
+        return F.relu(x)
+
+
 class MLPDecoder1D(nn.Module):
     """MLP decoder mapping latent vectors to flat feature vectors.
 
@@ -181,6 +252,137 @@ class ConvDecoder2D(nn.Module):
         target_w = self.output_shape[2]
         if x.shape[-2] != target_h or x.shape[-1] != target_w:
             # Projection + discrete upsampling may overshoot/undershoot by one pixel.
+            x = F.interpolate(x, size=(target_h, target_w), mode="bilinear", align_corners=False)
+
+        return self.out_activation(x)
+
+
+class NeuralDecoder2D(nn.Module):
+    """Reference-style neural 2D decoder used by APC Conv-PC setups."""
+
+    def __init__(
+        self,
+        latent_dim: int,
+        output_shape: tuple[int, int, int],
+        *,
+        num_hidden: int = 64,
+        num_res_hidden: int = 16,
+        num_res_layers: int = 2,
+        num_scales: int = 2,
+        bn: bool = True,
+        out_activation: Literal["identity", "linear", "tanh", "sigmoid"] = "tanh",
+    ) -> None:
+        super().__init__()
+        if latent_dim <= 0:
+            raise InvalidParameterError(f"latent_dim must be >= 1, got {latent_dim}.")
+        if len(output_shape) != 3:
+            raise InvalidParameterError(
+                f"output_shape must be (channels, height, width), got {output_shape}."
+            )
+        channels, height, width = output_shape
+        if channels <= 0 or height <= 0 or width <= 0:
+            raise InvalidParameterError(
+                "output_shape entries must be positive, "
+                f"got (channels={channels}, height={height}, width={width})."
+            )
+        if num_hidden <= 0 or num_res_hidden <= 0 or num_res_layers <= 0:
+            raise InvalidParameterError(
+                "num_hidden, num_res_hidden, and num_res_layers must be >= 1, "
+                f"got ({num_hidden}, {num_res_hidden}, {num_res_layers})."
+            )
+        if num_scales < 2:
+            raise InvalidParameterError(f"num_scales must be >= 2, got {num_scales}.")
+        scale_divisor = 2**num_scales
+        if height % scale_divisor != 0 or width % scale_divisor != 0:
+            raise InvalidParameterError(
+                "output spatial size must be divisible by 2**num_scales for NeuralDecoder2D. "
+                f"Got (height={height}, width={width}, num_scales={num_scales})."
+            )
+        if num_hidden % 2 != 0:
+            raise InvalidParameterError(
+                f"num_hidden must be even for final channel halving, got {num_hidden}."
+            )
+
+        self.latent_dim = latent_dim
+        self.output_shape = output_shape
+        self.first_h = height // scale_divisor
+        self.first_w = width // scale_divisor
+
+        self.linear = nn.Linear(latent_dim, self.first_h * self.first_w * num_hidden)
+        self._conv_1 = nn.Conv2d(
+            in_channels=num_hidden,
+            out_channels=num_hidden,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+        )
+        self._residual_stack = _ResidualStack(
+            in_channels=num_hidden,
+            num_hiddens=num_hidden,
+            num_residual_layers=num_res_layers,
+            num_residual_hiddens=num_res_hidden,
+            bn=bn,
+        )
+        self.scales = nn.ModuleList(
+            [
+                nn.ConvTranspose2d(
+                    in_channels=num_hidden,
+                    out_channels=num_hidden,
+                    kernel_size=4,
+                    stride=2,
+                    padding=1,
+                )
+                for _ in range(num_scales - 2)
+            ]
+        )
+        self._conv_trans_1 = nn.ConvTranspose2d(
+            in_channels=num_hidden,
+            out_channels=num_hidden // 2,
+            kernel_size=4,
+            stride=2,
+            padding=1,
+        )
+        self._conv_trans_2 = nn.ConvTranspose2d(
+            in_channels=num_hidden // 2,
+            out_channels=channels,
+            kernel_size=4,
+            stride=2,
+            padding=1,
+        )
+
+        if out_activation in {"identity", "linear"}:
+            self.out_activation: nn.Module = nn.Identity()
+        elif out_activation == "tanh":
+            self.out_activation = nn.Tanh()
+        elif out_activation == "sigmoid":
+            self.out_activation = nn.Sigmoid()
+        else:
+            raise InvalidParameterError(
+                "out_activation must be one of {'identity', 'linear', 'tanh', 'sigmoid'}, "
+                f"got '{out_activation}'."
+            )
+
+    def forward(self, z: Tensor) -> Tensor:
+        z = z.reshape(z.shape[0], -1)
+        if z.shape[1] != self.latent_dim:
+            raise InvalidParameterError(f"Expected latent feature size {self.latent_dim}, got {z.shape[1]}.")
+
+        x = self.linear(z)
+        x = x.view(x.shape[0], -1, self.first_h, self.first_w)
+        x = self._conv_1(x)
+        x = self._residual_stack(x)
+
+        for scale in self.scales:
+            x = scale(x)
+            x = F.relu(x)
+
+        x = self._conv_trans_1(x)
+        x = F.relu(x)
+        x = self._conv_trans_2(x)
+
+        target_h = self.output_shape[1]
+        target_w = self.output_shape[2]
+        if x.shape[-2] != target_h or x.shape[-1] != target_w:
             x = F.interpolate(x, size=(target_h, target_w), mode="bilinear", align_corners=False)
 
         return self.out_activation(x)

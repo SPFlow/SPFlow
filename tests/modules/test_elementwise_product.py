@@ -60,6 +60,9 @@ class _UnknownSplit(Split):
     def merge_split_indices(self, *split_indices: torch.Tensor) -> torch.Tensor:
         return split_indices[0]
 
+    def merge_split_tensors(self, *split_tensors: torch.Tensor) -> torch.Tensor:
+        return split_tensors[0]
+
     def log_likelihood(self, data, cache=None):
         b = data.shape[0]
         # (batch, out_features_per_split, channels, reps)

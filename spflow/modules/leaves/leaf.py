@@ -14,6 +14,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.diff_sampling import select_with_soft_or_hard
+from spflow.utils.diff_sampling_context import DifferentiableSamplingContext
 from spflow.utils.leaves import apply_nan_strategy, parse_leaf_args
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
@@ -779,6 +780,65 @@ class LeafModule(Module, ABC):
                 )
             sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
 
+        samples = self._draw_rsample_values(
+            data=data,
+            instance_mask=instance_mask,
+            n_samples=n_samples,
+            is_mpe=is_mpe,
+            sampling_ctx=sampling_ctx,
+        )
+
+        diff_ctx_active = isinstance(sampling_ctx, DifferentiableSamplingContext) and getattr(
+            sampling_ctx, "is_differentiable", False
+        )
+
+        samples = self._select_rsample_repetition(
+            samples=samples,
+            sampling_ctx=sampling_ctx,
+            data=data,
+            scope_cols=scope_cols,
+            instance_mask=instance_mask,
+            diff_ctx_active=diff_ctx_active,
+        )
+
+        if samples.shape[0] != ctx_channel_index[instance_mask].shape[0]:
+            raise ValueError(
+                f"Sample shape mismatch: got {samples.shape[0]}, expected {ctx_channel_index[instance_mask].shape[0]}"
+            )
+
+        if self.out_shape.channels == 1:
+            sampling_ctx.channel_index.zero_()
+            ctx_channel_index = torch.zeros_like(ctx_channel_index)
+
+        samples_selected = self._select_rsample_channel(
+            samples=samples,
+            sampling_ctx=sampling_ctx,
+            data=data,
+            scope_cols=scope_cols,
+            instance_mask=instance_mask,
+            diff_ctx_active=diff_ctx_active,
+            ctx_channel_index=ctx_channel_index,
+        )
+
+        return self._write_rsample_values(
+            data=data,
+            samples_mask=samples_mask,
+            instance_mask=instance_mask,
+            scope_cols=scope_cols,
+            n_samples=n_samples,
+            samples_selected=samples_selected,
+        )
+
+    def _draw_rsample_values(
+        self,
+        *,
+        data: Tensor,
+        instance_mask: Tensor,
+        n_samples: int,
+        is_mpe: bool,
+        sampling_ctx: SamplingContext,
+    ) -> Tensor:
+        """Draw differentiable samples (or MPE values) from the leaf distribution."""
         if is_mpe:
             if self.is_conditional:
                 evidence = data[instance_mask][:, self.scope.evidence]
@@ -793,39 +853,71 @@ class LeafModule(Module, ABC):
                     samples = samples.unsqueeze(2).unsqueeze(-1)
                 elif samples.dim() == 3:
                     samples = samples.unsqueeze(-1)
-            else:
-                samples = self.mode.unsqueeze(0)
-                if samples.ndim == 4:
-                    samples = samples.repeat(n_samples, 1, 1, 1)
-                else:
-                    samples = samples.repeat(n_samples, 1, 1)
-        else:
-            if self.is_conditional:
-                evidence = data[instance_mask][:, self.scope.evidence]
-                dist = self.conditional_distribution(evidence)
-            else:
-                dist = self.distribution
-            has_rsample = getattr(dist, "has_rsample", None)
-            if has_rsample is True:
-                samples = dist.rsample((n_samples,))
-            elif has_rsample is False:
-                raise UnsupportedOperationError(
-                    f"{self.__class__.__name__} cannot rsample: distribution {dist.__class__.__name__} has no rsample()."
-                )
-            elif hasattr(dist, "rsample"):
-                try:
-                    samples = dist.rsample((n_samples,))
-                except NotImplementedError as e:
-                    raise UnsupportedOperationError(
-                        f"{self.__class__.__name__} cannot rsample: distribution "
-                        f"{dist.__class__.__name__} does not implement rsample()."
-                    ) from e
-            else:
-                raise UnsupportedOperationError(
-                    f"{self.__class__.__name__} cannot rsample: distribution {dist.__class__.__name__} has no rsample()."
-                )
+                return samples
 
-        # Select repetition: prefer soft selection when available to preserve gradients.
+            samples = self.mode.unsqueeze(0)
+            if samples.ndim == 4:
+                return samples.repeat(n_samples, 1, 1, 1)
+            return samples.repeat(n_samples, 1, 1)
+
+        if self.is_conditional:
+            evidence = data[instance_mask][:, self.scope.evidence]
+            dist = self.conditional_distribution(evidence)
+        else:
+            dist = self.distribution
+
+        # Reference-style latent stats extraction needs routing selectors but not
+        # an additional stochastic draw at leaves during the context pass.
+        if getattr(sampling_ctx, "skip_rsample_noise", False):
+            if hasattr(dist, "mean"):
+                samples = dist.mean
+            elif hasattr(dist, "mode"):
+                samples = dist.mode
+            else:
+                samples = None
+
+            if samples is not None:
+                event_ndim = len(self.event_shape)
+                # Unconditional leaf distributions are event-shaped and need a batch dim.
+                if samples.ndim == event_ndim:
+                    samples = samples.unsqueeze(0).expand(n_samples, *samples.shape)
+                elif samples.ndim == event_ndim + 1 and samples.shape[0] == 1:
+                    samples = samples.expand(n_samples, *samples.shape[1:])
+                # Keep dimensional contract aligned with the regular rsample path.
+                if sampling_ctx.repetition_idx is not None and samples.ndim == 3:
+                    samples = samples.unsqueeze(-1)
+                return samples
+
+        has_rsample = getattr(dist, "has_rsample", None)
+        if has_rsample is True:
+            return dist.rsample((n_samples,))
+        if has_rsample is False:
+            raise UnsupportedOperationError(
+                f"{self.__class__.__name__} cannot rsample: distribution {dist.__class__.__name__} has no rsample()."
+            )
+        if hasattr(dist, "rsample"):
+            try:
+                return dist.rsample((n_samples,))
+            except NotImplementedError as e:
+                raise UnsupportedOperationError(
+                    f"{self.__class__.__name__} cannot rsample: distribution "
+                    f"{dist.__class__.__name__} does not implement rsample()."
+                ) from e
+        raise UnsupportedOperationError(
+            f"{self.__class__.__name__} cannot rsample: distribution {dist.__class__.__name__} has no rsample()."
+        )
+
+    def _select_rsample_repetition(
+        self,
+        *,
+        samples: Tensor,
+        sampling_ctx: SamplingContext,
+        data: Tensor,
+        scope_cols: list[int],
+        instance_mask: Tensor,
+        diff_ctx_active: bool,
+    ) -> Tensor:
+        """Apply repetition routing to leaf samples."""
         repetition_select = getattr(sampling_ctx, "repetition_select", None)
         if repetition_select is not None and samples.ndim == 4:
             if repetition_select.shape[1] == data.shape[1]:
@@ -837,27 +929,35 @@ class LeafModule(Module, ABC):
                 repetition_select.unsqueeze(0) if repetition_select.ndim == 2 else repetition_select
             )
             repetition_select = repetition_select.unsqueeze(2)  # (B, F, 1, R)
-            samples = select_with_soft_or_hard(samples, selector=repetition_select, dim=3)
-        elif sampling_ctx.repetition_idx is not None and samples.ndim == 4:
+            return select_with_soft_or_hard(samples, selector=repetition_select, dim=3)
+
+        if diff_ctx_active and samples.ndim == 4 and self.out_shape.repetitions > 1:
+            raise ValueError(
+                "DifferentiableSamplingContext requires repetition_select for leaf repetition routing; "
+                "hard repetition_idx fallback is disabled."
+            )
+        if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
             repetition_idx = sampling_ctx.repetition_idx[instance_mask]
             r_idxs = repetition_idx.view(-1, 1, 1, 1).expand(-1, samples.shape[1], samples.shape[2], -1)
-            samples = torch.gather(samples, dim=-1, index=r_idxs).squeeze(-1)
-        elif (sampling_ctx.repetition_idx is not None and samples.ndim != 4) or (
+            return torch.gather(samples, dim=-1, index=r_idxs).squeeze(-1)
+        if (sampling_ctx.repetition_idx is not None and samples.ndim != 4) or (
             sampling_ctx.repetition_idx is None and samples.ndim == 4
         ):
             raise ValueError("Repetition index/sample dimensionality mismatch.")
+        return samples
 
-        if samples.shape[0] != ctx_channel_index[instance_mask].shape[0]:
-            raise ValueError(
-                f"Sample shape mismatch: got {samples.shape[0]}, expected {ctx_channel_index[instance_mask].shape[0]}"
-            )
-
-        if self.out_shape.channels == 1:
-            sampling_ctx.channel_index.zero_()
-            ctx_channel_index = torch.zeros_like(ctx_channel_index)
-
-        # Channel selection: soft if available, else hard gather.
-        samples_selected: Tensor
+    def _select_rsample_channel(
+        self,
+        *,
+        samples: Tensor,
+        sampling_ctx: SamplingContext,
+        data: Tensor,
+        scope_cols: list[int],
+        instance_mask: Tensor,
+        diff_ctx_active: bool,
+        ctx_channel_index: Tensor,
+    ) -> Tensor:
+        """Apply channel routing to leaf samples."""
         channel_select = getattr(sampling_ctx, "channel_select", None)
         if channel_select is not None:
             if channel_select.shape[1] == data.shape[1]:
@@ -866,11 +966,27 @@ class LeafModule(Module, ABC):
                 channel_select = channel_select[:, :1].expand(-1, len(scope_cols), -1)
             channel_select = channel_select[instance_mask]
             channel_select = channel_select.unsqueeze(0) if channel_select.ndim == 2 else channel_select
-            samples_selected = select_with_soft_or_hard(samples, selector=channel_select, dim=2)
-        else:
-            c_idxs = ctx_channel_index[instance_mask].unsqueeze(-1)
-            samples_selected = samples.gather(dim=2, index=c_idxs).squeeze(2)
+            return select_with_soft_or_hard(samples, selector=channel_select, dim=2)
 
+        if diff_ctx_active and self.out_shape.channels > 1:
+            raise ValueError(
+                "DifferentiableSamplingContext requires channel_select for leaf channel routing; "
+                "hard channel_index fallback is disabled."
+            )
+        c_idxs = ctx_channel_index[instance_mask].unsqueeze(-1)
+        return samples.gather(dim=2, index=c_idxs).squeeze(2)
+
+    def _write_rsample_values(
+        self,
+        *,
+        data: Tensor,
+        samples_mask: Tensor,
+        instance_mask: Tensor,
+        scope_cols: list[int],
+        n_samples: int,
+        samples_selected: Tensor,
+    ) -> Tensor:
+        """Write selected leaf samples into result tensor without overwriting evidence."""
         if data[samples_mask].isfinite().any():
             raise RuntimeError("Data already contains values at the specified mask. This should not happen.")
 

@@ -20,9 +20,17 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.split import Split, SplitMode
 from spflow.modules.ops.split_consecutive import SplitConsecutive
 from spflow.utils.cache import Cache, cached
-from spflow.utils.diff_sampling import DiffSampleMethod, sample_categorical_differentiably
-from spflow.utils.diff_sampling_context import DifferentiableSamplingContext
+from spflow.utils.diff_sampling import DiffSampleMethod
 from spflow.utils.projections import proj_convex_to_real
+from spflow.utils.rsample_routing import (
+    condition_logits_with_evidence,
+    ensure_diff_ctx,
+    merge_disjoint_child_outputs,
+    sample_selector_and_index,
+    select_parent_axis,
+    select_repetition_axis,
+    update_ctx_channel_routing,
+)
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -416,34 +424,24 @@ class LinsumLayer(Module):
         data = self._prepare_sample_data(num_samples, data)
         if cache is None:
             cache = Cache()
-        if sampling_ctx is None or not isinstance(sampling_ctx, DifferentiableSamplingContext):
-            sampling_ctx = DifferentiableSamplingContext(
-                channel_index=torch.zeros(
-                    (data.shape[0], self.out_shape.features), dtype=torch.long, device=data.device
-                ),
-                mask=torch.ones(
-                    (data.shape[0], self.out_shape.features), dtype=torch.bool, device=data.device
-                ),
-                repetition_index=getattr(sampling_ctx, "repetition_idx", None),
-                method=DiffSampleMethod(method),
-                tau=tau,
-                hard=hard,
-            )
+        sampling_ctx = ensure_diff_ctx(
+            sampling_ctx,
+            batch_size=data.shape[0],
+            features=self.out_shape.features,
+            device=data.device,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )
 
         logits = self.logits.unsqueeze(0).expand(data.shape[0], -1, -1, -1, -1)  # (B,D,O,R,C)
-        idx = sampling_ctx.channel_index.view(data.shape[0], self.out_shape.features, 1, 1, 1)
-        idx = idx.expand(-1, -1, -1, self.out_shape.repetitions, self._in_channels)
-        logits = logits.gather(dim=2, index=idx).squeeze(2)  # (B,D,R,C)
-
-        if sampling_ctx.repetition_idx is not None:
-            rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1).expand(
-                -1, self.out_shape.features, -1, self._in_channels
-            )
-            logits = logits.gather(dim=2, index=rep_idx).squeeze(2)  # (B,D,C)
-        else:
-            if self.out_shape.repetitions > 1:
-                raise ValueError("repetition_idx must be provided when sampling with num_repetitions > 1")
-            logits = logits[:, :, 0, :]
+        logits = select_parent_axis(logits, sampling_ctx=sampling_ctx, dim=2)  # (B,D,R,C)
+        logits = select_repetition_axis(
+            logits,
+            sampling_ctx=sampling_ctx,
+            dim=2,
+            num_repetitions=self.out_shape.repetitions,
+        )  # (B,D,C)
 
         left_ll = None
         right_ll = None
@@ -456,29 +454,42 @@ class LinsumLayer(Module):
                 if isinstance(split_ll, (list, tuple)) and len(split_ll) == 2:
                     left_ll, right_ll = split_ll
 
+        input_ll = None
         if left_ll is not None and right_ll is not None:
-            if sampling_ctx.repetition_idx is not None:
-                rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1)
-                rep_idx_l = rep_idx.expand(-1, left_ll.shape[1], left_ll.shape[2], -1)
-                left_ll = left_ll.gather(dim=-1, index=rep_idx_l).squeeze(-1)
-                right_ll = right_ll.gather(dim=-1, index=rep_idx_l).squeeze(-1)
-            logits = logits + left_ll + right_ll
-            logits = logits - torch.logsumexp(logits, dim=-1, keepdim=True)
+            left_ll = select_repetition_axis(
+                left_ll,
+                sampling_ctx=sampling_ctx,
+                dim=-1,
+                num_repetitions=self.out_shape.repetitions,
+            )
+            right_ll = select_repetition_axis(
+                right_ll,
+                sampling_ctx=sampling_ctx,
+                dim=-1,
+                num_repetitions=self.out_shape.repetitions,
+            )
+            input_ll = left_ll + right_ll
+        logits = condition_logits_with_evidence(logits, input_ll, dim=-1)
 
-        selector = sample_categorical_differentiably(
+        selector, indices = sample_selector_and_index(
+            logits=logits,
             dim=-1,
             is_mpe=is_mpe,
-            hard=hard,
-            tau=tau,
-            logits=logits,
             method=DiffSampleMethod(method),
+            tau=tau,
+            hard=hard,
         )
-        indices = selector.argmax(dim=-1)
 
         if self._two_inputs:
             left_ctx = sampling_ctx.copy()
-            left_ctx.channel_index = indices
-            left_ctx.channel_select = selector
+            update_ctx_channel_routing(
+                left_ctx,
+                channel_index=indices,
+                channel_select=selector,
+                method=method,
+                tau=tau,
+                hard=hard,
+            )
             left = self.inputs[0].rsample(
                 data=data.clone(),
                 is_mpe=is_mpe,
@@ -490,8 +501,14 @@ class LinsumLayer(Module):
             )
 
             right_ctx = sampling_ctx.copy()
-            right_ctx.channel_index = indices
-            right_ctx.channel_select = selector
+            update_ctx_channel_routing(
+                right_ctx,
+                channel_index=indices,
+                channel_select=selector,
+                method=method,
+                tau=tau,
+                hard=hard,
+            )
             right = self.inputs[1].rsample(
                 data=data.clone(),
                 is_mpe=is_mpe,
@@ -502,16 +519,25 @@ class LinsumLayer(Module):
                 hard=hard,
             )
 
-            out = left.clone()
-            missing = torch.isnan(out)
-            out[missing] = right[missing]
-            return out
+            return merge_disjoint_child_outputs(data, [left, right])
 
         full_indices = self.inputs.merge_split_indices(indices, indices)
         full_mask = sampling_ctx.mask.repeat(1, 2)
         child_ctx = sampling_ctx.copy()
+        child_select = self.inputs.merge_split_tensors(selector, selector)
         child_ctx.update(channel_index=full_indices, mask=full_mask)
-        child_ctx.channel_select = None
+        update_ctx_channel_routing(
+            child_ctx,
+            channel_index=full_indices,
+            channel_select=child_select,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )
+        if getattr(sampling_ctx, "repetition_select", None) is not None:
+            child_ctx.repetition_select = self.inputs.merge_split_tensors(
+                sampling_ctx.repetition_select, sampling_ctx.repetition_select
+            )
         return self.inputs.rsample(
             data=data,
             is_mpe=is_mpe,

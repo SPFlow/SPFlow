@@ -12,6 +12,57 @@ import torch
 from spflow.utils.sampling_context import SamplingContext
 
 
+def _maybe_resize_selector_features(
+    sampling_ctx: SamplingContext,
+    *,
+    current_features: int,
+    target_features: int,
+) -> None:
+    """Resize differentiable selector tensors along feature axis when present.
+
+    This keeps ``channel_select`` / ``repetition_select`` aligned with
+    ``channel_index`` updates performed by context expansion/upsampling helpers.
+    """
+    for attr in ("channel_select", "repetition_select"):
+        selector = getattr(sampling_ctx, attr, None)
+        if selector is None:
+            continue
+        if selector.dim() < 2:
+            continue
+
+        if selector.shape[1] == target_features:
+            continue
+
+        if selector.shape[1] == 1:
+            expanded = selector.expand(-1, target_features, *selector.shape[2:]).contiguous()
+            setattr(sampling_ctx, attr, expanded)
+            continue
+
+        if selector.shape[1] != current_features:
+            # If feature axis is already inconsistent, align by truncating or
+            # broadcasting first feature as a conservative fallback.
+            if selector.shape[1] > target_features:
+                setattr(sampling_ctx, attr, selector[:, :target_features, ...].contiguous())
+            else:
+                head = selector[:, :1, ...]
+                setattr(
+                    sampling_ctx,
+                    attr,
+                    head.expand(-1, target_features, *head.shape[2:]).contiguous(),
+                )
+            continue
+
+        if current_features == target_features:
+            continue
+
+        if current_features == 1:
+            expanded = selector.expand(-1, target_features, *selector.shape[2:]).contiguous()
+            setattr(sampling_ctx, attr, expanded)
+            continue
+
+        # Non-trivial reshape (e.g. spatial upsampling) is handled in the caller.
+
+
 def upsample_sampling_context(
     sampling_ctx: SamplingContext,
     current_height: int,
@@ -56,6 +107,37 @@ def upsample_sampling_context(
 
     sampling_ctx.update(channel_index=channel_idx, mask=mask)
 
+    # Keep differentiable selector tensors (if available) in sync with feature upsampling.
+    for attr in ("channel_select", "repetition_select"):
+        selector = getattr(sampling_ctx, attr, None)
+        if selector is None or selector.dim() < 2:
+            continue
+        if selector.shape[1] == new_features:
+            continue
+        if selector.shape[1] == 1:
+            setattr(
+                sampling_ctx,
+                attr,
+                selector.expand(-1, new_features, *selector.shape[2:]).contiguous(),
+            )
+            continue
+        if selector.shape[1] != current_height * current_width:
+            _maybe_resize_selector_features(
+                sampling_ctx,
+                current_features=selector.shape[1],
+                target_features=new_features,
+            )
+            continue
+
+        selector_view = selector.view(batch_size, current_height, current_width, *selector.shape[2:])
+        selector_view = torch.repeat_interleave(selector_view, scale_h, dim=1)
+        selector_view = torch.repeat_interleave(selector_view, scale_w, dim=2)
+        setattr(
+            sampling_ctx,
+            attr,
+            selector_view.view(batch_size, new_features, *selector.shape[2:]).contiguous(),
+        )
+
 
 def expand_sampling_context(
     sampling_ctx: SamplingContext,
@@ -83,3 +165,8 @@ def expand_sampling_context(
         channel_idx = sampling_ctx.channel_index.expand(-1, target_features).contiguous()
         mask = sampling_ctx.mask.expand(-1, target_features).contiguous()
         sampling_ctx.update(channel_index=channel_idx, mask=mask)
+        _maybe_resize_selector_features(
+            sampling_ctx,
+            current_features=current_features,
+            target_features=target_features,
+        )

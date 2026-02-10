@@ -17,10 +17,17 @@ from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
-from spflow.utils.diff_sampling import DiffSampleMethod, sample_categorical_differentiably
-from spflow.utils.diff_sampling_context import DifferentiableSamplingContext
+from spflow.utils.diff_sampling import DiffSampleMethod
 from spflow.utils.projections import (
     proj_convex_to_real,
+)
+from spflow.utils.rsample_routing import (
+    blend_same_scope_child_outputs,
+    condition_logits_with_evidence,
+    ensure_diff_ctx,
+    sample_selector_and_index,
+    select_repetition_axis,
+    update_ctx_channel_routing,
 )
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
@@ -409,33 +416,24 @@ class ElementwiseSum(Module):
 
         if cache is None:
             cache = Cache()
-        if sampling_ctx is None or not isinstance(sampling_ctx, DifferentiableSamplingContext):
-            sampling_ctx = DifferentiableSamplingContext(
-                channel_index=torch.zeros(
-                    (data.shape[0], self.out_shape.features), dtype=torch.long, device=data.device
-                ),
-                mask=torch.ones(
-                    (data.shape[0], self.out_shape.features), dtype=torch.bool, device=data.device
-                ),
-                repetition_index=getattr(sampling_ctx, "repetition_idx", None),
-                method=DiffSampleMethod(method),
-                tau=tau,
-                hard=hard,
-            )
+        sampling_ctx = ensure_diff_ctx(
+            sampling_ctx,
+            batch_size=data.shape[0],
+            features=self.out_shape.features,
+            device=data.device,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )
 
         # Prepare logits as in sample().
-        if sampling_ctx.repetition_idx is not None:
-            logits = self.logits.unsqueeze(0).expand(data.shape[0], -1, -1, -1, -1, -1)
-            rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1, 1).expand(
-                -1, logits.shape[1], logits.shape[2], logits.shape[3], logits.shape[4], -1
-            )
-            logits = torch.gather(logits, dim=-1, index=rep_idx).squeeze(-1)
-        else:
-            if self.out_shape.repetitions > 1:
-                raise ValueError(
-                    "sampling_ctx.repetition_idx must be provided when sampling from a module with num_repetitions > 1."
-                )
-            logits = self.logits[..., 0].unsqueeze(0).expand(data.shape[0], -1, -1, -1, -1)
+        logits = self.logits.unsqueeze(0).expand(data.shape[0], -1, -1, -1, -1, -1)
+        logits = select_repetition_axis(
+            logits,
+            sampling_ctx=sampling_ctx,
+            dim=-1,
+            num_repetitions=self.out_shape.repetitions,
+        )
 
         cids_mapped = self.unraveled_channel_indices[sampling_ctx.channel_index]
         cids_in_channels_per_input = cids_mapped[..., 0]
@@ -449,41 +447,46 @@ class ElementwiseSum(Module):
             dim=2, index=cids_in_channels_per_input[..., None, None].expand(-1, -1, -1, logits.shape[-1])
         ).squeeze(2)
 
-        if (
-            cache is not None
-            and "log_likelihood" in cache
-            and all(cache["log_likelihood"].get(inp) is not None for inp in self.inputs)
+        input_lls = None
+        if "log_likelihood" in cache and all(
+            cache["log_likelihood"].get(inp) is not None for inp in self.inputs
         ):
             input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
             input_lls = torch.stack(input_lls, dim=self.sum_dim)
-            if sampling_ctx.repetition_idx is not None:
-                rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1).expand(
-                    -1, input_lls.shape[1], input_lls.shape[2], input_lls.shape[3], -1
-                )
-                input_lls = torch.gather(input_lls, dim=-1, index=rep_idx).squeeze(-1)
+            input_lls = select_repetition_axis(
+                input_lls,
+                sampling_ctx=sampling_ctx,
+                dim=-1,
+                num_repetitions=self.out_shape.repetitions,
+            )
 
             cids_in_channels_input_lls = (
                 cids_in_channels_per_input.unsqueeze(2).unsqueeze(3).expand(-1, -1, -1, input_lls.shape[3])
             )
             input_lls = input_lls.gather(dim=2, index=cids_in_channels_input_lls).squeeze(2)
-            logits = (logits + input_lls).log_softmax(dim=2)
+        logits = condition_logits_with_evidence(logits, input_lls, dim=2)
 
         # Soft stack routing across inputs.
-        stack_select = sample_categorical_differentiably(
+        stack_select, stack_hard = sample_selector_and_index(
+            logits=logits,
             dim=-1,
             is_mpe=is_mpe,
-            hard=hard,
-            tau=tau,
-            logits=logits,
             method=DiffSampleMethod(method),
+            tau=tau,
+            hard=hard,
         )
-        stack_hard = stack_select.argmax(dim=-1)
-        sampling_ctx.channel_index = cids_in_channels_per_input
-        sampling_ctx.channel_select = None
+        channel_select = torch.nn.functional.one_hot(
+            cids_in_channels_per_input, num_classes=self.in_shape.channels
+        ).to(dtype=logits.dtype)
+        update_ctx_channel_routing(
+            sampling_ctx,
+            channel_index=cids_in_channels_per_input,
+            channel_select=channel_select,
+            method=method,
+            tau=tau,
+            hard=hard,
+        )
         sampling_ctx.branch_weight = stack_select
-        sampling_ctx.method = DiffSampleMethod(method)
-        sampling_ctx.tau = tau
-        sampling_ctx.hard = hard
 
         # Run all children and blend outputs with stack selector.
         base_data = data.clone()
@@ -504,16 +507,13 @@ class ElementwiseSum(Module):
             )
 
         # Weighted sum only over this node's scope columns.
-        result = data.clone()
         scope_cols = torch.tensor(self.scope.query, dtype=torch.long, device=data.device)
-        if scope_cols.numel() > 0:
-            stacked = torch.stack([s[:, scope_cols] for s in child_samples], dim=-1)
-            weights = stack_select
-            # If features differ due to upstream context, broadcast first feature weight.
-            if weights.shape[1] != stacked.shape[1]:
-                weights = weights[:, :1].expand(-1, stacked.shape[1], -1)
-            blended = (stacked * weights).sum(dim=-1)
-            result[:, scope_cols] = blended
+        result = blend_same_scope_child_outputs(
+            data,
+            child_outputs=child_samples,
+            branch_weights=stack_select,
+            scope_cols=scope_cols,
+        )
 
         # Preserve hard branch metadata for compatibility.
         sampling_ctx.branch_weight = stack_select

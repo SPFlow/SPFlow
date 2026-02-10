@@ -20,6 +20,7 @@ from spflow.modules.ops.cat import Cat
 from spflow.modules.products.base_product import BaseProduct
 from spflow.modules.products.product import Product
 from spflow.utils.cache import Cache, cached
+from spflow.utils.diff_sampling_context_ops import map_or_expand_feature_selectors_inplace
 from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
 
 
@@ -235,6 +236,14 @@ class Factorize(BaseProduct):
 
         channel_index = torch.sum(sampling_ctx.channel_index.unsqueeze(1) * indices, dim=-1)
         mask = torch.sum(sampling_ctx.mask.unsqueeze(1) * indices, dim=-1).bool()
+        out_features = indices.shape[2]
+        in_features = indices.shape[1]
+        map_or_expand_feature_selectors_inplace(
+            sampling_ctx,
+            mapping=indices,
+            out_features=out_features,
+            in_features=in_features,
+        )
         sampling_ctx.update(channel_index=channel_index, mask=mask)
 
         return self.inputs[0].rsample(

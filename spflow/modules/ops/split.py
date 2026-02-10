@@ -21,6 +21,7 @@ from spflow.utils.sampling_context import (
     SamplingContext,
     init_default_sampling_context,
 )
+from spflow.utils.diff_sampling_context_ops import expand_singleton_feature_selectors_inplace
 
 
 class SplitMode:
@@ -228,6 +229,21 @@ class Split(Module, ABC):
         """
         pass
 
+    @abstractmethod
+    def merge_split_tensors(self, *split_tensors: Tensor) -> Tensor:
+        """Merge per-split feature tensors back to original feature layout.
+
+        Like `merge_split_indices`, but keeps all trailing dimensions.
+
+        Args:
+            *split_tensors: Tensors for each split with shape
+                (batch, features_per_split, ...).
+
+        Returns:
+            Tensor with shape (batch, total_features, ...).
+        """
+        pass
+
     def sample(
         self,
         num_samples: int | None = None,
@@ -281,9 +297,11 @@ class Split(Module, ABC):
         """Differentiable routing variant of sample()."""
         data = self._prepare_sample_data(num_samples, data)
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
-        mask = sampling_ctx.mask.expand(data.shape[0], self.inputs.out_shape.features)
-        channel_index = sampling_ctx.channel_index.expand(data.shape[0], self.inputs.out_shape.features)
+        input_features = self.inputs.out_shape.features
+        mask = sampling_ctx.mask.expand(data.shape[0], input_features)
+        channel_index = sampling_ctx.channel_index.expand(data.shape[0], input_features)
         sampling_ctx.update(channel_index=channel_index, mask=mask)
+        expand_singleton_feature_selectors_inplace(sampling_ctx, target_features=input_features)
         return self.inputs.rsample(
             data=data,
             is_mpe=is_mpe,
