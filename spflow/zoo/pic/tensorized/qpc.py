@@ -22,6 +22,7 @@ from typing import Literal, Sequence
 
 import numpy as np
 import torch
+from einops import rearrange
 from torch import Tensor, nn
 from torch.nn import functional as F
 
@@ -98,7 +99,7 @@ class FourierLayer(nn.Module):
         # Accept unbatched (L, D) or batched (..., L, D).
         z_proj = 2 * torch.pi * z @ self.coeff  # (..., L, out/2)
         feats = torch.cat([z_proj.cos(), z_proj.sin()], dim=-1)  # (..., L, out)
-        return feats.transpose(-2, -1)  # (..., out, L)
+        return rearrange(feats, "... l co -> ... co l")
 
 
 class InputNet(nn.Module):
@@ -164,14 +165,14 @@ class InputNet(nn.Module):
         self.net[1].groups = 1
         self.net[-1].groups = 1 if self.sharing in {"f", "c"} else self.num_vars
 
-        z = z_quad.view(-1, 1)  # (K, 1)
+        z = rearrange(z_quad, "k -> k 1")
         out = torch.cat([self.net(chunk) for chunk in z.chunk(n_chunks, dim=0)], dim=-1)  # (P*V, K)
 
         if self.sharing == "f":
-            out = out.unsqueeze(0)  # (1, P, K)
-
-        # Shape: (V, K, P)
-        out = out.view(-1, self.num_param, z_quad.numel()).transpose(1, 2).contiguous()
+            out = rearrange(out, "p k -> 1 k p").contiguous()
+        else:
+            # Shape: (V, K, P)
+            out = rearrange(out, "(v p) k -> v k p", p=self.num_param).contiguous()
         if out.shape[0] == 1 and self.num_vars > 1 and self.sharing == "f":
             out = out.expand(self.num_vars, -1, -1).contiguous()
         if out.shape[0] != self.num_vars:
@@ -256,7 +257,10 @@ class InnerNet(nn.Module):
         self.net[1].groups = 1
         self.net[-2].groups = 1 if self.sharing in {"c", "f"} else self.num_funcs
 
-        z_meshgrid = torch.stack(torch.meshgrid([z_quad] * self.num_dim, indexing="ij")).flatten(1).t()
+        z_meshgrid = rearrange(
+            torch.stack(torch.meshgrid([z_quad] * self.num_dim, indexing="ij")),
+            "d ... -> (...) d",
+        )
 
         logits = torch.cat([self.net(chunk) for chunk in z_meshgrid.chunk(n_chunks, dim=0)], dim=-1)
         logits = logits + self.eps
@@ -433,16 +437,16 @@ class TensorizedQPC(Module):
             loc = leaf_param[..., 0]  # (V, K)
             scale = F.softplus(leaf_param[..., 1]) + 1e-6  # (V, K)
             # Broadcast to (B,V,K)
-            x_b = x.unsqueeze(-1).expand(B, V, K)
-            loc_b = loc.unsqueeze(0).expand(B, V, K)
-            scale_b = scale.unsqueeze(0).expand(B, V, K)
+            x_b = rearrange(x, "b v -> b v 1").expand(B, V, K)
+            loc_b = rearrange(loc, "v k -> 1 v k").expand(B, V, K)
+            scale_b = rearrange(scale, "v k -> 1 v k").expand(B, V, K)
             dist = torch.distributions.Normal(loc=loc_b, scale=scale_b)
             return dist.log_prob(x_b)
 
         if self.config.leaf_type == "bernoulli":
             logits = leaf_param[..., 0]  # (V, K)
-            x_b = x.unsqueeze(-1).expand(B, V, K)
-            logits_b = logits.unsqueeze(0).expand(B, V, K)
+            x_b = rearrange(x, "b v -> b v 1").expand(B, V, K)
+            logits_b = rearrange(logits, "v k -> 1 v k").expand(B, V, K)
             return -F.binary_cross_entropy_with_logits(logits_b, x_b, reduction="none")
 
         if self.config.leaf_type == "categorical":
@@ -453,8 +457,8 @@ class TensorizedQPC(Module):
             logp = F.log_softmax(logits, dim=-1)  # (V,K,C)
             x_idx = x.to(dtype=torch.long).clamp(min=0, max=C - 1)  # (B,V)
             # Gather: expand logp to (B,V,K,C), gather on last dim.
-            logp_b = logp.unsqueeze(0).expand(B, V, K, C)
-            idx = x_idx.unsqueeze(-1).unsqueeze(-1).expand(B, V, K, 1)
+            logp_b = rearrange(logp, "v k c -> 1 v k c").expand(B, V, K, C)
+            idx = rearrange(x_idx, "b v -> b v 1 1").expand(B, V, K, 1)
             return torch.gather(logp_b, dim=-1, index=idx).squeeze(-1)
 
         raise StructureError(f"Unsupported leaf_type: {self.config.leaf_type}.")
@@ -471,7 +475,7 @@ class TensorizedQPC(Module):
         leaf_ll = self._leaf_log_likelihood(data, leaf_param)  # (B,V,K)
 
         # Initial folded outputs for leaf regions: (F0, K, B)
-        x0 = leaf_ll.permute(1, 2, 0).contiguous()
+        x0 = rearrange(leaf_ll, "b v k -> v k b").contiguous()
         layer_outputs: list[Tensor] = [x0]
         fold_counts: list[int] = [x0.shape[0]]
 
@@ -517,14 +521,14 @@ class TensorizedQPC(Module):
         out = layer_outputs[-1]  # (1, C, B)
         if out.shape[0] != 1:
             raise ShapeError("Expected final folded output to have F=1.")
-        out = out.squeeze(0).transpose(0, 1).contiguous()  # (B, C)
+        out = rearrange(out, "1 c b -> b c").contiguous()
         if out.ndim != 2 or out.shape[1] != self.config.num_classes:
             raise ShapeError("Unexpected final output shape.")
 
         # SPFlow modules use shape (B, features=1, channels=1, repetitions=1) for scalar roots.
         if self.config.num_classes != 1:
             raise NotImplementedError("TensorizedQPC currently expects num_classes=1 for SPFlow root.")
-        return out.view(out.shape[0], 1, 1, 1)
+        return rearrange(out, "b 1 -> b 1 1 1")
 
     def sample(
         self,
@@ -546,7 +550,7 @@ def _masked_softmax(logits: Tensor, fold_mask: Tensor | None, *, dim: int) -> Te
     if fold_mask is None:
         return torch.softmax(logits, dim=dim)
     # fold_mask: (F,H) -> broadcast to logits shape (F,H,K)
-    mask = fold_mask.to(dtype=torch.bool, device=logits.device).unsqueeze(-1)
+    mask = rearrange(fold_mask.to(dtype=torch.bool, device=logits.device), "f h -> f h 1")
     neg_inf = torch.full_like(logits, float("-inf"))
     masked_logits = torch.where(mask, logits, neg_inf)
     return torch.softmax(masked_logits, dim=dim)

@@ -4,6 +4,7 @@ from typing import cast
 
 import numpy as np
 import torch
+from einops import reduce
 from torch import Tensor
 
 from spflow.exceptions import ShapeError, UnsupportedOperationError
@@ -74,7 +75,7 @@ class ExpSOCS(Module):
             z_parts.append(
                 triple_product_scalar(cast(Module, comp), cast(Module, comp), self.monotone, cache=cache)
             )
-        Z = torch.stack(z_parts).sum()
+        Z = reduce(torch.stack(z_parts), "... ->", "sum")
         Z = torch.clamp(Z, min=0.0)
         logZ = torch.log(Z.clamp_min(1e-30))
 

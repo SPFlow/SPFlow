@@ -4,6 +4,7 @@ from typing import cast
 
 import numpy as np
 import torch
+from einops import rearrange
 from torch import Tensor, nn
 
 from spflow.exceptions import ShapeError, UnsupportedOperationError
@@ -153,10 +154,10 @@ class SignedSum(Module):
                 f"Expected child signed evaluation to be 4D (B,F,C,R), got shape {tuple(child_logabs.shape)}."
             )
 
-        ll = child_logabs.unsqueeze(3)  # (B, F, IC, 1, R)
-        ss = child_sign.unsqueeze(3).to(dtype=torch.int8)  # (B, F, IC, 1, R)
+        ll = rearrange(child_logabs, "b f ci r -> b f ci 1 r")
+        ss = rearrange(child_sign, "b f ci r -> b f ci 1 r").to(dtype=torch.int8)
 
-        w = self.weights.unsqueeze(0)  # (1, F, IC, OC, R)
+        w = rearrange(self.weights, "f ci co r -> 1 f ci co r")
         w_sign = sign_of(w).to(dtype=torch.int8)
         # Avoid log(0) for zero weights; zero-weight terms should contribute nothing.
         w_logabs = torch.log(torch.abs(w).clamp_min(1e-30))
@@ -219,10 +220,12 @@ class SignedSum(Module):
             )
 
         # Current output channel selection from parent
-        oidx = sampling_ctx.channel_index[..., None, None]
+        oidx = rearrange(sampling_ctx.channel_index, "b f -> b f 1 1")
         in_channels_total = w.shape[1]
         oidx = oidx.expand(-1, w.shape[0], in_channels_total, -1)
-        w_sel = w[..., 0].unsqueeze(0).expand(data.shape[0], -1, -1, -1).gather(dim=3, index=oidx).squeeze(3)
+        w_sel = rearrange(w[..., 0], "f ci co -> 1 f ci co").expand(data.shape[0], -1, -1, -1)
+        w_sel = w_sel.gather(dim=3, index=oidx)
+        w_sel = rearrange(w_sel, "b f ci 1 -> b f ci")
 
         # Normalize over input channels
         probs = w_sel / w_sel.sum(dim=2, keepdim=True).clamp_min(1e-12)
@@ -237,5 +240,3 @@ class SignedSum(Module):
         )
         self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
         return data
-
-

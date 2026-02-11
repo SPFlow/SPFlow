@@ -1,4 +1,5 @@
 import torch
+from einops import rearrange
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterCombinationError
@@ -152,8 +153,8 @@ class Bernoulli(LeafModule):
         high_scoped = high[:, self.scope.query]
 
         # Expand to match (batch, features, channels, repetitions)
-        low_expanded = low_scoped.unsqueeze(2).unsqueeze(-1)
-        high_expanded = high_scoped.unsqueeze(2).unsqueeze(-1)
+        low_expanded = rearrange(low_scoped, "b f -> b f 1 1")
+        high_expanded = rearrange(high_scoped, "b f -> b f 1 1")
 
         # Handle NaN bounds
         low_processed = torch.where(
@@ -168,7 +169,7 @@ class Bernoulli(LeafModule):
         )
 
         # Expand probs for broadcasting: (1, features, channels, repetitions)
-        p = probs.unsqueeze(0)
+        p = rearrange(probs, "f ci r -> 1 f ci r")
 
         # P(X=1) = p
         # P(X=0) = 1-p

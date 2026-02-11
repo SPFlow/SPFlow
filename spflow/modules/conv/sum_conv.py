@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from einops import rearrange
 from torch import Tensor
 from torch.nn import functional as F
 
@@ -203,10 +204,10 @@ class SumConv(Module):
             log_weights = self.log_weights[:, :, 0, 0, :]  # (out_c, in_c, reps)
 
             # Reshape for broadcasting: (1, 1, out_c, in_c, reps)
-            log_weights = log_weights.view(1, 1, self.out_shape.channels, in_channels, out_reps)
+            log_weights = rearrange(log_weights, "co ci r -> 1 1 co ci r")
 
             # Reshape ll for broadcasting: (batch, features, 1, in_c, reps)
-            ll = ll.unsqueeze(2)
+            ll = rearrange(ll, "b f ci r -> b f 1 ci r")
 
             # Weighted sum over input channels: logsumexp over dim 3 (in_channels)
             weighted_lls = ll + log_weights
@@ -220,36 +221,26 @@ class SumConv(Module):
         # Get log weights: (out_c, in_c, k, k, reps)
         log_weights = self.log_weights
 
-        # Reshape ll from (batch, features, in_c, reps) to spatial form
+        # Reshape ll from (batch, features, in_c, reps) to spatial form:
         # (batch, in_c, H, W, reps)
-        ll = ll.permute(0, 2, 1, 3)  # (batch, in_c, features, reps)
-        ll = ll.view(batch_size, in_channels, H, W, out_reps)
+        ll = rearrange(ll, "b (h w) ci r -> b ci h w r", h=H, w=W)
 
         # Patch the input into KxK blocks
         # (batch, in_c, H//K, K, W//K, K, reps)
-        ll = ll.view(batch_size, in_channels, H // K, K, W // K, K, out_reps)
-        # Reorder to (batch, in_c, H//K, W//K, K, K, reps)
-        ll = ll.permute(0, 1, 2, 4, 3, 5, 6)
+        ll = rearrange(ll, "b ci (oh kh) (ow kw) r -> b ci oh ow kh kw r", kh=K, kw=K)
 
         # Make space for out_channels: (batch, 1, in_c, H//K, W//K, K, K, reps)
-        ll = ll.unsqueeze(1)
+        ll = rearrange(ll, "b ci oh ow kh kw r -> b 1 ci oh ow kh kw r")
 
         # Make space in log_weights for spatial dims: (1, out_c, in_c, 1, 1, K, K, reps)
-        log_weights = log_weights.unsqueeze(0).unsqueeze(3).unsqueeze(4)
+        log_weights = rearrange(log_weights, "co ci kh kw r -> 1 co ci 1 1 kh kw r")
 
         # Weighted sum over input channels: logsumexp over dim 2 (in_channels)
         weighted_lls = ll + log_weights
         result = torch.logsumexp(weighted_lls, dim=2)  # (batch, out_c, H//K, W//K, K, K, reps)
 
-        # Invert the patch transformation
-        # (batch, out_c, H//K, W//K, K, K, reps) -> (batch, out_c, H//K, K, W//K, K, reps)
-        result = result.permute(0, 1, 2, 4, 3, 5, 6)
-        # Reshape back to (batch, out_c, H, W, reps)
-        result = result.contiguous().view(batch_size, self.out_shape.channels, H, W, out_reps)
-
-        # Convert back to (batch, features, out_c, reps)
-        result = result.view(batch_size, self.out_shape.channels, num_features, out_reps)
-        result = result.permute(0, 2, 1, 3)  # (batch, features, out_c, reps)
+        # Invert the patch transformation and flatten spatial dimensions.
+        result = rearrange(result, "b co oh ow kh kw r -> b (oh kh ow kw) co r")
 
         return result
 
@@ -327,14 +318,18 @@ class SumConv(Module):
         # Select repetition
         if sampling_ctx.repetition_idx is not None:
             # logits: (out_c, in_c, k, k, reps) -> select reps
-            rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1)
-            rep_idx = rep_idx.expand(batch_size, logits.shape[0], logits.shape[1], K, K)
-            logits = logits.unsqueeze(0).expand(batch_size, -1, -1, -1, -1, -1)
-            logits = torch.gather(logits, dim=-1, index=rep_idx.unsqueeze(-1)).squeeze(-1)
+            rep_idx = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1 1 1").expand(
+                batch_size, logits.shape[0], logits.shape[1], K, K, 1
+            )
+            logits = rearrange(logits, "co ci kh kw r -> 1 co ci kh kw r").expand(
+                batch_size, -1, -1, -1, -1, -1
+            )
+            logits = torch.gather(logits, dim=-1, index=rep_idx)
+            logits = rearrange(logits, "b co ci kh kw 1 -> b co ci kh kw")
             # logits: (batch, out_c, in_c, k, k)
         else:
             logits = logits[..., 0]  # (out_c, in_c, k, k)
-            logits = logits.unsqueeze(0).expand(batch_size, -1, -1, -1, -1)
+            logits = rearrange(logits, "co ci kh kw -> 1 co ci kh kw").expand(batch_size, -1, -1, -1, -1)
             # logits: (batch, out_c, in_c, k, k)
 
         # Check for cached likelihoods (conditional sampling)
@@ -348,59 +343,56 @@ class SumConv(Module):
 
             # Select repetition
             if sampling_ctx.repetition_idx is not None:
-                rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1)
+                rep_idx = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1")
                 rep_idx = rep_idx.expand(-1, input_lls.shape[1], input_lls.shape[2], 1)
-                input_lls = torch.gather(input_lls, dim=-1, index=rep_idx).squeeze(-1)
+                input_lls = torch.gather(input_lls, dim=-1, index=rep_idx)
+                input_lls = rearrange(input_lls, "b f ci 1 -> b f ci")
             else:
                 input_lls = input_lls[..., 0]
             # input_lls: (batch, H*W, in_c)
 
             # Reshape to spatial: (batch, H, W, in_c)
-            input_lls = input_lls.view(batch_size, H, W, self.in_channels)
+            input_lls = rearrange(input_lls, "b (h w) ci -> b h w ci", h=H, w=W)
 
         # Reshape channel_idx to spatial: (batch, H, W)
-        channel_idx = channel_idx.view(batch_size, H, W)
+        channel_idx = rearrange(channel_idx, "b (h w) -> b h w", h=H, w=W)
 
         # Sample per-position: each pixel position needs its own sample
         # Create position indices for kernel
         # Position within kernel: pixel (i, j) has kernel pos (i % K, j % K)
-        row_pos = torch.arange(H, device=data.device).view(1, H, 1).expand(batch_size, H, W)
-        col_pos = torch.arange(W, device=data.device).view(1, 1, W).expand(batch_size, H, W)
+        row_pos = rearrange(torch.arange(H, device=data.device), "h -> 1 h 1").expand(batch_size, H, W)
+        col_pos = rearrange(torch.arange(W, device=data.device), "w -> 1 1 w").expand(batch_size, H, W)
         k_row = row_pos % K  # (batch, H, W)
         k_col = col_pos % K  # (batch, H, W)
 
         # logits: (batch, out_c, in_c, k, k)
         # Select logits for each position based on parent channel and kernel position
         # First gather by parent channel: (batch, H, W, in_c, k, k)
-        logits_per_pos = logits.permute(0, 3, 4, 1, 2)  # (batch, k, k, out_c, in_c)
-
-        # Index by kernel position
-        # k_row, k_col: (batch, H, W)
-        # Need to gather from (batch, k, k, out_c, in_c)
-        # Flatten kernel dims for gathering
-        logits_per_pos = logits_per_pos.view(batch_size, K * K, self.out_shape.channels, self.in_channels)
+        logits_per_pos = rearrange(logits, "b co ci kh kw -> b (kh kw) co ci")
 
         # Compute flat kernel index
         k_flat = k_row * K + k_col  # (batch, H, W)
 
-        # Expand for gathering: (batch, H, W, out_c, in_c)
-        k_flat_exp = (
-            k_flat.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, -1, self.out_shape.channels, self.in_channels)
+        # Expand logits to per-pixel layout before kernel-index gathering.
+        logits_per_pos_exp = rearrange(logits_per_pos, "b kk co ci -> b kk 1 1 co ci").expand(
+            -1, -1, H, W, -1, -1
         )
-        logits_per_pos_exp = logits_per_pos.unsqueeze(2).unsqueeze(3).expand(-1, -1, H, W, -1, -1)
         # (batch, K*K, H, W, out_c, in_c) -> swap dims for gather
-        logits_per_pos_exp = logits_per_pos_exp.permute(0, 2, 3, 1, 4, 5)  # (batch, H, W, K*K, out_c, in_c)
+        logits_per_pos_exp = rearrange(logits_per_pos_exp, "b kk h w co ci -> b h w kk co ci")
 
         # Gather by k_flat
-        k_flat_exp2 = k_flat.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)  # (batch, H, W, 1, 1, 1)
-        k_flat_exp2 = k_flat_exp2.expand(-1, -1, -1, -1, self.out_shape.channels, self.in_channels)
-        selected_logits = torch.gather(logits_per_pos_exp, dim=3, index=k_flat_exp2).squeeze(3)
+        k_flat_exp2 = rearrange(k_flat, "b h w -> b h w 1 1 1").expand(
+            -1, -1, -1, -1, self.out_shape.channels, self.in_channels
+        )
+        selected_logits = torch.gather(logits_per_pos_exp, dim=3, index=k_flat_exp2)
+        selected_logits = rearrange(selected_logits, "b h w 1 co ci -> b h w co ci")
         # selected_logits: (batch, H, W, out_c, in_c)
 
         # Now select by parent channel: channel_idx (batch, H, W)
-        parent_ch = channel_idx.unsqueeze(-1).unsqueeze(-1)  # (batch, H, W, 1, 1)
+        parent_ch = rearrange(channel_idx, "b h w -> b h w 1 1")
         parent_ch = parent_ch.expand(-1, -1, -1, -1, self.in_channels)  # (batch, H, W, 1, in_c)
-        selected_logits = torch.gather(selected_logits, dim=3, index=parent_ch).squeeze(3)
+        selected_logits = torch.gather(selected_logits, dim=3, index=parent_ch)
+        selected_logits = rearrange(selected_logits, "b h w 1 ci -> b h w ci")
         # selected_logits: (batch, H, W, in_c)
 
         # Compute posterior if we have cached likelihoods
@@ -412,14 +404,13 @@ class SumConv(Module):
             log_posterior = F.log_softmax(selected_logits, dim=-1)
 
         # Sample for each position
-        log_posterior_flat = log_posterior.view(-1, self.in_channels)
+        log_posterior_flat = rearrange(log_posterior, "b h w ci -> (b h w) ci")
         if is_mpe:
             sampled_channels_flat = torch.argmax(log_posterior_flat, dim=-1)
         else:
             sampled_channels_flat = torch.distributions.Categorical(logits=log_posterior_flat).sample()
 
-        sampled_channels = sampled_channels_flat.view(batch_size, H, W)
-        sampled_channels = sampled_channels.view(batch_size, num_features)
+        sampled_channels = rearrange(sampled_channels_flat, "(b h w) -> b (h w)", b=batch_size, h=H, w=W)
 
         # Update sampling context
         sampling_ctx.channel_index = sampled_channels
@@ -433,7 +424,6 @@ class SumConv(Module):
         )
 
         return data
-
 
     def expectation_maximization(
         self,
@@ -477,12 +467,6 @@ class SumConv(Module):
             # module_lls shape: (batch, features, out_channels, reps)
             # log_weights shape: (out_channels, in_channels, k, k, reps)
 
-            batch_size = input_lls.shape[0]
-            num_features = input_lls.shape[1]
-            in_channels = input_lls.shape[2]
-            out_channels = module_lls.shape[2]
-            num_reps = self.out_shape.repetitions
-
             # Get log gradients from module output.
             # Accessing `.grad` on non-leaf tensors without `retain_grad()` emits
             # a PyTorch warning, so only read it when it is expected to exist.
@@ -511,10 +495,10 @@ class SumConv(Module):
             # input_lls: (batch, features, 1, in_c, reps)
             # module_lls: (batch, features, out_c, 1, reps)
 
-            log_weights = log_weights.unsqueeze(0).unsqueeze(0)  # (1, 1, out_c, in_c, reps)
-            log_grads = log_grads.unsqueeze(3)  # (batch, features, out_c, 1, reps)
-            input_lls = input_lls.unsqueeze(2)  # (batch, features, 1, in_c, reps)
-            module_lls = module_lls.unsqueeze(3)  # (batch, features, out_c, 1, reps)
+            log_weights = rearrange(log_weights, "co ci r -> 1 1 co ci r")
+            log_grads = rearrange(log_grads, "b f co r -> b f co 1 r")
+            input_lls = rearrange(input_lls, "b f ci r -> b f 1 ci r")
+            module_lls = rearrange(module_lls, "b f co r -> b f co 1 r")
 
             # Compute log expectations
             # This follows the standard EM derivation for mixture models
@@ -533,7 +517,7 @@ class SumConv(Module):
             # Current shape: (out_c, in_c, reps)
             # Target shape: (out_c, in_c, k, k, reps)
             k = self.kernel_size
-            new_log_weights = log_expectations.unsqueeze(2).unsqueeze(3)  # (out_c, in_c, 1, 1, reps)
+            new_log_weights = rearrange(log_expectations, "co ci r -> co ci 1 1 r")
             new_log_weights = new_log_weights.expand(-1, -1, k, k, -1)  # (out_c, in_c, k, k, reps)
 
             # Set new weights

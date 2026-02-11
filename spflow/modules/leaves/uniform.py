@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import torch
+from einops import rearrange
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError, InvalidParameterError
@@ -139,8 +140,8 @@ class Uniform(LeafModule):
         high_scoped = high[:, self.scope.query]
 
         # Expand to match (batch, features, channels, repetitions)
-        low_expanded = low_scoped.unsqueeze(2).unsqueeze(-1)
-        high_expanded = high_scoped.unsqueeze(2).unsqueeze(-1)
+        low_expanded = rearrange(low_scoped, "b f -> b f 1 1")
+        high_expanded = rearrange(high_scoped, "b f -> b f 1 1")
 
         # Distribution bounds
         a = self.low  # (features, channels, reps) or scalar

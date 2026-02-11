@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from einops import rearrange
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError, MissingCacheError
@@ -62,9 +63,9 @@ class RepetitionMixingLayer(Sum):
             )
         weight_dim = weights.dim()
         if weight_dim == 1:
-            weights = weights.view(1, -1, 1)
+            weights = rearrange(weights, "co -> 1 co 1")
         elif weight_dim == 2:
-            weights = weights.view(1, weights.shape[0], weights.shape[1])
+            weights = rearrange(weights, "co r -> 1 co r")
         elif weight_dim == 3:
             pass
         else:
@@ -123,11 +124,9 @@ class RepetitionMixingLayer(Sum):
         # Initialize sampling context if not provided
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
 
-        logits = self.logits
-
-        logits = logits.unsqueeze(0).expand(
+        logits = rearrange(self.logits, "f co r -> 1 f co r").expand(
             sampling_ctx.channel_index.shape[0], -1, -1, -1
-        )  # shape [b , n_features , in_c, out_c]
+        )
 
         # Check if we have cached input log-likelihoods to compute posterior
         if (
@@ -140,7 +139,7 @@ class RepetitionMixingLayer(Sum):
             log_prior = logits
             # Only unsqueeze if input_lls has fewer dims than log_prior
             if input_lls.dim() < log_prior.dim():
-                input_lls = input_lls.unsqueeze(3)
+                input_lls = rearrange(input_lls, "... -> ... 1")
             log_posterior = log_prior + input_lls
             log_posterior = log_posterior.log_softmax(dim=3)
             logits = log_posterior
@@ -165,7 +164,6 @@ class RepetitionMixingLayer(Sum):
 
         return data
 
-
     @cached
     def log_likelihood(
         self,
@@ -182,13 +180,12 @@ class RepetitionMixingLayer(Sum):
             Tensor: Computed log likelihood values.
         """
 
-        batch_size = data.shape[0]
         ll = self.inputs.log_likelihood(
             data,
             cache=cache,
         )
 
-        log_weights = self.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC)
+        log_weights = rearrange(self.log_weights, "f co r -> 1 f co r")
 
         # Weighted log-likelihoods
         weighted_lls = ll + log_weights  # shape: (B, F, OC, R) + (1, F, OC, R) = (B, F, R, OC)
@@ -196,11 +193,8 @@ class RepetitionMixingLayer(Sum):
         # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
         output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)  # shape: (B, F, OC, R)
 
-        # Since modules always have R as last dimension, we need to set it to 1 as Mixing mixes over it
-        num_repetitions_after_mixing = 1
-        return output.view(
-            batch_size, self.out_shape.features, self.out_shape.channels, num_repetitions_after_mixing
-        )
+        # Repetition axis is mixed out, so re-introduce singleton repetition dimension.
+        return rearrange(output, "b f co -> b f co 1")
 
     def expectation_maximization(
         self,
@@ -236,7 +230,7 @@ class RepetitionMixingLayer(Sum):
                     "Module log-likelihoods not found in cache. Call log_likelihood first."
                 )
 
-            log_weights = self.log_weights.unsqueeze(0)
+            log_weights = rearrange(self.log_weights, "f co r -> 1 f co r")
             log_grads = torch.log(module_lls.grad)
 
             log_expectations = log_weights + log_grads + input_lls - module_lls

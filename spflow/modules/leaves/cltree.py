@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import torch
+from einops import rearrange
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterError, ShapeError, UnsupportedOperationError
@@ -344,10 +345,10 @@ class CLTree(LeafModule):
             for i in range(F):
                 p = parents[i]
                 if p == -1:
-                    table = log_cpt[i, :, :, :, 0].permute(2, 0, 1)  # (K,C,R)
+                    table = rearrange(log_cpt[i, :, :, :, 0], "c r k -> k c r")
                     ll += table[x[:, i]]
                 else:
-                    table = log_cpt[i].permute(2, 3, 0, 1)  # (K,K,C,R)
+                    table = rearrange(log_cpt[i], "c r k kp -> k kp c r")
                     ll += table[x[:, i], x[:, p]]
             out[:, 0, :, :] = ll
             return out
@@ -374,7 +375,7 @@ class CLTree(LeafModule):
                     continue
 
                 # score[c, r, x_i, x_p]
-                score = log_cpt[i] + child_sum[i].unsqueeze(-1)  # (C,R,K,K)
+                score = log_cpt[i] + rearrange(child_sum[i], "c r k -> c r k 1")
 
                 if bool(is_obs[i].item()):
                     xi = int(obs_val[i].item())
@@ -460,7 +461,7 @@ class CLTree(LeafModule):
             counts_root[:, :, k] += (w * (x[:, root] == k).to(w.dtype)[:, None, None]).sum(dim=0)
         probs_root = counts_root / counts_root.sum(dim=-1, keepdim=True).clamp_min(1e-12)
         log_root = probs_root.clamp_min(1e-12).log()  # (C,R,K)
-        log_cpt[root, :, :, :, :] = log_root.unsqueeze(-1).expand(-1, -1, -1, K)
+        log_cpt[root, :, :, :, :] = rearrange(log_root, "c r k -> c r k 1").expand(-1, -1, -1, K)
 
         # Conditionals: P(x_i | x_parent)
         for i in range(self.out_shape.features):
@@ -558,7 +559,7 @@ class CLTree(LeafModule):
                 if p == -1:
                     continue
 
-                score = self.log_cpt[i, c, r] + child_sum[i].unsqueeze(-1)  # (K,K)
+                score = self.log_cpt[i, c, r] + rearrange(child_sum[i], "k -> k 1")
                 if bool(is_obs[i].item()):
                     xi = int(obs_val[i].item())
                     msg = score[xi]  # (K,)

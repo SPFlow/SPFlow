@@ -10,9 +10,10 @@ from typing import Optional
 
 import numpy as np
 import torch
+from einops import rearrange
 from torch import Tensor
 
-from spflow.exceptions import StructureError
+from spflow.exceptions import InvalidParameterError, StructureError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -182,20 +183,34 @@ class Factorize(BaseProduct):
         # initialize contexts
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
+        if sampling_ctx.repetition_idx is None:
+            raise InvalidParameterError(
+                "sampling_ctx.repetition_idx must be provided when sampling from Factorize."
+            )
+
+        repetition_idx = sampling_ctx.repetition_idx
+        if repetition_idx.ndim == 2 and repetition_idx.shape[1] == 1:
+            repetition_idx = rearrange(repetition_idx, "b 1 -> b")
+        elif repetition_idx.ndim != 1:
+            raise InvalidParameterError("sampling_ctx.repetition_idx must have shape (batch,) or (batch, 1).")
+        if repetition_idx.shape[0] != data.shape[0]:
+            raise InvalidParameterError(
+                "sampling_ctx.repetition_idx batch dimension must match the number of samples."
+            )
+        sampling_ctx.repetition_idx = repetition_idx.to(dtype=torch.long, device=self.device)
+
         # gather indices for specific repetitions
-        rep_indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1).expand(
+        rep_indices = rearrange(sampling_ctx.repetition_idx, "b -> b 1 1 1").expand(
             -1, self.indices.shape[0], self.indices.shape[1], -1
         )
-        indices = (
-            self.indices.unsqueeze(0)
-            .expand(data.shape[0], -1, -1, -1)
-            .to(dtype=torch.long, device=self.device)
-        )
-        indices = torch.gather(indices, dim=-1, index=rep_indices).squeeze(-1)
+        indices = rearrange(self.indices, "i o r -> 1 i o r").expand(data.shape[0], -1, -1, -1)
+        indices = indices.to(dtype=torch.long, device=self.device)
+        indices = torch.gather(indices, dim=-1, index=rep_indices)
+        indices = rearrange(indices, "b i o 1 -> b i o")
 
         # gather channel indices and mask
-        channel_index = torch.sum(sampling_ctx.channel_index.unsqueeze(1) * indices, dim=-1)
-        mask = torch.sum(sampling_ctx.mask.unsqueeze(1) * indices, dim=-1).bool()
+        channel_index = torch.sum(rearrange(sampling_ctx.channel_index, "b o -> b 1 o") * indices, dim=-1)
+        mask = torch.sum(rearrange(sampling_ctx.mask, "b o -> b 1 o") * indices, dim=-1).bool()
 
         sampling_ctx.update(channel_index=channel_index, mask=mask)
 
@@ -207,7 +222,6 @@ class Factorize(BaseProduct):
         )
 
         return data
-
 
     def marginalize(
         self,

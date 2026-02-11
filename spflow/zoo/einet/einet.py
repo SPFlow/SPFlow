@@ -14,6 +14,7 @@ from typing import Literal, Optional
 
 import numpy as np
 import torch
+from einops import rearrange
 from torch import nn
 
 from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
@@ -360,9 +361,9 @@ class Einet(Module, Classifier):
             )
 
         ll_y = self.root_node.log_weights
-        ll_y = ll_y.squeeze().view(1, -1)
+        ll_y = rearrange(ll_y, "1 co 1 1 -> 1 co")
         ll = self.root_node.inputs.log_likelihood(data, cache=cache)
-        ll = ll.squeeze(-1).squeeze(1)
+        ll = rearrange(ll, "b 1 co 1 -> b co")
         return log_posterior(log_likelihood=ll, log_prior=ll_y)
 
     def predict_proba(self, data: torch.Tensor) -> torch.Tensor:
@@ -446,8 +447,8 @@ class Einet(Module, Classifier):
                 raise InvalidParameterError(
                     f"Expected logits shape (1, {self.num_classes}, 1), got {logits.shape}"
                 )
-            logits = logits.squeeze(-1)
-            logits = logits.unsqueeze(0).expand(batch_size, -1, -1)
+            logits = rearrange(logits, "1 co 1 -> 1 1 co")
+            logits = logits.expand(batch_size, -1, -1)
 
             if is_mpe:
                 sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
@@ -466,7 +467,6 @@ class Einet(Module, Classifier):
             cache=cache,
             sampling_ctx=sampling_ctx,
         )
-
 
     def expectation_maximization(
         self,

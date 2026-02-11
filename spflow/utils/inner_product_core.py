@@ -19,6 +19,7 @@ from collections.abc import Sequence
 from typing import cast
 
 import torch
+from einops import rearrange
 from torch import Tensor
 
 from spflow.exceptions import ShapeError, UnsupportedOperationError
@@ -118,63 +119,59 @@ def leaf_inner_product(a: Module, b: Module) -> Tensor:
         _SignedCategorical = None  # type: ignore[assignment]
 
     if isinstance(a, Normal) and isinstance(b, Normal):
-        mu1 = a.loc.to(dtype=torch.float64)
-        mu2 = b.loc.to(dtype=torch.float64)
-        s1 = a.scale.to(dtype=torch.float64)
-        s2 = b.scale.to(dtype=torch.float64)
-        mu1 = mu1.unsqueeze(2)  # (F, Ca, 1, R)
-        mu2 = mu2.unsqueeze(1)  # (F, 1, Cb, R)
-        s1 = s1.unsqueeze(2)
-        s2 = s2.unsqueeze(1)
+        mu1 = rearrange(a.loc.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        mu2 = rearrange(b.loc.to(dtype=torch.float64), "f co r -> f 1 co r")
+        s1 = rearrange(a.scale.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        s2 = rearrange(b.scale.to(dtype=torch.float64), "f co r -> f 1 co r")
         var = s1.pow(2) + s2.pow(2)
         log_coeff = -0.5 * torch.log(2.0 * torch.pi * var)
         quad = -(mu1 - mu2).pow(2) / (2.0 * var)
         return torch.exp(log_coeff + quad)
 
     if isinstance(a, Bernoulli) and isinstance(b, Bernoulli):
-        p1 = a.probs.to(dtype=torch.float64).unsqueeze(2)
-        p2 = b.probs.to(dtype=torch.float64).unsqueeze(1)
+        p1 = rearrange(a.probs.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        p2 = rearrange(b.probs.to(dtype=torch.float64), "f co r -> f 1 co r")
         return p1 * p2 + (1.0 - p1) * (1.0 - p2)
 
     if isinstance(a, Categorical) and isinstance(b, Categorical):
         if a.K != b.K:
             raise ShapeError(f"Categorical K mismatch: {a.K} vs {b.K}.")
-        p1 = a.probs.to(dtype=torch.float64).unsqueeze(2)  # (F, Ca, 1, R, K)
-        p2 = b.probs.to(dtype=torch.float64).unsqueeze(1)  # (F, 1, Cb, R, K)
+        p1 = rearrange(a.probs.to(dtype=torch.float64), "f ci r k -> f ci 1 r k")
+        p2 = rearrange(b.probs.to(dtype=torch.float64), "f co r k -> f 1 co r k")
         return torch.sum(p1 * p2, dim=-1)
 
     if _SignedCategorical is not None:
         if isinstance(a, _SignedCategorical) and isinstance(b, _SignedCategorical):
             if a.K != b.K:
                 raise ShapeError(f"SignedCategorical K mismatch: {a.K} vs {b.K}.")
-            w1 = a.weights.to(dtype=torch.float64).unsqueeze(2)  # (F, Ca, 1, R, K)
-            w2 = b.weights.to(dtype=torch.float64).unsqueeze(1)  # (F, 1, Cb, R, K)
+            w1 = rearrange(a.weights.to(dtype=torch.float64), "f ci r k -> f ci 1 r k")
+            w2 = rearrange(b.weights.to(dtype=torch.float64), "f co r k -> f 1 co r k")
             return torch.sum(w1 * w2, dim=-1)
 
         if isinstance(a, _SignedCategorical) and isinstance(b, Categorical):
             if a.K != b.K:
                 raise ShapeError(f"Categorical K mismatch: {a.K} vs {b.K}.")
-            w1 = a.weights.to(dtype=torch.float64).unsqueeze(2)  # (F, Ca, 1, R, K)
-            p2 = b.probs.to(dtype=torch.float64).unsqueeze(1)  # (F, 1, Cb, R, K)
+            w1 = rearrange(a.weights.to(dtype=torch.float64), "f ci r k -> f ci 1 r k")
+            p2 = rearrange(b.probs.to(dtype=torch.float64), "f co r k -> f 1 co r k")
             return torch.sum(w1 * p2, dim=-1)
 
         if isinstance(a, Categorical) and isinstance(b, _SignedCategorical):
             if a.K != b.K:
                 raise ShapeError(f"Categorical K mismatch: {a.K} vs {b.K}.")
-            p1 = a.probs.to(dtype=torch.float64).unsqueeze(2)  # (F, Ca, 1, R, K)
-            w2 = b.weights.to(dtype=torch.float64).unsqueeze(1)  # (F, 1, Cb, R, K)
+            p1 = rearrange(a.probs.to(dtype=torch.float64), "f ci r k -> f ci 1 r k")
+            w2 = rearrange(b.weights.to(dtype=torch.float64), "f co r k -> f 1 co r k")
             return torch.sum(p1 * w2, dim=-1)
 
     if isinstance(a, Exponential) and isinstance(b, Exponential):
-        r1 = a.rate.to(dtype=torch.float64).unsqueeze(2)
-        r2 = b.rate.to(dtype=torch.float64).unsqueeze(1)
+        r1 = rearrange(a.rate.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        r2 = rearrange(b.rate.to(dtype=torch.float64), "f co r -> f 1 co r")
         return (r1 * r2) / (r1 + r2).clamp_min(1e-30)
 
     if isinstance(a, Laplace) and isinstance(b, Laplace):
-        mu1 = a.loc.to(dtype=torch.float64).unsqueeze(2)
-        mu2 = b.loc.to(dtype=torch.float64).unsqueeze(1)
-        b1 = a.scale.to(dtype=torch.float64).unsqueeze(2).clamp_min(1e-30)
-        b2 = b.scale.to(dtype=torch.float64).unsqueeze(1).clamp_min(1e-30)
+        mu1 = rearrange(a.loc.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        mu2 = rearrange(b.loc.to(dtype=torch.float64), "f co r -> f 1 co r")
+        b1 = rearrange(a.scale.to(dtype=torch.float64), "f ci r -> f ci 1 r").clamp_min(1e-30)
+        b2 = rearrange(b.scale.to(dtype=torch.float64), "f co r -> f 1 co r").clamp_min(1e-30)
         d = torch.abs(mu1 - mu2)
         exp1 = torch.exp(-d / b1)
         exp2 = torch.exp(-d / b2)
@@ -185,10 +182,10 @@ def leaf_inner_product(a: Module, b: Module) -> Tensor:
         return torch.where(same, term_tails + term_mid_same, term_tails + term_mid)
 
     if isinstance(a, LogNormal) and isinstance(b, LogNormal):
-        mu1 = a.loc.to(dtype=torch.float64).unsqueeze(2)
-        mu2 = b.loc.to(dtype=torch.float64).unsqueeze(1)
-        s1 = a.scale.to(dtype=torch.float64).unsqueeze(2).clamp_min(1e-30)
-        s2 = b.scale.to(dtype=torch.float64).unsqueeze(1).clamp_min(1e-30)
+        mu1 = rearrange(a.loc.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        mu2 = rearrange(b.loc.to(dtype=torch.float64), "f co r -> f 1 co r")
+        s1 = rearrange(a.scale.to(dtype=torch.float64), "f ci r -> f ci 1 r").clamp_min(1e-30)
+        s2 = rearrange(b.scale.to(dtype=torch.float64), "f co r -> f 1 co r").clamp_min(1e-30)
         a1 = 1.0 / s1.pow(2)
         a2 = 1.0 / s2.pow(2)
         A = a1 + a2
@@ -198,17 +195,17 @@ def leaf_inner_product(a: Module, b: Module) -> Tensor:
         return torch.exp(log_pref + E + (D.pow(2) / (2.0 * A)))
 
     if isinstance(a, Poisson) and isinstance(b, Poisson):
-        l1 = a.rate.to(dtype=torch.float64).unsqueeze(2).clamp_min(0.0)
-        l2 = b.rate.to(dtype=torch.float64).unsqueeze(1).clamp_min(0.0)
+        l1 = rearrange(a.rate.to(dtype=torch.float64), "f ci r -> f ci 1 r").clamp_min(0.0)
+        l2 = rearrange(b.rate.to(dtype=torch.float64), "f co r -> f 1 co r").clamp_min(0.0)
         z = 2.0 * torch.sqrt((l1 * l2).clamp_min(0.0))
         i0 = getattr(torch, "i0", torch.special.i0)
         return torch.exp(-(l1 + l2)) * i0(z)
 
     if isinstance(a, Gamma) and isinstance(b, Gamma):
-        a1 = a.concentration.to(dtype=torch.float64).unsqueeze(2).clamp_min(1e-30)
-        a2 = b.concentration.to(dtype=torch.float64).unsqueeze(1).clamp_min(1e-30)
-        b1 = a.rate.to(dtype=torch.float64).unsqueeze(2).clamp_min(1e-30)
-        b2 = b.rate.to(dtype=torch.float64).unsqueeze(1).clamp_min(1e-30)
+        a1 = rearrange(a.concentration.to(dtype=torch.float64), "f ci r -> f ci 1 r").clamp_min(1e-30)
+        a2 = rearrange(b.concentration.to(dtype=torch.float64), "f co r -> f 1 co r").clamp_min(1e-30)
+        b1 = rearrange(a.rate.to(dtype=torch.float64), "f ci r -> f ci 1 r").clamp_min(1e-30)
+        b2 = rearrange(b.rate.to(dtype=torch.float64), "f co r -> f 1 co r").clamp_min(1e-30)
         s = a1 + a2 - 1.0
         if (s <= 0.0).any():
             raise UnsupportedOperationError(
@@ -225,10 +222,10 @@ def leaf_inner_product(a: Module, b: Module) -> Tensor:
         return torch.exp(log_ip)
 
     if isinstance(a, Uniform) and isinstance(b, Uniform):
-        a1 = a.low.to(dtype=torch.float64).unsqueeze(2)
-        b1 = a.high.to(dtype=torch.float64).unsqueeze(2)
-        a2 = b.low.to(dtype=torch.float64).unsqueeze(1)
-        b2 = b.high.to(dtype=torch.float64).unsqueeze(1)
+        a1 = rearrange(a.low.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        b1 = rearrange(a.high.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        a2 = rearrange(b.low.to(dtype=torch.float64), "f co r -> f 1 co r")
+        b2 = rearrange(b.high.to(dtype=torch.float64), "f co r -> f 1 co r")
         len1 = (b1 - a1).clamp_min(1e-30)
         len2 = (b2 - a2).clamp_min(1e-30)
         left = torch.maximum(a1, a2)
@@ -237,55 +234,60 @@ def leaf_inner_product(a: Module, b: Module) -> Tensor:
         return overlap / (len1 * len2)
 
     if isinstance(a, Geometric) and isinstance(b, Geometric):
-        p1 = a.probs.to(dtype=torch.float64).unsqueeze(2).clamp_min(0.0).clamp_max(1.0)
-        p2 = b.probs.to(dtype=torch.float64).unsqueeze(1).clamp_min(0.0).clamp_max(1.0)
+        p1 = rearrange(a.probs.to(dtype=torch.float64), "f ci r -> f ci 1 r").clamp_min(0.0).clamp_max(1.0)
+        p2 = rearrange(b.probs.to(dtype=torch.float64), "f co r -> f 1 co r").clamp_min(0.0).clamp_max(1.0)
         q1 = 1.0 - p1
         q2 = 1.0 - p2
         denom = 1.0 - (q1 * q2)
         return (p1 * p2) / denom.clamp_min(1e-30)
 
     if isinstance(a, Binomial) and isinstance(b, Binomial):
-        n1 = a.total_count.to(dtype=torch.float64).unsqueeze(2)
-        n2 = b.total_count.to(dtype=torch.float64).unsqueeze(1)
-        p1 = a.probs.to(dtype=torch.float64).unsqueeze(2)
-        p2 = b.probs.to(dtype=torch.float64).unsqueeze(1)
+        n1 = rearrange(a.total_count.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        n2 = rearrange(b.total_count.to(dtype=torch.float64), "f co r -> f 1 co r")
+        p1 = rearrange(a.probs.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        p2 = rearrange(b.probs.to(dtype=torch.float64), "f co r -> f 1 co r")
         max_n = int(torch.max(torch.maximum(n1, n2)).item())
-        ks = torch.arange(0, max_n + 1, dtype=torch.float64, device=p1.device).view(-1, 1, 1, 1, 1)
-        n1b = n1.unsqueeze(0)
-        n2b = n2.unsqueeze(0)
-        lp1 = _binomial_logpmf(ks, n1b, p1.unsqueeze(0))
-        lp2 = _binomial_logpmf(ks, n2b, p2.unsqueeze(0))
+        ks = rearrange(torch.arange(0, max_n + 1, dtype=torch.float64, device=p1.device), "k -> k 1 1 1 1")
+        n1b = rearrange(n1, "f ci co r -> 1 f ci co r")
+        n2b = rearrange(n2, "f ci co r -> 1 f ci co r")
+        lp1 = _binomial_logpmf(ks, n1b, rearrange(p1, "f ci co r -> 1 f ci co r"))
+        lp2 = _binomial_logpmf(ks, n2b, rearrange(p2, "f ci co r -> 1 f ci co r"))
         mask = (ks <= n1b) & (ks <= n2b)
         lsum = torch.logsumexp(torch.where(mask, lp1 + lp2, torch.full_like(lp1, float("-inf"))), dim=0)
         return torch.exp(lsum)
 
     if isinstance(a, Hypergeometric) and isinstance(b, Hypergeometric):
-        K1 = a.K.to(dtype=torch.float64).unsqueeze(2)
-        N1 = a.N.to(dtype=torch.float64).unsqueeze(2)
-        n1 = a.n.to(dtype=torch.float64).unsqueeze(2)
-        K2 = b.K.to(dtype=torch.float64).unsqueeze(1)
-        N2 = b.N.to(dtype=torch.float64).unsqueeze(1)
-        n2 = b.n.to(dtype=torch.float64).unsqueeze(1)
+        K1 = rearrange(a.K.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        N1 = rearrange(a.N.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        n1 = rearrange(a.n.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        K2 = rearrange(b.K.to(dtype=torch.float64), "f co r -> f 1 co r")
+        N2 = rearrange(b.N.to(dtype=torch.float64), "f co r -> f 1 co r")
+        n2 = rearrange(b.n.to(dtype=torch.float64), "f co r -> f 1 co r")
         if not torch.allclose(N1, N2):
             raise ShapeError("Hypergeometric inner product requires matching N (population size).")
         N = N1
         max_k = int(torch.max(torch.minimum(torch.minimum(n1, K1), torch.minimum(n2, K2))).item())
-        ks = torch.arange(0, max_k + 1, dtype=torch.float64, device=N.device).view(-1, 1, 1, 1, 1)
-        lp1 = _hypergeo_logpmf(ks, K1.unsqueeze(0), N.unsqueeze(0), n1.unsqueeze(0))
-        lp2 = _hypergeo_logpmf(ks, K2.unsqueeze(0), N.unsqueeze(0), n2.unsqueeze(0))
-        min1 = torch.maximum(torch.zeros_like(N), n1 + K1 - N).unsqueeze(0)
-        max1 = torch.minimum(n1, K1).unsqueeze(0)
-        min2 = torch.maximum(torch.zeros_like(N), n2 + K2 - N).unsqueeze(0)
-        max2 = torch.minimum(n2, K2).unsqueeze(0)
+        ks = rearrange(torch.arange(0, max_k + 1, dtype=torch.float64, device=N.device), "k -> k 1 1 1 1")
+        K1b = rearrange(K1, "f ci co r -> 1 f ci co r")
+        K2b = rearrange(K2, "f ci co r -> 1 f ci co r")
+        Nb = rearrange(N, "f ci co r -> 1 f ci co r")
+        n1b = rearrange(n1, "f ci co r -> 1 f ci co r")
+        n2b = rearrange(n2, "f ci co r -> 1 f ci co r")
+        lp1 = _hypergeo_logpmf(ks, K1b, Nb, n1b)
+        lp2 = _hypergeo_logpmf(ks, K2b, Nb, n2b)
+        min1 = rearrange(torch.maximum(torch.zeros_like(N), n1 + K1 - N), "f ci co r -> 1 f ci co r")
+        max1 = rearrange(torch.minimum(n1, K1), "f ci co r -> 1 f ci co r")
+        min2 = rearrange(torch.maximum(torch.zeros_like(N), n2 + K2 - N), "f ci co r -> 1 f ci co r")
+        max2 = rearrange(torch.minimum(n2, K2), "f ci co r -> 1 f ci co r")
         mask = (ks >= min1) & (ks <= max1) & (ks >= min2) & (ks <= max2)
         lsum = torch.logsumexp(torch.where(mask, lp1 + lp2, torch.full_like(lp1, float("-inf"))), dim=0)
         return torch.exp(lsum)
 
     if isinstance(a, NegativeBinomial) and isinstance(b, NegativeBinomial):
-        r1 = a.total_count.to(dtype=torch.float64).unsqueeze(2)
-        r2 = b.total_count.to(dtype=torch.float64).unsqueeze(1)
-        p1 = a.probs.to(dtype=torch.float64).unsqueeze(2).clamp_min(1e-30).clamp_max(1.0)
-        p2 = b.probs.to(dtype=torch.float64).unsqueeze(1).clamp_min(1e-30).clamp_max(1.0)
+        r1 = rearrange(a.total_count.to(dtype=torch.float64), "f ci r -> f ci 1 r")
+        r2 = rearrange(b.total_count.to(dtype=torch.float64), "f co r -> f 1 co r")
+        p1 = rearrange(a.probs.to(dtype=torch.float64), "f ci r -> f ci 1 r").clamp_min(1e-30).clamp_max(1.0)
+        p2 = rearrange(b.probs.to(dtype=torch.float64), "f co r -> f 1 co r").clamp_min(1e-30).clamp_max(1.0)
         q = p1 * p2
 
         def log_term(k: int) -> Tensor:
@@ -318,8 +320,14 @@ def leaf_inner_product(a: Module, b: Module) -> Tensor:
 
         widths1 = (edges1[1:] - edges1[:-1]).to(dtype=torch.float64)
         widths2 = (edges2[1:] - edges2[:-1]).to(dtype=torch.float64)
-        dens1 = (a.probs.to(dtype=torch.float64) / widths1.view(1, 1, 1, -1)).unsqueeze(2)  # (F,Ca,1,R,B1)
-        dens2 = (b.probs.to(dtype=torch.float64) / widths2.view(1, 1, 1, -1)).unsqueeze(1)  # (F,1,Cb,R,B2)
+        dens1 = rearrange(
+            a.probs.to(dtype=torch.float64) / rearrange(widths1, "k -> 1 1 1 k"),
+            "f ci r b1 -> f ci 1 r b1",
+        )
+        dens2 = rearrange(
+            b.probs.to(dtype=torch.float64) / rearrange(widths2, "k -> 1 1 1 k"),
+            "f co r b2 -> f 1 co r b2",
+        )
 
         idx1 = (torch.bucketize(mids, edges1, right=True) - 1).clamp(0, widths1.numel() - 1)
         idx2 = (torch.bucketize(mids, edges2, right=True) - 1).clamp(0, widths2.numel() - 1)
@@ -330,7 +338,7 @@ def leaf_inner_product(a: Module, b: Module) -> Tensor:
         d1 = dens1.index_select(-1, idx1).squeeze(-1)  # (F,Ca,1,R,S)
         d2 = dens2.index_select(-1, idx2).squeeze(-1)  # (F,1,Cb,R,S)
         prod = d1 * d2  # (F,Ca,Cb,R,S)
-        out = torch.sum(prod * (seg_len * mask).view(1, 1, 1, 1, -1), dim=-1)
+        out = torch.sum(prod * rearrange(seg_len * mask, "s -> 1 1 1 1 s"), dim=-1)
         return out
 
     if isinstance(a, PiecewiseLinear) and isinstance(b, PiecewiseLinear):
@@ -427,7 +435,7 @@ def leaf_inner_product(a: Module, b: Module) -> Tensor:
 
             pa = torch.exp(log_cpt_a[i])
             pb = torch.exp(log_cpt_b[i])
-            phi = pa.unsqueeze(1) * pb.unsqueeze(0)
+            phi = rearrange(pa, "ca r i o -> ca 1 r i o") * rearrange(pb, "cb r i o -> 1 cb r i o")
             msg_i = torch.einsum("abri,abrio->abro", prod_child, phi)
             msg[i] = msg_i
 
@@ -435,7 +443,7 @@ def leaf_inner_product(a: Module, b: Module) -> Tensor:
         for ch in children[root]:
             prod_root = prod_root * msg[ch]
 
-        phi_root = pa_root.unsqueeze(1) * pb_root.unsqueeze(0)
+        phi_root = rearrange(pa_root, "ca r i -> ca 1 r i") * rearrange(pb_root, "cb r i -> 1 cb r i")
         z = torch.sum(phi_root * prod_root, dim=-1)
 
         out = torch.ones((F, C1, C2, R), dtype=torch.float64, device=log_cpt_a.device)
@@ -473,7 +481,7 @@ def inner_product_matrix(
             return cached
         rev = memo.get((id(b), id(a)))
         if rev is not None:
-            out = rev.permute(0, 2, 1, 3).contiguous()
+            out = rearrange(rev, "f ci co r -> f co ci r").contiguous()
             memo[key] = out
             return out
 
@@ -625,7 +633,7 @@ def triple_product_tensor(
             return cached
         swapped = memo.get((id(b), id(a), id(c)))
         if swapped is not None:
-            out = swapped.permute(0, 2, 1, 3, 4).contiguous()
+            out = rearrange(swapped, "f ci co cj r -> f co ci cj r").contiguous()
             memo[key] = out
             return out
 
@@ -671,17 +679,17 @@ def triple_product_tensor(
                     return x.probs.to(dtype=torch.float64)
                 return cast(_SignedCategorical, x).weights.to(dtype=torch.float64)
 
-            p1 = _cat_tensor(a).unsqueeze(2).unsqueeze(3)
-            p2 = _cat_tensor(b).unsqueeze(1).unsqueeze(3)
-            p3 = _cat_tensor(c).unsqueeze(1).unsqueeze(2)
+            p1 = rearrange(_cat_tensor(a), "f ci r k -> f ci 1 1 r k")
+            p2 = rearrange(_cat_tensor(b), "f cj r k -> f 1 cj 1 r k")
+            p3 = rearrange(_cat_tensor(c), "f ck r k -> f 1 1 ck r k")
             out = torch.sum(p1 * p2 * p3, dim=-1)
         elif isinstance(a, Normal) and isinstance(b, Normal) and isinstance(c, Normal):
-            mu1 = a.loc.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3)
-            mu2 = b.loc.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3)
-            mu3 = c.loc.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2)
-            s1 = a.scale.to(dtype=torch.float64).clamp_min(1e-30).unsqueeze(2).unsqueeze(3)
-            s2 = b.scale.to(dtype=torch.float64).clamp_min(1e-30).unsqueeze(1).unsqueeze(3)
-            s3 = c.scale.to(dtype=torch.float64).clamp_min(1e-30).unsqueeze(1).unsqueeze(2)
+            mu1 = rearrange(a.loc.to(dtype=torch.float64), "f ci r -> f ci 1 1 r")
+            mu2 = rearrange(b.loc.to(dtype=torch.float64), "f cj r -> f 1 cj 1 r")
+            mu3 = rearrange(c.loc.to(dtype=torch.float64), "f ck r -> f 1 1 ck r")
+            s1 = rearrange(a.scale.to(dtype=torch.float64).clamp_min(1e-30), "f ci r -> f ci 1 1 r")
+            s2 = rearrange(b.scale.to(dtype=torch.float64).clamp_min(1e-30), "f cj r -> f 1 cj 1 r")
+            s3 = rearrange(c.scale.to(dtype=torch.float64).clamp_min(1e-30), "f ck r -> f 1 1 ck r")
             tau1 = 1.0 / s1.pow(2)
             tau2 = 1.0 / s2.pow(2)
             tau3 = 1.0 / s3.pow(2)
@@ -692,9 +700,9 @@ def triple_product_tensor(
             log_pref = log_pref - (torch.log(s1) + torch.log(s2) + torch.log(s3)) - 0.5 * torch.log(tau)
             out = torch.exp(log_pref - 0.5 * quad)
         elif isinstance(a, Bernoulli) and isinstance(b, Bernoulli) and isinstance(c, Bernoulli):
-            p1 = a.probs.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3)
-            p2 = b.probs.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3)
-            p3 = c.probs.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2)
+            p1 = rearrange(a.probs.to(dtype=torch.float64), "f ci r -> f ci 1 1 r")
+            p2 = rearrange(b.probs.to(dtype=torch.float64), "f cj r -> f 1 cj 1 r")
+            p3 = rearrange(c.probs.to(dtype=torch.float64), "f ck r -> f 1 1 ck r")
             q1 = 1.0 - p1
             q2 = 1.0 - p2
             q3 = 1.0 - p3
@@ -702,17 +710,17 @@ def triple_product_tensor(
         elif isinstance(a, Categorical) and isinstance(b, Categorical) and isinstance(c, Categorical):
             if a.K != b.K or a.K != c.K:
                 raise ShapeError("Categorical K mismatch for triple product.")
-            p1 = a.probs.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3)
-            p2 = b.probs.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3)
-            p3 = c.probs.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2)
+            p1 = rearrange(a.probs.to(dtype=torch.float64), "f ci r k -> f ci 1 1 r k")
+            p2 = rearrange(b.probs.to(dtype=torch.float64), "f cj r k -> f 1 cj 1 r k")
+            p3 = rearrange(c.probs.to(dtype=torch.float64), "f ck r k -> f 1 1 ck r k")
             out = torch.sum(p1 * p2 * p3, dim=-1)
         elif isinstance(a, Uniform) and isinstance(b, Uniform) and isinstance(c, Uniform):
-            a1 = a.low.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3)
-            b1 = a.high.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3)
-            a2 = b.low.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3)
-            b2 = b.high.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3)
-            a3 = c.low.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2)
-            b3 = c.high.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2)
+            a1 = rearrange(a.low.to(dtype=torch.float64), "f ci r -> f ci 1 1 r")
+            b1 = rearrange(a.high.to(dtype=torch.float64), "f ci r -> f ci 1 1 r")
+            a2 = rearrange(b.low.to(dtype=torch.float64), "f cj r -> f 1 cj 1 r")
+            b2 = rearrange(b.high.to(dtype=torch.float64), "f cj r -> f 1 cj 1 r")
+            a3 = rearrange(c.low.to(dtype=torch.float64), "f ck r -> f 1 1 ck r")
+            b3 = rearrange(c.high.to(dtype=torch.float64), "f ck r -> f 1 1 ck r")
             len1 = (b1 - a1).clamp_min(1e-30)
             len2 = (b2 - a2).clamp_min(1e-30)
             len3 = (b3 - a3).clamp_min(1e-30)
@@ -721,24 +729,40 @@ def triple_product_tensor(
             overlap = (right - left).clamp_min(0.0)
             out = overlap / (len1 * len2 * len3)
         elif isinstance(a, Geometric) and isinstance(b, Geometric) and isinstance(c, Geometric):
-            p1 = a.probs.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3).clamp_min(0.0).clamp_max(1.0)
-            p2 = b.probs.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3).clamp_min(0.0).clamp_max(1.0)
-            p3 = c.probs.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2).clamp_min(0.0).clamp_max(1.0)
+            p1 = (
+                rearrange(a.probs.to(dtype=torch.float64), "f ci r -> f ci 1 1 r")
+                .clamp_min(0.0)
+                .clamp_max(1.0)
+            )
+            p2 = (
+                rearrange(b.probs.to(dtype=torch.float64), "f cj r -> f 1 cj 1 r")
+                .clamp_min(0.0)
+                .clamp_max(1.0)
+            )
+            p3 = (
+                rearrange(c.probs.to(dtype=torch.float64), "f ck r -> f 1 1 ck r")
+                .clamp_min(0.0)
+                .clamp_max(1.0)
+            )
             qprod = (1.0 - p1) * (1.0 - p2) * (1.0 - p3)
             out = (p1 * p2 * p3) / (1.0 - qprod).clamp_min(1e-30)
         elif isinstance(a, Binomial) and isinstance(b, Binomial) and isinstance(c, Binomial):
-            n1 = a.total_count.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3)
-            n2 = b.total_count.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3)
-            n3 = c.total_count.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2)
-            p1 = a.probs.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3)
-            p2 = b.probs.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3)
-            p3 = c.probs.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2)
+            n1 = rearrange(a.total_count.to(dtype=torch.float64), "f ci r -> f ci 1 1 r")
+            n2 = rearrange(b.total_count.to(dtype=torch.float64), "f cj r -> f 1 cj 1 r")
+            n3 = rearrange(c.total_count.to(dtype=torch.float64), "f ck r -> f 1 1 ck r")
+            p1 = rearrange(a.probs.to(dtype=torch.float64), "f ci r -> f ci 1 1 r")
+            p2 = rearrange(b.probs.to(dtype=torch.float64), "f cj r -> f 1 cj 1 r")
+            p3 = rearrange(c.probs.to(dtype=torch.float64), "f ck r -> f 1 1 ck r")
             max_n = int(torch.max(torch.maximum(torch.maximum(n1, n2), n3)).item())
-            ks = torch.arange(0, max_n + 1, dtype=torch.float64, device=p1.device).view(-1, 1, 1, 1, 1, 1)
-            n1b, n2b, n3b = n1.unsqueeze(0), n2.unsqueeze(0), n3.unsqueeze(0)
-            lp1 = _binomial_logpmf(ks, n1b, p1.unsqueeze(0))
-            lp2 = _binomial_logpmf(ks, n2b, p2.unsqueeze(0))
-            lp3 = _binomial_logpmf(ks, n3b, p3.unsqueeze(0))
+            ks = rearrange(
+                torch.arange(0, max_n + 1, dtype=torch.float64, device=p1.device), "k -> k 1 1 1 1 1"
+            )
+            n1b = rearrange(n1, "f ci cj ck r -> 1 f ci cj ck r")
+            n2b = rearrange(n2, "f ci cj ck r -> 1 f ci cj ck r")
+            n3b = rearrange(n3, "f ci cj ck r -> 1 f ci cj ck r")
+            lp1 = _binomial_logpmf(ks, n1b, rearrange(p1, "f ci cj ck r -> 1 f ci cj ck r"))
+            lp2 = _binomial_logpmf(ks, n2b, rearrange(p2, "f ci cj ck r -> 1 f ci cj ck r"))
+            lp3 = _binomial_logpmf(ks, n3b, rearrange(p3, "f ci cj ck r -> 1 f ci cj ck r"))
             mask = (ks <= n1b) & (ks <= n2b) & (ks <= n3b)
             lsum = torch.logsumexp(
                 torch.where(mask, lp1 + lp2 + lp3, torch.full_like(lp1, float("-inf"))), dim=0
@@ -747,15 +771,15 @@ def triple_product_tensor(
         elif (
             isinstance(a, Hypergeometric) and isinstance(b, Hypergeometric) and isinstance(c, Hypergeometric)
         ):
-            K1 = a.K.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3)
-            N1 = a.N.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3)
-            n1 = a.n.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3)
-            K2 = b.K.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3)
-            N2 = b.N.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3)
-            n2 = b.n.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3)
-            K3 = c.K.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2)
-            N3 = c.N.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2)
-            n3 = c.n.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2)
+            K1 = rearrange(a.K.to(dtype=torch.float64), "f ci r -> f ci 1 1 r")
+            N1 = rearrange(a.N.to(dtype=torch.float64), "f ci r -> f ci 1 1 r")
+            n1 = rearrange(a.n.to(dtype=torch.float64), "f ci r -> f ci 1 1 r")
+            K2 = rearrange(b.K.to(dtype=torch.float64), "f cj r -> f 1 cj 1 r")
+            N2 = rearrange(b.N.to(dtype=torch.float64), "f cj r -> f 1 cj 1 r")
+            n2 = rearrange(b.n.to(dtype=torch.float64), "f cj r -> f 1 cj 1 r")
+            K3 = rearrange(c.K.to(dtype=torch.float64), "f ck r -> f 1 1 ck r")
+            N3 = rearrange(c.N.to(dtype=torch.float64), "f ck r -> f 1 1 ck r")
+            n3 = rearrange(c.n.to(dtype=torch.float64), "f ck r -> f 1 1 ck r")
             if not (torch.allclose(N1, N2) and torch.allclose(N1, N3)):
                 raise ShapeError("Hypergeometric triple product requires matching N.")
             N = N1
@@ -766,16 +790,31 @@ def triple_product_tensor(
                     )
                 ).item()
             )
-            ks = torch.arange(0, max_k + 1, dtype=torch.float64, device=N.device).view(-1, 1, 1, 1, 1, 1)
-            lp1 = _hypergeo_logpmf(ks, K1.unsqueeze(0), N.unsqueeze(0), n1.unsqueeze(0))
-            lp2 = _hypergeo_logpmf(ks, K2.unsqueeze(0), N.unsqueeze(0), n2.unsqueeze(0))
-            lp3 = _hypergeo_logpmf(ks, K3.unsqueeze(0), N.unsqueeze(0), n3.unsqueeze(0))
-            min1 = torch.maximum(torch.zeros_like(N), n1 + K1 - N).unsqueeze(0)
-            max1 = torch.minimum(n1, K1).unsqueeze(0)
-            min2 = torch.maximum(torch.zeros_like(N), n2 + K2 - N).unsqueeze(0)
-            max2 = torch.minimum(n2, K2).unsqueeze(0)
-            min3 = torch.maximum(torch.zeros_like(N), n3 + K3 - N).unsqueeze(0)
-            max3 = torch.minimum(n3, K3).unsqueeze(0)
+            ks = rearrange(
+                torch.arange(0, max_k + 1, dtype=torch.float64, device=N.device), "k -> k 1 1 1 1 1"
+            )
+            K1b = rearrange(K1, "f ci cj ck r -> 1 f ci cj ck r")
+            K2b = rearrange(K2, "f ci cj ck r -> 1 f ci cj ck r")
+            K3b = rearrange(K3, "f ci cj ck r -> 1 f ci cj ck r")
+            Nb = rearrange(N, "f ci cj ck r -> 1 f ci cj ck r")
+            n1b = rearrange(n1, "f ci cj ck r -> 1 f ci cj ck r")
+            n2b = rearrange(n2, "f ci cj ck r -> 1 f ci cj ck r")
+            n3b = rearrange(n3, "f ci cj ck r -> 1 f ci cj ck r")
+            lp1 = _hypergeo_logpmf(ks, K1b, Nb, n1b)
+            lp2 = _hypergeo_logpmf(ks, K2b, Nb, n2b)
+            lp3 = _hypergeo_logpmf(ks, K3b, Nb, n3b)
+            min1 = rearrange(
+                torch.maximum(torch.zeros_like(N), n1 + K1 - N), "f ci cj ck r -> 1 f ci cj ck r"
+            )
+            max1 = rearrange(torch.minimum(n1, K1), "f ci cj ck r -> 1 f ci cj ck r")
+            min2 = rearrange(
+                torch.maximum(torch.zeros_like(N), n2 + K2 - N), "f ci cj ck r -> 1 f ci cj ck r"
+            )
+            max2 = rearrange(torch.minimum(n2, K2), "f ci cj ck r -> 1 f ci cj ck r")
+            min3 = rearrange(
+                torch.maximum(torch.zeros_like(N), n3 + K3 - N), "f ci cj ck r -> 1 f ci cj ck r"
+            )
+            max3 = rearrange(torch.minimum(n3, K3), "f ci cj ck r -> 1 f ci cj ck r")
             mask = (ks >= min1) & (ks <= max1) & (ks >= min2) & (ks <= max2) & (ks >= min3) & (ks <= max3)
             lsum = torch.logsumexp(
                 torch.where(mask, lp1 + lp2 + lp3, torch.full_like(lp1, float("-inf"))), dim=0
@@ -786,12 +825,24 @@ def triple_product_tensor(
             and isinstance(b, NegativeBinomial)
             and isinstance(c, NegativeBinomial)
         ):
-            r1 = a.total_count.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3)
-            r2 = b.total_count.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3)
-            r3 = c.total_count.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2)
-            p1 = a.probs.to(dtype=torch.float64).unsqueeze(2).unsqueeze(3).clamp_min(1e-30).clamp_max(1.0)
-            p2 = b.probs.to(dtype=torch.float64).unsqueeze(1).unsqueeze(3).clamp_min(1e-30).clamp_max(1.0)
-            p3 = c.probs.to(dtype=torch.float64).unsqueeze(1).unsqueeze(2).clamp_min(1e-30).clamp_max(1.0)
+            r1 = rearrange(a.total_count.to(dtype=torch.float64), "f ci r -> f ci 1 1 r")
+            r2 = rearrange(b.total_count.to(dtype=torch.float64), "f cj r -> f 1 cj 1 r")
+            r3 = rearrange(c.total_count.to(dtype=torch.float64), "f ck r -> f 1 1 ck r")
+            p1 = (
+                rearrange(a.probs.to(dtype=torch.float64), "f ci r -> f ci 1 1 r")
+                .clamp_min(1e-30)
+                .clamp_max(1.0)
+            )
+            p2 = (
+                rearrange(b.probs.to(dtype=torch.float64), "f cj r -> f 1 cj 1 r")
+                .clamp_min(1e-30)
+                .clamp_max(1.0)
+            )
+            p3 = (
+                rearrange(c.probs.to(dtype=torch.float64), "f ck r -> f 1 1 ck r")
+                .clamp_min(1e-30)
+                .clamp_max(1.0)
+            )
             q = p1 * p2 * p3
 
             def log_term(k: int) -> Tensor:
@@ -830,9 +881,9 @@ def triple_product_tensor(
             widths2 = (edges2[1:] - edges2[:-1]).to(dtype=torch.float64)
             widths3 = (edges3[1:] - edges3[:-1]).to(dtype=torch.float64)
 
-            dens1 = a.probs.to(dtype=torch.float64) / widths1.view(1, 1, 1, -1)  # (F,Ca,R,B1)
-            dens2 = b.probs.to(dtype=torch.float64) / widths2.view(1, 1, 1, -1)  # (F,Cb,R,B2)
-            dens3 = c.probs.to(dtype=torch.float64) / widths3.view(1, 1, 1, -1)  # (F,Cc,R,B3)
+            dens1 = a.probs.to(dtype=torch.float64) / rearrange(widths1, "b1 -> 1 1 1 b1")
+            dens2 = b.probs.to(dtype=torch.float64) / rearrange(widths2, "b2 -> 1 1 1 b2")
+            dens3 = c.probs.to(dtype=torch.float64) / rearrange(widths3, "b3 -> 1 1 1 b3")
 
             idx1 = (torch.bucketize(mids, edges1, right=True) - 1).clamp(0, widths1.numel() - 1)
             idx2 = (torch.bucketize(mids, edges2, right=True) - 1).clamp(0, widths2.numel() - 1)
@@ -845,9 +896,12 @@ def triple_product_tensor(
             d1 = dens1.index_select(-1, idx1)  # (F,Ca,R,S)
             d2 = dens2.index_select(-1, idx2)  # (F,Cb,R,S)
             d3 = dens3.index_select(-1, idx3)  # (F,Cc,R,S)
-            prod = d1.unsqueeze(2) * d2.unsqueeze(1)  # (F,Ca,Cb,R,S)
-            prod = prod.unsqueeze(3) * d3.unsqueeze(1).unsqueeze(1)  # (F,Ca,Cb,Cc,R,S)
-            out = torch.sum(prod * (seg_len * mask).view(1, 1, 1, 1, 1, -1), dim=-1)
+            prod = (
+                rearrange(d1, "f ci r s -> f ci 1 1 r s")
+                * rearrange(d2, "f cj r s -> f 1 cj 1 r s")
+                * rearrange(d3, "f ck r s -> f 1 1 ck r s")
+            )
+            out = torch.sum(prod * rearrange(seg_len * mask, "s -> 1 1 1 1 1 s"), dim=-1)
         elif (
             isinstance(a, PiecewiseLinear)
             and isinstance(b, PiecewiseLinear)

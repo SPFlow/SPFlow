@@ -19,6 +19,7 @@ from typing import Callable, Dict, Optional, Protocol, Sequence, Tuple
 
 import numpy as np
 import torch
+from einops import rearrange, repeat
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterError, ShapeError, StructureError
@@ -457,7 +458,7 @@ def pic2qpc(
             indexing="ij",
         )
         stacked = torch.stack(meshes, dim=-1)  # (K, ..., K, num_dims)
-        return stacked.reshape(-1, num_dims)
+        return rearrange(stacked, "... d -> (...) d")
 
     def kron_weights(num_dims: int, *, device, dtype) -> Tensor:
         """Return Kronecker-product quadrature weights of length K^num_dims."""
@@ -507,7 +508,7 @@ def pic2qpc(
             vals_all = group.evaluate_batched(z, y)  # (num_heads, out_ch, in_ch)
 
             y_w = kron_weights(y_dim, device=device, dtype=dtype)  # (in_ch,)
-            vals_all = vals_all * y_w.view(1, 1, in_ch)
+            vals_all = vals_all * rearrange(y_w, "ci -> 1 1 ci")
 
             for u in bucket:
                 head_idx = u.function_head_idx
@@ -520,8 +521,12 @@ def pic2qpc(
                     raise ShapeError(
                         f"Integral child channels mismatch: expected {in_ch}, got {child.out_shape.channels}."
                     )
-                weights_mat = vals_all[head_idx].transpose(0, 1)  # (in_ch, out_ch)
-                weights_full = weights_mat.view(1, in_ch, out_ch, 1).repeat(child.out_shape.features, 1, 1, 1)
+                weights_mat = rearrange(vals_all[head_idx], "co ci -> ci co")
+                weights_full = repeat(
+                    rearrange(weights_mat, "ci co -> 1 ci co 1"),
+                    "1 ci co 1 -> f ci co 1",
+                    f=child.out_shape.features,
+                )
                 L[u] = WeightedSum(inputs=child, weights=weights_full)
 
     def _visit(u: Module) -> Module:
@@ -554,7 +559,11 @@ def pic2qpc(
                     torch.eye(out_ch, device=W.device, dtype=W.dtype) * u.weights[i]
                 )
 
-            weights_full = W.view(1, in_ch, out_ch, 1).repeat(cat.out_shape.features, 1, 1, 1)
+            weights_full = repeat(
+                rearrange(W, "ci co -> 1 ci co 1"),
+                "1 ci co 1 -> f ci co 1",
+                f=cat.out_shape.features,
+            )
             L[u] = WeightedSum(inputs=cat, weights=weights_full)
             return L[u]
 
@@ -607,11 +616,15 @@ def pic2qpc(
                 vals = u.function(z, y)  # type: ignore[misc]
 
             y_w = kron_weights(y_dim, device=device, dtype=dtype)
-            Wf = vals * y_w.view(1, in_ch)  # (out_ch, in_ch)
+            Wf = vals * rearrange(y_w, "ci -> 1 ci")  # (out_ch, in_ch)
 
             # WeightedSum expects (in_ch, out_ch) in its weights tensor.
-            weights_mat = Wf.transpose(0, 1).contiguous()
-            weights_full = weights_mat.view(1, in_ch, out_ch, 1).repeat(child.out_shape.features, 1, 1, 1)
+            weights_mat = rearrange(Wf, "co ci -> ci co").contiguous()
+            weights_full = repeat(
+                rearrange(weights_mat, "ci co -> 1 ci co 1"),
+                "1 ci co 1 -> f ci co 1",
+                f=child.out_shape.features,
+            )
             L[u] = WeightedSum(inputs=child, weights=weights_full)
             return L[u]
 

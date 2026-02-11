@@ -11,6 +11,7 @@ from typing import Optional
 
 import numpy as np
 import torch
+from einops import rearrange, repeat
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidWeightsError, MissingCacheError, ScopeError, ShapeError
@@ -198,17 +199,27 @@ class EinsumLayer(Module):
     @property
     def log_weights(self) -> Tensor:
         """Log-normalized weights (sum to 1 over input channel pairs)."""
-        # Flatten last two dims, softmax, reshape back
-        flat_logits = self.logits.view(*self.logits.shape[:-2], -1)
+        # Flatten input-channel pair axes before normalization.
+        flat_logits = rearrange(self.logits, "f co r i j -> f co r (i j)")
         log_weights = torch.nn.functional.log_softmax(flat_logits, dim=-1)
-        return log_weights.view(self.weights_shape)
+        return rearrange(
+            log_weights,
+            "f co r (i j) -> f co r i j",
+            i=self._left_channels,
+            j=self._right_channels,
+        )
 
     @property
     def weights(self) -> Tensor:
         """Normalized weights (sum to 1 over input channel pairs)."""
-        flat_logits = self.logits.view(*self.logits.shape[:-2], -1)
+        flat_logits = rearrange(self.logits, "f co r i j -> f co r (i j)")
         weights = torch.nn.functional.softmax(flat_logits, dim=-1)
-        return weights.view(self.weights_shape)
+        return rearrange(
+            weights,
+            "f co r (i j) -> f co r i j",
+            i=self._left_channels,
+            j=self._right_channels,
+        )
 
     @weights.setter
     def weights(self, values: Tensor) -> None:
@@ -221,9 +232,14 @@ class EinsumLayer(Module):
         if not torch.allclose(sums, torch.ones_like(sums)):
             raise InvalidWeightsError("Weights must sum to 1 over (i,j) channel pairs.")
         # Project to logits space
-        flat_weights = values.view(*values.shape[:-2], -1)
+        flat_weights = rearrange(values, "f co r i j -> f co r (i j)")
         flat_logits = proj_convex_to_real(flat_weights)
-        self.logits.data = flat_logits.view(self.weights_shape)
+        self.logits.data = rearrange(
+            flat_logits,
+            "f co r (i j) -> f co r i j",
+            i=self._left_channels,
+            j=self._right_channels,
+        )
 
     @log_weights.setter
     def log_weights(self, values: Tensor) -> None:
@@ -325,7 +341,7 @@ class EinsumLayer(Module):
 
         # Expand for batch dimension
         batch_size = sampling_ctx.channel_index.shape[0]
-        logits = logits.unsqueeze(0).expand(batch_size, -1, -1, -1, -1, -1)
+        logits = rearrange(logits, "f co r i j -> 1 f co r i j").expand(batch_size, -1, -1, -1, -1, -1)
         # logits shape: (B, D, O, R, I, J)
 
         # Select output channel based on parent's channel_index
@@ -334,26 +350,28 @@ class EinsumLayer(Module):
 
         # Gather the correct output channel
         # Expand channel_idx to match logits dimensions
-        idx = channel_idx.view(batch_size, self.out_shape.features, 1, 1, 1, 1)
+        idx = rearrange(channel_idx, "b f -> b f 1 1 1 1")
         idx = idx.expand(-1, -1, -1, self.out_shape.repetitions, self._left_channels, self._right_channels)
-        logits = logits.gather(dim=2, index=idx).squeeze(2)
+        logits = logits.gather(dim=2, index=idx)
+        logits = rearrange(logits, "b f 1 r i j -> b f r i j")
         # logits shape: (B, D, R, I, J)
 
         # Select repetition if specified
         if sampling_ctx.repetition_idx is not None:
-            rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1)
+            rep_idx = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1 1")
             rep_idx = rep_idx.expand(
                 -1, self.out_shape.features, -1, self._left_channels, self._right_channels
             )
-            logits = logits.gather(dim=2, index=rep_idx).squeeze(2)
+            logits = logits.gather(dim=2, index=rep_idx)
+            logits = rearrange(logits, "b f 1 i j -> b f i j")
             # logits shape: (B, D, I, J)
         else:
             if self.out_shape.repetitions > 1:
                 raise ValueError("repetition_idx must be provided when sampling with num_repetitions > 1")
-            logits = logits[:, :, 0, :, :]  # (B, D, I, J)
+            logits = logits[:, :, 0, :, :]
 
         # Flatten (I, J) for categorical sampling
-        logits_flat = logits.view(batch_size, self.out_shape.features, -1)  # (B, D, I*J)
+        logits_flat = rearrange(logits, "b f i j -> b f (i j)")
 
         # Condition on evidence if cache has log-likelihoods.
         left_ll = None
@@ -370,17 +388,19 @@ class EinsumLayer(Module):
         if left_ll is not None and right_ll is not None:
             # Select repetition
             if sampling_ctx.repetition_idx is not None:
-                rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1)
+                rep_idx = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1")
                 rep_idx_l = rep_idx.expand(-1, left_ll.shape[1], left_ll.shape[2], -1)
-                left_ll = left_ll.gather(dim=-1, index=rep_idx_l).squeeze(-1)
-                right_ll = right_ll.gather(dim=-1, index=rep_idx_l).squeeze(-1)
+                left_ll = left_ll.gather(dim=-1, index=rep_idx_l)
+                right_ll = right_ll.gather(dim=-1, index=rep_idx_l)
+                left_ll = rearrange(left_ll, "b f i 1 -> b f i")
+                right_ll = rearrange(right_ll, "b f j 1 -> b f j")
 
             # Compute joint log-likelihood for each (i, j) pair
             # left_ll: (B, D, I), right_ll: (B, D, J)
-            left_ll = left_ll.unsqueeze(-1)  # (B, D, I, 1)
-            right_ll = right_ll.unsqueeze(-2)  # (B, D, 1, J)
+            left_ll = rearrange(left_ll, "b f i -> b f i 1")
+            right_ll = rearrange(right_ll, "b f j -> b f 1 j")
             joint_ll = left_ll + right_ll  # (B, D, I, J)
-            joint_ll_flat = joint_ll.view(batch_size, self.out_shape.features, -1)
+            joint_ll_flat = rearrange(joint_ll, "b f i j -> b f (i j)")
 
             # Compute posterior
             log_prior = logits_flat
@@ -414,14 +434,13 @@ class EinsumLayer(Module):
         else:
             # Single input with Split module - use generic merge_split_indices
             full_indices = self.inputs.merge_split_indices(left_indices, right_indices)
-            full_mask = sampling_ctx.mask.repeat(1, 2)
+            full_mask = repeat(sampling_ctx.mask, "b f -> b (f two)", two=2)
 
             child_ctx = sampling_ctx.copy()
             child_ctx.update(channel_index=full_indices, mask=full_mask)
             self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=child_ctx)
 
         return data
-
 
     def expectation_maximization(
         self,
@@ -448,34 +467,33 @@ class EinsumLayer(Module):
                 raise MissingCacheError("Module log-likelihoods not in cache. Call log_likelihood first.")
 
             # E-step: compute expected counts
-            log_weights = self.log_weights.unsqueeze(0)  # (1, D, O, R, I, J)
+            log_weights = rearrange(self.log_weights, "f co r i j -> 1 f co r i j")
 
-            # Expand input lls for outer product
-            left_ll = left_ll.unsqueeze(3).unsqueeze(5)  # (B, D, I, 1, R, 1)
-            right_ll = right_ll.unsqueeze(2).unsqueeze(5)  # (B, D, 1, J, R, 1)
-
-            # Rearrange dimensions to match weights: (D, O, R, I, J)
-            left_ll = left_ll.permute(0, 1, 4, 2, 3, 5).squeeze(-1)  # (B, D, R, I, 1)
-            right_ll = right_ll.permute(0, 1, 4, 2, 3, 5).squeeze(-1)  # (B, D, R, 1, J)
+            left_ll = rearrange(left_ll, "b f i r -> b f 1 r i 1")
+            right_ll = rearrange(right_ll, "b f j r -> b f 1 r 1 j")
 
             # Get gradients (how much each output contributed)
             log_grads = torch.log(module_lls.grad + 1e-10)
 
-            log_grads = log_grads.unsqueeze(-1).unsqueeze(-1)  # (B, D, O, R, 1, 1)
-
-            module_lls = module_lls.unsqueeze(-1).unsqueeze(-1)  # (B, D, O, R, 1, 1)
+            log_grads = rearrange(log_grads, "b f co r -> b f co r 1 1")
+            module_lls = rearrange(module_lls, "b f co r -> b f co r 1 1")
 
             # Joint input log-likelihood
-            joint_input_ll = left_ll.unsqueeze(2) + right_ll.unsqueeze(2)  # (B, D, 1, R, I, J)
+            joint_input_ll = left_ll + right_ll  # (B, D, 1, R, I, J)
 
             # Compute log expectations
             log_expectations = log_weights + log_grads + joint_input_ll - module_lls
             log_expectations = log_expectations.logsumexp(0)  # Sum over batch
 
             # Normalize to get new log weights
-            flat_expectations = log_expectations.view(*log_expectations.shape[:-2], -1)
+            flat_expectations = rearrange(log_expectations, "f co r i j -> f co r (i j)")
             flat_log_weights = torch.nn.functional.log_softmax(flat_expectations, dim=-1)
-            new_log_weights = flat_log_weights.view(self.weights_shape)
+            new_log_weights = rearrange(
+                flat_log_weights,
+                "f co r (i j) -> f co r i j",
+                i=self._left_channels,
+                j=self._right_channels,
+            )
 
             # M-step: update weights
             self.log_weights = new_log_weights

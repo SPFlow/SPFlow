@@ -1,4 +1,5 @@
 import torch
+from einops import rearrange
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterCombinationError
@@ -184,8 +185,8 @@ class Categorical(LeafModule):
         high_scoped = high[:, self.scope.query]
 
         # Expand to match (batch, features, channels, repetitions)
-        low_expanded = low_scoped.unsqueeze(2).unsqueeze(-1)
-        high_expanded = high_scoped.unsqueeze(2).unsqueeze(-1)
+        low_expanded = rearrange(low_scoped, "b f -> b f 1 1")
+        high_expanded = rearrange(high_scoped, "b f -> b f 1 1")
 
         # Handle NaN bounds
         low_processed = torch.where(
@@ -205,18 +206,18 @@ class Categorical(LeafModule):
 
         # Reshape categories to [1, 1, 1, 1, K] for broadcasting
         # We need to broadcast against [batch, features, channels, repetitions]
-        categories = categories.view(1, 1, 1, 1, K)
+        categories = rearrange(categories, "k -> 1 1 1 1 k")
 
         # Reshape bounds to [batch, features, channels, repetitions, 1]
-        low_b = low_processed.unsqueeze(-1)
-        high_b = high_processed.unsqueeze(-1)
+        low_b = rearrange(low_processed, "b f ci r -> b f ci r 1")
+        high_b = rearrange(high_processed, "b f ci r -> b f ci r 1")
 
         # Mask of valid categories: low <= cat <= high
         mask = (categories >= low_b) & (categories <= high_b)
 
         # Sum probabilities of valid categories
         # probs shape: [features, channels, reps, K] -> need to unsqueeze batch
-        probs_expanded = probs.unsqueeze(0)  # [1, features, channels, reps, K]
+        probs_expanded = rearrange(probs, "f ci r k -> 1 f ci r k")
 
         # multiply by mask [batch, features, channels, reps, K]
         valid_probs = probs_expanded * mask

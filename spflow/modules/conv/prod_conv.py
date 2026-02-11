@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from einops import rearrange
 from torch import Tensor
 from torch.nn import functional as F
 
@@ -200,25 +201,16 @@ class ProdConv(Module):
         kh, kw = self.kernel_size_h, self.kernel_size_w
         ph, pw = self.padding_h, self.padding_w
 
-        # Reshape to spatial: (batch, channels, H, W, reps)
-        ll = ll.permute(0, 2, 1, 3)  # (batch, channels, features, reps)
-        ll = ll.view(batch_size, channels, in_h, in_w, reps)
-
-        # Merge batch and reps for efficient conv: (batch * reps, channels, H, W)
-        ll = ll.permute(0, 4, 1, 2, 3)  # (batch, reps, channels, H, W)
-        ll = ll.contiguous().view(batch_size * reps, channels, in_h, in_w)
+        # Merge batch and reps for efficient depthwise convolution.
+        ll = rearrange(ll, "b (h w) ci r -> (b r) ci h w", h=in_h, w=in_w)
 
         # Apply depthwise convolution with ones kernel
         # This sums values within each patch
         ones_kernel = torch.ones(channels, 1, kh, kw, device=ll.device, dtype=ll.dtype)
         result = F.conv2d(ll, ones_kernel, stride=(kh, kw), padding=(ph, pw), groups=channels)
 
-        # Reshape back: (batch, reps, channels, out_H, out_W)
-        result = result.view(batch_size, reps, channels, out_h, out_w)
-
-        # Convert to SPFlow format: (batch, out_features, channels, reps)
-        result = result.permute(0, 3, 4, 2, 1)  # (batch, out_H, out_W, channels, reps)
-        result = result.contiguous().view(batch_size, out_h * out_w, channels, reps)
+        # Convert back to SPFlow format: (batch, out_features, channels, reps)
+        result = rearrange(result, "(b r) ci oh ow -> b (oh ow) ci r", b=batch_size, r=reps)
 
         return result
 
@@ -303,7 +295,6 @@ class ProdConv(Module):
         )
 
         return data
-
 
     def expectation_maximization(
         self,

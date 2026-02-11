@@ -396,6 +396,13 @@ def test_weights_can_be_initialized_from_2d_tensor():
     assert module.weights_shape == (1, 2, 2, 1)
 
 
+def test_weights_can_be_initialized_from_1d_tensor():
+    weights = torch.tensor([0.2, 0.8], dtype=torch.float32)
+    leaf = make_normal_leaf(scope=Scope([0]), out_channels=2, num_repetitions=1)
+    module = Sum(inputs=leaf, weights=weights)
+    assert module.weights_shape == (1, 2, 1, 1)
+
+
 def test_weights_can_be_initialized_from_3d_tensor():
     weights = torch.tensor(
         [
@@ -407,6 +414,15 @@ def test_weights_can_be_initialized_from_3d_tensor():
     leaf = make_normal_leaf(scope=Scope([0, 1]), out_channels=2, num_repetitions=1)
     module = Sum(inputs=leaf, weights=weights)
     assert module.weights_shape == (2, 2, 2, 1)
+
+
+def test_weights_can_be_initialized_from_4d_tensor():
+    weights = torch.ones((1, 2, 2, 2), dtype=torch.float32)
+    weights /= weights.sum(dim=1, keepdim=True)
+    leaf = make_normal_leaf(scope=Scope([0]), out_channels=2, num_repetitions=2)
+    module = Sum(inputs=leaf, weights=weights)
+    assert module.weights_shape == (1, 2, 2, 2)
+    assert module.out_shape.repetitions == 2
 
 
 def test_setting_weights_with_invalid_shape_raises():

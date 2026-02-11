@@ -11,6 +11,7 @@ from typing import Optional
 
 import numpy as np
 import torch
+from einops import rearrange, repeat
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidWeightsError, MissingCacheError, ScopeError, ShapeError
@@ -269,10 +270,10 @@ class LinsumLayer(Module):
 
         # Expand for output channels dimension
         # prod_ll: (N, D, C, R) -> (N, D, 1, C, R)
-        prod_ll = prod_ll.unsqueeze(2)
+        prod_ll = rearrange(prod_ll, "n f ci r -> n f 1 ci r")
 
         # Get log weights: (D, O, R, C) -> (1, D, O, C, R)
-        log_weights = self.log_weights.permute(0, 1, 3, 2).unsqueeze(0)
+        log_weights = rearrange(self.log_weights, "f co r ci -> 1 f co ci r")
 
         # Weighted sum over input channels
         # (N, D, 1, C, R) + (1, D, O, C, R) -> (N, D, O, C, R)
@@ -316,23 +317,25 @@ class LinsumLayer(Module):
 
         # Expand for batch dimension
         batch_size = sampling_ctx.channel_index.shape[0]
-        logits = logits.unsqueeze(0).expand(batch_size, -1, -1, -1, -1)
+        logits = rearrange(logits, "f co r ci -> 1 f co r ci").expand(batch_size, -1, -1, -1, -1)
         # logits shape: (B, D, O, R, C)
 
         # Select output channel based on parent's channel_index
         channel_idx = sampling_ctx.channel_index  # (B, D)
 
         # Gather the correct output channel
-        idx = channel_idx.view(batch_size, self.out_shape.features, 1, 1, 1)
+        idx = rearrange(channel_idx, "b f -> b f 1 1 1")
         idx = idx.expand(-1, -1, -1, self.out_shape.repetitions, self._in_channels)
-        logits = logits.gather(dim=2, index=idx).squeeze(2)
+        logits = logits.gather(dim=2, index=idx)
+        logits = rearrange(logits, "b f 1 r ci -> b f r ci")
         # logits shape: (B, D, R, C)
 
         # Select repetition if specified
         if sampling_ctx.repetition_idx is not None:
-            rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1)
+            rep_idx = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1")
             rep_idx = rep_idx.expand(-1, self.out_shape.features, -1, self._in_channels)
-            logits = logits.gather(dim=2, index=rep_idx).squeeze(2)
+            logits = logits.gather(dim=2, index=rep_idx)
+            logits = rearrange(logits, "b f 1 ci -> b f ci")
             # logits shape: (B, D, C)
         else:
             if self.out_shape.repetitions > 1:
@@ -354,10 +357,12 @@ class LinsumLayer(Module):
         if left_ll is not None and right_ll is not None:
             # Select repetition
             if sampling_ctx.repetition_idx is not None:
-                rep_idx = sampling_ctx.repetition_idx.view(-1, 1, 1, 1)
+                rep_idx = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1")
                 rep_idx_l = rep_idx.expand(-1, left_ll.shape[1], left_ll.shape[2], -1)
-                left_ll = left_ll.gather(dim=-1, index=rep_idx_l).squeeze(-1)
-                right_ll = right_ll.gather(dim=-1, index=rep_idx_l).squeeze(-1)
+                left_ll = left_ll.gather(dim=-1, index=rep_idx_l)
+                right_ll = right_ll.gather(dim=-1, index=rep_idx_l)
+                left_ll = rearrange(left_ll, "b f ci 1 -> b f ci")
+                right_ll = rearrange(right_ll, "b f ci 1 -> b f ci")
 
             # Product log-likelihood for each channel
             prod_ll = left_ll + right_ll  # (B, D, C)
@@ -391,14 +396,13 @@ class LinsumLayer(Module):
             # Single input with Split module - use generic merge_split_indices
             # For LinsumLayer, both left and right use the same indices (linear combination)
             full_indices = self.inputs.merge_split_indices(indices, indices)
-            full_mask = sampling_ctx.mask.repeat(1, 2)
+            full_mask = repeat(sampling_ctx.mask, "b f -> b (f two)", two=2)
 
             child_ctx = sampling_ctx.copy()
             child_ctx.update(channel_index=full_indices, mask=full_mask)
             self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=child_ctx)
 
         return data
-
 
     def expectation_maximization(
         self,
@@ -425,18 +429,18 @@ class LinsumLayer(Module):
                 raise MissingCacheError("Module log-likelihoods not in cache. Call log_likelihood first.")
 
             # E-step: compute expected counts
-            log_weights = self.log_weights.unsqueeze(0)  # (1, D, O, R, C)
+            log_weights = rearrange(self.log_weights, "f co r ci -> 1 f co r ci")
 
             # Product of left and right
             prod_ll = left_ll + right_ll  # (B, D, C, R)
             # Rearrange to match weights: (B, D, O, R, C)
-            prod_ll = prod_ll.permute(0, 1, 3, 2).unsqueeze(2)  # (B, D, 1, R, C)
+            prod_ll = rearrange(prod_ll, "b f ci r -> b f 1 r ci")
 
             # Get gradients
             log_grads = torch.log(module_lls.grad + 1e-10)
 
-            log_grads = log_grads.unsqueeze(-1)  # (B, D, O, R, 1)
-            module_lls = module_lls.unsqueeze(-1)  # (B, D, O, R, 1)
+            log_grads = rearrange(log_grads, "b f co r -> b f co r 1")
+            module_lls = rearrange(module_lls, "b f co r -> b f co r 1")
 
             # Compute log expectations
             log_expectations = log_weights + log_grads + prod_ll - module_lls

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from einops import rearrange, repeat
 from torch import Tensor
 
 from spflow.exceptions import ShapeError
@@ -174,14 +175,16 @@ class ElementwiseProduct(BaseProduct):
         if self.input_is_split:
             num_splits = self.num_splits
             if isinstance(self.inputs[0], SplitConsecutive):
-                return output_ids.repeat((1, num_splits)).unsqueeze(-1)
+                expanded_ids = output_ids.unsqueeze(1).expand(-1, num_splits, -1)
+                return rearrange(expanded_ids, "b i f -> b (i f) 1")
             elif isinstance(self.inputs[0], SplitInterleaved):
-                return output_ids.repeat_interleave(num_splits, dim=1).unsqueeze(-1)
+                expanded_ids = output_ids.unsqueeze(-1).expand(-1, -1, num_splits)
+                return rearrange(expanded_ids, "b f i -> b (f i) 1")
             else:
                 raise NotImplementedError("Other Split types are not implemented yet.")
         else:
             num_splits = len(self.inputs)
-            return output_ids.unsqueeze(-1).repeat(1, 1, num_splits)
+            return repeat(output_ids, "b f -> b f i", i=num_splits)
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
         """Map output mask to input mask.
@@ -195,14 +198,16 @@ class ElementwiseProduct(BaseProduct):
         if self.input_is_split:
             num_splits = self.num_splits
             if isinstance(self.inputs[0], SplitConsecutive):
-                return mask.repeat((1, num_splits)).unsqueeze(-1)
+                expanded_mask = mask.unsqueeze(1).expand(-1, num_splits, -1)
+                return rearrange(expanded_mask, "b i f -> b (i f) 1")
             elif isinstance(self.inputs[0], SplitInterleaved):
-                return mask.repeat_interleave(num_splits, dim=1).unsqueeze(-1)
+                expanded_mask = mask.unsqueeze(-1).expand(-1, -1, num_splits)
+                return rearrange(expanded_mask, "b f i -> b (f i) 1")
             else:
                 raise NotImplementedError("Other Split types are not implemented yet.")
         else:
             num_splits = len(self.inputs)
-            return mask.unsqueeze(-1).repeat(1, 1, num_splits)
+            return repeat(mask, "b f -> b f i", i=num_splits)
 
     @cached
     def log_likelihood(

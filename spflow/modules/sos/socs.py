@@ -5,6 +5,7 @@ from typing import cast
 
 import numpy as np
 import torch
+from einops import reduce
 from torch import Tensor
 
 from spflow.exceptions import ShapeError, UnsupportedOperationError
@@ -134,7 +135,7 @@ class SOCS(Module):
             diag = torch.diagonal(k, dim1=1, dim2=2)  # (F, R, C)
             z_parts.append(diag.permute(0, 2, 1))  # (F, C, R)
 
-        Z = torch.stack(z_parts, dim=0).sum(dim=0)  # (F, C, R)
+        Z = reduce(torch.stack(z_parts, dim=0), "n f c r -> f c r", "sum")
         logZ = torch.log(torch.clamp(Z, min=1e-30))
         cache.set("socs_logZ", self, logZ)
         cache.extras["socs_logZ"] = logZ
@@ -243,14 +244,14 @@ class SOCS(Module):
         def _joint_ll(mod: Module, x: Tensor) -> Tensor:
             # Do not reuse the traversal cache across different MCMC states.
             ll = mod.log_likelihood(x, cache=None)
-            return ll.sum(dim=1).squeeze(-1).squeeze(-1)  # (B,)
+            return reduce(ll, "b f 1 1 -> b", "sum")
 
         def _log_target_signed(mod: Module, x: Tensor) -> Tensor:
             # Same: the Cache implementation is per-module (not per-data), so it must
             # not be re-used when evaluating different x values in MCMC.
             eval_cache = Cache()
             logabs, _sign = _signed_eval(mod, x, eval_cache)
-            return (2.0 * logabs).sum(dim=1).squeeze(-1).squeeze(-1)  # (B,)
+            return reduce(2.0 * logabs, "b f 1 1 -> b", "sum")
 
         # Sample per-component with an independence MH kernel:
         # target π(x) ∝ c_i(x)^2, proposal q(x) from a monotone PC (either c_i itself or abs-weight proxy).
@@ -288,5 +289,4 @@ class SOCS(Module):
             out[mask] = x
 
         return out
-
 

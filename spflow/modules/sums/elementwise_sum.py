@@ -4,6 +4,7 @@ from typing import Optional
 
 import numpy as np
 import torch
+from einops import rearrange
 from torch import Tensor, nn
 
 from spflow.exceptions import (
@@ -296,17 +297,20 @@ class ElementwiseSum(Module):
         # Index into the correct weight channels given by parent module
         # (stay in logits space since Categorical distribution accepts logits directly)
         if sampling_ctx.repetition_idx is not None:
-            logits = self.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1, -1)
+            logits = rearrange(self.logits, "f ci co i r -> 1 f ci co i r").expand(
+                sampling_ctx.channel_index.shape[0], -1, -1, -1, -1, -1
+            )
 
             indices = sampling_ctx.repetition_idx  # Shape (30000, 1, 1)
 
             # Use gather to select the correct repetition
             # Repeat indices to match the target dimension for gathering
 
-            indices = indices.view(-1, 1, 1, 1, 1, 1).expand(
+            indices = rearrange(indices, "... -> (...) 1 1 1 1 1").expand(
                 -1, logits.shape[1], logits.shape[2], logits.shape[3], logits.shape[4], -1
             )
-            logits = torch.gather(logits, dim=-1, index=indices).squeeze(-1)
+            logits = torch.gather(logits, dim=-1, index=indices)
+            logits = rearrange(logits, "b f ci co i 1 -> b f ci co i")
         else:
             if self.out_shape.repetitions > 1:
                 raise ValueError(
@@ -314,7 +318,7 @@ class ElementwiseSum(Module):
                     "num_repetitions > 1."
                 )
             logits = self.logits[..., 0]  # Select the 0th repetition
-            logits = logits.unsqueeze(0)  # Make space for the batch
+            logits = rearrange(logits, "f ci co i -> 1 f ci co i")
 
             # Expand to batch size
             logits = logits.expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
@@ -327,15 +331,20 @@ class ElementwiseSum(Module):
         cids_num_sums = cids_mapped[..., 1]
 
         # Index weights with cids_num_sums (selects the correct output channel)
-        cids_num_sums = cids_num_sums[..., None, None, None].expand(
+        cids_num_sums = rearrange(cids_num_sums, "b f -> b f 1 1 1").expand(
             -1, -1, logits.shape[-3], -1, logits.shape[-1]
         )
-        logits = logits.gather(dim=3, index=cids_num_sums).squeeze(3)
+        logits = logits.gather(dim=3, index=cids_num_sums)
+        logits = rearrange(logits, "b f ci 1 i -> b f ci i")
 
         # Index logits with oids_in_channels_per_input to get the correct logits for each input
         logits = logits.gather(
-            dim=2, index=cids_in_channels_per_input[..., None, None].expand(-1, -1, -1, logits.shape[-1])
-        ).squeeze(2)
+            dim=2,
+            index=rearrange(cids_in_channels_per_input, "b f -> b f 1 1").expand(
+                -1, -1, -1, logits.shape[-1]
+            ),
+        )
+        logits = rearrange(logits, "b f 1 i -> b f i")
 
         if (
             cache is not None
@@ -345,19 +354,21 @@ class ElementwiseSum(Module):
             input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
             input_lls = torch.stack(input_lls, dim=self.sum_dim)  # torch.stack(input_lls, dim=-1)
             if sampling_ctx.repetition_idx is not None:
-                indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1).expand(
+                indices = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1 1").expand(
                     -1, input_lls.shape[1], input_lls.shape[2], input_lls.shape[3], -1
                 )
-                input_lls = torch.gather(input_lls, dim=-1, index=indices).squeeze(-1)
+                input_lls = torch.gather(input_lls, dim=-1, index=indices)
+                input_lls = rearrange(input_lls, "b f ci i 1 -> b f ci i")
             is_conditional = True
         else:
             is_conditional = False
 
         if is_conditional:
-            cids_in_channels_input_lls = (
-                cids_in_channels_per_input.unsqueeze(2).unsqueeze(3).expand(-1, -1, -1, input_lls.shape[3])
+            cids_in_channels_input_lls = rearrange(cids_in_channels_per_input, "b f -> b f 1 1").expand(
+                -1, -1, -1, input_lls.shape[3]
             )
-            input_lls = input_lls.gather(dim=2, index=cids_in_channels_input_lls).squeeze(2)
+            input_lls = input_lls.gather(dim=2, index=cids_in_channels_input_lls)
+            input_lls = rearrange(input_lls, "b f 1 i -> b f i")
 
             # Compute log posterior by reweighing logits with input lls
             log_prior = logits
@@ -390,7 +401,6 @@ class ElementwiseSum(Module):
             )
 
         return data
-
 
     @cached
     def log_likelihood(
@@ -426,18 +436,16 @@ class ElementwiseSum(Module):
         # Stack input log-likelihoods
         stacked_lls = torch.stack(lls, dim=self.sum_dim)
 
-        ll = stacked_lls.unsqueeze(3)  # shape: (B, F, IC, 1)
+        ll = rearrange(stacked_lls, "b f ci i r -> b f ci 1 i r")
 
-        log_weights = self.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC)
+        log_weights = rearrange(self.log_weights, "f ci co i r -> 1 f ci co i r")
 
         # Weighted log-likelihoods
         weighted_lls = ll + log_weights  # shape: (B, F, IC, OC)
 
         # Sum over input channels (sum_dim + 1 since here the batch dimension is the first dimension)
         output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)
-        output = output.view(
-            data.shape[0], self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions
-        )
+        output = rearrange(output, "b f ci co r -> b f (ci co) r")
 
         return output
 
@@ -473,20 +481,20 @@ class ElementwiseSum(Module):
             if module_lls is None:
                 raise MissingCacheError("Module log-likelihood not found in cache.")
 
-            log_weights = self.log_weights.unsqueeze(0)
-            input_lls = input_lls.unsqueeze(3)
-            # Get input channel indices
-            s = (
-                module_lls.shape[0],
-                self.out_shape.features,
-                self.in_shape.channels,
-                self._num_sums,
-                1,
+            log_weights = rearrange(self.log_weights, "f ci co i r -> 1 f ci co i r")
+            input_lls = rearrange(input_lls, "b f ci i r -> b f ci 1 i r")
+            log_grads = rearrange(
+                torch.log(module_lls.grad),
+                "b f (ci co) r -> b f ci co 1 r",
+                ci=self.in_shape.channels,
+                co=self._num_sums,
             )
-            if self.out_shape.repetitions is not None:
-                s = s + (self.out_shape.repetitions,)
-            log_grads = torch.log(module_lls.grad).view(s)
-            module_lls = module_lls.view(s)
+            module_lls = rearrange(
+                module_lls,
+                "b f (ci co) r -> b f ci co 1 r",
+                ci=self.in_shape.channels,
+                co=self._num_sums,
+            )
 
             log_expectations = log_weights + log_grads + input_lls - module_lls
             log_expectations = log_expectations.logsumexp(0)  # Sum over batch dimension

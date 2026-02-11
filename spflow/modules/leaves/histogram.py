@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import torch
+from einops import rearrange
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterCombinationError, InvalidParameterError
@@ -67,7 +68,7 @@ class HistogramDist:
     def _bin_densities(self) -> Tensor:
         widths = self._bin_widths
         probs = self.probs
-        densities = probs / widths.view(1, 1, 1, -1)
+        densities = probs / rearrange(widths, "b -> 1 1 1 b")
         return densities
 
     @property
@@ -79,9 +80,9 @@ class HistogramDist:
 
     def _align_x(self, x: Tensor) -> Tensor:
         if x.dim() == 2:
-            return x.unsqueeze(2).unsqueeze(-1)
+            return rearrange(x, "n f -> n f 1 1")
         if x.dim() == 3:
-            return x.unsqueeze(-1)
+            return rearrange(x, "n f c -> n f c 1")
         if x.dim() == 4:
             return x
         raise InvalidParameterError(
@@ -112,8 +113,11 @@ class HistogramDist:
 
         bin_idx_safe = bin_idx.clamp(0, self.nbins - 1)
         densities = self._bin_densities.to(device=x_broadcast.device, dtype=x_broadcast.dtype)  # (F,C,R,B)
-        densities = densities.unsqueeze(0).expand(n_samples, -1, -1, -1, -1)  # (N,F,C,R,B)
-        gathered = densities.gather(-1, bin_idx_safe.unsqueeze(-1)).squeeze(-1)  # (N,F,C,R)
+        densities = rearrange(densities, "f c r b -> 1 f c r b").expand(n_samples, -1, -1, -1, -1)
+        gathered = rearrange(
+            densities.gather(-1, rearrange(bin_idx_safe, "n f c r -> n f c r 1")),
+            "n f c r 1 -> n f c r",
+        )
 
         min_density = self._min_prob / self._bin_widths.max().to(device=gathered.device, dtype=gathered.dtype)
         log_p = torch.log(gathered.clamp_min(min_density))
@@ -266,7 +270,7 @@ class Histogram(LeafModule):
     ) -> dict[str, Tensor]:
         del bias_correction
         # data: (N, F=1, 1, 1)
-        x = data.squeeze(-1).squeeze(-1)  # (N, F)
+        x = rearrange(data, "n f 1 1 -> n f")
         w = weights  # (N, F, C, R)
         if x.dim() != 2 or x.shape[1] != 1:
             raise InvalidParameterError(
@@ -281,8 +285,8 @@ class Histogram(LeafModule):
         if not in_support.all():
             raise InvalidParameterError("MLE data contains values outside histogram support.")
 
-        bin_idx = bin_idx.squeeze(1)  # (N,)
-        w_flat = w[:, 0].reshape(w.shape[0], -1)  # (N, C*R)
+        bin_idx = rearrange(bin_idx, "n 1 -> n")
+        w_flat = rearrange(w[:, 0], "n c r -> n (c r)")
         one_hot = torch.nn.functional.one_hot(bin_idx, nbins).to(dtype=w_flat.dtype)  # (N, B)
 
         counts = w_flat.transpose(0, 1) @ one_hot  # (C*R, B)
@@ -290,7 +294,12 @@ class Histogram(LeafModule):
         probs_est = probs_est.clamp_min(self._min_prob)
         probs_est = probs_est / probs_est.sum(dim=-1, keepdim=True)
 
-        probs_est = probs_est.reshape(self.out_shape.channels, self.out_shape.repetitions, nbins).unsqueeze(0)
+        probs_est = rearrange(
+            probs_est,
+            "(c r) b -> 1 c r b",
+            c=self.out_shape.channels,
+            r=self.out_shape.repetitions,
+        )
         return {"probs": probs_est}
 
     def marginalize(self, marg_rvs: list[int], prune: bool = True, cache=None):

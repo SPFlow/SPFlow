@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from einops import rearrange, repeat
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidWeightsError, ShapeError
@@ -75,11 +76,11 @@ class WeightedSum(Module):
             weights = torch.as_tensor(weights, dtype=torch.get_default_dtype())
 
         if weights.dim() == 1:
-            weights = weights.view(1, -1, 1, 1)
+            weights = rearrange(weights, "ci -> 1 ci 1 1")
         elif weights.dim() == 2:
-            weights = weights.view(1, weights.shape[0], weights.shape[1], 1)
+            weights = rearrange(weights, "ci co -> 1 ci co 1")
         elif weights.dim() == 3:
-            weights = weights.unsqueeze(-1)
+            weights = rearrange(weights, "f ci co -> f ci co 1")
         elif weights.dim() == 4:
             pass
         else:
@@ -92,7 +93,7 @@ class WeightedSum(Module):
 
         # Allow broadcasting weights across features, but not across channels/repetitions.
         if weights.shape[0] == 1 and self.in_shape.features > 1:
-            weights = weights.repeat(self.in_shape.features, 1, 1, 1)
+            weights = repeat(weights, "1 ci co r -> f ci co r", f=self.in_shape.features)
 
         if weights.shape[0] != self.in_shape.features:
             raise ShapeError(
@@ -177,9 +178,9 @@ class WeightedSum(Module):
         # Get input log-likelihoods
         ll = self.inputs.log_likelihood(data, cache=cache)
 
-        ll = ll.unsqueeze(3)  # shape: (B, F, input_OC, 1, R)
+        ll = rearrange(ll, "b f ci r -> b f ci 1 r")
 
-        log_weights = self.log_weights.unsqueeze(0)  # shape: (1, F, IC, OC, R)
+        log_weights = rearrange(self.log_weights, "f ci co r -> 1 f ci co r")
 
         # Weighted log-likelihoods
         weighted_lls = ll + log_weights  # shape: (B, F, IC, OC, R)
@@ -187,12 +188,7 @@ class WeightedSum(Module):
         # Sum over input channels (sum_dim + 1 since batch dimension is first)
         output = torch.logsumexp(weighted_lls, dim=self.sum_dim + 1)
 
-        batch_size = output.shape[0]
-        result = output.view(
-            batch_size, self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions
-        )
-
-        return result
+        return output
 
     def sample(
         self,
@@ -231,24 +227,29 @@ class WeightedSum(Module):
 
         # Index into the correct weight channels given by parent module
         if sampling_ctx.repetition_idx is not None:
-            weights = weights.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
-            indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1).expand(
+            weights = rearrange(weights, "f ci co r -> 1 f ci co r").expand(
+                sampling_ctx.channel_index.shape[0], -1, -1, -1, -1
+            )
+            indices = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1 1").expand(
                 -1, weights.shape[1], weights.shape[2], weights.shape[3], -1
             )
-            weights = torch.gather(weights, dim=-1, index=indices).squeeze(-1)
+            weights = torch.gather(weights, dim=-1, index=indices)
+            weights = rearrange(weights, "b f ci co 1 -> b f ci co")
         else:
             if self.out_shape.repetitions > 1:
                 raise ValueError(
                     "sampling_ctx.repetition_idx must be provided when sampling from a module with "
                     "num_repetitions > 1."
                 )
-            weights = weights[..., 0].unsqueeze(0)
-            weights = weights.expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
+            weights = rearrange(weights[..., 0], "f ci co -> 1 f ci co").expand(
+                sampling_ctx.channel_index.shape[0], -1, -1, -1
+            )
 
-        idxs = sampling_ctx.channel_index[..., None, None]
+        idxs = rearrange(sampling_ctx.channel_index, "b f -> b f 1 1")
         in_channels_total = weights.shape[2]
         idxs = idxs.expand(-1, -1, in_channels_total, -1)
-        weights = weights.gather(dim=3, index=idxs).squeeze(3)
+        weights = weights.gather(dim=3, index=idxs)
+        weights = rearrange(weights, "b f ci 1 -> b f ci")
 
         # Sample from categorical distribution
         if is_mpe:

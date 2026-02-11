@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Callable, List, Optional, Sequence
 
 import torch
+from einops import rearrange
 from torch import Tensor, nn
 from torch.nn import functional as F
 
@@ -296,7 +297,7 @@ class FunctionGroup(nn.Module):
         y_b = y.expand(*leading_shape, y.shape[-1])
         xy = torch.cat([z_b, y_b], dim=-1)
 
-        flat = xy.reshape(-1, xy.shape[-1])
+        flat = rearrange(xy, "... d -> (...) d")
         shared_h = self.mlp(flat)  # (N, hidden_dim)
 
         if self.sharing_type == "c":
@@ -305,11 +306,10 @@ class FunctionGroup(nn.Module):
             # MultiHeadedMLP expects the original x; we bypass it and apply heads directly.
             outputs = torch.cat([head(shared_h) for head in self._multi_headed.heads], dim=-1)
             outputs = self._multi_headed.output_activation(outputs)  # (N, num_units)
-            outputs = outputs.transpose(0, 1)  # (num_units, N)
+            outputs = rearrange(outputs, "n u -> u n")
         else:
             assert self._f_head is not None
-            out = F.softplus(self._f_head(shared_h)).squeeze(-1)  # (N,)
-            outputs = out.unsqueeze(0)  # (1, N)
+            outputs = rearrange(F.softplus(self._f_head(shared_h)), "n 1 -> 1 n")
 
         return outputs.reshape(outputs.shape[0], *leading_shape)
 

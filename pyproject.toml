@@ -33,6 +33,7 @@ dependencies = [
     "numpy>=1.26.4",
     "scipy>=1.5.0",
     "torch>=2.0.1",
+    "einops>=0.8.2",
     "fast_pytorch_kmeans>=0.2.2",
     "psutil",  # Required by fast_pytorch_kmeans
     "pydot>=4.0.0",

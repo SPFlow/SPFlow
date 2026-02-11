@@ -1,4 +1,5 @@
 import torch
+from einops import rearrange
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError
@@ -67,8 +68,8 @@ class _HypergeometricDistribution:
         max_successes = torch.minimum(n_param, K)
 
         # Add batch dimensions to parameters
-        min_successes_expanded = min_successes.unsqueeze(0)
-        max_successes_expanded = max_successes.unsqueeze(0)
+        min_successes_expanded = rearrange(min_successes, "... -> 1 ...")
+        max_successes_expanded = rearrange(max_successes, "... -> 1 ...")
 
         # Expand data to match parameter dimensions if needed
         data_expanded = data
@@ -170,11 +171,11 @@ class _HypergeometricDistribution:
         )
 
         # Use broadcasting to create masks where draws are of interest
-        K_expanded = self.K.unsqueeze(0).expand(*n_samples, *self.K.shape)
-        n_expanded = self.n.unsqueeze(0).expand(*n_samples, *self.n.shape)
+        K_expanded = rearrange(self.K, "... -> 1 ...").expand(*n_samples, *self.K.shape)
+        n_expanded = rearrange(self.n, "... -> 1 ...").expand(*n_samples, *self.n.shape)
 
         # Create a mask for the "drawn" indices, considering the first K indices as objects of interest
-        drawn_mask = rand_indices < K_expanded.unsqueeze(-1)
+        drawn_mask = rand_indices < rearrange(K_expanded, "... -> ... 1")
 
         # Count the "drawn" indices for each sample, within the first 'n' draws
         n_drawn = drawn_mask[..., : n_expanded.max().to(torch.int32).item()].sum(dim=-1)

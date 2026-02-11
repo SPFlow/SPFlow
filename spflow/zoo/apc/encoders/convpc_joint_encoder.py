@@ -12,6 +12,7 @@ from typing import Literal
 
 import numpy as np
 import torch
+from einops import reduce, repeat
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterError, ShapeError, UnsupportedOperationError
@@ -100,7 +101,7 @@ class _PairwiseLatentProduct(Module):
             raise ShapeError(
                 f"Unexpected feature size in latent product layer: expected {self.in_shape.features}, got {f}."
             )
-        return ll.view(b, self.out_shape.features, 2, c, r).sum(dim=2)
+        return reduce(ll, "b (f pair) c r -> b f c r", "sum", f=self.out_shape.features, pair=2)
 
     def sample(
         self,
@@ -130,8 +131,8 @@ class _PairwiseLatentProduct(Module):
                 f"got {ctx_features}, expected 1, {self.out_shape.features}, or {self.in_shape.features}."
             )
 
-        child_idx = parent_idx.repeat_interleave(2, dim=1)
-        child_mask = parent_mask.repeat_interleave(2, dim=1)
+        child_idx = repeat(parent_idx, "b f -> b (f two)", two=2)
+        child_mask = repeat(parent_mask, "b f -> b (f two)", two=2)
         sampling_ctx.update(child_idx, child_mask)
         return self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 

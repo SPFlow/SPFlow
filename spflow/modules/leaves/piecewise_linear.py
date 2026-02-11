@@ -13,6 +13,7 @@ import logging
 from typing import List, Optional
 
 import torch
+from einops import rearrange, repeat
 from torch import Tensor, nn
 
 from spflow.exceptions import OptionalDependencyError
@@ -239,7 +240,7 @@ class PiecewiseLinearDist:
         """
         # Handle input shapes
         if x.dim() == 5:
-            x = x.squeeze(-1).squeeze(-1)
+            x = rearrange(x, "n c f 1 1 -> n c f")
 
         batch_size = x.shape[0]
         probs = torch.zeros(
@@ -570,7 +571,7 @@ class PiecewiseLinear(LeafModule):
             data_q[marg_mask] = self._supported_value
 
         # Unsqueeze to add channel dimension
-        data_q = data_q.unsqueeze(1)  # [N, 1, F]
+        data_q = rearrange(data_q, "n f -> n 1 f")
 
         # Compute log probabilities
         dist = self.distribution
@@ -579,7 +580,7 @@ class PiecewiseLinear(LeafModule):
         # Marginalize entries
         if has_marginalizations:
             # Expand mask to match log_prob shape
-            marg_mask_expanded = marg_mask.unsqueeze(1).unsqueeze(-1).unsqueeze(-1)
+            marg_mask_expanded = rearrange(marg_mask, "n f -> n 1 f 1 1")
             marg_mask_expanded = torch.broadcast_to(marg_mask_expanded, log_prob.shape)
             log_prob[marg_mask_expanded] = 0.0
 
@@ -638,18 +639,18 @@ class PiecewiseLinear(LeafModule):
         n_samples_int = int(n_samples.item())
 
         if is_mpe:
-            samples = dist.mode.unsqueeze(0)
-            samples = samples.repeat(n_samples_int, 1, 1, 1, 1).detach()
+            samples = rearrange(dist.mode, "c f l r -> 1 c f l r")
+            samples = repeat(samples, "1 c f l r -> n c f l r", n=n_samples_int).detach()
         else:
             samples = dist.sample((n_samples_int,))
 
         # Handle repetition index
         if samples.ndim == 5:
             repetition_idx = sampling_ctx.repetition_idx[instance_mask]
-            r_idxs = repetition_idx.view(-1, 1, 1, 1, 1).expand(
+            r_idxs = rearrange(repetition_idx, "n -> n 1 1 1 1").expand(
                 -1, samples.shape[1], samples.shape[2], samples.shape[3], -1
             )
-            samples = torch.gather(samples, dim=-1, index=r_idxs).squeeze(-1)
+            samples = rearrange(torch.gather(samples, dim=-1, index=r_idxs), "n c f l 1 -> n c f l")
 
         # Handle channel index - gather on leaves dimension (dim=3)
         # samples shape after repetition handling: (N, C=1, F, L)
@@ -658,11 +659,11 @@ class PiecewiseLinear(LeafModule):
 
         # c_idxs needs shape (N, 1, F, 1) to gather on dim=3
         c_idxs = sampling_ctx.channel_index[instance_mask]  # (N,)
-        c_idxs = c_idxs.view(-1, 1, 1, 1).expand(-1, 1, samples.shape[2], 1)  # (N, 1, F, 1)
+        c_idxs = rearrange(c_idxs.reshape(-1), "n -> n 1 1 1").expand(-1, 1, samples.shape[2], 1)
         samples = samples.gather(dim=3, index=c_idxs).squeeze(3)  # (N, 1, F)
 
         # Squeeze channel dimension
-        samples = samples.squeeze(1)  # (N, F)
+        samples = rearrange(samples, "n 1 f -> n f")
 
         # Update data with samples
         row_indices = instance_mask.nonzero(as_tuple=True)[0]

@@ -1,4 +1,5 @@
 import torch
+from einops import rearrange
 from torch import Tensor, nn
 
 from spflow.modules.leaves.leaf import LeafModule
@@ -134,8 +135,8 @@ class Normal(LeafModule):
         high_scoped = high[:, self.scope.query]
 
         # Expand to match (batch, features, channels, repetitions)
-        low_expanded = low_scoped.unsqueeze(2).unsqueeze(-1)
-        high_expanded = high_scoped.unsqueeze(2).unsqueeze(-1)
+        low_expanded = rearrange(low_scoped, "b f -> b f 1 1")
+        high_expanded = rearrange(high_scoped, "b f -> b f 1 1")
 
         loc = self.loc
         scale = self.scale

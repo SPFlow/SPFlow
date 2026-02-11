@@ -74,6 +74,27 @@ def test_sample(in_channels: int, out_features: int, num_reps, depth):
     assert torch.isfinite(samples_query).all()
 
 
+def test_sample_accepts_column_vector_repetition_idx():
+    """Sampling accepts repetition indices with shape (batch, 1)."""
+    n_samples = 6
+    num_reps = 4
+    factorization_layer = make_product(in_channels=3, out_features=8, num_repetitions=num_reps, depth=2)
+
+    data = torch.full((n_samples, 8), torch.nan)
+    channel_index = torch.randint(
+        low=0,
+        high=factorization_layer.out_shape.channels,
+        size=(n_samples, factorization_layer.out_shape.features),
+    )
+    mask = torch.full((n_samples, factorization_layer.out_shape.features), True, dtype=torch.bool)
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples, 1))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+
+    samples = factorization_layer.sample(data=data, sampling_ctx=sampling_ctx)
+    assert samples.shape == data.shape
+    assert torch.isfinite(samples[:, factorization_layer.scope.query]).all()
+
+
 def test_factorization():
     data = make_normal_data(out_features=4)
     factorization = make_product(in_channels=3, out_features=4, num_repetitions=5)

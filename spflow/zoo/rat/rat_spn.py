@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from einops import rearrange
 
 from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
 from spflow.interfaces.classifier import Classifier
@@ -239,14 +240,12 @@ class RatSPN(Module, Classifier):
             )
 
         ll_y = self.root_node.log_weights  # shape: (1, n_root_nodes, 1, 1)
-        ll_y = ll_y.squeeze().view(1, -1)  # shape: (1, n_root_nodes)
+        ll_y = rearrange(ll_y, "1 co 1 1 -> 1 co")
         ll = self.root_node.inputs.log_likelihood(
             data,
             cache=cache,
         )  # shape: (batch_size,1 , n_root_nodes)
-        ll = ll.squeeze(-1).squeeze(
-            1
-        )  # remove repetition and feature dimensions -> shape: (batch_size, n_root_nodes)
+        ll = rearrange(ll, "b 1 co 1 -> b co")
         return log_posterior(log_likelihood=ll, log_prior=ll_y)
 
     def predict_proba(self, data: torch.Tensor):
@@ -295,8 +294,8 @@ class RatSPN(Module, Classifier):
                 raise InvalidParameterError(
                     f"Expected logits shape (1, {self.n_root_nodes}, 1), but got {logits.shape}"
                 )
-            logits = logits.squeeze(-1)
-            logits = logits.unsqueeze(0).expand(data.shape[0], -1, -1)  # shape [b ,1, n_root_nodes]
+            logits = rearrange(logits, "1 co 1 -> 1 1 co")
+            logits = logits.expand(data.shape[0], -1, -1)  # shape [b, 1, n_root_nodes]
 
             if is_mpe:
                 sampling_ctx.channel_index = torch.argmax(logits, dim=-1)

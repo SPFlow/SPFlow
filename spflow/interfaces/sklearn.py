@@ -13,6 +13,7 @@ from typing import Any, Literal
 
 import numpy as np
 import torch
+from einops import rearrange, reduce
 
 from spflow.exceptions import InvalidParameterError, InvalidTypeError, OptionalDependencyError
 from spflow.learn.learn_spn import learn_spn
@@ -79,16 +80,16 @@ def _reduce_log_likelihood(
     - returns a 1D tensor of shape (batch,).
     """
     if ll.dim() == 2:
-        ll = ll.unsqueeze(-1).unsqueeze(-1)
+        ll = rearrange(ll, "b f -> b f 1 1")
     elif ll.dim() == 3:
-        ll = ll.unsqueeze(-1)
+        ll = rearrange(ll, "b f c -> b f c 1")
     elif ll.dim() != 4:
         raise InvalidParameterError(f"Unexpected log-likelihood shape {tuple(ll.shape)}.")
 
     if ll.shape[0] == 0:
         return ll.new_zeros((0,))
 
-    ll = ll.sum(dim=1)  # (B, C, R)
+    ll = reduce(ll, "b f c r -> b c r", "sum")
 
     def reduce_over(t: torch.Tensor, dim: int, method: str) -> torch.Tensor:
         if t.shape[dim] == 1:

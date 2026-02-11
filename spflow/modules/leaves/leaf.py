@@ -5,6 +5,7 @@ from typing import Optional, Dict, Callable, Iterable, Union
 
 import numpy as np
 import torch
+from einops import rearrange, repeat
 from torch import Tensor
 
 from spflow.exceptions import ShapeError, UnsupportedOperationError
@@ -170,7 +171,7 @@ class LeafModule(Module, ABC):
                     f"{self.__class__.__name__}._supported_value has shape {tuple(supported_tensor.shape)}; "
                     f"expected ({num_features},)."
                 )
-            return supported_tensor.unsqueeze(0).expand_as(scoped_data)
+            return rearrange(supported_tensor, "f -> 1 f").expand_as(scoped_data)
 
         if supported_tensor.shape[0] != num_features:
             raise ShapeError(
@@ -188,7 +189,7 @@ class LeafModule(Module, ABC):
                 f"got shape {tuple(feature_values.shape)}."
             )
 
-        return feature_values.unsqueeze(0).expand_as(scoped_data)
+        return rearrange(feature_values, "f -> 1 f").expand_as(scoped_data)
 
     @abstractmethod
     def params(self) -> Dict[str, Tensor]:
@@ -223,7 +224,7 @@ class LeafModule(Module, ABC):
             weights: Weight tensor for each data point.
             bias_correction: Whether to apply bias correction to variance estimate.
         """
-        data = data.view(data.shape[0], self.out_shape.features, 1, 1)  # Add channel and repetition dims
+        data = rearrange(data, "b f -> b f 1 1")
         estimates = self._compute_parameter_estimates(data, weights, bias_correction)
         self._set_mle_parameters(estimates)
 
@@ -315,21 +316,15 @@ class LeafModule(Module, ABC):
             return param_est
 
         if len(target_shape) == 2:
-            param_est = param_est.unsqueeze(1).repeat(
+            param_est = rearrange(param_est, "f ... -> f 1 ...")
+            param_est = param_est.repeat(1, self.out_shape.channels, *([1] * (param_est.dim() - 2)))
+        elif len(target_shape) == 3:
+            param_est = rearrange(param_est, "f ... -> f 1 1 ...")
+            param_est = param_est.repeat(
                 1,
                 self.out_shape.channels,
-                *([1] * (param_est.dim() - 1)),
-            )
-        elif len(target_shape) == 3:
-            param_est = (
-                param_est.unsqueeze(1)
-                .unsqueeze(1)
-                .repeat(
-                    1,
-                    self.out_shape.channels,
-                    self.out_shape.repetitions,
-                    *([1] * (param_est.dim() - 1)),
-                )
+                self.out_shape.repetitions,
+                *([1] * (param_est.dim() - 3)),
             )
 
         return param_est
@@ -408,9 +403,9 @@ class LeafModule(Module, ABC):
 
         # ----- log probabilities -----
 
-        # Unsqueeze scope_data to make space for out_channels and repetition dimensions
-        # event_shape is now always [features, out_channels, num_repetitions]
-        data_q = data_q.unsqueeze(2).unsqueeze(-1)
+        # Add broadcast dims for channel and repetition axes.
+        # event_shape is always [features, out_channels, num_repetitions].
+        data_q = rearrange(data_q, "b f -> b f 1 1")
 
         if self.is_conditional:
             # Get evidence
@@ -425,14 +420,14 @@ class LeafModule(Module, ABC):
         if has_marginalizations:
             # Expand marg_mask to match log_prob shape by broadcasting
             # marg_mask is [batch, features], expand to [batch, features, 1, 1]
-            marg_mask_for_log_prob = marg_mask.unsqueeze(2).unsqueeze(-1)
+            marg_mask_for_log_prob = rearrange(marg_mask, "b f -> b f 1 1")
             # Broadcast to log_prob shape
             marg_mask_for_log_prob = torch.broadcast_to(marg_mask_for_log_prob, log_prob.shape)
             log_prob[marg_mask_for_log_prob] = 0.0
 
         # Set marginalized scope data back to NaNs
         if has_marginalizations:
-            marg_mask_for_data = marg_mask.unsqueeze(2).unsqueeze(-1)
+            marg_mask_for_data = rearrange(marg_mask, "b f -> b f 1 1")
             data_q[marg_mask_for_data] = torch.nan
 
         return log_prob
@@ -464,8 +459,8 @@ class LeafModule(Module, ABC):
         high_scoped = high[:, self.scope.query]
 
         # Expand to match (batch, features, channels, repetitions)
-        low_expanded = low_scoped.unsqueeze(2).unsqueeze(-1)
-        high_expanded = high_scoped.unsqueeze(2).unsqueeze(-1)
+        low_expanded = rearrange(low_scoped, "b f -> b f 1 1")
+        high_expanded = rearrange(high_scoped, "b f -> b f 1 1")
 
         # Get the distribution
         dist = self.distribution
@@ -620,6 +615,18 @@ class LeafModule(Module, ABC):
                 )
             else:
                 sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
+        else:
+            repetition_idx = sampling_ctx.repetition_idx
+            if repetition_idx.ndim == 2 and repetition_idx.shape[1] == 1:
+                repetition_idx = rearrange(repetition_idx, "b 1 -> b")
+            elif repetition_idx.ndim != 1:
+                raise ValueError("sampling_ctx.repetition_idx must have shape (batch,) or (batch, 1).")
+
+            if repetition_idx.shape[0] != data.shape[0]:
+                raise ValueError(
+                    "sampling_ctx.repetition_idx batch dimension must match the number of samples."
+                )
+            sampling_ctx.repetition_idx = repetition_idx.to(dtype=torch.long, device=data.device)
 
         if is_mpe:
             if self.is_conditional:
@@ -633,23 +640,25 @@ class LeafModule(Module, ABC):
                 samples = dist.mode
 
                 if samples.dim() == 2:
-                    samples = samples.unsqueeze(2).unsqueeze(-1)
+                    samples = rearrange(samples, "b f -> b f 1 1")
                 elif samples.dim() == 3:
-                    samples = samples.unsqueeze(-1)
+                    samples = rearrange(samples, "b f ci -> b f ci 1")
             else:
                 # Get mode of distribution as MPE
-                samples = self.mode.unsqueeze(0)
+                samples = rearrange(self.mode, "f ci r -> 1 f ci r")
 
             if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
                 if not self.is_conditional:
-                    samples = samples.repeat(n_samples, 1, 1, 1).detach()
+                    samples = repeat(samples, "1 f ci r -> n f ci r", n=int(n_samples.item())).detach()
                 # repetition_idx shape: (n_samples,)
                 repetition_idx = sampling_ctx.repetition_idx[instance_mask]
 
-                r_idxs = repetition_idx.view(-1, 1, 1, 1).expand(-1, samples.shape[1], samples.shape[2], -1)
+                r_idxs = rearrange(repetition_idx, "b -> b 1 1 1").expand(
+                    -1, samples.shape[1], samples.shape[2], -1
+                )
 
                 # Gather samples according to repetition index
-                samples = torch.gather(samples, dim=-1, index=r_idxs).squeeze(-1)
+                samples = rearrange(torch.gather(samples, dim=-1, index=r_idxs), "b f ci 1 -> b f ci")
 
             elif (
                 sampling_ctx.repetition_idx is not None
@@ -663,7 +672,7 @@ class LeafModule(Module, ABC):
 
             else:
                 if not self.is_conditional:
-                    samples = samples.repeat(n_samples, 1, 1).detach()
+                    samples = repeat(samples, "1 f ci -> n f ci", n=int(n_samples.item())).detach()
 
         else:
             if self.is_conditional:
@@ -680,10 +689,12 @@ class LeafModule(Module, ABC):
                 # repetition_idx shape: (n_samples,)
                 repetition_idx = sampling_ctx.repetition_idx[instance_mask]
 
-                r_idxs = repetition_idx.view(-1, 1, 1, 1).expand(-1, samples.shape[1], samples.shape[2], -1)
+                r_idxs = rearrange(repetition_idx, "b -> b 1 1 1").expand(
+                    -1, samples.shape[1], samples.shape[2], -1
+                )
 
                 # Gather samples according to repetition index
-                samples = torch.gather(samples, dim=-1, index=r_idxs).squeeze(-1)
+                samples = rearrange(torch.gather(samples, dim=-1, index=r_idxs), "b f ci 1 -> b f ci")
 
             elif (
                 sampling_ctx.repetition_idx is not None
@@ -706,10 +717,10 @@ class LeafModule(Module, ABC):
             sampling_ctx.channel_index.zero_()
             ctx_channel_index = torch.zeros_like(ctx_channel_index)
 
-        c_idxs = ctx_channel_index[instance_mask].unsqueeze(-1)
+        c_idxs = rearrange(ctx_channel_index[instance_mask], "b f -> b f 1")
 
         # Index the channel_index to get the correct samples for each scope
-        samples = samples.gather(dim=2, index=c_idxs).squeeze(2)
+        samples = rearrange(samples.gather(dim=2, index=c_idxs), "b f 1 -> b f")
 
         # Ensure, that no data is overwritten
         if data[samples_mask].isfinite().any():

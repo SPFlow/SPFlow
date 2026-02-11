@@ -8,6 +8,7 @@ and feature expansion.
 from __future__ import annotations
 
 import torch
+from einops import repeat
 
 from spflow.utils.sampling_context import SamplingContext
 
@@ -93,12 +94,9 @@ def upsample_sampling_context(
     channel_idx = channel_idx.view(batch_size, current_height, current_width)
     mask = mask.view(batch_size, current_height, current_width)
 
-    # Upsample via repeat_interleave
-    channel_idx = torch.repeat_interleave(channel_idx, scale_h, dim=1)
-    channel_idx = torch.repeat_interleave(channel_idx, scale_w, dim=2)
-
-    mask = torch.repeat_interleave(mask, scale_h, dim=1)
-    mask = torch.repeat_interleave(mask, scale_w, dim=2)
+    # Upsample by repeating each spatial position along height and width.
+    channel_idx = repeat(channel_idx, "b h w -> b (h sh) (w sw)", sh=scale_h, sw=scale_w)
+    mask = repeat(mask, "b h w -> b (h sh) (w sw)", sh=scale_h, sw=scale_w)
 
     # Flatten back to (batch, features)
     new_features = current_height * scale_h * current_width * scale_w
@@ -130,8 +128,7 @@ def upsample_sampling_context(
             continue
 
         selector_view = selector.view(batch_size, current_height, current_width, *selector.shape[2:])
-        selector_view = torch.repeat_interleave(selector_view, scale_h, dim=1)
-        selector_view = torch.repeat_interleave(selector_view, scale_w, dim=2)
+        selector_view = repeat(selector_view, "b h w ... -> b (h sh) (w sw) ...", sh=scale_h, sw=scale_w)
         setattr(
             sampling_ctx,
             attr,

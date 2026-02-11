@@ -4,6 +4,7 @@ import math
 from collections.abc import Iterable, Iterator
 
 import torch
+from einops import rearrange, reduce
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
@@ -44,16 +45,16 @@ def reduce_log_likelihood(
         Per-sample log-likelihood tensor of shape (batch,).
     """
     if ll.dim() == 2:
-        ll = ll.unsqueeze(-1).unsqueeze(-1)
+        ll = rearrange(ll, "b f -> b f 1 1")
     elif ll.dim() == 3:
-        ll = ll.unsqueeze(-1)
+        ll = rearrange(ll, "b f c -> b f c 1")
     elif ll.dim() != 4:
         raise InvalidParameterError(f"Unexpected log-likelihood shape {tuple(ll.shape)}.")
 
     if ll.shape[0] == 0:
         return ll.new_zeros((0,))
 
-    ll = ll.sum(dim=1)  # (B, C, R)
+    ll = reduce(ll, "b f c r -> b c r", "sum")
 
     def reduce_over(t: Tensor, dim: int, method: str) -> Tensor:
         if t.shape[dim] == 1:

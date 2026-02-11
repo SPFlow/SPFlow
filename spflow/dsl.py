@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 import torch
+from einops import repeat
 
 from spflow.exceptions import (
     InvalidParameterCombinationError,
@@ -296,7 +297,7 @@ def _make_sum_weights(
     normalized = raw / total
 
     # Sum expects weights of shape: (features, in_channels, out_channels, repetitions)
-    w = normalized.view(1, in_channels, 1, 1).expand(features, in_channels, 1, repetitions).clone()
+    w = repeat(normalized, "ci -> f ci 1 r", f=features, r=repetitions)
     return w
 
 

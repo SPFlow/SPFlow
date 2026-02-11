@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 import torch
+from einops import repeat
 from torch import Tensor
 
 from spflow.modules.module import Module
@@ -123,8 +124,8 @@ class SplitConsecutive(Split):
         split_features = input_features // self.num_splits
 
         if sampling_ctx.channel_index.shape[1] == split_features:
-            channel_index = sampling_ctx.channel_index.repeat(1, self.num_splits)
-            mask = sampling_ctx.mask.repeat(1, self.num_splits)
+            channel_index = repeat(sampling_ctx.channel_index, "b f -> b (f s)", s=self.num_splits)
+            mask = repeat(sampling_ctx.mask, "b f -> b (f s)", s=self.num_splits)
             sampling_ctx.update(channel_index=channel_index, mask=mask)
         elif sampling_ctx.channel_index.shape[1] == input_features:
             pass
@@ -140,5 +141,4 @@ class SplitConsecutive(Split):
             sampling_ctx=sampling_ctx,
         )
         return data
-
 
