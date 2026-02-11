@@ -11,6 +11,7 @@ import numpy as np
 from abc import abstractmethod, ABC
 from typing import Any, Dict, Optional
 
+from einops import repeat
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterError
@@ -270,8 +271,13 @@ class Split(Module, ABC):
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
 
         # Expand mask and channels to match input module shape
-        mask = sampling_ctx.mask.expand(data.shape[0], self.inputs.out_shape.features)
-        channel_index = sampling_ctx.channel_index.expand(data.shape[0], self.inputs.out_shape.features)
+        num_input_features = self.inputs.out_shape.features
+        if sampling_ctx.mask.shape[1] == num_input_features:
+            mask = sampling_ctx.mask
+            channel_index = sampling_ctx.channel_index
+        else:
+            mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=num_input_features)
+            channel_index = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_input_features)
         sampling_ctx.update(channel_index=channel_index, mask=mask)
 
         self.inputs.sample(

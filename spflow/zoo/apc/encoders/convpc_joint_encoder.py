@@ -120,8 +120,9 @@ class _PairwiseLatentProduct(Module):
         if ctx_features == self.in_shape.features:
             return self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
         if ctx_features == 1:
-            parent_idx = sampling_ctx.channel_index.expand(-1, self.out_shape.features)
-            parent_mask = sampling_ctx.mask.expand(-1, self.out_shape.features)
+            num_parent_features = self.out_shape.features
+            parent_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_parent_features)
+            parent_mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=num_parent_features)
         elif ctx_features == self.out_shape.features:
             parent_idx = sampling_ctx.channel_index
             parent_mask = sampling_ctx.mask
@@ -228,8 +229,9 @@ class _LatentFeaturePacking(Module):
         if ctx_features == self.in_shape.features:
             return self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
         if ctx_features == 1:
-            parent_idx = sampling_ctx.channel_index.expand(-1, self.target_features)
-            parent_mask = sampling_ctx.mask.expand(-1, self.target_features)
+            num_target_features = self.target_features
+            parent_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_target_features)
+            parent_mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=num_target_features)
         elif ctx_features == self.target_features:
             parent_idx = sampling_ctx.channel_index
             parent_mask = sampling_ctx.mask
@@ -287,55 +289,74 @@ class _LatentSelectionCapture(Module):
         target_features = self.in_shape.features
 
         if ctx_features == 1:
-            channel_idx = sampling_ctx.channel_index.expand(-1, target_features)
+            channel_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=target_features)
         elif ctx_features == target_features:
             channel_idx = sampling_ctx.channel_index
         elif ctx_features == data_num_features:
             scope_cols = list(self.scope.query)
             channel_idx = sampling_ctx.channel_index[:, scope_cols]
         else:
-            channel_idx = sampling_ctx.channel_index[:, :1].expand(-1, target_features)
+            channel_idx = repeat(sampling_ctx.channel_index[:, :1], "b 1 -> b f", f=target_features)
 
         rep_idx = sampling_ctx.repetition_idx
         if rep_idx is None:
             repetition_idx = None
         elif rep_idx.dim() == 1:
-            repetition_idx = rep_idx.unsqueeze(1).expand(-1, target_features)
+            repetition_idx = repeat(rep_idx, "b -> b f", f=target_features)
         elif rep_idx.shape[1] == 1:
-            repetition_idx = rep_idx.expand(-1, target_features)
+            repetition_idx = repeat(rep_idx, "b 1 -> b f", f=target_features)
         elif rep_idx.shape[1] == target_features:
             repetition_idx = rep_idx
         elif rep_idx.shape[1] == data_num_features:
             scope_cols = list(self.scope.query)
             repetition_idx = rep_idx[:, scope_cols]
         else:
-            repetition_idx = rep_idx[:, :1].expand(-1, target_features)
+            repetition_idx = repeat(rep_idx[:, :1], "b 1 -> b f", f=target_features)
 
         channel_select = getattr(sampling_ctx, "channel_select", None)
         if channel_select is not None and channel_select.dim() == 3:
             if channel_select.shape[1] == 1:
-                channel_select = channel_select.expand(-1, target_features, -1)
+                num_channel_choices = int(channel_select.shape[2])
+                channel_select = repeat(channel_select, "b 1 c -> b f c", f=target_features, c=num_channel_choices)
             elif channel_select.shape[1] == target_features:
                 pass
             elif channel_select.shape[1] == data_num_features:
                 scope_cols = list(self.scope.query)
                 channel_select = channel_select[:, scope_cols, :]
             else:
-                channel_select = channel_select[:, :1, :].expand(-1, target_features, -1)
+                num_channel_choices = int(channel_select.shape[2])
+                channel_select = repeat(
+                    channel_select[:, :1, :],
+                    "b 1 c -> b f c",
+                    f=target_features,
+                    c=num_channel_choices,
+                )
         else:
             channel_select = None
 
         repetition_select = getattr(sampling_ctx, "repetition_select", None)
         if repetition_select is not None and repetition_select.dim() == 3:
             if repetition_select.shape[1] == 1:
-                repetition_select = repetition_select.expand(-1, target_features, -1)
+                num_repetition_choices = int(repetition_select.shape[2])
+                repetition_select = repeat(
+                    repetition_select,
+                    "b 1 r -> b f r",
+                    f=target_features,
+                    r=num_repetition_choices,
+                )
             elif repetition_select.shape[1] == target_features:
                 pass
             elif repetition_select.shape[1] == data_num_features:
                 scope_cols = list(self.scope.query)
                 repetition_select = repetition_select[:, scope_cols, :]
             else:
-                repetition_select = repetition_select[:, :1, :].expand(-1, target_features, -1)
+                num_repetition_choices = int(repetition_select.shape[2])
+                repetition_select = repeat(
+                    repetition_select[:, :1, :],
+                    "b 1 r -> b f r",
+                    f=target_features,
+                    r=num_repetition_choices,
+                )
         else:
             repetition_select = None
 
@@ -987,7 +1008,8 @@ class ConvPcJointEncoder(nn.Module):
                     f"expected {batch_size}, got {channel_idx.shape[0]}."
                 )
             if channel_idx.shape[1] == 1:
-                channel_idx = channel_idx.expand(-1, self.latent_dim)
+                num_latent_features = self.latent_dim
+                channel_idx = repeat(channel_idx, "b 1 -> b f", f=num_latent_features)
             elif channel_idx.shape[1] >= self.latent_dim:
                 channel_idx = channel_idx[:, : self.latent_dim]
             else:
@@ -1000,7 +1022,8 @@ class ConvPcJointEncoder(nn.Module):
         channels = sampling_ctx.channel_index
         ctx_features = channels.shape[1]
         if ctx_features == 1:
-            channel_idx = channels.expand(-1, self.latent_dim)
+            num_latent_features = self.latent_dim
+            channel_idx = repeat(channels, "b 1 -> b f", f=num_latent_features)
         elif ctx_features == self.latent_dim:
             channel_idx = channels
         elif ctx_features == (self.num_x_features + self.latent_dim):
@@ -1028,7 +1051,8 @@ class ConvPcJointEncoder(nn.Module):
                     f"expected {batch_size}, got {repetition_idx.shape[0]}."
                 )
             if repetition_idx.shape[1] == 1:
-                repetition_idx = repetition_idx.expand(-1, self.latent_dim)
+                num_latent_features = self.latent_dim
+                repetition_idx = repeat(repetition_idx, "b 1 -> b f", f=num_latent_features)
             elif repetition_idx.shape[1] >= self.latent_dim:
                 repetition_idx = repetition_idx[:, : self.latent_dim]
             else:
@@ -1043,15 +1067,18 @@ class ConvPcJointEncoder(nn.Module):
 
         rep = sampling_ctx.repetition_idx
         if rep.dim() == 1:
-            repetition_idx = rep.unsqueeze(1).expand(-1, self.latent_dim)
+            num_latent_features = self.latent_dim
+            repetition_idx = repeat(rep, "b -> b f", f=num_latent_features)
         elif rep.shape[1] == 1:
-            repetition_idx = rep.expand(-1, self.latent_dim)
+            num_latent_features = self.latent_dim
+            repetition_idx = repeat(rep, "b 1 -> b f", f=num_latent_features)
         elif rep.shape[1] == self.latent_dim:
             repetition_idx = rep
         elif rep.shape[1] == (self.num_x_features + self.latent_dim):
             repetition_idx = rep[:, self._z_cols]
         else:
-            repetition_idx = rep[:, :1].expand(-1, self.latent_dim)
+            num_latent_features = self.latent_dim
+            repetition_idx = repeat(rep[:, :1], "b 1 -> b f", f=num_latent_features)
         return repetition_idx.to(device=loc.device, dtype=torch.long).clamp(min=0, max=loc.shape[2] - 1)
 
     def _resolve_latent_channel_selector(
@@ -1072,7 +1099,9 @@ class ConvPcJointEncoder(nn.Module):
                 "Latent channel selector batch mismatch: " f"expected {batch_size}, got {selector.shape[0]}."
             )
         if selector.shape[1] == 1:
-            selector = selector.expand(-1, self.latent_dim, -1)
+            num_latent_features = self.latent_dim
+            num_channel_choices = int(selector.shape[2])
+            selector = repeat(selector, "b 1 c -> b f c", f=num_latent_features, c=num_channel_choices)
         elif selector.shape[1] == self.latent_dim:
             pass
         elif selector.shape[1] == (self.num_x_features + self.latent_dim):
@@ -1107,7 +1136,9 @@ class ConvPcJointEncoder(nn.Module):
                 f"expected {batch_size}, got {selector.shape[0]}."
             )
         if selector.shape[1] == 1:
-            selector = selector.expand(-1, self.latent_dim, -1)
+            num_latent_features = self.latent_dim
+            num_repetition_choices = int(selector.shape[2])
+            selector = repeat(selector, "b 1 r -> b f r", f=num_latent_features, r=num_repetition_choices)
         elif selector.shape[1] == self.latent_dim:
             pass
         elif selector.shape[1] == (self.num_x_features + self.latent_dim):

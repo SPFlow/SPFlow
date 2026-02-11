@@ -9,6 +9,7 @@ with an optional neural decoder and exposes the paper-style composite objective:
 from __future__ import annotations
 
 import torch
+from einops import rearrange
 from torch import Tensor
 from torch import nn
 from torch.nn import functional as F
@@ -107,7 +108,7 @@ class AutoencodingPC(nn.Module):
             raise InvalidParameterError(
                 f"Expected tensor with batch dimension and at least one feature axis, got shape {tuple(tensor.shape)}."
             )
-        return tensor.reshape(tensor.shape[0], -1)
+        return rearrange(tensor, "b ... -> b (...)")
 
     def _reconstruction_loss(self, x: Tensor, x_rec: Tensor) -> Tensor:
         """Compute reconstruction loss following the reference APC reduction.

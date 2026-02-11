@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
-from einops import rearrange
+from einops import rearrange, repeat
 from torch import Tensor
 from torch.nn import functional as F
 
@@ -181,8 +181,9 @@ class SumConv(Module):
         # Handle repetition matching
         out_reps = self.out_shape.repetitions
         if in_reps == 1 and out_reps > 1:
-            # Broadcast input reps
-            ll = ll.unsqueeze(-1).expand(-1, -1, -1, out_reps)
+            raise RuntimeError(
+                "Input repetitions cannot be broadcast to multiple output repetitions in SumConv.log_likelihood."
+            )
         elif in_reps != out_reps and in_reps != 1:
             raise ValueError(f"Input repetitions {in_reps} incompatible with output {out_reps}")
 
@@ -318,18 +319,23 @@ class SumConv(Module):
         # Select repetition
         if sampling_ctx.repetition_idx is not None:
             # logits: (out_c, in_c, k, k, reps) -> select reps
-            rep_idx = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1 1 1").expand(
-                batch_size, logits.shape[0], logits.shape[1], K, K, 1
+            out_channels = int(logits.shape[0])
+            in_channels = int(logits.shape[1])
+            rep_idx = repeat(
+                rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                "b -> b co ci kh kw 1",
+                co=out_channels,
+                ci=in_channels,
+                kh=K,
+                kw=K,
             )
-            logits = rearrange(logits, "co ci kh kw r -> 1 co ci kh kw r").expand(
-                batch_size, -1, -1, -1, -1, -1
-            )
+            logits = repeat(logits, "co ci kh kw r -> b co ci kh kw r", b=batch_size)
             logits = torch.gather(logits, dim=-1, index=rep_idx)
             logits = rearrange(logits, "b co ci kh kw 1 -> b co ci kh kw")
             # logits: (batch, out_c, in_c, k, k)
         else:
             logits = logits[..., 0]  # (out_c, in_c, k, k)
-            logits = rearrange(logits, "co ci kh kw -> 1 co ci kh kw").expand(batch_size, -1, -1, -1, -1)
+            logits = repeat(logits, "co ci kh kw -> b co ci kh kw", b=batch_size)
             # logits: (batch, out_c, in_c, k, k)
 
         # Check for cached likelihoods (conditional sampling)
@@ -343,8 +349,14 @@ class SumConv(Module):
 
             # Select repetition
             if sampling_ctx.repetition_idx is not None:
-                rep_idx = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1")
-                rep_idx = rep_idx.expand(-1, input_lls.shape[1], input_lls.shape[2], 1)
+                num_features = int(input_lls.shape[1])
+                num_input_channels = int(input_lls.shape[2])
+                rep_idx = repeat(
+                    rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                    "b -> b f ci 1",
+                    f=num_features,
+                    ci=num_input_channels,
+                )
                 input_lls = torch.gather(input_lls, dim=-1, index=rep_idx)
                 input_lls = rearrange(input_lls, "b f ci 1 -> b f ci")
             else:
@@ -360,8 +372,8 @@ class SumConv(Module):
         # Sample per-position: each pixel position needs its own sample
         # Create position indices for kernel
         # Position within kernel: pixel (i, j) has kernel pos (i % K, j % K)
-        row_pos = rearrange(torch.arange(H, device=data.device), "h -> 1 h 1").expand(batch_size, H, W)
-        col_pos = rearrange(torch.arange(W, device=data.device), "w -> 1 1 w").expand(batch_size, H, W)
+        row_pos = repeat(torch.arange(H, device=data.device), "h -> b h w", b=batch_size, w=W)
+        col_pos = repeat(torch.arange(W, device=data.device), "w -> b h w", b=batch_size, h=H)
         k_row = row_pos % K  # (batch, H, W)
         k_col = col_pos % K  # (batch, H, W)
 
@@ -374,23 +386,20 @@ class SumConv(Module):
         k_flat = k_row * K + k_col  # (batch, H, W)
 
         # Expand logits to per-pixel layout before kernel-index gathering.
-        logits_per_pos_exp = rearrange(logits_per_pos, "b kk co ci -> b kk 1 1 co ci").expand(
-            -1, -1, H, W, -1, -1
-        )
+        logits_per_pos_exp = repeat(logits_per_pos, "b kk co ci -> b kk h w co ci", h=H, w=W)
         # (batch, K*K, H, W, out_c, in_c) -> swap dims for gather
         logits_per_pos_exp = rearrange(logits_per_pos_exp, "b kk h w co ci -> b h w kk co ci")
 
         # Gather by k_flat
-        k_flat_exp2 = rearrange(k_flat, "b h w -> b h w 1 1 1").expand(
-            -1, -1, -1, -1, self.out_shape.channels, self.in_channels
-        )
+        num_output_channels = self.out_shape.channels
+        num_input_channels = self.in_channels
+        k_flat_exp2 = repeat(k_flat, "b h w -> b h w 1 co ci", co=num_output_channels, ci=num_input_channels)
         selected_logits = torch.gather(logits_per_pos_exp, dim=3, index=k_flat_exp2)
         selected_logits = rearrange(selected_logits, "b h w 1 co ci -> b h w co ci")
         # selected_logits: (batch, H, W, out_c, in_c)
 
         # Now select by parent channel: channel_idx (batch, H, W)
-        parent_ch = rearrange(channel_idx, "b h w -> b h w 1 1")
-        parent_ch = parent_ch.expand(-1, -1, -1, -1, self.in_channels)  # (batch, H, W, 1, in_c)
+        parent_ch = repeat(channel_idx, "b h w -> b h w 1 ci", ci=num_input_channels)
         selected_logits = torch.gather(selected_logits, dim=3, index=parent_ch)
         selected_logits = rearrange(selected_logits, "b h w 1 ci -> b h w ci")
         # selected_logits: (batch, H, W, in_c)
@@ -518,7 +527,7 @@ class SumConv(Module):
             # Target shape: (out_c, in_c, k, k, reps)
             k = self.kernel_size
             new_log_weights = rearrange(log_expectations, "co ci r -> co ci 1 1 r")
-            new_log_weights = new_log_weights.expand(-1, -1, k, k, -1)  # (out_c, in_c, k, k, reps)
+            new_log_weights = repeat(new_log_weights, "co ci 1 1 r -> co ci kh kw r", kh=k, kw=k)
 
             # Set new weights
             self.logits.data = new_log_weights.contiguous()

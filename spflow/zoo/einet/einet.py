@@ -14,7 +14,7 @@ from typing import Literal, Optional
 
 import numpy as np
 import torch
-from einops import rearrange
+from einops import rearrange, repeat
 from torch import nn
 
 from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
@@ -448,7 +448,7 @@ class Einet(Module, Classifier):
                     f"Expected logits shape (1, {self.num_classes}, 1), got {logits.shape}"
                 )
             logits = rearrange(logits, "1 co 1 -> 1 1 co")
-            logits = logits.expand(batch_size, -1, -1)
+            logits = repeat(logits, "1 1 co -> b 1 co", b=batch_size)
 
             if is_mpe:
                 sampling_ctx.channel_index = torch.argmax(logits, dim=-1)

@@ -49,7 +49,8 @@ class _HypergeometricDistribution:
 
         mask = mask[tuple(slices)]
         if mask.shape != data.shape:
-            mask = mask.expand_as(data)
+            target_shape = data.shape
+            mask = torch.broadcast_to(mask, target_shape)
         return mask
 
     def check_support(self, data: Tensor) -> Tensor:
@@ -171,8 +172,10 @@ class _HypergeometricDistribution:
         )
 
         # Use broadcasting to create masks where draws are of interest
-        K_expanded = rearrange(self.K, "... -> 1 ...").expand(*n_samples, *self.K.shape)
-        n_expanded = rearrange(self.n, "... -> 1 ...").expand(*n_samples, *self.n.shape)
+        expanded_k_shape = (*n_samples, *self.K.shape)
+        expanded_n_shape = (*n_samples, *self.n.shape)
+        K_expanded = torch.broadcast_to(rearrange(self.K, "... -> 1 ..."), expanded_k_shape)
+        n_expanded = torch.broadcast_to(rearrange(self.n, "... -> 1 ..."), expanded_n_shape)
 
         # Create a mask for the "drawn" indices, considering the first K indices as objects of interest
         drawn_mask = rand_indices < rearrange(K_expanded, "... -> ... 1")

@@ -4,7 +4,7 @@ from typing import cast
 
 import numpy as np
 import torch
-from einops import rearrange
+from einops import rearrange, repeat
 from torch import Tensor, nn
 
 from spflow.exceptions import ShapeError, UnsupportedOperationError
@@ -220,10 +220,19 @@ class SignedSum(Module):
             )
 
         # Current output channel selection from parent
-        oidx = rearrange(sampling_ctx.channel_index, "b f -> b f 1 1")
+        batch_size = int(data.shape[0])
+        num_weight_features = int(w.shape[0])
         in_channels_total = w.shape[1]
-        oidx = oidx.expand(-1, w.shape[0], in_channels_total, -1)
-        w_sel = rearrange(w[..., 0], "f ci co -> 1 f ci co").expand(data.shape[0], -1, -1, -1)
+        context_features = int(sampling_ctx.channel_index.shape[1])
+        if context_features == num_weight_features:
+            oidx = repeat(sampling_ctx.channel_index, "b f -> b f ci 1", ci=in_channels_total)
+        elif context_features == 1:
+            oidx = repeat(sampling_ctx.channel_index, "b 1 -> b f ci 1", f=num_weight_features, ci=in_channels_total)
+        else:
+            raise ShapeError(
+                f"Expected channel_index feature width 1 or {num_weight_features}, got {context_features}."
+            )
+        w_sel = repeat(w[..., 0], "f ci co -> b f ci co", b=batch_size)
         w_sel = w_sel.gather(dim=3, index=oidx)
         w_sel = rearrange(w_sel, "b f ci 1 -> b f ci")
 
@@ -235,8 +244,19 @@ class SignedSum(Module):
             new_channel_index = torch.distributions.Categorical(probs=probs).sample()
 
         # Update sampling context and delegate to child
+        num_features = int(new_channel_index.shape[1])
+        if sampling_ctx.mask.shape[1] == num_features:
+            new_mask = sampling_ctx.mask
+        elif sampling_ctx.mask.shape[1] == 1:
+            new_mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=num_features)
+        else:
+            raise ShapeError(
+                "sampling_ctx.mask has incompatible feature width for sampling update: "
+                f"got {sampling_ctx.mask.shape[1]}, expected 1 or {num_features}."
+            )
         sampling_ctx.update(
-            channel_index=new_channel_index, mask=sampling_ctx.mask.expand_as(new_channel_index)
+            channel_index=new_channel_index,
+            mask=new_mask,
         )
         self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
         return data

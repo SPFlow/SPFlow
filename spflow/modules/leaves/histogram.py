@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import torch
-from einops import rearrange
+from einops import rearrange, repeat
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterCombinationError, InvalidParameterError
@@ -113,7 +113,7 @@ class HistogramDist:
 
         bin_idx_safe = bin_idx.clamp(0, self.nbins - 1)
         densities = self._bin_densities.to(device=x_broadcast.device, dtype=x_broadcast.dtype)  # (F,C,R,B)
-        densities = rearrange(densities, "f c r b -> 1 f c r b").expand(n_samples, -1, -1, -1, -1)
+        densities = repeat(rearrange(densities, "f c r b -> 1 f c r b"), "1 f c r b -> n f c r b", n=n_samples)
         gathered = rearrange(
             densities.gather(-1, rearrange(bin_idx_safe, "n f c r -> n f c r 1")),
             "n f c r 1 -> n f c r",

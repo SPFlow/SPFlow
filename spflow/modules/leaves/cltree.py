@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import torch
-from einops import rearrange
+from einops import rearrange, repeat
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterError, ShapeError, UnsupportedOperationError
@@ -461,7 +461,12 @@ class CLTree(LeafModule):
             counts_root[:, :, k] += (w * (x[:, root] == k).to(w.dtype)[:, None, None]).sum(dim=0)
         probs_root = counts_root / counts_root.sum(dim=-1, keepdim=True).clamp_min(1e-12)
         log_root = probs_root.clamp_min(1e-12).log()  # (C,R,K)
-        log_cpt[root, :, :, :, :] = rearrange(log_root, "c r k -> c r k 1").expand(-1, -1, -1, K)
+        num_categories = K
+        log_cpt[root, :, :, :, :] = repeat(
+            rearrange(log_root, "c r k -> c r k 1"),
+            "c r k 1 -> c r k parent_k",
+            parent_k=num_categories,
+        )
 
         # Conditionals: P(x_i | x_parent)
         for i in range(self.out_shape.features):

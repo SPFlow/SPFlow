@@ -293,8 +293,10 @@ class FunctionGroup(nn.Module):
 
         # Broadcast z and y to a common leading shape (excluding last dim).
         leading_shape = torch.broadcast_shapes(z.shape[:-1], y.shape[:-1])
-        z_b = z.expand(*leading_shape, z.shape[-1])
-        y_b = y.expand(*leading_shape, y.shape[-1])
+        num_z_features = z.shape[-1]
+        num_y_features = y.shape[-1]
+        z_b = torch.broadcast_to(z, (*leading_shape, num_z_features))
+        y_b = torch.broadcast_to(y, (*leading_shape, num_y_features))
         xy = torch.cat([z_b, y_b], dim=-1)
 
         flat = rearrange(xy, "... d -> (...) d")

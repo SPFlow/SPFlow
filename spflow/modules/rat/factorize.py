@@ -10,7 +10,7 @@ from typing import Optional
 
 import numpy as np
 import torch
-from einops import rearrange
+from einops import rearrange, repeat
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterError, StructureError
@@ -89,7 +89,8 @@ class Factorize(BaseProduct):
         return self.unraveled_channel_indices[output_ids]
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
-        return mask.unsqueeze(-1).expand(-1, -1, len(self.inputs))
+        num_inputs = len(self.inputs)
+        return repeat(mask, "b f -> b f i", i=num_inputs)
 
     @property
     def device(self):
@@ -200,10 +201,16 @@ class Factorize(BaseProduct):
         sampling_ctx.repetition_idx = repetition_idx.to(dtype=torch.long, device=self.device)
 
         # gather indices for specific repetitions
-        rep_indices = rearrange(sampling_ctx.repetition_idx, "b -> b 1 1 1").expand(
-            -1, self.indices.shape[0], self.indices.shape[1], -1
+        num_input_features = self.indices.shape[0]
+        num_output_features = self.indices.shape[1]
+        batch_size = data.shape[0]
+        rep_indices = repeat(
+            rearrange(sampling_ctx.repetition_idx, "b -> b 1 1 1"),
+            "b 1 1 1 -> b i o 1",
+            i=num_input_features,
+            o=num_output_features,
         )
-        indices = rearrange(self.indices, "i o r -> 1 i o r").expand(data.shape[0], -1, -1, -1)
+        indices = repeat(rearrange(self.indices, "i o r -> 1 i o r"), "1 i o r -> b i o r", b=batch_size)
         indices = indices.to(dtype=torch.long, device=self.device)
         indices = torch.gather(indices, dim=-1, index=rep_indices)
         indices = rearrange(indices, "b i o 1 -> b i o")

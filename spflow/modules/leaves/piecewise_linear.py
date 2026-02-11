@@ -647,8 +647,15 @@ class PiecewiseLinear(LeafModule):
         # Handle repetition index
         if samples.ndim == 5:
             repetition_idx = sampling_ctx.repetition_idx[instance_mask]
-            r_idxs = rearrange(repetition_idx, "n -> n 1 1 1 1").expand(
-                -1, samples.shape[1], samples.shape[2], samples.shape[3], -1
+            num_channels = samples.shape[1]
+            num_features = samples.shape[2]
+            num_leaves = samples.shape[3]
+            r_idxs = repeat(
+                rearrange(repetition_idx, "n -> n 1 1 1 1"),
+                "n 1 1 1 1 -> n c f l 1",
+                c=num_channels,
+                f=num_features,
+                l=num_leaves,
             )
             samples = rearrange(torch.gather(samples, dim=-1, index=r_idxs), "n c f l 1 -> n c f l")
 
@@ -659,7 +666,8 @@ class PiecewiseLinear(LeafModule):
 
         # c_idxs needs shape (N, 1, F, 1) to gather on dim=3
         c_idxs = sampling_ctx.channel_index[instance_mask]  # (N,)
-        c_idxs = rearrange(c_idxs.reshape(-1), "n -> n 1 1 1").expand(-1, 1, samples.shape[2], 1)
+        num_features = samples.shape[2]
+        c_idxs = repeat(rearrange(c_idxs.reshape(-1), "n -> n 1 1 1"), "n 1 1 1 -> n 1 f 1", f=num_features)
         samples = samples.gather(dim=3, index=c_idxs).squeeze(3)  # (N, 1, F)
 
         # Squeeze channel dimension
@@ -668,8 +676,9 @@ class PiecewiseLinear(LeafModule):
         # Update data with samples
         row_indices = instance_mask.nonzero(as_tuple=True)[0]
         scope_idx = torch.tensor(self.scope.query, dtype=torch.long, device=data.device)
-        rows = row_indices.unsqueeze(1).expand(-1, len(scope_idx))
-        cols = scope_idx.unsqueeze(0).expand(n_samples_int, -1)
+        num_scope_features = len(scope_idx)
+        rows = repeat(row_indices, "n -> n s", s=num_scope_features)
+        cols = repeat(scope_idx, "s -> n s", n=n_samples_int)
         mask_subset = samples_mask[instance_mask][:, self.scope.query]
 
         data[rows[mask_subset], cols[mask_subset]] = samples[mask_subset].to(data.dtype)

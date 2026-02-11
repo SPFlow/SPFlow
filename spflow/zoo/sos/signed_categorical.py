@@ -4,6 +4,7 @@ from collections.abc import Iterable
 
 import numpy as np
 import torch
+from einops import repeat
 from torch import Tensor, nn
 
 from spflow.exceptions import ShapeError, UnsupportedOperationError
@@ -150,19 +151,18 @@ class SignedCategorical(Module):
         if (idx < 0).any() or (idx >= self.K).any():
             raise ValueError(f"SignedCategorical state index out of bounds for K={self.K}.")
 
-        bsz = idx.shape[0]
-        w = self.weights.unsqueeze(0).expand(bsz, -1, -1, -1, -1)  # (B,F,C,R,K)
-        gather_idx = (
-            idx.unsqueeze(2)
-            .unsqueeze(3)
-            .unsqueeze(4)
-            .expand(
-                -1,
-                self.out_shape.features,
-                self.out_shape.channels,
-                self.out_shape.repetitions,
-                1,
-            )
+        batch_size = idx.shape[0]
+        num_channels = self.out_shape.channels
+        num_repetitions = self.out_shape.repetitions
+        singleton_size = 1
+
+        w = repeat(self.weights, "f c r k -> b f c r k", b=batch_size)  # (B,F,C,R,K)
+        gather_idx = repeat(
+            idx,
+            "b f -> b f c r one",
+            c=num_channels,
+            r=num_repetitions,
+            one=singleton_size,
         )
 
         vals = w.gather(dim=4, index=gather_idx).squeeze(4)  # (B,F,C,R)

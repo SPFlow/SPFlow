@@ -175,10 +175,10 @@ class ElementwiseProduct(BaseProduct):
         if self.input_is_split:
             num_splits = self.num_splits
             if isinstance(self.inputs[0], SplitConsecutive):
-                expanded_ids = output_ids.unsqueeze(1).expand(-1, num_splits, -1)
+                expanded_ids = repeat(output_ids, "b f -> b i f", i=num_splits)
                 return rearrange(expanded_ids, "b i f -> b (i f) 1")
             elif isinstance(self.inputs[0], SplitInterleaved):
-                expanded_ids = output_ids.unsqueeze(-1).expand(-1, -1, num_splits)
+                expanded_ids = repeat(output_ids, "b f -> b f i", i=num_splits)
                 return rearrange(expanded_ids, "b f i -> b (f i) 1")
             else:
                 raise NotImplementedError("Other Split types are not implemented yet.")
@@ -198,10 +198,10 @@ class ElementwiseProduct(BaseProduct):
         if self.input_is_split:
             num_splits = self.num_splits
             if isinstance(self.inputs[0], SplitConsecutive):
-                expanded_mask = mask.unsqueeze(1).expand(-1, num_splits, -1)
+                expanded_mask = repeat(mask, "b f -> b i f", i=num_splits)
                 return rearrange(expanded_mask, "b i f -> b (i f) 1")
             elif isinstance(self.inputs[0], SplitInterleaved):
-                expanded_mask = mask.unsqueeze(-1).expand(-1, -1, num_splits)
+                expanded_mask = repeat(mask, "b f -> b f i", i=num_splits)
                 return rearrange(expanded_mask, "b f i -> b (f i) 1")
             else:
                 raise NotImplementedError("Other Split types are not implemented yet.")
@@ -231,10 +231,11 @@ class ElementwiseProduct(BaseProduct):
         # Check if we need to expand to enable broadcasting along channels
         for i, ll in enumerate(lls):
             if ll.shape[2] == 1:
+                num_output_channels = self.out_shape.channels
                 if ll.ndim == 4:
-                    lls[i] = ll.expand(-1, -1, self.out_shape.channels, -1)
+                    lls[i] = repeat(ll, "b f 1 r -> b f c r", c=num_output_channels)
                 else:
-                    lls[i] = ll.expand(-1, -1, self.out_shape.channels)
+                    lls[i] = repeat(ll, "b f 1 -> b f c", c=num_output_channels)
 
         # Compute the elementwise sum of left and right split
         output = torch.sum(torch.stack(lls, dim=-1), dim=-1)

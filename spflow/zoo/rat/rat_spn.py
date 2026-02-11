@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
-from einops import rearrange
+from einops import rearrange, repeat
 
 from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
 from spflow.interfaces.classifier import Classifier
@@ -295,7 +295,8 @@ class RatSPN(Module, Classifier):
                     f"Expected logits shape (1, {self.n_root_nodes}, 1), but got {logits.shape}"
                 )
             logits = rearrange(logits, "1 co 1 -> 1 1 co")
-            logits = logits.expand(data.shape[0], -1, -1)  # shape [b, 1, n_root_nodes]
+            batch_size = data.shape[0]
+            logits = repeat(logits, "1 1 co -> b 1 co", b=batch_size)  # shape [b, 1, n_root_nodes]
 
             if is_mpe:
                 sampling_ctx.channel_index = torch.argmax(logits, dim=-1)

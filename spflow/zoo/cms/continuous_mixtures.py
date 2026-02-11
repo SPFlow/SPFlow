@@ -22,6 +22,7 @@ from typing import Literal
 
 import torch
 import torch.nn as nn
+from einops import repeat
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
@@ -97,8 +98,7 @@ def _broadcast_component_weights(*, weights: Tensor, num_features: int) -> Tenso
         raise InvalidParameterError("weights must be strictly positive.")
     if not torch.allclose(weights.sum(), weights.new_tensor(1.0), atol=1e-6, rtol=0.0):
         raise InvalidParameterError("weights must sum to 1.")
-    I = int(weights.shape[0])
-    w = weights.view(1, I, 1, 1).expand(int(num_features), I, 1, 1)
+    w = repeat(weights, "component -> feature component 1 1", feature=num_features)
     return w
 
 
@@ -163,11 +163,12 @@ def _factorized_component_ll(
             raise InvalidParameterError(f"Categorical data must be in {{0,..,{K - 1}}} (or NaN).")
         x_long = x.to(dtype=torch.long)
         log_probs = torch.log_softmax(logits, dim=2)  # (I,F,K)
+        num_integration_points = int(log_probs.shape[0])
         # gather along K with broadcast over batch without materializing (I,B,F,K) storage.
         gathered = torch.gather(
-            log_probs.unsqueeze(1).expand(-1, B, -1, -1),
+            repeat(log_probs, "i f k -> i b f k", b=B),
             dim=3,
-            index=x_long.unsqueeze(0).unsqueeze(-1).expand(log_probs.shape[0], -1, -1, 1),
+            index=repeat(x_long, "b f -> i b f 1", i=num_integration_points),
         ).squeeze(
             -1
         )  # (I,B,F)
@@ -652,7 +653,8 @@ def learn_continuous_mixture_cltree(
         cond_logits = raw[:, K:].view(-1, F, K, K)  # (I,F,K,K)
         log_cpt_all = torch.log_softmax(cond_logits, dim=2)  # normalize over x_i
         log_root = torch.log_softmax(root_logits, dim=1)  # (I,K)
-        root_row = log_root.unsqueeze(-1).expand(-1, K, K)  # (I,K,K)
+        num_categories = K
+        root_row = repeat(log_root, "i k -> i k parent_k", parent_k=num_categories)  # (I,K,K)
         root_mask = torch.zeros((F,), dtype=torch.bool, device=log_cpt_all.device)
         root_mask[root] = True
         log_cpt = torch.where(root_mask.view(1, F, 1, 1), root_row.unsqueeze(1), log_cpt_all)
@@ -667,7 +669,7 @@ def learn_continuous_mixture_cltree(
 
         # Root term.
         root_table = log_cpt[:, root, :, 0]  # (I,K)
-        idx_root = x_long[:, root].view(1, B).expand(I, B)
+        idx_root = repeat(x_long[:, root], "b -> i b", i=I)
         ll += torch.gather(root_table, dim=1, index=idx_root)
 
         # Conditionals.
@@ -677,7 +679,7 @@ def learn_continuous_mixture_cltree(
                 continue
             xi = x_long[:, i]
             xp = x_long[:, p]
-            lin = (xi * K + xp).view(1, B).expand(I, B)
+            lin = repeat(xi * K + xp, "b -> i b", i=I)
             table_flat = log_cpt[:, i].reshape(I, K * K)
             ll += torch.gather(table_flat, dim=1, index=lin)
         return ll
@@ -815,7 +817,7 @@ def _latent_opt_cltree(
         B = int(x_long.shape[0])
         ll = torch.zeros((I, B), dtype=log_cpt.dtype, device=log_cpt.device)
         root_table = log_cpt[:, root, :, 0]  # (I,K)
-        idx_root = x_long[:, root].view(1, B).expand(I, B)
+        idx_root = repeat(x_long[:, root], "b -> i b", i=I)
         ll += torch.gather(root_table, dim=1, index=idx_root)
         for i in range(F):
             p = int(parents[i].item())
@@ -823,7 +825,7 @@ def _latent_opt_cltree(
                 continue
             xi = x_long[:, i]
             xp = x_long[:, p]
-            lin = (xi * K + xp).view(1, B).expand(I, B)
+            lin = repeat(xi * K + xp, "b -> i b", i=I)
             table_flat = log_cpt[:, i].reshape(I, K * K)
             ll += torch.gather(table_flat, dim=1, index=lin)
         return ll

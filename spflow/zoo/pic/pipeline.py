@@ -502,8 +502,10 @@ def pic2qpc(
             in_ch = y_grid.shape[0]
 
             # Broadcast into (out_ch, in_ch, dim).
-            z = z_grid[:, None, :].expand(out_ch, in_ch, z_dim)
-            y = y_grid[None, :, :].expand(out_ch, in_ch, y_dim)
+            num_output_channels = out_ch
+            num_input_channels = in_ch
+            z = repeat(z_grid, "co zd -> co ci zd", ci=num_input_channels)
+            y = repeat(y_grid, "ci yd -> co ci yd", co=num_output_channels)
 
             vals_all = group.evaluate_batched(z, y)  # (num_heads, out_ch, in_ch)
 
@@ -606,8 +608,10 @@ def pic2qpc(
             z_grid = grid_points(z_dim, device=device, dtype=dtype)
             y_grid = grid_points(y_dim, device=device, dtype=dtype)
 
-            z = z_grid[:, None, :].expand(out_ch, in_ch, z_dim)
-            y = y_grid[None, :, :].expand(out_ch, in_ch, y_dim)
+            num_output_channels = out_ch
+            num_input_channels = in_ch
+            z = repeat(z_grid, "co zd -> co ci zd", ci=num_input_channels)
+            y = repeat(y_grid, "ci yd -> co ci yd", co=num_output_channels)
 
             if isinstance(u.function, FunctionGroup):
                 head = 0 if u.function.sharing_type == "f" else (u.function_head_idx or 0)

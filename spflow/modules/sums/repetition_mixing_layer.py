@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
-from einops import rearrange
+from einops import rearrange, repeat
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterCombinationError, MissingCacheError
@@ -124,9 +124,8 @@ class RepetitionMixingLayer(Sum):
         # Initialize sampling context if not provided
         sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
 
-        logits = rearrange(self.logits, "f co r -> 1 f co r").expand(
-            sampling_ctx.channel_index.shape[0], -1, -1, -1
-        )
+        batch_size = int(sampling_ctx.channel_index.shape[0])
+        logits = repeat(self.logits, "f co r -> b f co r", b=batch_size)
 
         # Check if we have cached input log-likelihoods to compute posterior
         if (

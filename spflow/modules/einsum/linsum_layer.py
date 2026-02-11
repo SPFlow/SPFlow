@@ -316,24 +316,30 @@ class LinsumLayer(Module):
         logits = self.logits  # (D, O, R, C)
 
         # Expand for batch dimension
-        batch_size = sampling_ctx.channel_index.shape[0]
-        logits = rearrange(logits, "f co r ci -> 1 f co r ci").expand(batch_size, -1, -1, -1, -1)
+        batch_size = int(sampling_ctx.channel_index.shape[0])
+        logits = repeat(logits, "f co r ci -> b f co r ci", b=batch_size)
         # logits shape: (B, D, O, R, C)
 
         # Select output channel based on parent's channel_index
         channel_idx = sampling_ctx.channel_index  # (B, D)
 
         # Gather the correct output channel
-        idx = rearrange(channel_idx, "b f -> b f 1 1 1")
-        idx = idx.expand(-1, -1, -1, self.out_shape.repetitions, self._in_channels)
+        num_repetitions = self.out_shape.repetitions
+        num_input_channels = self._in_channels
+        idx = repeat(channel_idx, "b f -> b f 1 r ci", r=num_repetitions, ci=num_input_channels)
         logits = logits.gather(dim=2, index=idx)
         logits = rearrange(logits, "b f 1 r ci -> b f r ci")
         # logits shape: (B, D, R, C)
 
         # Select repetition if specified
         if sampling_ctx.repetition_idx is not None:
-            rep_idx = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1")
-            rep_idx = rep_idx.expand(-1, self.out_shape.features, -1, self._in_channels)
+            num_features = self.out_shape.features
+            rep_idx = repeat(
+                rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                "b -> b f 1 ci",
+                f=num_features,
+                ci=num_input_channels,
+            )
             logits = logits.gather(dim=2, index=rep_idx)
             logits = rearrange(logits, "b f 1 ci -> b f ci")
             # logits shape: (B, D, C)
@@ -357,8 +363,14 @@ class LinsumLayer(Module):
         if left_ll is not None and right_ll is not None:
             # Select repetition
             if sampling_ctx.repetition_idx is not None:
-                rep_idx = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1")
-                rep_idx_l = rep_idx.expand(-1, left_ll.shape[1], left_ll.shape[2], -1)
+                num_features = int(left_ll.shape[1])
+                num_input_channels = int(left_ll.shape[2])
+                rep_idx_l = repeat(
+                    rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                    "b -> b f ci 1",
+                    f=num_features,
+                    ci=num_input_channels,
+                )
                 left_ll = left_ll.gather(dim=-1, index=rep_idx_l)
                 right_ll = right_ll.gather(dim=-1, index=rep_idx_l)
                 left_ll = rearrange(left_ll, "b f ci 1 -> b f ci")

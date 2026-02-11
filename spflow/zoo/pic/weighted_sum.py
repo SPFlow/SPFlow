@@ -227,11 +227,17 @@ class WeightedSum(Module):
 
         # Index into the correct weight channels given by parent module
         if sampling_ctx.repetition_idx is not None:
-            weights = rearrange(weights, "f ci co r -> 1 f ci co r").expand(
-                sampling_ctx.channel_index.shape[0], -1, -1, -1, -1
-            )
-            indices = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1 1").expand(
-                -1, weights.shape[1], weights.shape[2], weights.shape[3], -1
+            batch_size = int(sampling_ctx.channel_index.shape[0])
+            weights = repeat(weights, "f ci co r -> b f ci co r", b=batch_size)
+            num_features = int(weights.shape[1])
+            num_input_channels = int(weights.shape[2])
+            num_output_channels = int(weights.shape[3])
+            indices = repeat(
+                rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                "b -> b f ci co 1",
+                f=num_features,
+                ci=num_input_channels,
+                co=num_output_channels,
             )
             weights = torch.gather(weights, dim=-1, index=indices)
             weights = rearrange(weights, "b f ci co 1 -> b f ci co")
@@ -241,13 +247,11 @@ class WeightedSum(Module):
                     "sampling_ctx.repetition_idx must be provided when sampling from a module with "
                     "num_repetitions > 1."
                 )
-            weights = rearrange(weights[..., 0], "f ci co -> 1 f ci co").expand(
-                sampling_ctx.channel_index.shape[0], -1, -1, -1
-            )
+            batch_size = int(sampling_ctx.channel_index.shape[0])
+            weights = repeat(weights[..., 0], "f ci co -> b f ci co", b=batch_size)
 
-        idxs = rearrange(sampling_ctx.channel_index, "b f -> b f 1 1")
         in_channels_total = weights.shape[2]
-        idxs = idxs.expand(-1, -1, in_channels_total, -1)
+        idxs = repeat(sampling_ctx.channel_index, "b f -> b f ci 1", ci=in_channels_total)
         weights = weights.gather(dim=3, index=idxs)
         weights = rearrange(weights, "b f ci 1 -> b f ci")
 
@@ -263,10 +267,15 @@ class WeightedSum(Module):
 
         # Update sampling context
         if new_channel_index.shape != sampling_ctx.mask.shape:
-            new_mask = sampling_ctx.mask.expand_as(new_channel_index).contiguous()
-            if new_mask.shape != new_channel_index.shape:
-                new_mask = torch.ones(
-                    new_channel_index.shape, dtype=torch.bool, device=new_channel_index.device
+            num_features = int(new_channel_index.shape[1])
+            if sampling_ctx.mask.shape[1] == num_features:
+                new_mask = sampling_ctx.mask.contiguous()
+            elif sampling_ctx.mask.shape[1] == 1:
+                new_mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=num_features).contiguous()
+            else:
+                raise ShapeError(
+                    "sampling_ctx.mask has incompatible feature width for sampling update: "
+                    f"got {sampling_ctx.mask.shape[1]}, expected 1 or {num_features}."
                 )
             sampling_ctx.update(new_channel_index, new_mask)
         else:

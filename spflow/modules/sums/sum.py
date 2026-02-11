@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
-from einops import rearrange
+from einops import rearrange, repeat
 from torch import Tensor
 
 from spflow.exceptions import (
@@ -309,17 +309,23 @@ class Sum(Module):
 
         # Index into the correct weight channels given by parent module
         if sampling_ctx.repetition_idx is not None:
-            logits = rearrange(self.logits, "f ci co r -> 1 f ci co r").expand(
-                sampling_ctx.channel_index.shape[0], -1, -1, -1, -1
-            )  # shape [b , n_features , in_c, out_c, r]
+            batch_size = int(sampling_ctx.channel_index.shape[0])
+            logits = repeat(self.logits, "f ci co r -> b f ci co r", b=batch_size)
+            # shape [b, n_features, in_c, out_c, r]
 
             indices = sampling_ctx.repetition_idx
 
             # Use gather to select the correct repetition
             # Repeat indices to match the target dimension for gathering
+            num_features = int(logits.shape[1])
             in_channels_total = logits.shape[2]
-            indices = rearrange(indices, "... -> (...) 1 1 1 1").expand(
-                -1, logits.shape[1], in_channels_total, logits.shape[3], -1
+            out_channels = int(logits.shape[3])
+            indices = repeat(
+                rearrange(indices, "... -> (...)"),
+                "n -> n f ci co 1",
+                f=num_features,
+                ci=in_channels_total,
+                co=out_channels,
             )
             # Gather the logits based on the repetition indices
             logits = torch.gather(logits, dim=-1, index=indices)
@@ -335,11 +341,11 @@ class Sum(Module):
             logits = rearrange(logits, "f ci co -> 1 f ci co")
 
             # Expand to batch size
-            logits = logits.expand(sampling_ctx.channel_index.shape[0], -1, -1, -1)
+            batch_size = int(sampling_ctx.channel_index.shape[0])
+            logits = repeat(logits, "1 f ci co -> b f ci co", b=batch_size)
 
-        idxs = rearrange(sampling_ctx.channel_index, "b f -> b f 1 1")
         in_channels_total = logits.shape[2]
-        idxs = idxs.expand(-1, -1, in_channels_total, -1)
+        idxs = repeat(sampling_ctx.channel_index, "b f -> b f ci 1", ci=in_channels_total)
         # Gather the logits based on the channel indices
         logits = logits.gather(dim=3, index=idxs)
         logits = rearrange(logits, "b f ci 1 -> b f ci")
@@ -354,8 +360,13 @@ class Sum(Module):
             input_lls = cache["log_likelihood"][self.inputs]
 
             if sampling_ctx.repetition_idx is not None:
-                indices = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1").expand(
-                    -1, input_lls.shape[1], input_lls.shape[2], -1
+                num_features = int(input_lls.shape[1])
+                in_channels_total = int(input_lls.shape[2])
+                indices = repeat(
+                    rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                    "n -> n f ci 1",
+                    f=num_features,
+                    ci=in_channels_total,
                 )
 
                 # Use gather to select the correct repetition
@@ -383,11 +394,16 @@ class Sum(Module):
         # If shape changes, expand the mask to match new channel_index shape
         if new_channel_index.shape != sampling_ctx.mask.shape:
             # Expand mask from (batch, 1) or (batch, old_features) to (batch, new_features)
-            new_mask = sampling_ctx.mask.expand_as(new_channel_index).contiguous()
-            if new_mask.shape != new_channel_index.shape:
-                # Fall back to creating a full True mask
-                new_mask = torch.ones(
-                    new_channel_index.shape, dtype=torch.bool, device=new_channel_index.device
+            num_features = int(new_channel_index.shape[1])
+            current_mask_features = int(sampling_ctx.mask.shape[1])
+            if current_mask_features == num_features:
+                new_mask = sampling_ctx.mask.contiguous()
+            elif current_mask_features == 1:
+                new_mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=num_features).contiguous()
+            else:
+                raise ShapeError(
+                    "sampling_ctx.mask has incompatible feature width for sampling update: "
+                    f"got {current_mask_features}, expected 1 or {num_features}."
                 )
             sampling_ctx.update(new_channel_index, new_mask)
         else:

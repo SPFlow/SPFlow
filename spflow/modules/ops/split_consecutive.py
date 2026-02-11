@@ -130,8 +130,8 @@ class SplitConsecutive(Split):
         elif sampling_ctx.channel_index.shape[1] == input_features:
             pass
         else:
-            mask = sampling_ctx.mask.expand(data.shape[0], input_features)
-            channel_index = sampling_ctx.channel_index.expand(data.shape[0], input_features)
+            mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=input_features)
+            channel_index = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=input_features)
             sampling_ctx.update(channel_index=channel_index, mask=mask)
 
         self.inputs.sample(
@@ -141,4 +141,3 @@ class SplitConsecutive(Split):
             sampling_ctx=sampling_ctx,
         )
         return data
-

@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Callable, Literal
 
 import torch
+from einops import rearrange
 from torch import Tensor, nn
 
 from spflow.exceptions import InvalidParameterError, ShapeError, UnsupportedOperationError
@@ -135,7 +136,7 @@ class EinetJointEncoder(nn.Module):
         """Flatten ``x`` to ``(B, num_x_features)`` and validate dimensionality."""
         if x.dim() < 2:
             raise ShapeError(f"x must have at least 2 dimensions, got shape {tuple(x.shape)}.")
-        x_flat = x.reshape(x.shape[0], -1)
+        x_flat = rearrange(x, "b ... -> b (...)")
         if x_flat.shape[1] != self.num_x_features:
             raise ShapeError(
                 f"Expected x to have {self.num_x_features} flattened features, got {x_flat.shape[1]}."
@@ -146,7 +147,7 @@ class EinetJointEncoder(nn.Module):
         """Flatten ``z`` to ``(B, latent_dim)`` and validate dimensionality."""
         if z.dim() < 2:
             raise ShapeError(f"z must have at least 2 dimensions, got shape {tuple(z.shape)}.")
-        z_flat = z.reshape(z.shape[0], -1)
+        z_flat = rearrange(z, "b ... -> b (...)")
         if z_flat.shape[1] != self.latent_dim:
             raise ShapeError(f"Expected z to have latent_dim={self.latent_dim}, got {z_flat.shape[1]}.")
         return z_flat
@@ -217,7 +218,7 @@ class EinetJointEncoder(nn.Module):
         """Normalize PC log-likelihood outputs to shape ``(B,)``."""
         if ll.dim() < 1:
             raise ShapeError(f"Expected log-likelihood with batch dimension, got shape {tuple(ll.shape)}.")
-        ll_flat = ll.reshape(ll.shape[0], -1)
+        ll_flat = rearrange(ll, "b ... -> b (...)")
         if ll_flat.shape[1] != 1:
             raise ShapeError(
                 f"Expected scalar log-likelihood per sample, got trailing shape {tuple(ll_flat.shape[1:])}."

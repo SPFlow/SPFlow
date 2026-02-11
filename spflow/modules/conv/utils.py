@@ -35,7 +35,7 @@ def _maybe_resize_selector_features(
             continue
 
         if selector.shape[1] == 1:
-            expanded = selector.expand(-1, target_features, *selector.shape[2:]).contiguous()
+            expanded = repeat(selector, "b 1 ... -> b f ...", f=target_features).contiguous()
             setattr(sampling_ctx, attr, expanded)
             continue
 
@@ -49,7 +49,7 @@ def _maybe_resize_selector_features(
                 setattr(
                     sampling_ctx,
                     attr,
-                    head.expand(-1, target_features, *head.shape[2:]).contiguous(),
+                    repeat(head, "b 1 ... -> b f ...", f=target_features).contiguous(),
                 )
             continue
 
@@ -57,7 +57,7 @@ def _maybe_resize_selector_features(
             continue
 
         if current_features == 1:
-            expanded = selector.expand(-1, target_features, *selector.shape[2:]).contiguous()
+            expanded = repeat(selector, "b 1 ... -> b f ...", f=target_features).contiguous()
             setattr(sampling_ctx, attr, expanded)
             continue
 
@@ -116,7 +116,7 @@ def upsample_sampling_context(
             setattr(
                 sampling_ctx,
                 attr,
-                selector.expand(-1, new_features, *selector.shape[2:]).contiguous(),
+                repeat(selector, "b 1 ... -> b f ...", f=new_features).contiguous(),
             )
             continue
         if selector.shape[1] != current_height * current_width:
@@ -159,8 +159,8 @@ def expand_sampling_context(
 
     if current_features == 1:
         # Broadcast single value to all features
-        channel_idx = sampling_ctx.channel_index.expand(-1, target_features).contiguous()
-        mask = sampling_ctx.mask.expand(-1, target_features).contiguous()
+        channel_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=target_features).contiguous()
+        mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=target_features).contiguous()
         sampling_ctx.update(channel_index=channel_idx, mask=mask)
         _maybe_resize_selector_features(
             sampling_ctx,

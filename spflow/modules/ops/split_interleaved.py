@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from einops import rearrange
 from torch import Tensor
 
 from spflow.modules.module import Module
@@ -101,11 +102,9 @@ class SplitInterleaved(Split):
         So we interleave: [left[0], right[0], left[1], right[1], ...].
         """
         stacked = torch.stack(split_indices, dim=2)  # (batch, features_per_split, num_splits)
-        return stacked.reshape(stacked.shape[0], -1)  # (batch, total_features)
+        return rearrange(stacked, "b f split -> b (f split)")
 
     def merge_split_tensors(self, *split_tensors: Tensor) -> Tensor:
         """Merge split feature tensors back to original layout (interleaved)."""
         stacked = torch.stack(split_tensors, dim=2)  # (batch, features_per_split, num_splits, ...)
-        batch_size = stacked.shape[0]
-        trailing = stacked.shape[3:]
-        return stacked.reshape(batch_size, -1, *trailing)  # (batch, total_features, ...)
+        return rearrange(stacked, "b f split ... -> b (f split) ...")

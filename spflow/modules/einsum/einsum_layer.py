@@ -340,8 +340,8 @@ class EinsumLayer(Module):
         logits = self.logits  # (D, O, R, I, J)
 
         # Expand for batch dimension
-        batch_size = sampling_ctx.channel_index.shape[0]
-        logits = rearrange(logits, "f co r i j -> 1 f co r i j").expand(batch_size, -1, -1, -1, -1, -1)
+        batch_size = int(sampling_ctx.channel_index.shape[0])
+        logits = repeat(logits, "f co r i j -> b f co r i j", b=batch_size)
         # logits shape: (B, D, O, R, I, J)
 
         # Select output channel based on parent's channel_index
@@ -350,17 +350,29 @@ class EinsumLayer(Module):
 
         # Gather the correct output channel
         # Expand channel_idx to match logits dimensions
-        idx = rearrange(channel_idx, "b f -> b f 1 1 1 1")
-        idx = idx.expand(-1, -1, -1, self.out_shape.repetitions, self._left_channels, self._right_channels)
+        num_repetitions = self.out_shape.repetitions
+        num_left_channels = self._left_channels
+        num_right_channels = self._right_channels
+        idx = repeat(
+            channel_idx,
+            "b f -> b f 1 r i j",
+            r=num_repetitions,
+            i=num_left_channels,
+            j=num_right_channels,
+        )
         logits = logits.gather(dim=2, index=idx)
         logits = rearrange(logits, "b f 1 r i j -> b f r i j")
         # logits shape: (B, D, R, I, J)
 
         # Select repetition if specified
         if sampling_ctx.repetition_idx is not None:
-            rep_idx = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1 1")
-            rep_idx = rep_idx.expand(
-                -1, self.out_shape.features, -1, self._left_channels, self._right_channels
+            num_features = self.out_shape.features
+            rep_idx = repeat(
+                rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                "b -> b f 1 i j",
+                f=num_features,
+                i=num_left_channels,
+                j=num_right_channels,
             )
             logits = logits.gather(dim=2, index=rep_idx)
             logits = rearrange(logits, "b f 1 i j -> b f i j")
@@ -388,8 +400,14 @@ class EinsumLayer(Module):
         if left_ll is not None and right_ll is not None:
             # Select repetition
             if sampling_ctx.repetition_idx is not None:
-                rep_idx = rearrange(sampling_ctx.repetition_idx, "... -> (...) 1 1 1")
-                rep_idx_l = rep_idx.expand(-1, left_ll.shape[1], left_ll.shape[2], -1)
+                num_features = int(left_ll.shape[1])
+                num_left_channels = int(left_ll.shape[2])
+                rep_idx_l = repeat(
+                    rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                    "b -> b f i 1",
+                    f=num_features,
+                    i=num_left_channels,
+                )
                 left_ll = left_ll.gather(dim=-1, index=rep_idx_l)
                 right_ll = right_ll.gather(dim=-1, index=rep_idx_l)
                 left_ll = rearrange(left_ll, "b f i 1 -> b f i")

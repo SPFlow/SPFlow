@@ -22,7 +22,7 @@ from typing import Literal, Sequence
 
 import numpy as np
 import torch
-from einops import rearrange
+from einops import rearrange, repeat
 from torch import Tensor, nn
 from torch.nn import functional as F
 
@@ -174,7 +174,8 @@ class InputNet(nn.Module):
             # Shape: (V, K, P)
             out = rearrange(out, "(v p) k -> v k p", p=self.num_param).contiguous()
         if out.shape[0] == 1 and self.num_vars > 1 and self.sharing == "f":
-            out = out.expand(self.num_vars, -1, -1).contiguous()
+            num_variables = self.num_vars
+            out = repeat(out, "1 k p -> v k p", v=num_variables).contiguous()
         if out.shape[0] != self.num_vars:
             raise ShapeError(f"Expected {self.num_vars} vars (or 1 with F-sharing), got {out.shape[0]}.")
         return out
@@ -265,8 +266,11 @@ class InnerNet(nn.Module):
         logits = torch.cat([self.net(chunk) for chunk in z_meshgrid.chunk(n_chunks, dim=0)], dim=-1)
         logits = logits + self.eps
 
-        # Expand does something when sharing == 'f'.
-        logits = logits.expand(self.num_funcs, -1)
+        num_functions = self.num_funcs
+        if logits.shape[0] == 1 and num_functions > 1:
+            logits = repeat(logits, "1 p -> f p", f=num_functions)
+        elif logits.shape[0] != num_functions:
+            raise ShapeError(f"Expected logits with first dim 1 or {num_functions}, got {logits.shape[0]}.")
         logits = logits.view(-1, *([nip] * self.num_dim)).permute(self.perm_dim)
 
         w_shape = [nip if i in self.norm_dim else 1 for i in range(self.num_dim + 1)]
@@ -437,16 +441,16 @@ class TensorizedQPC(Module):
             loc = leaf_param[..., 0]  # (V, K)
             scale = F.softplus(leaf_param[..., 1]) + 1e-6  # (V, K)
             # Broadcast to (B,V,K)
-            x_b = rearrange(x, "b v -> b v 1").expand(B, V, K)
-            loc_b = rearrange(loc, "v k -> 1 v k").expand(B, V, K)
-            scale_b = rearrange(scale, "v k -> 1 v k").expand(B, V, K)
+            x_b = repeat(x, "b v -> b v k", k=K)
+            loc_b = repeat(loc, "v k -> b v k", b=B)
+            scale_b = repeat(scale, "v k -> b v k", b=B)
             dist = torch.distributions.Normal(loc=loc_b, scale=scale_b)
             return dist.log_prob(x_b)
 
         if self.config.leaf_type == "bernoulli":
             logits = leaf_param[..., 0]  # (V, K)
-            x_b = rearrange(x, "b v -> b v 1").expand(B, V, K)
-            logits_b = rearrange(logits, "v k -> 1 v k").expand(B, V, K)
+            x_b = repeat(x, "b v -> b v k", k=K)
+            logits_b = repeat(logits, "v k -> b v k", b=B)
             return -F.binary_cross_entropy_with_logits(logits_b, x_b, reduction="none")
 
         if self.config.leaf_type == "categorical":
@@ -457,8 +461,8 @@ class TensorizedQPC(Module):
             logp = F.log_softmax(logits, dim=-1)  # (V,K,C)
             x_idx = x.to(dtype=torch.long).clamp(min=0, max=C - 1)  # (B,V)
             # Gather: expand logp to (B,V,K,C), gather on last dim.
-            logp_b = rearrange(logp, "v k c -> 1 v k c").expand(B, V, K, C)
-            idx = rearrange(x_idx, "b v -> b v 1 1").expand(B, V, K, 1)
+            logp_b = repeat(logp, "v k c -> b v k c", b=B)
+            idx = repeat(x_idx, "b v -> b v k 1", k=K)
             return torch.gather(logp_b, dim=-1, index=idx).squeeze(-1)
 
         raise StructureError(f"Unsupported leaf_type: {self.config.leaf_type}.")
@@ -498,7 +502,7 @@ class TensorizedQPC(Module):
         for book, (kind, idx) in zip(self.bookkeeping, self.eval_plan):
             inputs_layers = [layer_outputs[i] for i in book.in_layer_ids]
             if book.should_pad:
-                pad = torch.zeros(()).to(inputs_layers[0]).expand_as(inputs_layers[0][0:1])
+                pad = torch.zeros_like(inputs_layers[0][0:1])
                 inputs_layers.append(pad)
 
             cat = torch.cat(inputs_layers, dim=0)

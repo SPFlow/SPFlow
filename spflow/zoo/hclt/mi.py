@@ -8,6 +8,7 @@ and reusable by both CLTree and HCLT learners.
 from __future__ import annotations
 
 import torch
+from einops import repeat
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterError, ShapeError
@@ -225,16 +226,18 @@ def pairwise_mi_categorical(
         end = min(start + chunk_size_pairs, num_pairs)
         ii = idx_i[start:end]  # (B,)
         jj = idx_j[start:end]  # (B,)
-        B = int(ii.numel())
+        num_pairs_batch = int(ii.numel())
 
         # codes: (N,B) in [0, K*K)
         codes = x[:, ii] * num_cats + x[:, jj]
-        offsets = (torch.arange(B, device=device, dtype=torch.long) * bins_per_pair).view(1, B)
+        offsets = (torch.arange(num_pairs_batch, device=device, dtype=torch.long) * bins_per_pair).view(
+            1, num_pairs_batch
+        )
         flat = (codes + offsets).reshape(-1)
 
-        w_flat = w[:, None].expand(n, B).reshape(-1)
-        counts = torch.bincount(flat, weights=w_flat, minlength=B * bins_per_pair).reshape(
-            B, num_cats, num_cats
+        w_flat = repeat(w, "n -> (n pair_batch)", pair_batch=num_pairs_batch)
+        counts = torch.bincount(flat, weights=w_flat, minlength=num_pairs_batch * bins_per_pair).reshape(
+            num_pairs_batch, num_cats, num_cats
         )
         if pair_add:
             counts = counts + pair_add

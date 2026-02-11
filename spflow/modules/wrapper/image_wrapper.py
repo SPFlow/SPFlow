@@ -1,6 +1,7 @@
 from typing import Optional, Union
 
 import torch
+from einops import rearrange
 from torch import Tensor
 
 from spflow.exceptions import ShapeError, StructureError
@@ -98,7 +99,7 @@ class ImageWrapper(Wrapper):
                 f"{tensor.shape[1]}."
             )
 
-        return tensor.view(tensor.shape[0], -1)
+        return rearrange(tensor, "b c h w -> b (c h w)")
 
     def to_image_format(self, tensor: torch.Tensor, batch: bool = True):
         """Convert 2D tensor to 4D image format.
@@ -116,11 +117,29 @@ class ImageWrapper(Wrapper):
         if batch:
             if tensor.dim() != 2:
                 raise ShapeError(f"Input tensor must be 2-dimensional but got {tensor.dim()}-dimensional.")
-            return tensor.view(tensor.shape[0], self.num_channel, self.height, self.width)
+            num_channels = self.num_channel
+            image_height = self.height
+            image_width = self.width
+            return rearrange(
+                tensor,
+                "b (c h w) -> b c h w",
+                c=num_channels,
+                h=image_height,
+                w=image_width,
+            )
         else:
             if tensor.dim() != 1:
                 raise ShapeError(f"Input tensor must be 1-dimensional but got {tensor.dim()}-dimensional.")
-            return tensor.view(self.num_channel, self.height, self.width)
+            num_channels = self.num_channel
+            image_height = self.height
+            image_width = self.width
+            return rearrange(
+                tensor,
+                "(c h w) -> c h w",
+                c=num_channels,
+                h=image_height,
+                w=image_width,
+            )
 
     def extra_repr(self):
         return f"C={self.num_channel}, H={self.height}, W={self.width}"

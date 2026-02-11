@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from typing import Literal
 
+from einops import rearrange
 from torch import Tensor
 from torch import nn
 from torch.nn import functional as F
@@ -145,7 +146,7 @@ class MLPDecoder1D(nn.Module):
         Returns:
             Tensor of shape ``(B, output_dim)``.
         """
-        z = z.reshape(z.shape[0], -1)
+        z = rearrange(z, "b ... -> b (...)")
         if z.shape[1] != self.latent_dim:
             raise InvalidParameterError(f"Expected latent feature size {self.latent_dim}, got {z.shape[1]}.")
         return self.net(z)
@@ -201,6 +202,7 @@ class ConvDecoder2D(nn.Module):
         self.output_shape = output_shape
         self.start_h = start_h
         self.start_w = start_w
+        self.start_channels = base_channels
         self.num_upsamples = num_upsamples
         self.proj = nn.Linear(latent_dim, base_channels * start_h * start_w)
 
@@ -239,12 +241,18 @@ class ConvDecoder2D(nn.Module):
         Returns:
             Tensor of shape ``(B, C, H, W)`` matching ``output_shape``.
         """
-        z = z.reshape(z.shape[0], -1)
+        z = rearrange(z, "b ... -> b (...)")
         if z.shape[1] != self.latent_dim:
             raise InvalidParameterError(f"Expected latent feature size {self.latent_dim}, got {z.shape[1]}.")
 
         x = self.proj(z)
-        x = x.reshape(z.shape[0], -1, self.start_h, self.start_w)
+        x = rearrange(
+            x,
+            "b (c h w) -> b c h w",
+            c=self.start_channels,
+            h=self.start_h,
+            w=self.start_w,
+        )
         x = self.upsample(x)
         x = self.out_conv(x)
 
@@ -363,12 +371,12 @@ class NeuralDecoder2D(nn.Module):
             )
 
     def forward(self, z: Tensor) -> Tensor:
-        z = z.reshape(z.shape[0], -1)
+        z = rearrange(z, "b ... -> b (...)")
         if z.shape[1] != self.latent_dim:
             raise InvalidParameterError(f"Expected latent feature size {self.latent_dim}, got {z.shape[1]}.")
 
         x = self.linear(z)
-        x = x.view(x.shape[0], -1, self.first_h, self.first_w)
+        x = rearrange(x, "b (c h w) -> b c h w", h=self.first_h, w=self.first_w)
         x = self._conv_1(x)
         x = self._residual_stack(x)
 

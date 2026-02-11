@@ -161,17 +161,18 @@ class LeafModule(Module, ABC):
             )
 
         supported_tensor = supported_value.to(device=scoped_data.device, dtype=scoped_data.dtype)
-        if supported_tensor.numel() == 1:
-            return supported_tensor.reshape(()).expand_as(scoped_data)
-
+        batch_size = scoped_data.shape[0]
         num_features = scoped_data.shape[1]
+        if supported_tensor.numel() == 1:
+            return repeat(supported_tensor.reshape(()), "-> b f", b=batch_size, f=num_features)
+
         if supported_tensor.dim() == 1:
             if supported_tensor.shape[0] != num_features:
                 raise ShapeError(
                     f"{self.__class__.__name__}._supported_value has shape {tuple(supported_tensor.shape)}; "
                     f"expected ({num_features},)."
                 )
-            return rearrange(supported_tensor, "f -> 1 f").expand_as(scoped_data)
+            return repeat(supported_tensor, "f -> b f", b=batch_size)
 
         if supported_tensor.shape[0] != num_features:
             raise ShapeError(
@@ -189,7 +190,7 @@ class LeafModule(Module, ABC):
                 f"got shape {tuple(feature_values.shape)}."
             )
 
-        return rearrange(feature_values, "f -> 1 f").expand_as(scoped_data)
+        return repeat(feature_values, "f -> b f", b=batch_size)
 
     @abstractmethod
     def params(self) -> Dict[str, Tensor]:
@@ -653,8 +654,13 @@ class LeafModule(Module, ABC):
                 # repetition_idx shape: (n_samples,)
                 repetition_idx = sampling_ctx.repetition_idx[instance_mask]
 
-                r_idxs = rearrange(repetition_idx, "b -> b 1 1 1").expand(
-                    -1, samples.shape[1], samples.shape[2], -1
+                num_features = samples.shape[1]
+                num_channels = samples.shape[2]
+                r_idxs = repeat(
+                    rearrange(repetition_idx, "b -> b 1 1 1"),
+                    "b 1 1 1 -> b f c 1",
+                    f=num_features,
+                    c=num_channels,
                 )
 
                 # Gather samples according to repetition index
@@ -689,8 +695,13 @@ class LeafModule(Module, ABC):
                 # repetition_idx shape: (n_samples,)
                 repetition_idx = sampling_ctx.repetition_idx[instance_mask]
 
-                r_idxs = rearrange(repetition_idx, "b -> b 1 1 1").expand(
-                    -1, samples.shape[1], samples.shape[2], -1
+                num_features = samples.shape[1]
+                num_channels = samples.shape[2]
+                r_idxs = repeat(
+                    rearrange(repetition_idx, "b -> b 1 1 1"),
+                    "b 1 1 1 -> b f c 1",
+                    f=num_features,
+                    c=num_channels,
                 )
 
                 # Gather samples according to repetition index
@@ -739,8 +750,10 @@ class LeafModule(Module, ABC):
         # Expand to create all (row, col) index pairs
         # rows: (n_instances, out_features) - row index repeated for each feature
         # cols: (n_instances, out_features) - scope indices repeated for each instance
-        rows = row_indices.unsqueeze(1).expand(-1, len(scope_idx))
-        cols = scope_idx.unsqueeze(0).expand(n_samples, -1)
+        num_scope_features = len(scope_idx)
+        num_instances = int(n_samples.item())
+        rows = repeat(row_indices, "n -> n s", s=num_scope_features)
+        cols = repeat(scope_idx, "s -> n s", n=num_instances)
 
         # Get mask subset for scope positions only
         mask_subset = samples_mask[instance_mask][:, scope_cols]  # (n_instances, out_features)
@@ -799,8 +812,8 @@ class LeafModule(Module, ABC):
         scope_size = len(scope_cols)
 
         if ctx_features == 1:
-            channel_index = sampling_ctx.channel_index.expand(-1, scope_size)
-            mask = sampling_ctx.mask.expand(-1, scope_size)
+            channel_index = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=scope_size)
+            mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=scope_size)
             return channel_index, mask
 
         if ctx_features == scope_size:
