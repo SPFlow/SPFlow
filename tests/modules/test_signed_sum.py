@@ -129,8 +129,8 @@ def test_signed_sum_unsupported_operations_raise():
     with pytest.raises(UnsupportedOperationError):
         node.log_likelihood(x)
     with pytest.raises(UnsupportedOperationError):
-        node.expectation_maximization(x)
-    with pytest.raises(UnsupportedOperationError):
+        node._expectation_maximization_step(x, cache=Cache())
+    with pytest.raises(AttributeError):
         node.maximum_likelihood_estimation(x)
     with pytest.raises(UnsupportedOperationError):
         node.marginalize([0])
@@ -144,8 +144,8 @@ def test_signed_sum_unsupported_methods_raise():
     with pytest.raises(UnsupportedOperationError):
         node.log_likelihood(x)
     with pytest.raises(UnsupportedOperationError):
-        node.expectation_maximization(x)
-    with pytest.raises(UnsupportedOperationError):
+        node._expectation_maximization_step(x, cache=Cache())
+    with pytest.raises(AttributeError):
         node.maximum_likelihood_estimation(x)
     with pytest.raises(UnsupportedOperationError):
         node.marginalize([0])

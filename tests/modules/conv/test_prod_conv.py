@@ -262,7 +262,7 @@ class _DummyInput(Module):
         data[:] = torch.nan_to_num(data, nan=0.0)
         return data
 
-    def expectation_maximization(self, data, bias_correction=True, cache=None):
+    def _expectation_maximization_step(self, data, bias_correction=True, *, cache):
         self.em_called += 1
 
     def maximum_likelihood_estimation(
@@ -335,7 +335,7 @@ def test_em_and_marginalize_paths():
     inp = _DummyInput(features=16, channels=2)
     node = ProdConv(inputs=inp, kernel_size_h=2, kernel_size_w=2)
 
-    node.expectation_maximization(torch.zeros((2, 16)), cache=None)
+    node._expectation_maximization_step(torch.zeros((2, 16)), cache=Cache())
     assert inp.em_called == 1
 
     assert node.marginalize(marg_rvs=list(node.scope.query)) is None

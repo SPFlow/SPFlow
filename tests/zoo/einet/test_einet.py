@@ -468,22 +468,16 @@ class TestEinetAdditionalCoverage:
         leaf_modules = make_leaf_modules(4, 3, 1)
         model = Einet(leaf_modules=leaf_modules, num_classes=1, num_repetitions=1)
         data = torch.randn(3, 4)
-        weights = torch.rand(3)
         cache = Cache()
 
-        calls = {"em": 0, "mle": 0, "marginalize": 0}
+        calls = {"em": 0, "marginalize": 0}
         expected_result = object()
 
-        def fake_em(call_data, cache=None):
+        def fake_em(call_data, bias_correction=True, *, cache=None):
             assert call_data is data
+            assert bias_correction is True
             assert cache is cache_obj
             calls["em"] += 1
-
-        def fake_mle(call_data, weights=None, cache=None):
-            assert call_data is data
-            assert weights is weights_obj
-            assert cache is cache_obj
-            calls["mle"] += 1
 
         def fake_marginalize(marg_rvs, prune=True, cache=None):
             assert marg_rvs == [0, 2]
@@ -493,16 +487,14 @@ class TestEinetAdditionalCoverage:
             return expected_result
 
         cache_obj = cache
-        weights_obj = weights
-        monkeypatch.setattr(model.root_node, "expectation_maximization", fake_em)
-        monkeypatch.setattr(model.root_node, "maximum_likelihood_estimation", fake_mle)
+        monkeypatch.setattr(model.root_node, "_expectation_maximization_step", fake_em)
         monkeypatch.setattr(model.root_node, "marginalize", fake_marginalize)
 
-        model.expectation_maximization(data, cache=cache_obj)
-        model.maximum_likelihood_estimation(data, weights=weights_obj, cache=cache_obj)
+        model._expectation_maximization_step(data, cache=cache_obj)
+        with pytest.raises(AttributeError):
+            model.maximum_likelihood_estimation(data)
         result = model.marginalize([0, 2], prune=False, cache=cache_obj)
 
         assert calls["em"] == 1
-        assert calls["mle"] == 1
         assert calls["marginalize"] == 1
         assert result is expected_result

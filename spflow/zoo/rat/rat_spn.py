@@ -326,37 +326,21 @@ class RatSPN(Module, Classifier):
             sampling_ctx=sampling_ctx,
         )
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: torch.Tensor,
-        cache: Cache | None = None,
+        bias_correction: bool = True,
+        *,
+        cache: Cache,
     ) -> None:
         """Perform expectation-maximization step.
 
         Args:
             data: Input data tensor.
+            bias_correction: Whether to apply bias correction in leaf updates.
             cache: Optional cache dictionary.
         """
-        self.root_node.expectation_maximization(data, cache=cache)
-
-    def maximum_likelihood_estimation(
-        self,
-        data: torch.Tensor,
-        weights: torch.Tensor | None = None,
-        cache: Cache | None = None,
-    ) -> None:
-        """Update parameters via maximum likelihood estimation.
-
-        Args:
-            data: Input data tensor.
-            weights: Optional sample weights.
-            cache: Optional cache dictionary.
-        """
-        self.root_node.maximum_likelihood_estimation(
-            data,
-            weights=weights,
-            cache=cache,
-        )
+        self.root_node._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
 
     def marginalize(
         self,

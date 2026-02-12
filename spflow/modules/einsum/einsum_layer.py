@@ -14,7 +14,12 @@ import torch
 from einops import rearrange, repeat
 from torch import Tensor, nn
 
-from spflow.exceptions import InvalidWeightsError, MissingCacheError, ScopeError, ShapeError
+from spflow.exceptions import (
+    InvalidWeightsError,
+    MissingCacheError,
+    ScopeError,
+    ShapeError,
+)
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -331,12 +336,8 @@ class EinsumLayer(Module):
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
-        if cache is None:
-            cache = Cache()
-
         sampling_ctx = require_sampling_context(
             sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             module_out_shape=self.out_shape,
             device=data.device,
@@ -466,11 +467,12 @@ class EinsumLayer(Module):
 
         return data
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
         bias_correction: bool = True,
-        cache: Cache | None = None,
+        *,
+        cache: Cache,
     ) -> None:
         """Perform EM step to update weights.
 
@@ -479,9 +481,6 @@ class EinsumLayer(Module):
             bias_correction: Whether to apply bias correction.
             cache: Cache with log-likelihoods.
         """
-        if cache is None:
-            cache = Cache()
-
         with torch.no_grad():
             # Get cached values
             left_ll, right_ll = self._get_left_right_ll(data, cache)
@@ -524,21 +523,10 @@ class EinsumLayer(Module):
 
         # Recurse to children
         if self._two_inputs:
-            self.inputs[0].expectation_maximization(data, bias_correction=bias_correction, cache=cache)
-            self.inputs[1].expectation_maximization(data, bias_correction=bias_correction, cache=cache)
+            self.inputs[0]._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
+            self.inputs[1]._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
         else:
-            self.inputs.inputs.expectation_maximization(data, bias_correction=bias_correction, cache=cache)
-
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Tensor | None = None,
-        bias_correction: bool = True,
-        nan_strategy: str = "ignore",
-        cache: Cache | None = None,
-    ) -> None:
-        """MLE step (equivalent to EM for sum nodes)."""
-        self.expectation_maximization(data, bias_correction=bias_correction, cache=cache)
+            self.inputs.inputs._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
 
     def marginalize(
         self,
@@ -556,9 +544,6 @@ class EinsumLayer(Module):
         Returns:
             Marginalized module or None if fully marginalized.
         """
-        if cache is None:
-            cache = Cache()
-
         module_scope = self.scope
         mutual_rvs = set(module_scope.query).intersection(set(marg_rvs))
 

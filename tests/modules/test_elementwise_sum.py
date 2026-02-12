@@ -511,7 +511,7 @@ def test_expectation_maximization_cache_error():
     cache = Cache()
     # Missing log_likelihood in cache
     with pytest.raises(MissingCacheError):
-        module.expectation_maximization(data, cache=cache)
+        module._expectation_maximization_step(data, cache=cache)
 
 
 def test_constructor_empty_inputs():
@@ -860,10 +860,11 @@ def test_sample_mpe_path_runs():
     assert torch.isfinite(samples).all()
 
 
-def test_expectation_maximization_initializes_cache_when_missing():
+def test_expectation_maximization_requires_cached_lls():
     module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
+    cache = Cache()
     with pytest.raises(MissingCacheError):
-        module.expectation_maximization(_randn(3, 2), cache=None)
+        module._expectation_maximization_step(_randn(3, 2), cache=cache)
 
 
 def test_expectation_maximization_raises_when_module_ll_missing():
@@ -878,19 +879,5 @@ def test_expectation_maximization_raises_when_module_ll_missing():
             ),
         )
     with pytest.raises(MissingCacheError):
-        module.expectation_maximization(_randn(2, 2), cache=cache)
+        module._expectation_maximization_step(_randn(2, 2), cache=cache)
 
-
-def test_maximum_likelihood_estimation_delegates_to_expectation_maximization(monkeypatch: pytest.MonkeyPatch):
-    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
-    called: dict[str, object] = {}
-
-    def _fake_em(data: torch.Tensor, cache=None) -> None:
-        called["shape"] = data.shape
-        called["cache"] = cache
-
-    monkeypatch.setattr(module, "expectation_maximization", _fake_em)
-    cache = Cache()
-    module.maximum_likelihood_estimation(_randn(5, 2), cache=cache)
-    assert called["shape"] == (5, 2)
-    assert called["cache"] is cache

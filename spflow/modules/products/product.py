@@ -11,7 +11,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 
 class Product(Module):
@@ -104,18 +104,10 @@ class Product(Module):
             Tensor: Generated samples.
         """
 
-        # Handle num_samples case (create empty data tensor)
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
-
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            module_name=self.__class__.__name__,
-            num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
+        data, sampling_ctx = self._prepare_internal_sampling_inputs(
+            num_samples=num_samples,
+            data=data,
+            sampling_ctx=sampling_ctx,
         )
 
         # Map product output feature routing to child feature routing.
@@ -144,11 +136,12 @@ class Product(Module):
         return data
 
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
         bias_correction: bool = True,
-        cache: Cache | None = None,
+        *,
+        cache: Cache,
     ) -> None:
         """EM step (delegates to input, no learnable parameters).
 
@@ -159,28 +152,7 @@ class Product(Module):
         """
 
         # Product has no learnable parameters, delegate to input
-        self.inputs.expectation_maximization(data, cache=cache, bias_correction=bias_correction)
-
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Tensor | None = None,
-        cache: Cache | None = None,
-    ) -> None:
-        """MLE step (delegates to input, no learnable parameters).
-
-        Args:
-            data: Input data tensor for MLE step.
-            weights: Optional weights for weighted MLE.
-            cache: Optional cache for storing intermediate results.
-        """
-
-        # Product has no learnable parameters, delegate to input
-        self.inputs.maximum_likelihood_estimation(
-            data,
-            weights=weights,
-            cache=cache,
-        )
+        self.inputs._expectation_maximization_step(data, cache=cache, bias_correction=bias_correction)
 
     def marginalize(
         self,

@@ -268,7 +268,6 @@ class Split(Module, ABC):
 
         sampling_ctx = require_sampling_context(
             sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             module_out_shape=self.out_shape,
             device=data.device,

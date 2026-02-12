@@ -11,6 +11,7 @@ from spflow.modules import leaves
 from spflow.modules.products import Product
 from spflow.modules.sums import Sum
 from spflow.modules.wrapper.image_wrapper import ImageWrapper, MarginalizationContext
+from spflow.utils.cache import Cache
 from tests.utils.leaves import DummyLeaf, make_data, make_normal_leaf
 
 num_channel = [1, 3]
@@ -210,13 +211,5 @@ class TestImageWrapperExceptions:
         # Wrong shape: (10, 3, 4, 5) instead of (10, 3, 4, 4)
         wrong_data = torch.randn(10, 3, 4, 5)
         with pytest.raises(ShapeError):
-            wrapper.expectation_maximization(wrong_data)
+            wrapper._expectation_maximization_step(wrong_data, cache=Cache())
 
-    def test_maximum_likelihood_estimation_wrong_shape(self):
-        """Test that ShapeError is raised when maximum_likelihood_estimation() receives wrong shaped data."""
-        wrapper = make_wrapper(num_channel=3, num_reps=3)
-
-        # Wrong shape: (10, 3, 4, 5) instead of (10, 3, 4, 4)
-        wrong_data = torch.randn(10, 3, 4, 5)
-        with pytest.raises(ShapeError):
-            wrapper.maximum_likelihood_estimation(wrong_data)

@@ -362,7 +362,7 @@ def test_expectation_maximization_cache_error():
     cache = Cache()
     # Missing log_likelihood in cache
     with pytest.raises(MissingCacheError):
-        module.expectation_maximization(data, cache=cache)
+        module._expectation_maximization_step(data, cache=cache)
 
 
 def test_constructor_empty_inputs():
@@ -479,10 +479,11 @@ def test_sample_raises_on_incompatible_mask_width():
         module.sample(data=torch.full((5, 3), torch.nan), sampling_ctx=sampling_ctx)
 
 
-def test_expectation_maximization_creates_default_cache_and_raises_for_missing_input_lls():
+def test_expectation_maximization_requires_cached_lls():
     module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
+    cache = Cache()
     with pytest.raises(MissingCacheError):
-        module.expectation_maximization(_randn(3, 2), cache=None)
+        module._expectation_maximization_step(_randn(3, 2), cache=cache)
 
 
 def test_expectation_maximization_raises_for_missing_module_lls():
@@ -490,19 +491,7 @@ def test_expectation_maximization_raises_for_missing_module_lls():
     cache = Cache()
     cache["log_likelihood"][module.inputs] = torch.zeros(3, 2, 2, 1)
     with pytest.raises(MissingCacheError):
-        module.expectation_maximization(_randn(3, 2), cache=cache)
-
-
-def test_maximum_likelihood_estimation_delegates_to_em(monkeypatch):
-    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
-    called = {"seen": False}
-
-    def _mock_em(data, bias_correction=True, cache=None):
-        called["seen"] = True
-
-    monkeypatch.setattr(module, "expectation_maximization", _mock_em)
-    module.maximum_likelihood_estimation(_randn(3, 2))
-    assert called["seen"]
+        module._expectation_maximization_step(_randn(3, 2), cache=cache)
 
 
 def test_marginalize_handles_different_features_per_repetition():

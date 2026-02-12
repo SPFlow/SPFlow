@@ -615,32 +615,23 @@ class PiecewiseLinear(LeafModule):
         data = self._prepare_sample_data(num_samples, data)
         sampling_ctx = require_sampling_context(
             sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             module_out_shape=self.out_shape,
             device=data.device,
         )
 
-        scope_cols = list(self.scope.query)
+        scope_cols = self._resolve_scope_columns(num_features=data.shape[1])
         out_of_scope = list(filter(lambda x: x not in scope_cols, range(data.shape[1])))
         marg_mask = torch.isnan(data)
         marg_mask[:, out_of_scope] = False
 
         # Mask that tells us which feature at which sample is relevant
         samples_mask = marg_mask
-        ctx_features = sampling_ctx.mask.shape[1]
-        scope_size = len(scope_cols)
-        if ctx_features == scope_size:
-            ctx_mask = sampling_ctx.mask
-            ctx_channel_index = sampling_ctx.channel_index
-        elif ctx_features == data.shape[1]:
-            ctx_mask = sampling_ctx.mask[:, scope_cols]
-            ctx_channel_index = sampling_ctx.channel_index[:, scope_cols]
-        else:
-            raise ShapeError(
-                "SamplingContext feature dimension mismatch in PiecewiseLinear.sample: "
-                f"got {ctx_features}, expected {scope_size} or {data.shape[1]}."
-            )
+        ctx_channel_index, ctx_mask = self._slice_sampling_context(
+            sampling_ctx=sampling_ctx,
+            num_features=data.shape[1],
+            scope_cols=scope_cols,
+        )
         samples_mask[:, scope_cols] &= ctx_mask
 
         # Count number of samples to draw

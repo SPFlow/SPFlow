@@ -236,9 +236,8 @@ class _UserProduct(Module):
     def feature_to_scope(self):
         return self.inputs.feature_to_scope
 
+    @cached
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> Tensor:
-        if cache is None:
-            cache = Cache()
         cache.extras.setdefault("stats", []).append("called")
         return self.inputs.log_likelihood(data, cache=cache)
 

@@ -17,7 +17,7 @@ from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 from spflow.modules.conv.utils import upsample_sampling_context
 
 
@@ -186,9 +186,6 @@ class ProdConv(Module):
         Returns:
             Tensor: Log-likelihood of shape (batch, out_features, channels, reps).
         """
-        if cache is None:
-            cache = Cache()
-
         # Get input log-likelihoods: (batch, features, channels, reps)
         ll = self.inputs.log_likelihood(data, cache=cache)
 
@@ -238,24 +235,12 @@ class ProdConv(Module):
         Returns:
             Tensor: Sampled values.
         """
-        if cache is None:
-            cache = Cache()
-
-        # Handle num_samples case
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, len(self.scope.query)), float("nan")).to(self.device)
-
-        batch_size = data.shape[0]
-
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            module_name=self.__class__.__name__,
-            num_samples=batch_size,
-            module_out_shape=self.out_shape,
-            device=data.device,
+        data, sampling_ctx = self._prepare_internal_sampling_inputs(
+            num_samples=num_samples,
+            data=data,
+            sampling_ctx=sampling_ctx,
         )
+        batch_size = data.shape[0]
 
         # Expand channel_index and mask to match input features
         in_features = self.in_shape.features
@@ -330,11 +315,12 @@ class ProdConv(Module):
 
         return data
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
         bias_correction: bool = True,
-        cache: Cache | None = None,
+        *,
+        cache: Cache,
     ) -> None:
         """EM step (delegates to input, no learnable parameters).
 
@@ -344,7 +330,7 @@ class ProdConv(Module):
             cache: Optional cache for storing intermediate results.
         """
         # Product has no learnable parameters, delegate to input
-        self.inputs.expectation_maximization(data, cache=cache, bias_correction=bias_correction)
+        self.inputs._expectation_maximization_step(data, cache=cache, bias_correction=bias_correction)
 
     def marginalize(
         self,

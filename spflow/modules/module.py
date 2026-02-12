@@ -14,10 +14,9 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
-from spflow.exceptions import UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 from spflow.modules.module_shape import ModuleShape
 
 
@@ -173,6 +172,22 @@ class Module(nn.Module, ABC):
 
         return data
 
+    def _prepare_internal_sampling_inputs(
+        self,
+        num_samples: int | None,
+        data: Tensor | None,
+        sampling_ctx: SamplingContext | None,
+    ) -> tuple[Tensor, SamplingContext]:
+        """Prepare data and require a strict sampling context for internal modules."""
+        data = self._prepare_sample_data(num_samples=num_samples, data=data)
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
+        return data, sampling_ctx
+
     @abstractmethod
     def log_likelihood(
         self,
@@ -313,64 +328,33 @@ class Module(nn.Module, ABC):
                 ok = True
         return ok
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
         bias_correction: bool = True,
-        cache: Cache | None = None,
+        *,
+        cache: Cache,
     ) -> None:
-        """Expectation-maximization step.
+        """Protected EM-step hook used by global EM training loop.
+
+        Subclasses with learnable parameters should override this method.
+        For composite modules without learnable parameters, the default behavior
+        delegates recursively to input modules.
 
         Args:
             data: Input data tensor.
             bias_correction: Whether to apply bias correction. Defaults to True.
-            cache: Optional cache dictionary.
+            cache: Cache dictionary populated by a preceding forward pass.
         """
-        if cache is None:
-            cache = Cache()
-
         if self.__input_is_a_list():
             for child in self.inputs:
-                child.expectation_maximization(data, cache=cache, bias_correction=bias_correction)
+                child._expectation_maximization_step(data, cache=cache, bias_correction=bias_correction)
+        elif self.inputs is not None:
+            self.inputs._expectation_maximization_step(data, cache=cache, bias_correction=bias_correction)
         else:
-            self.inputs.expectation_maximization(data, cache=cache, bias_correction=bias_correction)
-
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Tensor | None = None,
-        bias_correction: bool = True,
-        nan_strategy: str = "ignore",
-        cache: Cache | None = None,
-    ) -> None:
-        """Update parameters via maximum likelihood estimation.
-
-        Args:
-            data: Input data tensor.
-            weights: Optional sample weights.
-            bias_correction: Whether to apply bias correction. Defaults to True.
-            nan_strategy: Strategy for handling NaN values in data. Defaults to "ignore".
-            cache: Optional cache dictionary.
-        """
-        if cache is None:
-            cache = Cache()
-
-        if self.__input_is_a_list():
-            for child in self.inputs:
-                child.maximum_likelihood_estimation(
-                    data,
-                    weights=weights,
-                    bias_correction=bias_correction,
-                    nan_strategy=nan_strategy,
-                    cache=cache,
-                )
-        else:
-            self.inputs.maximum_likelihood_estimation(
-                data,
-                weights=weights,
-                bias_correction=bias_correction,
-                nan_strategy=nan_strategy,
-                cache=cache,
+            raise NotImplementedError(
+                f"{self.__class__.__name__} must override _expectation_maximization_step "
+                "or provide input modules that implement it."
             )
 
     @abstractmethod

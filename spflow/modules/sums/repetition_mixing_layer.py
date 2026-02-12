@@ -9,7 +9,7 @@ from spflow.exceptions import InvalidParameterCombinationError, MissingCacheErro
 from spflow.modules.module import Module
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 
 class RepetitionMixingLayer(Sum):
@@ -115,18 +115,10 @@ class RepetitionMixingLayer(Sum):
             Tensor: Generated samples.
         """
 
-        # Handle num_samples case (create empty data tensor)
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
-
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            module_name=self.__class__.__name__,
-            num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
+        data, sampling_ctx = self._prepare_internal_sampling_inputs(
+            num_samples=num_samples,
+            data=data,
+            sampling_ctx=sampling_ctx,
         )
 
         batch_size = int(sampling_ctx.channel_index.shape[0])
@@ -200,23 +192,23 @@ class RepetitionMixingLayer(Sum):
         # Repetition axis is mixed out, so re-introduce singleton repetition dimension.
         return rearrange(output, "b f co -> b f co 1")
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
-        cache: Cache | None = None,
+        bias_correction: bool = True,
+        *,
+        cache: Cache,
     ) -> None:
         """Perform expectation-maximization step.
 
         Args:
             data: Input data tensor.
+            bias_correction: Whether to apply bias correction in leaf updates.
             cache: Optional cache dictionary with log-likelihoods.
 
         Raises:
             MissingCacheError: If required log-likelihoods are not found in cache.
         """
-        if cache is None:
-            cache = Cache()
-
         with torch.no_grad():
             # ----- expectation step -----
 
@@ -245,4 +237,4 @@ class RepetitionMixingLayer(Sum):
             self.log_weights = log_expectations
 
         # Recursively call EM on inputs
-        self.inputs.expectation_maximization(data, cache=cache)
+        self.inputs._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)

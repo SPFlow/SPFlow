@@ -226,10 +226,6 @@ class ElementwiseSum(Module):
         Returns:
             Optional[ElementwiseSum]: Marginalized module or None if fully marginalized.
         """
-        # initialize cache
-        if cache is None:
-            cache = Cache()
-
         # compute module scope (same for all outputs)
         module_scope = self.scope
         marg_input = None
@@ -290,11 +286,8 @@ class ElementwiseSum(Module):
         data = self._prepare_sample_data(num_samples, data)
 
         # initialize contexts
-        if cache is None:
-            cache = Cache()
         sampling_ctx = require_sampling_context(
             sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             module_out_shape=self.out_shape,
             device=data.device,
@@ -476,10 +469,12 @@ class ElementwiseSum(Module):
 
         return output
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
-        cache: Cache | None = None,
+        bias_correction: bool = True,
+        *,
+        cache: Cache,
     ) -> None:
         """Perform EM step to update mixture weights.
 
@@ -487,10 +482,6 @@ class ElementwiseSum(Module):
             data: Training data tensor.
             cache: Cache for memoization.
         """
-        # initialize cache
-        if cache is None:
-            cache = Cache()
-
         with torch.no_grad():
             # ----- expectation step -----
 
@@ -531,19 +522,4 @@ class ElementwiseSum(Module):
             self.log_weights = log_expectations
 
         for inp in self.inputs:
-            inp.expectation_maximization(data, cache=cache)
-
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Optional[Tensor] = None,
-        cache: Cache | None = None,
-    ) -> None:
-        """MLE step (equivalent to EM for sum nodes).
-
-        Args:
-            data: Training data tensor.
-            weights: Optional weights for data points.
-            cache: Cache for memoization.
-        """
-        self.expectation_maximization(data, cache=cache)
+            inp._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)

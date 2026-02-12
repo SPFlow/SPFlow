@@ -8,7 +8,7 @@ import torch
 from einops import rearrange, repeat
 from torch import Tensor
 
-from spflow.exceptions import ShapeError, UnsupportedOperationError
+from spflow.exceptions import MissingCacheError, ShapeError, UnsupportedOperationError
 from spflow.meta.data.interval_evidence import IntervalEvidence
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
@@ -330,25 +330,37 @@ class LeafModule(Module, ABC):
 
         return param_est
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: torch.Tensor,
-        bias_correction: bool = False,
-        cache: Cache | None = None,
+        bias_correction: bool = True,
+        *,
+        cache: Cache,
     ) -> None:
         """Perform single EM step.
 
         Args:
             data: Input data tensor.
-            cache: Optional cache dictionary.
+            bias_correction: Whether to apply bias correction for leaf statistics.
+            cache: Cache dictionary from a preceding forward pass.
         """
-        # initialize cache
+        # Fixed-parameter leaves (no learnable parameters) are explicit EM no-ops.
+        if not any(param.requires_grad for param in self.parameters()):
+            return
 
         with torch.no_grad():
             # ----- expectation step -----
 
             # get cached log-likelihood gradients w.r.t. module log-likelihoods
-            expectations = cache["log_likelihood"][self].grad
+            module_lls = cache["log_likelihood"].get(self)
+            if module_lls is None:
+                raise MissingCacheError("Module log-likelihoods not found in cache. Call log_likelihood first.")
+
+            expectations = module_lls.grad
+            if expectations is None:
+                raise RuntimeError(
+                    f"Expected gradient for cached log-likelihood tensor of {self.__class__.__name__}, but found None."
+                )
             expectations += 1e-12  # numerical stability
             expectations /= expectations.sum(0, keepdim=True)  # Normalize
 
@@ -358,7 +370,6 @@ class LeafModule(Module, ABC):
                 data,
                 weights=expectations,
                 bias_correction=bias_correction,
-                cache=cache,
             )
 
         # NOTE: since we explicitely override parameters in 'maximum_likelihood_estimation',
@@ -540,7 +551,6 @@ class LeafModule(Module, ABC):
         weights: Optional[Tensor] = None,
         bias_correction: bool = True,
         nan_strategy: str | Callable | None = None,
-        cache: Cache | None = None,
     ) -> None:
         """Maximum (weighted) likelihood estimation via template method pattern.
 
@@ -552,7 +562,6 @@ class LeafModule(Module, ABC):
             weights: Optional sample weights.
             bias_correction: Apply bias correction.
             nan_strategy: Handle NaN ('ignore', callable, or None).
-            cache: Optional cache dictionary.
         """
 
         if self.is_conditional:
@@ -593,7 +602,6 @@ class LeafModule(Module, ABC):
 
         sampling_ctx = require_sampling_context(
             sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             module_out_shape=self.out_shape,
             device=data.device,

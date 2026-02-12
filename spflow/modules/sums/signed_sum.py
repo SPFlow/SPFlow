@@ -11,8 +11,8 @@ from spflow.exceptions import ShapeError, UnsupportedOperationError
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
-from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.cache import Cache, cached
+from spflow.utils.sampling_context import SamplingContext, update_channel_index_strict
 from spflow.utils.signed_semiring import signed_logsumexp, sign_of
 
 
@@ -95,21 +95,14 @@ class SignedSum(Module):
             "Use SOCS (sum of squares) or signed evaluation utilities."
         )
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
         bias_correction: bool = True,
-        cache: Cache | None = None,
+        *,
+        cache: Cache,
     ) -> None:
         raise UnsupportedOperationError("SignedSum does not support expectation-maximization.")
-
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Tensor | None = None,
-        cache: Cache | None = None,
-    ) -> None:
-        raise UnsupportedOperationError("SignedSum does not support maximum-likelihood estimation.")
 
     def marginalize(
         self,
@@ -119,6 +112,7 @@ class SignedSum(Module):
     ) -> Module | None:
         raise UnsupportedOperationError("SignedSum.marginalize() is not supported.")
 
+    @cached
     def signed_logabs_and_sign(
         self,
         data: Tensor,
@@ -130,13 +124,10 @@ class SignedSum(Module):
             logabs: Tensor of shape (B, F, OC, R)
             sign: Tensor of shape (B, F, OC, R) in {-1,0,+1}
         """
-        if cache is None:
-            cache = Cache()
-
         # Cache keying: re-use `Cache` internal dicts with a custom method name.
-        cached = cache.get("signed_logabs_and_sign", self)
-        if cached is not None:
-            return cached
+        cached_ = cache.get("signed_logabs_and_sign", self)
+        if cached_ is not None:
+            return cached_
 
         # Evaluate children in signed semiring
         child = self.inputs
@@ -189,13 +180,11 @@ class SignedSum(Module):
 
         Only supported if all weights are >= 0 and no evidence is provided.
         """
-        if cache is None:
-            cache = Cache()
-
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, len(self.scope.query)), float("nan"), device=self.device)
+        data, sampling_ctx = self._prepare_internal_sampling_inputs(
+            num_samples=num_samples,
+            data=data,
+            sampling_ctx=sampling_ctx,
+        )
 
         if torch.isfinite(data).any():
             raise UnsupportedOperationError(
@@ -206,14 +195,6 @@ class SignedSum(Module):
             raise UnsupportedOperationError(
                 "SignedSum.sample() is only supported when all weights are non-negative."
             )
-
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            module_name=self.__class__.__name__,
-            num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
-        )
 
         # Only supports scalar feature routing like Sum: choose input-channel per feature.
         # We treat weights as proportional probabilities.
@@ -249,18 +230,6 @@ class SignedSum(Module):
         else:
             new_channel_index = torch.distributions.Categorical(probs=probs).sample()
 
-        # Update sampling context and delegate to child
-        num_features = int(new_channel_index.shape[1])
-        if sampling_ctx.mask.shape[1] == num_features:
-            new_mask = sampling_ctx.mask
-        else:
-            raise ShapeError(
-                "sampling_ctx.mask has incompatible feature width for sampling update: "
-                f"got {sampling_ctx.mask.shape[1]}, expected {num_features}."
-            )
-        sampling_ctx.update(
-            channel_index=new_channel_index,
-            mask=new_mask,
-        )
+        update_channel_index_strict(sampling_ctx, new_channel_index)
         self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
         return data

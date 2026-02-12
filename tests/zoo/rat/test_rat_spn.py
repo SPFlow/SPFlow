@@ -9,6 +9,7 @@ from spflow.meta import Scope
 from spflow.modules import leaves
 from spflow.modules.leaves import Normal, Bernoulli
 from spflow.modules.ops import SplitMode
+from spflow.utils.cache import Cache
 from spflow.zoo.rat import RatSPN
 from spflow.utils.sampling_context import SamplingContext
 from spflow.utils.sampling_context import init_default_sampling_context
@@ -482,7 +483,7 @@ def test_sample_raises_when_logits_shape_is_invalid(monkeypatch):
         module.sample(data=data, sampling_ctx=None)
 
 
-def test_expectation_maximization_and_mle_delegate(monkeypatch):
+def test_expectation_maximization_delegates_and_mle_is_unsupported(monkeypatch):
     module = make_rat_spn(
         leaf_cls=Normal,
         depth=1,
@@ -497,22 +498,19 @@ def test_expectation_maximization_and_mle_delegate(monkeypatch):
     data = make_data(cls=Normal, out_features=6, n_samples=3)
     weights = torch.ones((3, 1, 1, 1))
 
-    called = {"em": False, "mle": False}
+    called = {"em": False}
 
-    def fake_em(data_arg, cache=None):
+    def fake_em(data_arg, bias_correction=True, *, cache=None):
+        assert bias_correction is True
         called["em"] = True
 
-    def fake_mle(data_arg, weights=None, cache=None):
-        called["mle"] = True
+    monkeypatch.setattr(module.root_node, "_expectation_maximization_step", fake_em)
 
-    monkeypatch.setattr(module.root_node, "expectation_maximization", fake_em)
-    monkeypatch.setattr(module.root_node, "maximum_likelihood_estimation", fake_mle)
-
-    module.expectation_maximization(data)
-    module.maximum_likelihood_estimation(data, weights=weights)
+    module._expectation_maximization_step(data, cache=Cache())
+    with pytest.raises(AttributeError):
+        module.maximum_likelihood_estimation(data, weights=weights)
 
     assert called["em"]
-    assert called["mle"]
 
 
 def test_marginalize_delegates_to_root_node(monkeypatch):

@@ -26,7 +26,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.products.elementwise_product import ElementwiseProduct
 from spflow.modules.sums import Sum
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
-from spflow.utils.cache import Cache
+from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 from spflow.zoo.apc.debug_trace import trace_sampling_context, trace_tensor
 from spflow.zoo.apc.encoders.base import LatentStats
@@ -92,9 +92,8 @@ class _PairwiseLatentProduct(Module):
     def feature_to_scope(self) -> np.ndarray:
         return self._feature_to_scope
 
+    @cached
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> Tensor:
-        if cache is None:
-            cache = Cache()
         ll = self.inputs.log_likelihood(data, cache=cache)
         b, f, c, r = ll.shape
         if f != self.in_shape.features:
@@ -111,12 +110,9 @@ class _PairwiseLatentProduct(Module):
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        if cache is None:
-            cache = Cache()
         data = self._prepare_sample_data(num_samples, data)
         sampling_ctx = require_sampling_context(
             sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             module_out_shape=self.out_shape,
             device=data.device,
@@ -202,9 +198,8 @@ class _LatentFeaturePacking(Module):
     def feature_to_scope(self) -> np.ndarray:
         return self._feature_to_scope
 
+    @cached
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> Tensor:
-        if cache is None:
-            cache = Cache()
         ll = self.inputs.log_likelihood(data, cache=cache)
         b, f, c, r = ll.shape
         if f != self.in_shape.features:
@@ -226,12 +221,9 @@ class _LatentFeaturePacking(Module):
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        if cache is None:
-            cache = Cache()
         data = self._prepare_sample_data(num_samples, data)
         sampling_ctx = require_sampling_context(
             sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             module_out_shape=self.out_shape,
             device=data.device,
@@ -296,81 +288,105 @@ class _LatentSelectionCapture(Module):
     def feature_to_scope(self) -> np.ndarray:
         return self.inputs.feature_to_scope
 
-    def _capture(self, sampling_ctx: SamplingContext, data_num_features: int) -> None:
-        ctx_features = sampling_ctx.channel_index.shape[1]
-        target_features = self.in_shape.features
+    def _align_feature_width_2d(
+        self,
+        tensor: Tensor,
+        *,
+        target_features: int,
+        data_num_features: int,
+        scope_cols: list[int],
+        kind: str,
+    ) -> Tensor:
+        if tensor.shape[1] == 1:
+            return repeat(tensor, "b 1 -> b f", f=target_features)
+        if tensor.shape[1] == target_features:
+            return tensor
+        if tensor.shape[1] == data_num_features:
+            return tensor[:, scope_cols]
+        raise ShapeError(
+            f"Latent selection capture {kind} width mismatch: "
+            f"got {tensor.shape[1]}, expected 1, {target_features}, or {data_num_features}."
+        )
 
-        if ctx_features == 1:
-            channel_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=target_features)
-        elif ctx_features == target_features:
-            channel_idx = sampling_ctx.channel_index
-        elif ctx_features == data_num_features:
-            scope_cols = list(self.scope.query)
-            channel_idx = sampling_ctx.channel_index[:, scope_cols]
-        else:
-            raise ShapeError(
-                "Latent selection capture channel width mismatch: "
-                f"got {ctx_features}, expected 1, {target_features}, or {data_num_features}."
-            )
+    def _align_feature_width_3d(
+        self,
+        tensor: Tensor | None,
+        *,
+        target_features: int,
+        data_num_features: int,
+        scope_cols: list[int],
+        kind: str,
+    ) -> Tensor | None:
+        if tensor is None or tensor.dim() != 3:
+            return None
+        if tensor.shape[1] == 1:
+            num_choices = int(tensor.shape[2])
+            return repeat(tensor, "b 1 c -> b f c", f=target_features, c=num_choices)
+        if tensor.shape[1] == target_features:
+            return tensor
+        if tensor.shape[1] == data_num_features:
+            return tensor[:, scope_cols, :]
+        raise ShapeError(
+            f"Latent selection capture {kind} width mismatch: "
+            f"got {tensor.shape[1]}, expected 1, {target_features}, or {data_num_features}."
+        )
 
-        rep_idx = sampling_ctx.repetition_idx
+    def _resolve_repetition_index(
+        self,
+        rep_idx: Tensor | None,
+        *,
+        target_features: int,
+        data_num_features: int,
+        scope_cols: list[int],
+    ) -> Tensor | None:
         if rep_idx is None:
-            repetition_idx = None
-        elif rep_idx.dim() == 1:
-            repetition_idx = repeat(rep_idx, "b -> b f", f=target_features)
-        elif rep_idx.shape[1] == 1:
-            repetition_idx = repeat(rep_idx, "b 1 -> b f", f=target_features)
-        elif rep_idx.shape[1] == target_features:
-            repetition_idx = rep_idx
-        elif rep_idx.shape[1] == data_num_features:
-            scope_cols = list(self.scope.query)
-            repetition_idx = rep_idx[:, scope_cols]
-        else:
+            return None
+        if rep_idx.dim() == 1:
+            return repeat(rep_idx, "b -> b f", f=target_features)
+        if rep_idx.dim() != 2:
             raise ShapeError(
-                "Latent selection capture repetition width mismatch: "
-                f"got {rep_idx.shape[1]}, expected 1, {target_features}, or {data_num_features}."
+                "Latent selection capture repetition index must have rank 1 or 2, "
+                f"got rank {rep_idx.dim()}."
             )
+        return self._align_feature_width_2d(
+            rep_idx,
+            target_features=target_features,
+            data_num_features=data_num_features,
+            scope_cols=scope_cols,
+            kind="repetition",
+        )
 
-        channel_select = getattr(sampling_ctx, "channel_select", None)
-        if channel_select is not None and channel_select.dim() == 3:
-            if channel_select.shape[1] == 1:
-                num_channel_choices = int(channel_select.shape[2])
-                channel_select = repeat(channel_select, "b 1 c -> b f c", f=target_features, c=num_channel_choices)
-            elif channel_select.shape[1] == target_features:
-                pass
-            elif channel_select.shape[1] == data_num_features:
-                scope_cols = list(self.scope.query)
-                channel_select = channel_select[:, scope_cols, :]
-            else:
-                raise ShapeError(
-                    "Latent selection capture channel selector width mismatch: "
-                    f"got {channel_select.shape[1]}, expected 1, {target_features}, or {data_num_features}."
-                )
-        else:
-            channel_select = None
+    def _capture(self, sampling_ctx: SamplingContext, data_num_features: int) -> None:
+        target_features = self.in_shape.features
+        scope_cols = list(self.scope.query)
 
-        repetition_select = getattr(sampling_ctx, "repetition_select", None)
-        if repetition_select is not None and repetition_select.dim() == 3:
-            if repetition_select.shape[1] == 1:
-                num_repetition_choices = int(repetition_select.shape[2])
-                repetition_select = repeat(
-                    repetition_select,
-                    "b 1 r -> b f r",
-                    f=target_features,
-                    r=num_repetition_choices,
-                )
-            elif repetition_select.shape[1] == target_features:
-                pass
-            elif repetition_select.shape[1] == data_num_features:
-                scope_cols = list(self.scope.query)
-                repetition_select = repetition_select[:, scope_cols, :]
-            else:
-                raise ShapeError(
-                    "Latent selection capture repetition selector width mismatch: "
-                    f"got {repetition_select.shape[1]}, expected 1, {target_features}, or {data_num_features}."
-                )
-        else:
-            repetition_select = None
+        channel_idx = self._align_feature_width_2d(
+            sampling_ctx.channel_index,
+            target_features=target_features,
+            data_num_features=data_num_features,
+            scope_cols=scope_cols,
+            kind="channel",
+        )
+        repetition_idx = self._resolve_repetition_index(
+            sampling_ctx.repetition_idx,
+            target_features=target_features,
+            data_num_features=data_num_features,
+            scope_cols=scope_cols,
+        )
+        channel_select = self._align_feature_width_3d(
+            getattr(sampling_ctx, "channel_select", None),
+            target_features=target_features,
+            data_num_features=data_num_features,
+            scope_cols=scope_cols,
+            kind="channel selector",
+        )
+        repetition_select = self._align_feature_width_3d(
+            getattr(sampling_ctx, "repetition_select", None),
+            target_features=target_features,
+            data_num_features=data_num_features,
+            scope_cols=scope_cols,
+            kind="repetition selector",
+        )
 
         keep_selectors_attached = False
 
@@ -382,9 +398,8 @@ class _LatentSelectionCapture(Module):
             keep_selectors_attached,
         )
 
+    @cached
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> Tensor:
-        if cache is None:
-            cache = Cache()
         return self.inputs.log_likelihood(data, cache=cache)
 
     def sample(
@@ -395,12 +410,9 @@ class _LatentSelectionCapture(Module):
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        if cache is None:
-            cache = Cache()
         data = self._prepare_sample_data(num_samples, data)
         sampling_ctx = require_sampling_context(
             sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             module_out_shape=self.out_shape,
             device=data.device,

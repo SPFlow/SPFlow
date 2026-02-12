@@ -459,21 +459,14 @@ class SOSModel(Module):
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> Tensor:
         return self.socs.log_likelihood(data, cache=cache)
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
         bias_correction: bool = True,
-        cache: Cache | None = None,
+        *,
+        cache: Cache,
     ) -> None:
-        self.socs.expectation_maximization(data, bias_correction=bias_correction, cache=cache)
-
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Tensor | None = None,
-        cache: Cache | None = None,
-    ) -> None:
-        self.socs.maximum_likelihood_estimation(data, weights=weights, cache=cache)
+        self.socs._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
 
     def marginalize(
         self,
@@ -620,21 +613,14 @@ class ExpSOSModel(Module):
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> Tensor:
         return self.exp_socs.log_likelihood(data, cache=cache)
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
         bias_correction: bool = True,
-        cache: Cache | None = None,
+        *,
+        cache: Cache,
     ) -> None:
-        self.exp_socs.expectation_maximization(data, bias_correction=bias_correction, cache=cache)
-
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Tensor | None = None,
-        cache: Cache | None = None,
-    ) -> None:
-        self.exp_socs.maximum_likelihood_estimation(data, weights=weights, cache=cache)
+        self.exp_socs._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
 
     def marginalize(
         self,

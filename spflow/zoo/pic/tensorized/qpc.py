@@ -32,7 +32,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.zoo.pic.pipeline import QuadratureRule
 from spflow.zoo.pic.tensorized.utils import eval_collapsed_cp, eval_mixing, eval_tucker
-from spflow.utils.cache import Cache
+from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext
 
 
@@ -467,10 +467,8 @@ class TensorizedQPC(Module):
 
         raise StructureError(f"Unsupported leaf_type: {self.config.leaf_type}.")
 
+    @cached
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> Tensor:
-        if cache is None:
-            cache = Cache()
-
         z_quad = self.quadrature_rule.points.to(device=data.device, dtype=data.dtype)
         w_quad = self.quadrature_rule.weights.to(device=data.device, dtype=data.dtype)
 

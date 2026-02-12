@@ -18,7 +18,7 @@ from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import SamplingContext, update_channel_index_strict
 
 
 class Sum(Module):
@@ -254,9 +254,6 @@ class Sum(Module):
             Tensor: Log-likelihood of shape (batch_size, num_features, out_channels)
                 or (batch_size, num_features, out_channels, num_repetitions).
         """
-        if cache is None:
-            cache = Cache()
-
         # Get input log-likelihoods
         ll = self.inputs.log_likelihood(
             data,
@@ -295,21 +292,10 @@ class Sum(Module):
         Returns:
             Tensor: Sampled values.
         """
-        if cache is None:
-            cache = Cache()
-
-        # Handle num_samples case (create empty data tensor)
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, len(self.scope.query)), float("nan")).to(self.device)
-
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            module_name=self.__class__.__name__,
-            num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
+        data, sampling_ctx = self._prepare_internal_sampling_inputs(
+            num_samples=num_samples,
+            data=data,
+            sampling_ctx=sampling_ctx,
         )
 
         # Index into the correct weight channels given by parent module
@@ -395,21 +381,7 @@ class Sum(Module):
             # Sample from categorical distribution defined by weights to obtain indices into input channels
             new_channel_index = torch.distributions.Categorical(logits=logits).sample()
 
-        # Update sampling context with new channel indices
-        # If shape changes, expand the mask to match new channel_index shape
-        if new_channel_index.shape != sampling_ctx.mask.shape:
-            num_features = int(new_channel_index.shape[1])
-            current_mask_features = int(sampling_ctx.mask.shape[1])
-            if current_mask_features == num_features:
-                new_mask = sampling_ctx.mask.contiguous()
-            else:
-                raise ShapeError(
-                    "sampling_ctx.mask has incompatible feature width for sampling update: "
-                    f"got {current_mask_features}, expected {num_features}."
-                )
-            sampling_ctx.update(new_channel_index, new_mask)
-        else:
-            sampling_ctx.channel_index = new_channel_index
+        update_channel_index_strict(sampling_ctx, new_channel_index)
 
         # Sample from input module
         self.inputs.sample(
@@ -422,11 +394,12 @@ class Sum(Module):
         return data
 
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
         bias_correction: bool = True,
-        cache: Cache | None = None,
+        *,
+        cache: Cache,
     ) -> None:
         """Perform expectation-maximization step.
 
@@ -438,9 +411,6 @@ class Sum(Module):
         Raises:
             MissingCacheError: If required log-likelihoods are not found in cache.
         """
-        if cache is None:
-            cache = Cache()
-
         with torch.no_grad():
             # ----- expectation step -----
 
@@ -471,24 +441,7 @@ class Sum(Module):
             self.log_weights = log_expectations
 
         # Recursively call EM on inputs
-        self.inputs.expectation_maximization(data, cache=cache, bias_correction=bias_correction)
-
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Tensor | None = None,
-        cache: Cache | None = None,
-    ) -> None:
-        """Update parameters via maximum likelihood estimation.
-
-        For Sum modules, this is equivalent to EM.
-
-        Args:
-            data: Input data tensor.
-            weights: Optional sample weights (currently unused).
-            cache: Optional cache dictionary.
-        """
-        self.expectation_maximization(data, cache=cache)
+        self.inputs._expectation_maximization_step(data, cache=cache, bias_correction=bias_correction)
 
     def marginalize(
         self,
@@ -506,9 +459,6 @@ class Sum(Module):
         Returns:
             Marginalized Sum module or None.
         """
-        if cache is None:
-            cache = Cache()
-
         # compute module scope (same for all outputs)
         module_scope = self.scope
         marg_input = None

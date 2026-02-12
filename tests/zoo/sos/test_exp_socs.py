@@ -161,8 +161,8 @@ def test_exp_socs_constructor_and_unsupported_ops():
     assert np.array_equal(model.feature_to_scope, mono.feature_to_scope)
 
     with pytest.raises(UnsupportedOperationError):
-        model.expectation_maximization(torch.zeros((2, 1)))
-    with pytest.raises(UnsupportedOperationError):
+        model._expectation_maximization_step(torch.zeros((2, 1)), cache=Cache())
+    with pytest.raises(AttributeError):
         model.maximum_likelihood_estimation(torch.zeros((2, 1)))
     with pytest.raises(UnsupportedOperationError):
         model.sample(num_samples=2)

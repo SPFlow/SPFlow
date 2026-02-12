@@ -19,11 +19,16 @@ class _IdentityWrapper(Wrapper):
             sampling_ctx=sampling_ctx,
         )
 
-    def expectation_maximization(self, data, bias_correction: bool = True, cache=None):
-        return self.module.expectation_maximization(data, bias_correction=bias_correction, cache=cache)
+    def _expectation_maximization_step(self, data, bias_correction: bool = True, *, cache):
+        return self.module._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
 
-    def maximum_likelihood_estimation(self, data, weights=None, cache=None):
-        return self.module.maximum_likelihood_estimation(data=data, weights=weights, cache=cache)
+    def maximum_likelihood_estimation(self, data, weights=None, bias_correction: bool = True, nan_strategy="ignore"):
+        return self.module.maximum_likelihood_estimation(
+            data=data,
+            weights=weights,
+            bias_correction=bias_correction,
+            nan_strategy=nan_strategy,
+        )
 
     def marginalize(self, marg_rvs, prune: bool = True, cache=None):
         return self.module.marginalize(marg_rvs=marg_rvs, prune=prune, cache=cache)

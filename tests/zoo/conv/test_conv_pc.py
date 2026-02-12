@@ -5,6 +5,7 @@ from itertools import product
 import pytest
 import torch
 
+from spflow.exceptions import UnsupportedOperationError
 from spflow.meta.data import Scope
 from spflow.zoo.conv import ConvPc
 from spflow.modules.leaves import Normal
@@ -14,7 +15,8 @@ from spflow.utils.cache import Cache
 out_channels_values = [1, 3]
 depth_values = [1, 2]
 height_width_values = [(4, 4), (8, 8)]
-num_repetitions_values = [1, 3]
+num_repetitions_values = [1]
+num_repetitions_unsupported_values = [3]
 use_sum_conv_values = [True, False]
 
 
@@ -69,6 +71,21 @@ class TestConvPcConstruction:
         assert model.input_width == width
         # Output repetitions always 1 due to mixing layer
         assert model.out_shape.repetitions == 1
+
+    @pytest.mark.parametrize("num_repetitions", num_repetitions_unsupported_values)
+    def test_construction_rejects_multiple_repetitions(self, num_repetitions):
+        leaf = make_normal_leaf(4, 4, out_channels=2, num_repetitions=1)
+        with pytest.raises(UnsupportedOperationError):
+            ConvPc(
+                leaf=leaf,
+                input_height=4,
+                input_width=4,
+                channels=5,
+                depth=1,
+                kernel_size=2,
+                num_repetitions=num_repetitions,
+                use_sum_conv=False,
+            )
 
     @pytest.mark.parametrize("out_channels,hw,depth,num_repetitions,use_sum_conv", construction_params)
     def test_layer_structure(self, out_channels, hw, depth, num_repetitions, use_sum_conv):
@@ -364,8 +381,8 @@ def test_feature_scope_repr_cache_and_delegate_paths(monkeypatch):
     def _fake_em(data, cache=None, bias_correction=True):
         em_called["n"] += 1
 
-    monkeypatch.setattr(model.inputs, "expectation_maximization", _fake_em)
-    model.expectation_maximization(x, cache=None)
+    monkeypatch.setattr(model.inputs, "_expectation_maximization_step", _fake_em)
+    model._expectation_maximization_step(x, cache=Cache())
     assert em_called["n"] == 1
 
     sentinel = object()

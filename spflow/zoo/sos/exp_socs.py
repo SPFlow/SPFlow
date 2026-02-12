@@ -10,7 +10,7 @@ from torch import Tensor
 from spflow.exceptions import ShapeError, UnsupportedOperationError
 from spflow.modules.module import Module
 from spflow.utils.inner_product import triple_product_scalar
-from spflow.utils.cache import Cache
+from spflow.utils.cache import Cache, cached
 from spflow.modules.sos.socs import _signed_eval
 from spflow.utils.sampling_context import SamplingContext
 
@@ -83,10 +83,8 @@ class ExpSOCS(Module):
         cache.extras["exp_socs_logZ"] = logZ
         return logZ
 
+    @cached
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> Tensor:  # type: ignore[override]
-        if cache is None:
-            cache = Cache()
-
         log_m = self.monotone.log_likelihood(data, cache=cache)  # (B,1,1,1)
 
         comp_terms = []
@@ -99,21 +97,14 @@ class ExpSOCS(Module):
         logZ = self._log_partition(cache).to(dtype=log_c2.dtype, device=log_c2.device)
         return log_m + log_c2 - logZ
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
         bias_correction: bool = True,
-        cache: Cache | None = None,
+        *,
+        cache: Cache,
     ) -> None:
         raise UnsupportedOperationError("ExpSOCS does not support expectation-maximization.")
-
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Tensor | None = None,
-        cache: Cache | None = None,
-    ) -> None:
-        raise UnsupportedOperationError("ExpSOCS does not support maximum-likelihood estimation.")
 
     def marginalize(
         self,

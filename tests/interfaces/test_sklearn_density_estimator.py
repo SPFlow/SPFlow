@@ -13,6 +13,7 @@ from sklearn.preprocessing import StandardScaler
 
 from spflow.exceptions import InvalidParameterError, InvalidTypeError, OptionalDependencyError
 from spflow.interfaces import sklearn as sklearn_interface
+from spflow.learn.expectation_maximization import expectation_maximization
 from spflow.interfaces.sklearn import (
     SPFlowDensityEstimator,
     _as_2d_numpy,
@@ -50,7 +51,7 @@ def test_score_samples_matches_direct_log_likelihood():
     x_tensor = torch.tensor(X, dtype=torch.float32)
 
     model = _independent_normals_model(n_features=X.shape[1])
-    model.maximum_likelihood_estimation(x_tensor)
+    expectation_maximization(model, x_tensor, max_steps=1)
 
     est = SPFlowDensityEstimator(model=model, fit_params=False, dtype="float32")
     est.fit(X)
@@ -191,7 +192,7 @@ def test_fit_rejects_non_module_model():
 
 def test_fit_calls_mle_when_fit_params_enabled(monkeypatch):
     X = _randn(16, 2)
-    model = _independent_normals_model(n_features=2)
+    model = Normal(scope=Scope([0, 1]), out_channels=1)
     called: dict[str, object] = {}
 
     def _fake_mle(x_tensor):

@@ -70,8 +70,8 @@ class CachingDummyInput(Module):
         data[:, self.scope.query] = 0.0
         return data
 
-    def expectation_maximization(
-        self, data: Tensor, bias_correction: bool = True, cache: Cache | None = None
+    def _expectation_maximization_step(
+        self, data: Tensor, bias_correction: bool = True, *, cache: Cache
     ) -> None:
         """No-op for EM since this is a dummy module."""
         return None

@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 import torch
 
+from spflow.exceptions import MissingCacheError
 from spflow.learn import expectation_maximization
 from spflow.meta import Scope
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
@@ -44,8 +45,8 @@ class TestRepetitionMixingLayerEMBasic:
         cache["log_likelihood"][layer].grad = torch.ones_like(cache["log_likelihood"][layer])
 
         # Run EM with mocked leaf EM to avoid propagation issues
-        with patch.object(inputs, "expectation_maximization"):
-            layer.expectation_maximization(data, cache=cache)
+        with patch.object(inputs, "_expectation_maximization_step"):
+            layer._expectation_maximization_step(data, cache=cache)
 
         # Check weights changed (always possible since sum_dim sums over repetitions)
         assert not torch.allclose(layer.weights, original_weights, rtol=0.0, atol=0.0)
@@ -65,8 +66,8 @@ class TestRepetitionMixingLayerEMBasic:
         # Set gradient
         cache["log_likelihood"][layer].grad = torch.ones_like(cache["log_likelihood"][layer])
 
-        with patch.object(inputs, "expectation_maximization"):
-            layer.expectation_maximization(data, cache=cache)
+        with patch.object(inputs, "_expectation_maximization_step"):
+            layer._expectation_maximization_step(data, cache=cache)
 
         # Check weights still sum to 1 over sum_dim (repetitions)
         weights_sum = layer.weights.sum(dim=layer.sum_dim)
@@ -88,7 +89,7 @@ class TestRepetitionMixingLayerEMErrors:
         cache["log_likelihood"][layer] = torch.zeros(10, 1, 2, 1)
 
         with pytest.raises(ValueError):
-            layer.expectation_maximization(data, cache=cache)
+            layer._expectation_maximization_step(data, cache=cache)
 
     def test_em_raises_without_module_lls_in_cache(self):
         """Test that EM raises ValueError when module log-likelihoods not in cache."""
@@ -102,18 +103,18 @@ class TestRepetitionMixingLayerEMErrors:
         cache["log_likelihood"][inputs] = torch.zeros(10, 1, 2, 2)
 
         with pytest.raises(ValueError):
-            layer.expectation_maximization(data, cache=cache)
+            layer._expectation_maximization_step(data, cache=cache)
 
-    def test_em_creates_cache_if_none(self):
-        """Test that EM creates a cache if none is provided."""
+    def test_em_requires_cached_lls(self):
+        """Test that EM fails when cache has no required log-likelihood tensors."""
         inputs = CachingDummyInput(out_channels=2, num_repetitions=2)
         layer = RepetitionMixingLayer(inputs=inputs, out_channels=2, num_repetitions=2)
 
         data = torch.randn(10, 1)
+        cache = Cache()
 
-        # Should raise ValueError because cache doesn't have required lls
-        with pytest.raises(ValueError):
-            layer.expectation_maximization(data, cache=None)
+        with pytest.raises(MissingCacheError):
+            layer._expectation_maximization_step(data, cache=cache)
 
 
 class TestRepetitionMixingLayerEMPropagation:
@@ -131,9 +132,9 @@ class TestRepetitionMixingLayerEMPropagation:
         # Set gradient
         cache["log_likelihood"][layer].grad = torch.ones_like(cache["log_likelihood"][layer])
 
-        with patch.object(inputs, "expectation_maximization") as mock_em:
-            layer.expectation_maximization(data, cache=cache)
-            mock_em.assert_called_once_with(data, cache=cache)
+        with patch.object(inputs, "_expectation_maximization_step") as mock_em:
+            layer._expectation_maximization_step(data, cache=cache)
+            mock_em.assert_called_once_with(data, bias_correction=True, cache=cache)
 
 
 class TestRepetitionMixingLayerEMIntegration:

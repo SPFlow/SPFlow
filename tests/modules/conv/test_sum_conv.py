@@ -390,7 +390,7 @@ class TestSumConvFeatureToScope:
 
 
 class TestSumConvEM:
-    """Test SumConv expectation_maximization."""
+    """Test SumConv _expectation_maximization_step."""
 
     @pytest.mark.parametrize("in_channels,out_channels,hw", em_params)
     def test_em_updates_weights(self, in_channels, out_channels, hw):
@@ -412,8 +412,8 @@ class TestSumConvEM:
         cache["log_likelihood"][module].grad = torch.ones_like(cache["log_likelihood"][module])
 
         # Run EM with mocked leaf EM to avoid leaf gradient issues
-        with patch.object(leaf, "expectation_maximization"):
-            module.expectation_maximization(data, cache=cache)
+        with patch.object(leaf, "_expectation_maximization_step"):
+            module._expectation_maximization_step(data, cache=cache)
 
         # Check weights changed (only possible if in_channels > 1)
         assert not torch.allclose(module.weights, original_weights, rtol=0.0, atol=0.0)
@@ -433,8 +433,8 @@ class TestSumConvEM:
         # Set gradient
         cache["log_likelihood"][module].grad = torch.ones_like(cache["log_likelihood"][module])
 
-        with patch.object(leaf, "expectation_maximization"):
-            module.expectation_maximization(data, cache=cache)
+        with patch.object(leaf, "_expectation_maximization_step"):
+            module._expectation_maximization_step(data, cache=cache)
 
         # Check weights still sum to 1 over in_channels
         weights_sum = module.weights.sum(dim=1)
@@ -449,7 +449,7 @@ class TestSumConvEM:
         cache["log_likelihood"][module] = torch.zeros(2, 16, 2, 1)
 
         with pytest.raises(MissingCacheError):
-            module.expectation_maximization(data=_randn(2, 16), cache=cache)
+            module._expectation_maximization_step(data=_randn(2, 16), cache=cache)
 
     def test_em_missing_module_lls_raises(self):
         """Test EM raises if module log-likelihoods are missing in cache."""
@@ -460,7 +460,7 @@ class TestSumConvEM:
         cache["log_likelihood"][leaf] = torch.zeros(2, 16, 2, 1)
 
         with pytest.raises(MissingCacheError):
-            module.expectation_maximization(data=_randn(2, 16), cache=cache)
+            module._expectation_maximization_step(data=_randn(2, 16), cache=cache)
 
     def test_em_handles_missing_gradients(self):
         """Test EM falls back to uniform log gradients when grad is missing."""
@@ -471,8 +471,8 @@ class TestSumConvEM:
         data = _randn(10, 16)
         module.log_likelihood(data, cache=cache)
 
-        with patch.object(leaf, "expectation_maximization") as mock_leaf_em:
-            module.expectation_maximization(data, cache=cache)
+        with patch.object(leaf, "_expectation_maximization_step") as mock_leaf_em:
+            module._expectation_maximization_step(data, cache=cache)
 
         mock_leaf_em.assert_called_once()
 
@@ -487,7 +487,7 @@ class TestSumConvEM:
         cache["log_likelihood"][module].retain_grad()
 
         with pytest.raises(RuntimeError):
-            module.expectation_maximization(data, cache=cache)
+            module._expectation_maximization_step(data, cache=cache)
 
 
 class TestSumConvMarginalize:

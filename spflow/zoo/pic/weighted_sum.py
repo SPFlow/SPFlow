@@ -17,7 +17,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import SamplingContext, update_channel_index_strict
 
 
 class WeightedSum(Module):
@@ -172,9 +172,6 @@ class WeightedSum(Module):
         Returns:
             Tensor: Log-likelihood of shape (batch_size, num_features, out_channels, repetitions).
         """
-        if cache is None:
-            cache = Cache()
-
         # Get input log-likelihoods
         ll = self.inputs.log_likelihood(data, cache=cache)
 
@@ -210,22 +207,10 @@ class WeightedSum(Module):
         Returns:
             Tensor: Sampled values.
         """
-        if cache is None:
-            cache = Cache()
-
-        # Handle num_samples case (create empty data tensor)
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, len(self.scope.query)), float("nan")).to(self.device)
-
-        # Initialize sampling context if not provided
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            module_name=self.__class__.__name__,
-            num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
+        data, sampling_ctx = self._prepare_internal_sampling_inputs(
+            num_samples=num_samples,
+            data=data,
+            sampling_ctx=sampling_ctx,
         )
 
         # Use weights directly (not logits)
@@ -277,19 +262,7 @@ class WeightedSum(Module):
             probs = weights / denom
             new_channel_index = torch.distributions.Categorical(probs=probs).sample()
 
-        # Update sampling context
-        if new_channel_index.shape != sampling_ctx.mask.shape:
-            num_features = int(new_channel_index.shape[1])
-            if sampling_ctx.mask.shape[1] == num_features:
-                new_mask = sampling_ctx.mask.contiguous()
-            else:
-                raise ShapeError(
-                    "sampling_ctx.mask has incompatible feature width for sampling update: "
-                    f"got {sampling_ctx.mask.shape[1]}, expected {num_features}."
-                )
-            sampling_ctx.update(new_channel_index, new_mask)
-        else:
-            sampling_ctx.channel_index = new_channel_index
+        update_channel_index_strict(sampling_ctx, new_channel_index)
 
         # Sample from input module
         self.inputs.sample(
@@ -317,9 +290,6 @@ class WeightedSum(Module):
         Returns:
             Marginalized WeightedSum module or None.
         """
-        if cache is None:
-            cache = Cache()
-
         module_scope = self.scope
         marg_input = None
 

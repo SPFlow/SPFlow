@@ -16,7 +16,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from spflow.exceptions import InvalidParameterError
+from spflow.exceptions import InvalidParameterError, ShapeError
 
 
 def _check_mask_bool(mask: Tensor) -> None:
@@ -251,7 +251,6 @@ def build_root_sampling_context(
 def require_sampling_context(
     sampling_ctx: SamplingContext | None,
     *,
-    module_name: str,
     num_samples: int | None = None,
     module_out_shape: object | None = None,
     device: torch.device | None = None,
@@ -268,19 +267,35 @@ def require_sampling_context(
         if can_bootstrap:
             if num_samples is None:
                 raise InvalidParameterError(
-                    f"{module_name}.sample cannot initialize sampling context without num_samples."
+                    "Cannot initialize sampling context without num_samples."
                 )
             return SamplingContext(num_samples=num_samples, device=device)
 
         raise InvalidParameterError(
-            f"{module_name}.sample requires an explicit sampling_ctx for internal sampling unless "
+            "Sampling requires an explicit sampling_ctx for internal sampling unless "
             "module.out_shape.features == 1 and module.out_shape.channels == 1."
         )
 
     if num_samples is not None and sampling_ctx.channel_index.shape[0] != num_samples:
         raise InvalidParameterError(
-            f"{module_name}.sample received sampling_ctx with batch={sampling_ctx.channel_index.shape[0]}, "
+            "sampling_ctx batch size mismatch: "
+            f"got {sampling_ctx.channel_index.shape[0]}, "
             f"expected {num_samples}."
         )
 
     return sampling_ctx
+
+
+def update_channel_index_strict(sampling_ctx: SamplingContext, new_channel_index: Tensor) -> None:
+    """Update channel_index with strict shape checks against the existing mask."""
+    if new_channel_index.shape[0] != sampling_ctx.mask.shape[0]:
+        raise ShapeError(
+            "sampling_ctx.channel_index batch mismatch for update: "
+            f"got {new_channel_index.shape[0]}, expected {sampling_ctx.mask.shape[0]}."
+        )
+    if new_channel_index.shape[1] != sampling_ctx.mask.shape[1]:
+        raise ShapeError(
+            "sampling_ctx.mask has incompatible feature width for sampling update: "
+            f"got {sampling_ctx.mask.shape[1]}, expected {new_channel_index.shape[1]}."
+        )
+    sampling_ctx.channel_index = new_channel_index

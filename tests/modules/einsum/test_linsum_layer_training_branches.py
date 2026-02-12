@@ -5,6 +5,7 @@ from itertools import product
 import pytest
 import torch
 
+from spflow.exceptions import MissingCacheError
 from spflow.learn import expectation_maximization
 from spflow.meta import Scope
 from spflow.modules.einsum import LinsumLayer
@@ -129,7 +130,7 @@ class TestLinsumLayerEMTwoInputs:
         cache = Cache()
 
         with pytest.raises(ValueError):
-            module.expectation_maximization(data, cache=cache)
+            module._expectation_maximization_step(data, cache=cache)
 
     def test_two_inputs_flag_set_correctly(self):
         single_module = make_linsum_single_input(2, 3, 4, 1)
@@ -239,30 +240,19 @@ class TestLinsumLayerCoverageBranches:
         assert samples.shape == data.shape
         assert torch.isfinite(samples[:, module.scope.query]).all()
 
-    def test_expectation_maximization_creates_cache_if_none(self):
+    def test_expectation_maximization_requires_cached_module_ll(self):
         module = make_linsum_single_input(2, 3, 4, 1)
         data = make_normal_data(out_features=4, num_samples=6)
+        cache = Cache()
 
-        with pytest.raises(ValueError):
-            module.expectation_maximization(data, cache=None)
+        with pytest.raises(MissingCacheError):
+            module._expectation_maximization_step(data, cache=cache)
 
-    def test_mle_delegates_to_em(self, monkeypatch):
+    def test_mle_is_unavailable(self):
         module = make_linsum_single_input(2, 3, 4, 1)
         data = make_normal_data(out_features=4, num_samples=4)
-        cache = Cache()
-        called = {}
-
-        def _fake_em(data_arg, bias_correction=True, cache=None):
-            called["data"] = data_arg
-            called["bias_correction"] = bias_correction
-            called["cache"] = cache
-
-        monkeypatch.setattr(module, "expectation_maximization", _fake_em)
-
-        module.maximum_likelihood_estimation(data, bias_correction=False, cache=cache)
-        assert called["data"] is data
-        assert called["bias_correction"] is False
-        assert called["cache"] is cache
+        with pytest.raises(AttributeError):
+            module.maximum_likelihood_estimation(data, bias_correction=False)
 
     def test_marginalize_two_inputs_branch_outcomes(self, monkeypatch):
         module = make_linsum_two_inputs(2, 3, 4, 1)

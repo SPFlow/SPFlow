@@ -15,7 +15,7 @@ from spflow.modules.ops.cat import Cat
 from spflow.modules.products.product import Product
 from spflow.modules.sums.signed_sum import SignedSum
 from spflow.modules.sums.sum import Sum
-from spflow.utils.cache import Cache
+from spflow.utils.cache import Cache, cached
 from spflow.utils.inner_product import inner_product_matrix, log_self_inner_product_scalar
 from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
@@ -141,10 +141,8 @@ class SOCS(Module):
         cache.extras["socs_logZ"] = logZ
         return logZ
 
+    @cached
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> Tensor:  # type: ignore[override]
-        if cache is None:
-            cache = Cache()
-
         # log c(x) = log Σ_i exp(2 log|c_i(x)|) (elementwise over output entries)
         comp_terms = []
         for comp in self.components:
@@ -156,21 +154,14 @@ class SOCS(Module):
         logZ = self._log_partition(cache).to(dtype=log_c.dtype, device=log_c.device).unsqueeze(0)
         return log_c - logZ
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
         bias_correction: bool = True,
-        cache: Cache | None = None,
+        *,
+        cache: Cache,
     ) -> None:
         raise UnsupportedOperationError("SOCS does not support expectation-maximization.")
-
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Tensor | None = None,
-        cache: Cache | None = None,
-    ) -> None:
-        raise UnsupportedOperationError("SOCS does not support maximum-likelihood estimation.")
 
     def marginalize(
         self,
@@ -202,9 +193,6 @@ class SOCS(Module):
         if is_mpe:
             raise UnsupportedOperationError("SOCS.mpe() is not supported (use MAP on components if needed).")
 
-        if cache is None:
-            cache = Cache()
-
         # Only unconditional sampling for now (all NaNs)
         if data is not None and torch.isfinite(data).any():
             raise UnsupportedOperationError(
@@ -226,7 +214,6 @@ class SOCS(Module):
 
         sampling_ctx = require_sampling_context(
             sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=num_samples,
             module_out_shape=self.out_shape,
             device=data.device,
@@ -238,9 +225,10 @@ class SOCS(Module):
         )
         comp_idx = torch.distributions.Categorical(logits=logZs).sample((num_samples,))
 
-        # MCMC settings (can be overridden via cache.extras)
-        steps_after_burn_in = int(cache.extras.get("socs_mcmc_steps", cache.extras.get("socs_mh_steps", 50)))
-        burn_in = int(cache.extras.get("socs_mcmc_burn_in", cache.extras.get("socs_mh_burn_in", 10)))
+        # MCMC settings (can be overridden via cache.extras when cache is provided).
+        cache_extras = {} if cache is None else cache.extras
+        steps_after_burn_in = int(cache_extras.get("socs_mcmc_steps", cache_extras.get("socs_mh_steps", 50)))
+        burn_in = int(cache_extras.get("socs_mcmc_burn_in", cache_extras.get("socs_mh_burn_in", 10)))
         if steps_after_burn_in < 1:
             raise ValueError("socs_mcmc_steps must be >= 1.")
         if burn_in < 0:

@@ -430,9 +430,8 @@ class CLTree(LeafModule):
         weights: Tensor | None = None,
         bias_correction: bool = True,
         nan_strategy: str | None = "ignore",
-        cache: Cache | None = None,
     ) -> None:
-        del bias_correction, cache
+        del bias_correction
 
         scoped, weights = self._prepare_mle_inputs(data=data, weights=weights, nan_strategy=nan_strategy)
         x = scoped.to(device=self.log_cpt.device, dtype=torch.long)
@@ -507,7 +506,6 @@ class CLTree(LeafModule):
 
         sampling_ctx = require_sampling_context(
             sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             module_out_shape=self.out_shape,
             device=data.device,

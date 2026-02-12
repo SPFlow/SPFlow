@@ -14,6 +14,7 @@ def expectation_maximization(
     module: Module,
     data: Tensor,
     max_steps: int = -1,
+    bias_correction: bool = True,
     verbose: bool = False,
 ) -> Tensor:
     """Performs expectation-maximization optimization on a given module.
@@ -22,6 +23,7 @@ def expectation_maximization(
         module: Module to perform EM optimization on.
         data: Two-dimensional tensor containing the input data. Each row corresponds to a sample.
         max_steps: Maximum number of iterations. Defaults to -1, in which case optimization runs until convergence.
+        bias_correction: Whether to apply bias correction in leaf MLE updates. Defaults to True.
         verbose: Whether to print the log-likelihood for each iteration step. Defaults to False.
 
     Returns:
@@ -57,7 +59,11 @@ def expectation_maximization(
             acc_ll.backward(retain_graph=True)
 
         # recursively perform expectation maximization
-        module.expectation_maximization(data, cache=cache)
+        module._expectation_maximization_step(
+            data=data,
+            bias_correction=bias_correction,
+            cache=cache,
+        )
 
         # end update loop if max steps reached or loss converged
         if avg_ll <= prev_avg_ll:
@@ -74,6 +80,7 @@ def expectation_maximization_batched(
     module: Module,
     dataloader: DataLoader,
     num_epochs: int = 1,
+    bias_correction: bool = True,
     verbose: bool = False,
 ) -> Tensor:
     """Runs expectation-maximization over multiple epochs using mini-batches.
@@ -82,6 +89,7 @@ def expectation_maximization_batched(
         module: Module to perform EM optimization on.
         dataloader: Dataloader yielding batches of input data tensors.
         num_epochs: Number of epochs to iterate over the dataloader.
+        bias_correction: Whether to apply bias correction in leaf MLE updates. Defaults to True.
         verbose: Whether to print the average log-likelihood per epoch.
 
     Returns:
@@ -113,7 +121,11 @@ def expectation_maximization_batched(
             if acc_ll.requires_grad:
                 acc_ll.backward(retain_graph=True)
 
-            module.expectation_maximization(batch_data, cache=cache)
+            module._expectation_maximization_step(
+                data=batch_data,
+                bias_correction=bias_correction,
+                cache=cache,
+            )
 
         if epoch_ll is None or num_samples == 0:
             avg_ll = torch.tensor(float("nan"))

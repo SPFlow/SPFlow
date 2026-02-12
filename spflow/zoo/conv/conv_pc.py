@@ -12,6 +12,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from spflow.exceptions import UnsupportedOperationError
 from spflow.modules.conv.prod_conv import ProdConv
 from spflow.modules.conv.sum_conv import SumConv
 from spflow.modules.module import Module
@@ -111,6 +112,12 @@ class ConvPc(Module):
         """
         super().__init__()
         self.use_sum_conv = use_sum_conv
+
+        if num_repetitions != 1:
+            raise UnsupportedOperationError(
+                "ConvPc currently supports num_repetitions == 1 only. "
+                "Use a different architecture for repetition mixing."
+            )
 
         if depth < 1:
             raise ValueError(f"depth must be >= 1, got {depth}")
@@ -266,9 +273,6 @@ class ConvPc(Module):
         Returns:
             Tensor: Log-likelihood of shape (batch, 1, 1, reps).
         """
-        if cache is None:
-            cache = Cache()
-
         # Forward through root, which recursively calls inputs
         # Chain: root -> SumConv -> ProdConv -> ... -> leaf
         return self.inputs.log_likelihood(data, cache=cache)
@@ -297,9 +301,6 @@ class ConvPc(Module):
         Returns:
             Tensor: Sampled values of shape (num_samples, num_pixels).
         """
-        if cache is None:
-            cache = Cache()
-
         # Handle num_samples case
         if data is None:
             if num_samples is None:
@@ -330,11 +331,12 @@ class ConvPc(Module):
         return data
 
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
         bias_correction: bool = True,
-        cache: Cache | None = None,
+        *,
+        cache: Cache,
     ) -> None:
         """Perform EM update throughout the circuit.
 
@@ -343,11 +345,8 @@ class ConvPc(Module):
             bias_correction: Whether to apply bias correction.
             cache: Optional cache with log-likelihoods.
         """
-        if cache is None:
-            cache = Cache()
-
         # EM on root (which chains to all layers)
-        self.inputs.expectation_maximization(data, cache=cache, bias_correction=bias_correction)
+        self.inputs._expectation_maximization_step(data, cache=cache, bias_correction=bias_correction)
 
     def marginalize(
         self,

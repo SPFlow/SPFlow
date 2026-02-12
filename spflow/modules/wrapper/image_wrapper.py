@@ -144,10 +144,12 @@ class ImageWrapper(Wrapper):
     def extra_repr(self):
         return f"C={self.num_channel}, H={self.height}, W={self.width}"
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
-        cache: Cache | None = None,
+        bias_correction: bool = True,
+        *,
+        cache: Cache,
     ) -> None:
         """Performs a single expectation maximization (EM) step for the wrapped module.
 
@@ -155,6 +157,8 @@ class ImageWrapper(Wrapper):
             data:
                 Four-dimensional PyTorch tensor containing the input data.
                 Shape: (batch_size, num_channel, height, width).
+            bias_correction:
+                Whether to apply bias correction in leaf updates.
             cache:
                 Optional cache dictionary for memoization.
         """
@@ -165,33 +169,7 @@ class ImageWrapper(Wrapper):
             )
 
         data = self.flatten(data)
-        self.module.expectation_maximization(data, cache=cache)
-
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Optional[Tensor] = None,
-        cache: Cache | None = None,
-    ) -> None:
-        """Update parameters via maximum likelihood estimation for the wrapped module.
-
-        Args:
-            data:
-                Four-dimensional PyTorch tensor containing the input data.
-                Shape: (batch_size, num_channel, height, width).
-            weights:
-                Optional sample weights tensor.
-            cache:
-                Optional cache dictionary for memoization.
-        """
-
-        if data.shape != (data.shape[0], self.num_channel, self.height, self.width):
-            raise ShapeError(
-                f"Data shape must be (batch_size, num_channel, height, width) but got {data.shape}."
-            )
-
-        data = self.flatten(data)
-        self.module.maximum_likelihood_estimation(data, weights=weights, cache=cache)
+        self.module._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
 
     @cached
     def log_likelihood(

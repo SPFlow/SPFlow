@@ -17,7 +17,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import proj_convex_to_real
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 
 class SumConv(Module):
@@ -166,9 +166,6 @@ class SumConv(Module):
         Returns:
             Tensor: Log-likelihood of shape (batch, features, out_channels, reps).
         """
-        if cache is None:
-            cache = Cache()
-
         # Get input log-likelihoods: (batch, features, in_channels, reps)
         ll = self.inputs.log_likelihood(data, cache=cache)
 
@@ -266,24 +263,12 @@ class SumConv(Module):
         Returns:
             Tensor: Sampled values.
         """
-        if cache is None:
-            cache = Cache()
-
-        # Handle num_samples case
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, len(self.scope.query)), float("nan")).to(self.device)
-
-        batch_size = data.shape[0]
-
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            module_name=self.__class__.__name__,
-            num_samples=batch_size,
-            module_out_shape=self.out_shape,
-            device=data.device,
+        data, sampling_ctx = self._prepare_internal_sampling_inputs(
+            num_samples=num_samples,
+            data=data,
+            sampling_ctx=sampling_ctx,
         )
+        batch_size = data.shape[0]
 
         num_features = self.in_shape.features
 
@@ -430,11 +415,12 @@ class SumConv(Module):
 
         return data
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
         bias_correction: bool = True,
-        cache: Cache | None = None,
+        *,
+        cache: Cache,
     ) -> None:
         """Perform expectation-maximization step to update weights.
 
@@ -451,9 +437,6 @@ class SumConv(Module):
         Raises:
             MissingCacheError: If required log-likelihoods are not found in cache.
         """
-        if cache is None:
-            cache = Cache()
-
         with torch.no_grad():
             # Get cached log-likelihoods
             input_lls = cache["log_likelihood"].get(self.inputs)
@@ -529,7 +512,7 @@ class SumConv(Module):
             self.logits.data = new_log_weights.contiguous()
 
         # Recursively call EM on inputs
-        self.inputs.expectation_maximization(data, cache=cache, bias_correction=bias_correction)
+        self.inputs._expectation_maximization_step(data, cache=cache, bias_correction=bias_correction)
 
     def marginalize(
         self,

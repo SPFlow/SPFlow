@@ -158,10 +158,11 @@ class Uniform(LeafModule):
         prob = interval_length / support_length
         return torch.log(prob)
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: torch.Tensor,
-        bias_correction: bool = False,
-        cache: Cache | None = None,
+        bias_correction: bool = True,
+        *,
+        cache: Cache,
     ) -> None:
-        pass
+        del data, bias_correction, cache

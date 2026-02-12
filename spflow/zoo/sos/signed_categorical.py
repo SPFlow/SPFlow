@@ -11,7 +11,7 @@ from spflow.exceptions import ShapeError, UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
-from spflow.utils.cache import Cache
+from spflow.utils.cache import Cache, cached
 
 
 class SignedCategorical(Module):
@@ -95,21 +95,14 @@ class SignedCategorical(Module):
             "Use SOCS signed evaluation utilities."
         )
 
-    def expectation_maximization(
+    def _expectation_maximization_step(
         self,
         data: Tensor,
         bias_correction: bool = True,
-        cache: Cache | None = None,
+        *,
+        cache: Cache,
     ) -> None:
         raise UnsupportedOperationError("SignedCategorical does not support expectation-maximization.")
-
-    def maximum_likelihood_estimation(
-        self,
-        data: Tensor,
-        weights: Tensor | None = None,
-        cache: Cache | None = None,
-    ) -> None:
-        raise UnsupportedOperationError("SignedCategorical does not support maximum-likelihood estimation.")
 
     def marginalize(
         self,
@@ -121,6 +114,7 @@ class SignedCategorical(Module):
             return None
         return self
 
+    @cached
     def signed_logabs_and_sign(self, data: Tensor, cache: Cache | None = None) -> tuple[Tensor, Tensor]:
         """Evaluate this leaf in ``(log|.|, sign)`` form.
 
@@ -131,12 +125,9 @@ class SignedCategorical(Module):
         Returns:
             Tuple ``(logabs, sign)`` with shape ``(B, F, C, R)``.
         """
-        if cache is None:
-            cache = Cache()
-
-        cached = cache.get("signed_logabs_and_sign", self)
-        if cached is not None:
-            return cached
+        cached_ = cache.get("signed_logabs_and_sign", self)
+        if cached_ is not None:
+            return cached_
 
         if data.dim() != 2:
             raise ShapeError(f"Expected data to be 2D (B,D), got shape {tuple(data.shape)}.")

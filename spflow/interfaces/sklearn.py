@@ -15,7 +15,12 @@ import numpy as np
 import torch
 from einops import rearrange, reduce
 
-from spflow.exceptions import InvalidParameterError, InvalidTypeError, OptionalDependencyError
+from spflow.exceptions import (
+    InvalidParameterError,
+    InvalidTypeError,
+    OptionalDependencyError,
+    UnsupportedOperationError,
+)
 from spflow.learn.learn_spn import learn_spn
 from spflow.learn.prometheus import learn_prometheus
 from spflow.meta.data.scope import Scope
@@ -224,7 +229,21 @@ class SPFlowDensityEstimator(BaseEstimator, DensityMixin):
                 )
             self.model_ = self.model
             if self.fit_params:
-                self.model_.maximum_likelihood_estimation(x_tensor)
+                mle = getattr(self.model_, "maximum_likelihood_estimation", None)
+                if mle is None:
+                    raise InvalidParameterError(
+                        "fit_params=True requires a model exposing maximum_likelihood_estimation "
+                        "(typically leaf modules). "
+                        "For general circuit models, use spflow.learn.expectation_maximization(...)."
+                    )
+                try:
+                    mle(x_tensor)
+                except UnsupportedOperationError as exc:
+                    raise InvalidParameterError(
+                        "fit_params=True requires a model exposing maximum_likelihood_estimation "
+                        "(typically leaf modules). "
+                        "For general circuit models, use spflow.learn.expectation_maximization(...)."
+                    ) from exc
 
         return self
 

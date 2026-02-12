@@ -411,8 +411,8 @@ def test_socs_log_partition_cache_hit_and_unsupported_methods():
     assert first is second
 
     with pytest.raises(UnsupportedOperationError):
-        model.expectation_maximization(x)
-    with pytest.raises(UnsupportedOperationError):
+        model._expectation_maximization_step(x, cache=Cache())
+    with pytest.raises(AttributeError):
         model.maximum_likelihood_estimation(x)
 
 
