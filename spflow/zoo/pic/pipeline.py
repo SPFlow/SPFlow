@@ -30,6 +30,8 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.modules.products.elementwise_product import ElementwiseProduct
 from spflow.modules.products.outer_product import OuterProduct
+from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import SamplingContext
 from spflow.zoo.pic.integral import Integral
 from spflow.zoo.pic.weighted_sum import WeightedSum
 from spflow.zoo.pic.functional_sharing import FunctionGroup
@@ -121,6 +123,19 @@ class PICSum(Module):
     ) -> Tensor:  # pragma: no cover
         raise NotImplementedError("PICSum is symbolic; materialize to QPC with pic2qpc().")
 
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:  # pragma: no cover
+        del data
+        del sampling_ctx
+        del cache
+        del is_mpe
+        raise NotImplementedError("PICSum is symbolic; materialize to QPC with pic2qpc().")
+
     def marginalize(
         self, marg_rvs: list[int], prune: bool = True, cache=None
     ) -> Module | None:  # pragma: no cover
@@ -159,6 +174,19 @@ class PICProduct(Module):
     def sample(
         self, num_samples=None, data=None, is_mpe: bool = False, cache=None, sampling_ctx=None
     ) -> Tensor:  # pragma: no cover
+        raise NotImplementedError("PICProduct is symbolic; materialize to QPC with pic2qpc().")
+
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:  # pragma: no cover
+        del data
+        del sampling_ctx
+        del cache
+        del is_mpe
         raise NotImplementedError("PICProduct is symbolic; materialize to QPC with pic2qpc().")
 
     def marginalize(

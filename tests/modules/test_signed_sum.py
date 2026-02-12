@@ -53,6 +53,19 @@ class _SignedInput(Module):
         data[:, self.scope.query] = 0.0
         return data
 
+    def _sample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        del cache
+        del is_mpe
+        self.last_sampling_ctx = sampling_ctx
+        data[:, self.scope.query] = 0.0
+        return data
+
     def marginalize(
         self, marg_rvs: list[int], prune: bool = True, cache: Cache | None = None
     ) -> Module | None:

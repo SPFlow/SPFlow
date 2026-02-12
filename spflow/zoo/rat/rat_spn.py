@@ -285,6 +285,8 @@ class RatSPN(Module, Classifier):
             if num_samples is None:
                 num_samples = 1
             data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
+        if cache is None:
+            cache = Cache()
 
         # Initialize sampling context at root.
         sampling_ctx_was_none = sampling_ctx is None
@@ -320,6 +322,21 @@ class RatSPN(Module, Classifier):
             sample_root = self.root_node
 
         return sample_root.sample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
+
+    def _sample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        return self.sample(
+            num_samples=None,
             data=data,
             is_mpe=is_mpe,
             cache=cache,

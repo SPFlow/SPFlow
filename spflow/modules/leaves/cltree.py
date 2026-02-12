@@ -486,16 +486,14 @@ class CLTree(LeafModule):
         with torch.no_grad():
             self.log_cpt.data = log_cpt
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx=None,
     ) -> Tensor:
         del cache
-        data = self._prepare_sample_data(num_samples, data)
 
         if not self._has_learned_structure():
             raise RuntimeError(

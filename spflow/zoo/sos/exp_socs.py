@@ -134,3 +134,12 @@ class ExpSOCS(Module):
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         raise UnsupportedOperationError("ExpSOCS.sample() is not supported.")
+
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        raise UnsupportedOperationError("ExpSOCS.sample() is not supported.")

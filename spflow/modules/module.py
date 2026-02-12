@@ -16,7 +16,10 @@ from torch import Tensor, nn
 
 from spflow.meta.data.scope import Scope
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import (
+    SamplingContext,
+    require_sampling_context,
+)
 from spflow.modules.module_shape import ModuleShape
 
 
@@ -174,12 +177,12 @@ class Module(nn.Module, ABC):
 
     def _prepare_internal_sampling_inputs(
         self,
-        num_samples: int | None,
         data: Tensor | None,
         sampling_ctx: SamplingContext | None,
     ) -> tuple[Tensor, SamplingContext]:
-        """Prepare data and require a strict sampling context for internal modules."""
-        data = self._prepare_sample_data(num_samples=num_samples, data=data)
+        """Require a prepared data tensor and strict sampling context for internal modules."""
+        if data is None:
+            raise ValueError("Internal _sample(...) requires a prepared data tensor.")
         sampling_ctx = require_sampling_context(
             sampling_ctx,
             num_samples=data.shape[0],
@@ -212,7 +215,6 @@ class Module(nn.Module, ABC):
         """
         pass
 
-    @abstractmethod
     def sample(
         self,
         num_samples: int | None = None,
@@ -242,8 +244,37 @@ class Module(nn.Module, ABC):
         Raises:
             ValueError: If sampling parameters are incompatible.
         """
-        pass
+        data = self._prepare_sample_data(num_samples=num_samples, data=data)
+        if cache is None:
+            cache = Cache()
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
+        return self._sample(
+            data=data,
+            sampling_ctx=sampling_ctx,
+            cache=cache,
+            is_mpe=is_mpe,
+        )
 
+    @abstractmethod
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        """Internal sampling hook used for recursive sampling calls.
+
+        This method assumes that root-level sampling preparation has already been
+        handled by ``sample(...)``. Internal module recursion must call
+        ``_sample(...)``.
+        """
+        pass
 
     def mpe(
         self,

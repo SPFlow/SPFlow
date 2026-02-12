@@ -17,6 +17,7 @@ from spflow.exceptions import InvalidParameterError, ShapeError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import (
     SamplingContext,
     require_sampling_context,
@@ -243,13 +244,12 @@ class Split(Module, ABC):
         """
         pass
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Optional[Dict[str, Any]] = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Generate samples by delegating to input module.
 
@@ -264,7 +264,6 @@ class Split(Module, ABC):
             Tensor containing the generated samples.
         """
         # Prepare data tensor
-        data = self._prepare_sample_data(num_samples, data)
 
         sampling_ctx = require_sampling_context(
             sampling_ctx,
@@ -281,7 +280,7 @@ class Split(Module, ABC):
                 f"got {ctx_features}, expected {num_input_features}."
             )
 
-        self.inputs.sample(
+        self.inputs._sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,

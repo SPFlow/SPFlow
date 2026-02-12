@@ -244,6 +244,9 @@ class _UserProduct(Module):
     def sample(self, *args, **kwargs) -> Tensor:
         raise NotImplementedError
 
+    def _sample(self, data: Tensor, sampling_ctx, cache: Cache, is_mpe: bool = False) -> Tensor:
+        raise NotImplementedError
+
     def marginalize(self, *args, **kwargs):
         return self
 
@@ -269,6 +272,9 @@ class _UserSum(Module):
         return ll
 
     def sample(self, *args, **kwargs) -> Tensor:
+        raise NotImplementedError
+
+    def _sample(self, data: Tensor, sampling_ctx, cache: Cache, is_mpe: bool = False) -> Tensor:
         raise NotImplementedError
 
     def marginalize(self, *args, **kwargs):

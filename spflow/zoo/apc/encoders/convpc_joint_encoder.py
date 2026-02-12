@@ -28,7 +28,6 @@ from spflow.modules.sums import Sum
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import SamplingContext, require_sampling_context
-from spflow.zoo.apc.debug_trace import trace_sampling_context, trace_tensor
 from spflow.zoo.apc.encoders.base import LatentStats
 from spflow.zoo.conv.conv_pc import compute_non_overlapping_kernel_and_padding
 
@@ -102,15 +101,13 @@ class _PairwiseLatentProduct(Module):
             )
         return reduce(ll, "b (f pair) c r -> b f c r", "sum", f=self.out_shape.features, pair=2)
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        data = self._prepare_sample_data(num_samples, data)
         sampling_ctx = require_sampling_context(
             sampling_ctx,
             num_samples=data.shape[0],
@@ -120,7 +117,7 @@ class _PairwiseLatentProduct(Module):
 
         ctx_features = sampling_ctx.channel_index.shape[1]
         if ctx_features == self.in_shape.features:
-            return self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+            return self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
         if ctx_features == 1:
             num_parent_features = self.out_shape.features
             parent_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_parent_features)
@@ -137,7 +134,7 @@ class _PairwiseLatentProduct(Module):
         child_idx = repeat(parent_idx, "b f -> b (f two)", two=2)
         child_mask = repeat(parent_mask, "b f -> b (f two)", two=2)
         sampling_ctx.update(child_idx, child_mask)
-        return self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        return self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
 
     def marginalize(
@@ -213,15 +210,13 @@ class _LatentFeaturePacking(Module):
             packed = packed[:, self.perm.to(device=packed.device), :, :]
         return packed
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        data = self._prepare_sample_data(num_samples, data)
         sampling_ctx = require_sampling_context(
             sampling_ctx,
             num_samples=data.shape[0],
@@ -231,7 +226,7 @@ class _LatentFeaturePacking(Module):
 
         ctx_features = sampling_ctx.channel_index.shape[1]
         if ctx_features == self.in_shape.features:
-            return self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+            return self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
         if ctx_features == 1:
             num_target_features = self.target_features
             parent_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_target_features)
@@ -253,7 +248,7 @@ class _LatentFeaturePacking(Module):
         child_idx = parent_idx[:, : self.in_shape.features]
         child_mask = parent_mask[:, : self.in_shape.features]
         sampling_ctx.update(child_idx, child_mask)
-        return self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        return self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
 
     def marginalize(
@@ -402,15 +397,13 @@ class _LatentSelectionCapture(Module):
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> Tensor:
         return self.inputs.log_likelihood(data, cache=cache)
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        data = self._prepare_sample_data(num_samples, data)
         sampling_ctx = require_sampling_context(
             sampling_ctx,
             num_samples=data.shape[0],
@@ -418,7 +411,7 @@ class _LatentSelectionCapture(Module):
             device=data.device,
         )
         self._capture(sampling_ctx, data.shape[1])
-        return self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        return self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
 
     def marginalize(
@@ -1008,16 +1001,10 @@ class ConvPcJointEncoder(nn.Module):
         """Sample ``z ~ p(Z|X=x)`` and optionally return sampling context."""
         del tau
         self._reset_latent_leaf_selection()
-        trace_tensor("convpc.posterior.x_flat", x_flat)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
-        trace_tensor("convpc.posterior.evidence", evidence)
         sampling_ctx = SamplingContext(num_samples=x_flat.shape[0], device=x_flat.device)
-        trace_sampling_context("convpc.posterior.ctx_init", sampling_ctx)
         joint = self.pc.sample(data=evidence, is_mpe=mpe, sampling_ctx=sampling_ctx)
-        trace_tensor("convpc.posterior.joint", joint)
-        trace_sampling_context("convpc.posterior.ctx_out", sampling_ctx)
         z = joint[:, self._z_cols]
-        trace_tensor("convpc.posterior.z", z)
         if return_sampling_ctx:
             return z, sampling_ctx
         return z
@@ -1232,11 +1219,8 @@ class ConvPcJointEncoder(nn.Module):
                 "APC latent stats are not available after sample rollback. "
                 "Use encode(return_latent_stats=False)."
             )
-        trace_tensor("convpc.encode.x_in", x)
         x_flat = self._flatten_x(x)
         z = self._posterior_sample(x_flat, mpe=mpe, tau=tau, return_sampling_ctx=False)
-        if isinstance(z, Tensor):
-            trace_tensor("convpc.encode.z_out", z)
         return z
 
     def decode(
@@ -1249,24 +1233,19 @@ class ConvPcJointEncoder(nn.Module):
         fill_evidence: bool = False,
     ) -> Tensor:
         """Decode latents by sampling/imputing the ``X`` block given ``Z`` evidence."""
-        trace_tensor("convpc.decode.z_in", z)
-        trace_tensor("convpc.decode.x_evidence_in", x)
         z_flat = self._flatten_z(z)
         x_flat = None if x is None else self._flatten_x(x)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=z_flat)
-        trace_tensor("convpc.decode.evidence", evidence)
 
         if mpe:
             joint = self.pc.sample(data=evidence, is_mpe=True)
         else:
             joint = self.pc.sample(data=evidence, is_mpe=False)
-        trace_tensor("convpc.decode.joint", joint)
 
         x_rec_flat = joint[:, self._x_cols]
         if fill_evidence and x_flat is not None:
             finite_mask = torch.isfinite(x_flat)
             x_rec_flat = torch.where(finite_mask, x_flat.to(x_rec_flat.dtype), x_rec_flat)
-        trace_tensor("convpc.decode.x_rec_flat", x_rec_flat)
         return self._reshape_x_like(x_rec_flat, x)
 
     def joint_log_likelihood(self, x: Tensor, z: Tensor) -> Tensor:
@@ -1291,11 +1270,8 @@ class ConvPcJointEncoder(nn.Module):
         evidence = self._build_evidence(
             x_flat=None, z_flat=None, num_samples=num_samples, device=self.pc.device
         )
-        trace_tensor("convpc.prior.evidence", evidence)
         joint = self.pc.sample(data=evidence, is_mpe=False)
-        trace_tensor("convpc.prior.joint", joint)
         z = joint[:, self._z_cols]
-        trace_tensor("convpc.prior.z", z)
         return z
 
     def latent_stats(self, x: Tensor, *, tau: float = 1.0) -> LatentStats:

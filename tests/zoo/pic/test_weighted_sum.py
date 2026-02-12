@@ -63,6 +63,18 @@ class DummyInput(Module):
         self.sample_calls.append(sampling_ctx)
         return data
 
+    def _sample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: SamplingContext,
+        cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        del cache
+        del is_mpe
+        self.sample_calls.append(sampling_ctx)
+        return data
+
     def marginalize(self, marg_rvs, prune=True, cache=None):
         return self._marginalize_result
 

@@ -289,13 +289,12 @@ class LinsumLayer(Module):
 
         return log_prob
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Sample from the LinsumLayer.
 
@@ -310,7 +309,6 @@ class LinsumLayer(Module):
             Sampled data tensor.
         """
         # Prepare data tensor
-        data = self._prepare_sample_data(num_samples, data)
 
         sampling_ctx = require_sampling_context(
             sampling_ctx,
@@ -358,7 +356,7 @@ class LinsumLayer(Module):
         # Condition on evidence if cache has log-likelihoods.
         left_ll = None
         right_ll = None
-        if cache is not None and "log_likelihood" in cache:
+        if "log_likelihood" in cache:
             if self._two_inputs:
                 left_ll = cache["log_likelihood"].get(self.inputs[0])
                 right_ll = cache["log_likelihood"].get(self.inputs[1])
@@ -405,12 +403,12 @@ class LinsumLayer(Module):
             # Left child
             left_ctx = sampling_ctx.copy()
             left_ctx.channel_index = indices
-            self.inputs[0].sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=left_ctx)
+            self.inputs[0]._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=left_ctx)
 
             # Right child
             right_ctx = sampling_ctx.copy()
             right_ctx.channel_index = indices
-            self.inputs[1].sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=right_ctx)
+            self.inputs[1]._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=right_ctx)
         else:
             # Single input with Split module - use generic merge_split_indices
             # For LinsumLayer, both left and right use the same indices (linear combination)
@@ -419,7 +417,7 @@ class LinsumLayer(Module):
 
             child_ctx = sampling_ctx.copy()
             child_ctx.update(channel_index=full_indices, mask=full_mask)
-            self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=child_ctx)
+            self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=child_ctx)
 
         return data
 

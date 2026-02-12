@@ -94,13 +94,12 @@ class RepetitionMixingLayer(Sum):
             self.out_shape.repetitions,
         )
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Generate samples by choosing mixture components.
 
@@ -116,7 +115,6 @@ class RepetitionMixingLayer(Sum):
         """
 
         data, sampling_ctx = self._prepare_internal_sampling_inputs(
-            num_samples=num_samples,
             data=data,
             sampling_ctx=sampling_ctx,
         )
@@ -126,8 +124,7 @@ class RepetitionMixingLayer(Sum):
 
         # Check if we have cached input log-likelihoods to compute posterior
         if (
-            cache is not None
-            and "log_likelihood" in cache
+             "log_likelihood" in cache
             and cache["log_likelihood"].get(self.inputs) is not None
         ):
             # Compute log posterior by reweighing logits with input lls
@@ -151,7 +148,7 @@ class RepetitionMixingLayer(Sum):
         sampling_ctx.repetition_idx = repetition_idx
 
         # Sample from input module
-        self.inputs.sample(
+        self.inputs._sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,

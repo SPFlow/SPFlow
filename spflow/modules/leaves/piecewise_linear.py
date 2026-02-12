@@ -586,13 +586,12 @@ class PiecewiseLinear(LeafModule):
 
         return log_prob
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
         """Sample from the piecewise linear distribution.
 
@@ -612,7 +611,6 @@ class PiecewiseLinear(LeafModule):
             )
 
         # Prepare data tensor
-        data = self._prepare_sample_data(num_samples, data)
         sampling_ctx = require_sampling_context(
             sampling_ctx,
             num_samples=data.shape[0],

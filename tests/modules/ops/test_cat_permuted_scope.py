@@ -7,6 +7,7 @@ import numpy as np
 from spflow.meta import Scope
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.modules.ops.cat import Cat
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 
 
@@ -60,13 +61,16 @@ class IndexLeaf(LeafModule):
         # Shape: [out_features, out_channels, num_repetitions]
         return indices.view(-1, 1, 1).expand(-1, self.out_shape.channels, self.out_shape.repetitions)
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
-        """Override sample to return deterministic values based on scope indices."""
-        from spflow.utils.sampling_context import init_default_sampling_context
-
-        # Prepare data tensor
-        data = self._prepare_sample_data(num_samples, data)
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+    def _sample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        """Return deterministic values based on scope indices."""
+        del cache
+        del is_mpe
 
         # Find which positions need sampling (NaN and in scope)
         out_of_scope = [x for x in range(data.shape[1]) if x not in self.scope.query]
@@ -82,12 +86,9 @@ class IndexLeaf(LeafModule):
         if n_samples == 0:
             return data
 
-        if sampling_ctx.repetition_idx is None:
-            sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long)
-
         # Place scope indices at the correct positions
         # For each query variable in our scope, put its index value there
-        for feat_idx, rv_idx in enumerate(self.scope.query):
+        for _, rv_idx in enumerate(self.scope.query):
             # Only fill where the mask is True for this position
             mask_for_rv = samples_mask[:, rv_idx]
             data[mask_for_rv, rv_idx] = float(rv_idx)

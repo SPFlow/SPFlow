@@ -106,13 +106,12 @@ class Cat(Module):
         output = torch.cat(lls, dim=self.dim)
         return output
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
         """Generate samples by delegating to concatenated inputs.
 
@@ -127,7 +126,6 @@ class Cat(Module):
             Tensor: Generated samples tensor.
         """
         # Prepare data tensor
-        data = self._prepare_sample_data(num_samples, data)
 
         sampling_ctx = require_sampling_context(
             sampling_ctx,
@@ -200,8 +198,7 @@ class Cat(Module):
             input_module = self.inputs[i]
             sampling_ctx_copy = sampling_ctx.copy()
             sampling_ctx_copy.update(channel_index=channel_index_per_module[i], mask=mask_per_module[i])
-
-            input_module.sample(
+            input_module._sample(
                 data=data,
                 is_mpe=is_mpe,
                 cache=cache,

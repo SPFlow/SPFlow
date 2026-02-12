@@ -272,13 +272,12 @@ class Sum(Module):
 
         return output
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Generate samples from sum module.
 
@@ -293,7 +292,6 @@ class Sum(Module):
             Tensor: Sampled values.
         """
         data, sampling_ctx = self._prepare_internal_sampling_inputs(
-            num_samples=num_samples,
             data=data,
             sampling_ctx=sampling_ctx,
         )
@@ -343,8 +341,7 @@ class Sum(Module):
 
         # Check if evidence is given (cached log-likelihoods)
         if (
-            cache is not None
-            and "log_likelihood" in cache
+             "log_likelihood" in cache
             and cache["log_likelihood"].get(self.inputs) is not None
         ):
             # Get the log likelihoods from the cache
@@ -384,7 +381,7 @@ class Sum(Module):
         update_channel_index_strict(sampling_ctx, new_channel_index)
 
         # Sample from input module
-        self.inputs.sample(
+        self.inputs._sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,

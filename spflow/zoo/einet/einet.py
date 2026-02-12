@@ -419,6 +419,8 @@ class Einet(Module, Classifier):
             if num_samples is None:
                 num_samples = 1
             data = torch.full((num_samples, self.num_features), torch.nan, device=self.device)
+        if cache is None:
+            cache = Cache()
 
         # Conditional sampling needs forward log-likelihoods in the cache.
         if self._has_partial_evidence(data):
@@ -469,6 +471,21 @@ class Einet(Module, Classifier):
             sample_root = self.root_node
 
         return sample_root.sample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
+
+    def _sample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        return self.sample(
+            num_samples=None,
             data=data,
             is_mpe=is_mpe,
             cache=cache,

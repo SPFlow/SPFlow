@@ -350,6 +350,12 @@ class _Mini(Module):
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
         return self._prepare_sample_data(num_samples, data)
 
+    def _sample(self, data, sampling_ctx, cache, is_mpe: bool = False):
+        del sampling_ctx
+        del cache
+        del is_mpe
+        return data
+
     def expectation_maximization(self, data, bias_correction=True, cache=None):
         return None
 

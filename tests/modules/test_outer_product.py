@@ -38,6 +38,12 @@ class _TinyLeaf(Module):
         data = self._prepare_sample_data(num_samples, data)
         return torch.nan_to_num(data, nan=0.0)
 
+    def _sample(self, data, sampling_ctx, cache, is_mpe: bool = False):
+        del sampling_ctx
+        del cache
+        del is_mpe
+        return torch.nan_to_num(data, nan=0.0)
+
     def expectation_maximization(self, data, bias_correction=True, cache=None):
         return None
 

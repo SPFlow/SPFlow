@@ -168,20 +168,18 @@ class SignedSum(Module):
         cache.set("signed_logabs_and_sign", self, (out_logabs, out_sign))
         return out_logabs, out_sign
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Sample from the unnormalized non-negative subset of SignedSum.
 
         Only supported if all weights are >= 0 and no evidence is provided.
         """
         data, sampling_ctx = self._prepare_internal_sampling_inputs(
-            num_samples=num_samples,
             data=data,
             sampling_ctx=sampling_ctx,
         )
@@ -231,5 +229,5 @@ class SignedSum(Module):
             new_channel_index = torch.distributions.Categorical(probs=probs).sample()
 
         update_channel_index_strict(sampling_ctx, new_channel_index)
-        self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
         return data

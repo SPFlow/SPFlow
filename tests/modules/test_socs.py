@@ -16,6 +16,7 @@ from spflow.modules.sos.socs import _signed_eval
 from spflow.modules.sums.signed_sum import SignedSum
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import SamplingContext
 
 
 def _make_normal_component(mu: float, sigma: float) -> Normal:
@@ -349,6 +350,18 @@ class _MargNoneModule(Module):
     ) -> torch.Tensor:
         n = 1 if num_samples is None else num_samples
         return torch.zeros((n, len(self.scope.query)))
+
+    def _sample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        del sampling_ctx
+        del cache
+        del is_mpe
+        return torch.zeros((data.shape[0], len(self.scope.query)), dtype=data.dtype, device=data.device)
 
     def expectation_maximization(self, data, bias_correction=True, cache=None) -> None:
         return None

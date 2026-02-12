@@ -93,13 +93,12 @@ class SplitConsecutive(Split):
         """Merge split feature tensors back to original layout (consecutive)."""
         return torch.cat(split_tensors, dim=1)
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Optional[Dict[str, Any]] = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Generate samples by delegating to input module.
 
@@ -118,7 +117,6 @@ class SplitConsecutive(Split):
         Returns:
             Tensor containing the generated samples.
         """
-        data = self._prepare_sample_data(num_samples, data)
         sampling_ctx = require_sampling_context(
             sampling_ctx,
             num_samples=data.shape[0],
@@ -141,7 +139,7 @@ class SplitConsecutive(Split):
                 f"got {sampling_ctx.channel_index.shape[1]}, expected {split_features} or {input_features}."
             )
 
-        self.inputs.sample(
+        self.inputs._sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,

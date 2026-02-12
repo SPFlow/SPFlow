@@ -102,6 +102,19 @@ class _ToyInput(Module):
         data[:, self.scope.query] = 0.0
         return data
 
+    def _sample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        del sampling_ctx
+        del cache
+        del is_mpe
+        data[:, self.scope.query] = 0.0
+        return data
+
     def expectation_maximization(self, data, bias_correction: bool = True, cache: Cache | None = None):
         return None
 

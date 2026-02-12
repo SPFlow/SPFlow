@@ -262,13 +262,12 @@ class ElementwiseSum(Module):
         else:
             return ElementwiseSum(inputs=[inp for inp in marg_input], weights=module_weights)
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
         """Generate samples by choosing mixture components.
 
@@ -283,7 +282,6 @@ class ElementwiseSum(Module):
             Tensor: Generated samples.
         """
         # Prepare data tensor
-        data = self._prepare_sample_data(num_samples, data)
 
         # initialize contexts
         sampling_ctx = require_sampling_context(
@@ -358,8 +356,7 @@ class ElementwiseSum(Module):
         logits = rearrange(logits, "b f 1 i -> b f i")
 
         if (
-            cache is not None
-            and "log_likelihood" in cache
+             "log_likelihood" in cache
             and all(cache["log_likelihood"][inp] is not None for inp in self.inputs)
         ):
             input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
@@ -410,7 +407,7 @@ class ElementwiseSum(Module):
             sampling_ctx_cpy.mask = mask
 
             # Sample from input module
-            inp.sample(
+            inp._sample(
                 data=data,
                 is_mpe=is_mpe,
                 cache=cache,

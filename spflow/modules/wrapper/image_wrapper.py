@@ -267,6 +267,8 @@ class ImageWrapper(Wrapper):
         """
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
+        if cache is None:
+            cache = Cache()
 
         sampling_ctx = build_root_sampling_context(
             sampling_ctx,
@@ -279,7 +281,23 @@ class ImageWrapper(Wrapper):
         # Flatten data to 2D for processing
         flat_data = self.flatten(data)
 
-        self.module.sample(
+        self.module._sample(
+            data=flat_data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
+        return self.to_image_format(flat_data)
+
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        flat_data = self.flatten(data)
+        self.module._sample(
             data=flat_data,
             is_mpe=is_mpe,
             cache=cache,

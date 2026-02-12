@@ -83,13 +83,12 @@ class Product(Module):
 
         return result
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Generate samples by delegating to input module.
 
@@ -105,7 +104,6 @@ class Product(Module):
         """
 
         data, sampling_ctx = self._prepare_internal_sampling_inputs(
-            num_samples=num_samples,
             data=data,
             sampling_ctx=sampling_ctx,
         )
@@ -127,7 +125,7 @@ class Product(Module):
         sampling_ctx.update(channel_index=channel_index, mask=mask)
 
         # Delegate to input module for actual sampling
-        self.inputs.sample(
+        self.inputs._sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,

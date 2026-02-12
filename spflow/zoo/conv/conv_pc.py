@@ -306,6 +306,8 @@ class ConvPc(Module):
             if num_samples is None:
                 num_samples = 1
             data = torch.full((num_samples, len(self.scope.query)), float("nan")).to(self.device)
+        if cache is None:
+            cache = Cache()
 
         # Conditional sampling needs forward log-likelihoods in the cache.
         if self._has_partial_evidence(data):
@@ -321,7 +323,7 @@ class ConvPc(Module):
 
         # Delegate to root (RepetitionMixingLayer or Sum)
         # which handles channel/repetition sampling internally
-        self.inputs.sample(
+        self.inputs._sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,
@@ -329,6 +331,21 @@ class ConvPc(Module):
         )
 
         return data
+
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        return self.sample(
+            num_samples=None,
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
 
 
     def _expectation_maximization_step(

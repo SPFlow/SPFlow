@@ -18,7 +18,6 @@ from spflow.exceptions import InvalidParameterError, ShapeError, UnsupportedOper
 from spflow.modules.leaves import Normal
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.sampling_context import SamplingContext
-from spflow.zoo.apc.debug_trace import trace_sampling_context, trace_tensor
 from spflow.zoo.apc.encoders.base import LatentStats
 from spflow.zoo.einet import Einet
 
@@ -230,16 +229,10 @@ class EinetJointEncoder(nn.Module):
     ) -> Tensor | tuple[Tensor, SamplingContext]:
         """Sample ``z ~ p(Z|X=x)`` and optionally return sampling context."""
         del tau
-        trace_tensor("einet.posterior.x_flat", x_flat)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
-        trace_tensor("einet.posterior.evidence", evidence)
         sampling_ctx = SamplingContext(num_samples=x_flat.shape[0], device=x_flat.device)
-        trace_sampling_context("einet.posterior.ctx_init", sampling_ctx)
         joint = self.pc.sample(data=evidence, is_mpe=mpe, sampling_ctx=sampling_ctx)
-        trace_tensor("einet.posterior.joint", joint)
-        trace_sampling_context("einet.posterior.ctx_out", sampling_ctx)
         z = joint[:, self._z_cols]
-        trace_tensor("einet.posterior.z", z)
         if return_sampling_ctx:
             return z, sampling_ctx
         return z
@@ -268,11 +261,8 @@ class EinetJointEncoder(nn.Module):
                 "APC latent stats are not available after sample rollback. "
                 "Use encode(return_latent_stats=False)."
             )
-        trace_tensor("einet.encode.x_in", x)
         x_flat = self._flatten_x(x)
         z = self._posterior_sample(x_flat, mpe=mpe, tau=tau, return_sampling_ctx=False)
-        if isinstance(z, Tensor):
-            trace_tensor("einet.encode.z_out", z)
         return z
 
     def decode(
@@ -293,24 +283,19 @@ class EinetJointEncoder(nn.Module):
             tau: Temperature for differentiable sampling.
             fill_evidence: If ``True``, preserve finite entries from ``x`` in output.
         """
-        trace_tensor("einet.decode.z_in", z)
-        trace_tensor("einet.decode.x_evidence_in", x)
         z_flat = self._flatten_z(z)
         x_flat = None if x is None else self._flatten_x(x)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=z_flat)
-        trace_tensor("einet.decode.evidence", evidence)
 
         if mpe:
             joint = self.pc.sample(data=evidence, is_mpe=True)
         else:
             joint = self.pc.sample(data=evidence, is_mpe=False)
-        trace_tensor("einet.decode.joint", joint)
 
         x_rec = joint[:, self._x_cols]
         if fill_evidence and x_flat is not None:
             finite_mask = torch.isfinite(x_flat)
             x_rec = torch.where(finite_mask, x_flat.to(x_rec.dtype), x_rec)
-        trace_tensor("einet.decode.x_rec", x_rec)
         return x_rec
 
     def joint_log_likelihood(self, x: Tensor, z: Tensor) -> Tensor:
@@ -335,14 +320,11 @@ class EinetJointEncoder(nn.Module):
         evidence = self._build_evidence(
             x_flat=None, z_flat=None, num_samples=num_samples, device=self.pc.device
         )
-        trace_tensor("einet.prior.evidence", evidence)
         joint = self.pc.sample(
             data=evidence,
             is_mpe=False,
         )
-        trace_tensor("einet.prior.joint", joint)
         z = joint[:, self._z_cols]
-        trace_tensor("einet.prior.z", z)
         return z
 
     def latent_stats(self, x: Tensor, *, tau: float = 1.0) -> LatentStats:

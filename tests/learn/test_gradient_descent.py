@@ -53,6 +53,9 @@ class DummyModel(Module):
     ):
         raise NotImplementedError
 
+    def _sample(self, data: torch.Tensor, sampling_ctx, cache, is_mpe: bool = False):
+        raise NotImplementedError
+
     def expectation_maximization(self, data: torch.Tensor, cache=None):
         raise NotImplementedError
 
@@ -122,6 +125,9 @@ class ClassificationModel(Module, Classifier):
         cache=None,
         sampling_ctx=None,
     ):
+        raise NotImplementedError
+
+    def _sample(self, data: torch.Tensor, sampling_ctx, cache, is_mpe: bool = False):
         raise NotImplementedError
 
     def expectation_maximization(self, data: torch.Tensor, cache=None):

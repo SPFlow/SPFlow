@@ -40,6 +40,12 @@ class MockModule(Module):
         """Mock sample method."""
         return torch.randn(num_samples or 1, 1)
 
+    def _sample(self, data, sampling_ctx, cache, is_mpe: bool = False):
+        del sampling_ctx
+        del cache
+        del is_mpe
+        return data
+
     def marginalize(self, marg_rvs, prune=True, cache=None):
         """Mock marginalize method."""
         return None
@@ -73,6 +79,12 @@ class StubModule(Module):
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
         """Return fake samples."""
         return torch.randn(num_samples or 1, len(self._scope.query))
+
+    def _sample(self, data, sampling_ctx, cache, is_mpe: bool = False):
+        del sampling_ctx
+        del cache
+        del is_mpe
+        return data
 
     def marginalize(self, marg_rvs, prune=True, cache=None):
         """Return marginalized version."""

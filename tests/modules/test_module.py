@@ -6,6 +6,7 @@ from spflow.meta import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import SamplingContext
 
 
 class _ChildRecorder(Module):
@@ -28,6 +29,20 @@ class _ChildRecorder(Module):
         data = self._prepare_sample_data(num_samples, data)
         data[:] = torch.nan_to_num(data, nan=0.0)
         return data
+
+    def _sample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        del sampling_ctx
+        del cache
+        del is_mpe
+        out = data.clone()
+        out[:] = torch.nan_to_num(out, nan=0.0)
+        return out
 
     def _expectation_maximization_step(
         self, data: torch.Tensor, bias_correction: bool = True, *, cache: Cache
@@ -67,6 +82,20 @@ class _ParentDispatch(Module):
         data[:] = torch.nan_to_num(data, nan=0.0)
         return data
 
+    def _sample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        del sampling_ctx
+        del cache
+        del is_mpe
+        out = data.clone()
+        out[:] = torch.nan_to_num(out, nan=0.0)
+        return out
+
     def marginalize(self, marg_rvs: list[int], prune: bool = True, cache=None):
         return self
 
@@ -94,6 +123,20 @@ class _SuperPassProbe(Module):
         data = self._prepare_sample_data(num_samples, data)
         data[:] = torch.nan_to_num(data, nan=0.0)
         return data
+
+    def _sample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        del sampling_ctx
+        del cache
+        del is_mpe
+        out = data.clone()
+        out[:] = torch.nan_to_num(out, nan=0.0)
+        return out
 
     def marginalize(self, marg_rvs: list[int], prune: bool = True, cache=None):
         Module.marginalize(self, marg_rvs=marg_rvs, prune=prune, cache=cache)

@@ -488,6 +488,8 @@ class SOSModel(Module):
             if num_samples is None:
                 num_samples = 1
             data = torch.full((num_samples, len(self.scope.query)), float("nan"), device=self.device)
+        if cache is None:
+            cache = Cache()
         sampling_ctx = build_root_sampling_context(
             sampling_ctx,
             module_name=self.__class__.__name__,
@@ -495,13 +497,16 @@ class SOSModel(Module):
             num_features=self.socs.out_shape.features,
             device=data.device,
         )
-        return self.socs.sample(
-            num_samples=num_samples,
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-        )
+        return self.socs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        return self.socs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
 
 class ExpSOSModel(Module):
@@ -642,6 +647,8 @@ class ExpSOSModel(Module):
             if num_samples is None:
                 num_samples = 1
             data = torch.full((num_samples, len(self.scope.query)), float("nan"), device=self.device)
+        if cache is None:
+            cache = Cache()
         sampling_ctx = build_root_sampling_context(
             sampling_ctx,
             module_name=self.__class__.__name__,
@@ -649,10 +656,13 @@ class ExpSOSModel(Module):
             num_features=self.exp_socs.out_shape.features,
             device=data.device,
         )
-        return self.exp_socs.sample(
-            num_samples=num_samples,
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-        )
+        return self.exp_socs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        return self.exp_socs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)

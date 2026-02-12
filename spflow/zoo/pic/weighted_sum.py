@@ -187,13 +187,12 @@ class WeightedSum(Module):
 
         return output
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Generate samples from WeightedSum module.
 
@@ -208,7 +207,6 @@ class WeightedSum(Module):
             Tensor: Sampled values.
         """
         data, sampling_ctx = self._prepare_internal_sampling_inputs(
-            num_samples=num_samples,
             data=data,
             sampling_ctx=sampling_ctx,
         )
@@ -265,7 +263,7 @@ class WeightedSum(Module):
         update_channel_index_strict(sampling_ctx, new_channel_index)
 
         # Sample from input module
-        self.inputs.sample(
+        self.inputs._sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,

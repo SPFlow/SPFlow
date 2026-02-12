@@ -542,6 +542,15 @@ class TensorizedQPC(Module):
     ) -> Tensor:
         raise NotImplementedError("Sampling is not implemented for TensorizedQPC yet.")
 
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        raise NotImplementedError("Sampling is not implemented for TensorizedQPC yet.")
+
     def marginalize(
         self, marg_rvs: list[int], prune: bool = True, cache: Cache | None = None
     ) -> Module | None:

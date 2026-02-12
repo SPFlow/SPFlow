@@ -9,9 +9,12 @@ maintaining compatibility with the core module interfaces.
 
 from abc import ABC
 import numpy as np
+from torch import Tensor
 
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
+from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import SamplingContext
 
 
 class Wrapper(Module, ABC):
@@ -74,7 +77,13 @@ class Wrapper(Module, ABC):
         Returns:
             torch.device: Device where the wrapped module parameters are located.
         """
-        return next(iter(self.module.parameters())).device
+        try:
+            return next(iter(self.module.parameters())).device
+        except StopIteration:
+            try:
+                return next(iter(self.module.buffers())).device
+            except StopIteration:
+                return super().device
 
     def extra_repr(self) -> str:
         """Return a string representation of the wrapper module.
@@ -87,3 +96,17 @@ class Wrapper(Module, ABC):
             str: String representation in format "D={out_features}, C={out_channels}, R={num_repetitions}".
         """
         return f"D={self.out_shape.features}, C={self.out_shape.channels}, R={self.out_shape.repetitions}"
+
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        return self.module._sample(
+            data=data,
+            sampling_ctx=sampling_ctx,
+            cache=cache,
+            is_mpe=is_mpe,
+        )

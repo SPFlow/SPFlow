@@ -12,6 +12,7 @@ from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
+from spflow.utils.sampling_context import SamplingContext
 
 
 class SignedCategorical(Module):
@@ -172,6 +173,22 @@ class SignedCategorical(Module):
         cache: Cache | None = None,
         sampling_ctx=None,
     ) -> Tensor:
+        raise UnsupportedOperationError(
+            "SignedCategorical.sample() is not supported. "
+            "Convert to a monotone proposal first (e.g., via build_abs_weight_proposal)."
+        )
+
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        del data
+        del sampling_ctx
+        del cache
+        del is_mpe
         raise UnsupportedOperationError(
             "SignedCategorical.sample() is not supported. "
             "Convert to a monotone proposal first (e.g., via build_abs_weight_proposal)."

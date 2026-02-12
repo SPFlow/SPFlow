@@ -92,6 +92,15 @@ class Integral(Module):
     ) -> Tensor:
         raise NotImplementedError("Sampling from Integral nodes is not implemented.")
 
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        raise NotImplementedError("Sampling from Integral nodes is not implemented.")
+
     def marginalize(
         self, marg_rvs: list[int], prune: bool = True, cache: Cache | None = None
     ) -> Module | None:

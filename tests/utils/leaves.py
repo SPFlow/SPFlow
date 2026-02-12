@@ -70,6 +70,13 @@ class CachingDummyInput(Module):
         data[:, self.scope.query] = 0.0
         return data
 
+    def _sample(self, data: Tensor, sampling_ctx, cache: Cache, is_mpe: bool = False):
+        del sampling_ctx
+        del cache
+        del is_mpe
+        data[:, self.scope.query] = 0.0
+        return data
+
     def _expectation_maximization_step(
         self, data: Tensor, bias_correction: bool = True, *, cache: Cache
     ) -> None:

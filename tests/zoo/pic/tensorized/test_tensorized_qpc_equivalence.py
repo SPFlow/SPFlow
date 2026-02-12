@@ -55,6 +55,9 @@ class _DummyLeaf(Module):
     ) -> Tensor:  # pragma: no cover
         raise NotImplementedError
 
+    def _sample(self, data: Tensor, sampling_ctx, cache, is_mpe: bool = False) -> Tensor:  # pragma: no cover
+        raise NotImplementedError
+
     def marginalize(self, marg_rvs, prune: bool = True, cache=None):  # pragma: no cover
         raise NotImplementedError
 

@@ -108,13 +108,12 @@ class BaseProduct(Module, ABC):
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}"
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
         """Generate samples from product module.
 
@@ -129,7 +128,6 @@ class BaseProduct(Module, ABC):
             Tensor: Generated samples.
         """
         # Prepare data tensor
-        data = self._prepare_sample_data(num_samples, data)
 
         # initialize contexts
         sampling_ctx = require_sampling_context(
@@ -158,7 +156,7 @@ class BaseProduct(Module, ABC):
             if mask.ndim == 1:
                 mask = mask.unsqueeze(1)
             sampling_ctx.update(channel_index=cid, mask=mask)
-            inp.sample(
+            inp._sample(
                 data=data,
                 is_mpe=is_mpe,
                 cache=cache,

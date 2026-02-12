@@ -158,13 +158,12 @@ class Factorize(BaseProduct):
 
         return output
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
         """Generate samples by delegating to input with mapped indices.
 
@@ -179,7 +178,6 @@ class Factorize(BaseProduct):
             Tensor: Generated samples.
         """
         # Prepare data tensor
-        data = self._prepare_sample_data(num_samples, data)
 
         sampling_ctx = require_sampling_context(
             sampling_ctx,
@@ -225,7 +223,7 @@ class Factorize(BaseProduct):
 
         sampling_ctx.update(channel_index=channel_index, mask=mask)
 
-        self.inputs[0].sample(
+        self.inputs[0]._sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,

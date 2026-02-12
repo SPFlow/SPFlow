@@ -43,6 +43,12 @@ class _ContainerModule(Module):
             return torch.zeros((n, len(self.scope.query)), dtype=torch.get_default_dtype())
         return data
 
+    def _sample(self, data: Tensor, sampling_ctx, cache, is_mpe: bool = False) -> Tensor:
+        del sampling_ctx
+        del cache
+        del is_mpe
+        return data
+
     def marginalize(self, marg_rvs: list[int], prune: bool = True, cache=None):
         return self
 

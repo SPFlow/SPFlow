@@ -190,11 +190,13 @@ class SOCS(Module):
         cache: Cache | None = None,
         sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
+        data = self._prepare_sample_data(num_samples=num_samples, data=data)
+
         if is_mpe:
             raise UnsupportedOperationError("SOCS.mpe() is not supported (use MAP on components if needed).")
 
         # Only unconditional sampling for now (all NaNs)
-        if data is not None and torch.isfinite(data).any():
+        if torch.isfinite(data).any():
             raise UnsupportedOperationError(
                 "SOCS.sample() does not support conditional sampling with evidence yet."
             )
@@ -205,19 +207,37 @@ class SOCS(Module):
                 "(out_shape.features==1, out_shape.channels==1, out_shape.repetitions==1)."
             )
 
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, len(self.scope.query)), float("nan"), device=self.device)
-        else:
-            num_samples = data.shape[0]
-
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            num_samples=num_samples,
-            module_out_shape=self.out_shape,
-            device=data.device,
+        return super().sample(
+            num_samples=None,
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
         )
+
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        if is_mpe:
+            raise UnsupportedOperationError("SOCS.mpe() is not supported (use MAP on components if needed).")
+
+        # Only unconditional sampling for now (all NaNs)
+        if torch.isfinite(data).any():
+            raise UnsupportedOperationError(
+                "SOCS.sample() does not support conditional sampling with evidence yet."
+            )
+
+        if tuple(self.out_shape) != (1, 1, 1):
+            raise UnsupportedOperationError(
+                "SOCS.sample() currently supports only scalar-output circuits "
+                "(out_shape.features==1, out_shape.channels==1, out_shape.repetitions==1)."
+            )
+
+        num_samples = data.shape[0]
 
         # Mixture over components with weights proportional to Z_i
         logZs = torch.stack(
@@ -226,7 +246,7 @@ class SOCS(Module):
         comp_idx = torch.distributions.Categorical(logits=logZs).sample((num_samples,))
 
         # MCMC settings (can be overridden via cache.extras when cache is provided).
-        cache_extras = {} if cache is None else cache.extras
+        cache_extras = cache.extras
         steps_after_burn_in = int(cache_extras.get("socs_mcmc_steps", cache_extras.get("socs_mh_steps", 50)))
         burn_in = int(cache_extras.get("socs_mcmc_burn_in", cache_extras.get("socs_mh_burn_in", 10)))
         if steps_after_burn_in < 1:

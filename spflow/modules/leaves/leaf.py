@@ -577,13 +577,12 @@ class LeafModule(Module, ABC):
         # Step 2: Update distribution-specific statistics
         self._mle_update_statistics(data_prepared, weights_prepared, bias_correction)
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
         """Sample from leaf distribution given potential evidence.
 
@@ -598,7 +597,6 @@ class LeafModule(Module, ABC):
             Sampled data tensor.
         """
         # Prepare data tensor
-        data = self._prepare_sample_data(num_samples, data)
 
         sampling_ctx = require_sampling_context(
             sampling_ctx,

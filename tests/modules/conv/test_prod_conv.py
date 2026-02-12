@@ -262,6 +262,19 @@ class _DummyInput(Module):
         data[:] = torch.nan_to_num(data, nan=0.0)
         return data
 
+    def _sample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        del sampling_ctx
+        del cache
+        del is_mpe
+        data[:] = torch.nan_to_num(data, nan=0.0)
+        return data
+
     def _expectation_maximization_step(self, data, bias_correction=True, *, cache):
         self.em_called += 1
 

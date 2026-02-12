@@ -241,13 +241,12 @@ class SumConv(Module):
 
         return result
 
-    def sample(
+    def _sample(
         self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
         is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Generate samples from sum conv module.
 
@@ -264,7 +263,6 @@ class SumConv(Module):
             Tensor: Sampled values.
         """
         data, sampling_ctx = self._prepare_internal_sampling_inputs(
-            num_samples=num_samples,
             data=data,
             sampling_ctx=sampling_ctx,
         )
@@ -322,8 +320,7 @@ class SumConv(Module):
         # Check for cached likelihoods (conditional sampling)
         input_lls = None
         if (
-            cache is not None
-            and "log_likelihood" in cache
+             "log_likelihood" in cache
             and cache["log_likelihood"].get(self.inputs) is not None
         ):
             input_lls = cache["log_likelihood"][self.inputs]  # (batch, features, in_c, reps)
@@ -406,7 +403,7 @@ class SumConv(Module):
         sampling_ctx.channel_index = sampled_channels
 
         # Sample from input
-        self.inputs.sample(
+        self.inputs._sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,

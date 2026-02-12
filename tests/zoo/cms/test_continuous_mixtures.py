@@ -27,6 +27,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.leaves import CLTree
 from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import SamplingContext
 from tests.utils.sampling_context_helpers import make_sampling_context
 
 
@@ -188,6 +189,19 @@ class _DummyModule(Module):
         if data is None:
             n = 1 if num_samples is None else num_samples
             data = torch.zeros((n, self.out_shape.features), dtype=torch.get_default_dtype())
+        return data
+
+    def _sample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        del sampling_ctx
+        del cache
+        del is_mpe
+        self.sample_calls += 1
         return data
 
     def marginalize(self, marg_rvs: list[int], prune: bool = True, cache: Cache | None = None):

@@ -793,6 +793,15 @@ def test_constructor_rejects_feature_to_scope_mismatch_per_repetition():
         ) -> torch.Tensor:  # pragma: no cover
             raise NotImplementedError
 
+        def _sample(
+            self,
+            data: torch.Tensor,
+            sampling_ctx: SamplingContext,
+            cache: Cache,
+            is_mpe: bool = False,
+        ) -> torch.Tensor:  # pragma: no cover
+            raise NotImplementedError
+
         def marginalize(self, marg_rvs: list[int], prune: bool = True, cache=None):  # pragma: no cover
             raise NotImplementedError
 
@@ -880,4 +889,3 @@ def test_expectation_maximization_raises_when_module_ll_missing():
         )
     with pytest.raises(MissingCacheError):
         module._expectation_maximization_step(_randn(2, 2), cache=cache)
-
