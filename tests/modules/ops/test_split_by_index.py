@@ -5,6 +5,7 @@ from itertools import product
 import pytest
 import torch
 
+from spflow.exceptions import ShapeError
 from spflow.meta import Scope
 from spflow.modules.ops import SplitByIndex, SplitMode
 from spflow.modules.products import ElementwiseProduct, OuterProduct
@@ -370,7 +371,7 @@ class TestSplitByIndexSamplingContextExpansion:
         assert sampling_ctx.channel_index.shape == (n, 4)
         assert sampling_ctx.mask.shape == (n, 4)
 
-    def test_sample_expands_singleton_context_to_full_input(self):
+    def test_sample_rejects_singleton_context_width(self):
         scope = Scope(list(range(0, 4)))
         leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
         split = SplitByIndex(inputs=leaf, indices=[[0, 1], [2, 3]])
@@ -383,7 +384,5 @@ class TestSplitByIndexSamplingContextExpansion:
             repetition_index=torch.zeros(n, dtype=torch.long),
         )
 
-        out = split.sample(data=data, sampling_ctx=sampling_ctx)
-        assert out.shape == (n, 4)
-        assert sampling_ctx.channel_index.shape == (n, 4)
-        assert sampling_ctx.mask.shape == (n, 4)
+        with pytest.raises(ShapeError, match="incompatible sampling context feature width"):
+            split.sample(data=data, sampling_ctx=sampling_ctx)

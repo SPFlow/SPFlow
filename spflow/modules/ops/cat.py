@@ -6,13 +6,14 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
+from spflow.exceptions import ShapeError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import (
     SamplingContext,
-    init_default_sampling_context,
+    require_sampling_context,
 )
 
 
@@ -128,9 +129,21 @@ class Cat(Module):
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
+        ctx_features = sampling_ctx.channel_index.shape[1]
 
         if self.dim == 1:
+            if ctx_features != self.out_shape.features:
+                raise ShapeError(
+                    "Cat.sample received incompatible sampling context feature width for dim=1: "
+                    f"got {ctx_features}, expected {self.out_shape.features}."
+                )
             # When concatenating features (dim=1), we need to split the sampling context
             # for each input module based on which INTERNAL feature indices belong to that module.
             #
@@ -149,6 +162,11 @@ class Cat(Module):
                 feature_offset += num_features
 
         elif self.dim == 2:
+            if ctx_features != self.out_shape.features:
+                raise ShapeError(
+                    "Cat.sample received incompatible sampling context feature width for dim=2: "
+                    f"got {ctx_features}, expected {self.out_shape.features}."
+                )
             # Concatenation happens at out_channels
             # Therefore, we need to use modulo to get the correct output_ids
             channel_index_per_module = []

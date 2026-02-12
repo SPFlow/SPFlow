@@ -24,6 +24,7 @@ from spflow.meta.data.scope import Scope
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.wrapper.base import Wrapper
 from spflow.utils.cache import Cache, cached
+from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
 
 
 class JointLogLikelihood(Wrapper):
@@ -52,8 +53,25 @@ class JointLogLikelihood(Wrapper):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx=None,
+        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
+        effective_num_samples = data.shape[0] if data is not None else (1 if num_samples is None else num_samples)
+        context_device = data.device if data is not None else None
+        if context_device is None:
+            try:
+                context_device = next(self.module.parameters()).device
+            except StopIteration:
+                try:
+                    context_device = next(self.module.buffers()).device
+                except StopIteration:
+                    context_device = None
+        sampling_ctx = build_root_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=effective_num_samples,
+            num_features=self.module.out_shape.features,
+            device=context_device,
+        )
         return self.module.sample(
             num_samples=num_samples,
             data=data,

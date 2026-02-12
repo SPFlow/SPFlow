@@ -10,6 +10,7 @@ from __future__ import annotations
 import torch
 from einops import repeat
 
+from spflow.exceptions import ShapeError
 from spflow.utils.sampling_context import SamplingContext
 
 
@@ -40,18 +41,10 @@ def _maybe_resize_selector_features(
             continue
 
         if selector.shape[1] != current_features:
-            # If feature axis is already inconsistent, align by truncating or
-            # broadcasting first feature as a conservative fallback.
-            if selector.shape[1] > target_features:
-                setattr(sampling_ctx, attr, selector[:, :target_features, ...].contiguous())
-            else:
-                head = selector[:, :1, ...]
-                setattr(
-                    sampling_ctx,
-                    attr,
-                    repeat(head, "b 1 ... -> b f ...", f=target_features).contiguous(),
-                )
-            continue
+            raise ShapeError(
+                f"{attr} has incompatible feature width {selector.shape[1]}; "
+                f"expected 1, {current_features}, or {target_features}."
+            )
 
         if current_features == target_features:
             continue
@@ -122,7 +115,7 @@ def upsample_sampling_context(
         if selector.shape[1] != current_height * current_width:
             _maybe_resize_selector_features(
                 sampling_ctx,
-                current_features=selector.shape[1],
+                current_features=current_height * current_width,
                 target_features=new_features,
             )
             continue
@@ -133,37 +126,4 @@ def upsample_sampling_context(
             sampling_ctx,
             attr,
             selector_view.view(batch_size, new_features, *selector.shape[2:]).contiguous(),
-        )
-
-
-def expand_sampling_context(
-    sampling_ctx: SamplingContext,
-    target_features: int,
-) -> None:
-    """Expand sampling context tensors to match target feature count.
-
-    Handles the case where the context has fewer features than needed,
-    typically by broadcasting a single-feature context or expanding
-    to match the target.
-
-    Modifies the sampling context in-place.
-
-    Args:
-        sampling_ctx: The sampling context to modify.
-        target_features: Target number of features to expand to.
-    """
-    current_features = sampling_ctx.channel_index.shape[1]
-
-    if current_features == target_features:
-        return
-
-    if current_features == 1:
-        # Broadcast single value to all features
-        channel_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=target_features).contiguous()
-        mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=target_features).contiguous()
-        sampling_ctx.update(channel_index=channel_idx, mask=mask)
-        _maybe_resize_selector_features(
-            sampling_ctx,
-            current_features=current_features,
-            target_features=target_features,
         )

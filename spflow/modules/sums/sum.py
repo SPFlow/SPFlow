@@ -18,7 +18,7 @@ from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
 
 class Sum(Module):
@@ -304,8 +304,13 @@ class Sum(Module):
                 num_samples = 1
             data = torch.full((num_samples, len(self.scope.query)), float("nan")).to(self.device)
 
-        # Initialize sampling context if not provided
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         # Index into the correct weight channels given by parent module
         if sampling_ctx.repetition_idx is not None:
@@ -393,17 +398,14 @@ class Sum(Module):
         # Update sampling context with new channel indices
         # If shape changes, expand the mask to match new channel_index shape
         if new_channel_index.shape != sampling_ctx.mask.shape:
-            # Expand mask from (batch, 1) or (batch, old_features) to (batch, new_features)
             num_features = int(new_channel_index.shape[1])
             current_mask_features = int(sampling_ctx.mask.shape[1])
             if current_mask_features == num_features:
                 new_mask = sampling_ctx.mask.contiguous()
-            elif current_mask_features == 1:
-                new_mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=num_features).contiguous()
             else:
                 raise ShapeError(
                     "sampling_ctx.mask has incompatible feature width for sampling update: "
-                    f"got {current_mask_features}, expected 1 or {num_features}."
+                    f"got {current_mask_features}, expected {num_features}."
                 )
             sampling_ctx.update(new_channel_index, new_mask)
         else:

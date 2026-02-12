@@ -12,12 +12,13 @@ from einops import rearrange
 from torch import Tensor
 from torch.nn import functional as F
 
+from spflow.exceptions import ShapeError
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
-from spflow.modules.conv.utils import expand_sampling_context, upsample_sampling_context
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.modules.conv.utils import upsample_sampling_context
 
 
 class ProdConv(Module):
@@ -248,8 +249,13 @@ class ProdConv(Module):
 
         batch_size = data.shape[0]
 
-        # Initialize sampling context
-        sampling_ctx = init_default_sampling_context(sampling_ctx, batch_size, data.device)
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=batch_size,
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         # Expand channel_index and mask to match input features
         in_features = self.in_shape.features
@@ -257,34 +263,62 @@ class ProdConv(Module):
 
         current_features = sampling_ctx.channel_index.shape[1]
 
-        # If channel_index is smaller than in_features, expand it
-        if current_features < in_features:
-            if current_features == 1:
-                # Broadcast single value to all input features
-                expand_sampling_context(sampling_ctx, in_features)
-            elif current_features == out_features:
-                # Upsample from output to input resolution
-                upsample_sampling_context(
-                    sampling_ctx,
-                    current_height=self._output_h,
-                    current_width=self._output_w,
-                    scale_h=self.kernel_size_h,
-                    scale_w=self.kernel_size_w,
+        if current_features == in_features:
+            pass
+        elif current_features == out_features:
+            # Deterministic spatial upsampling from ProdConv output grid to input grid.
+            upsample_sampling_context(
+                sampling_ctx,
+                current_height=self._output_h,
+                current_width=self._output_w,
+                scale_h=self.kernel_size_h,
+                scale_w=self.kernel_size_w,
+            )
+            upsampled_features = int(sampling_ctx.channel_index.shape[1])
+            expected_upsampled_features = (
+                self._output_h * self.kernel_size_h * self._output_w * self.kernel_size_w
+            )
+            if upsampled_features != expected_upsampled_features:
+                raise ShapeError(
+                    "ProdConv.sample produced unexpected feature width after upsampling: "
+                    f"got {upsampled_features}, expected {expected_upsampled_features}."
                 )
-                # Handle padding case: trim to actual input size
-                if sampling_ctx.channel_index.shape[1] > in_features:
-                    channel_idx = sampling_ctx.channel_index[:, :in_features].contiguous()
-                    mask = sampling_ctx.mask[:, :in_features].contiguous()
-                    sampling_ctx.update(channel_index=channel_idx, mask=mask)
-                    channel_select = getattr(sampling_ctx, "channel_select", None)
-                    if channel_select is not None and channel_select.dim() >= 2:
-                        sampling_ctx.channel_select = channel_select[:, :in_features, ...].contiguous()
-                    repetition_select = getattr(sampling_ctx, "repetition_select", None)
-                    if repetition_select is not None and repetition_select.dim() >= 2:
-                        sampling_ctx.repetition_select = repetition_select[:, :in_features, ...].contiguous()
-            else:
-                # Just broadcast first element
-                expand_sampling_context(sampling_ctx, in_features)
+
+            # Handle explicit padding case: trim padded spatial positions to input size.
+            if upsampled_features > in_features:
+                expected_padded_features = (
+                    (self._input_h + 2 * self.padding_h) * (self._input_w + 2 * self.padding_w)
+                )
+                if self.padding_h == 0 and self.padding_w == 0:
+                    raise ShapeError(
+                        "ProdConv.sample received oversized upsampled feature width without padding: "
+                        f"got {upsampled_features}, input features are {in_features}."
+                    )
+                if upsampled_features != expected_padded_features:
+                    raise ShapeError(
+                        "ProdConv.sample only trims in the exact padding case. "
+                        f"Got upsampled width {upsampled_features}, expected padded width "
+                        f"{expected_padded_features}, input width {in_features}."
+                    )
+                channel_idx = sampling_ctx.channel_index[:, :in_features].contiguous()
+                mask = sampling_ctx.mask[:, :in_features].contiguous()
+                sampling_ctx.update(channel_index=channel_idx, mask=mask)
+                channel_select = getattr(sampling_ctx, "channel_select", None)
+                if channel_select is not None and channel_select.dim() >= 2:
+                    sampling_ctx.channel_select = channel_select[:, :in_features, ...].contiguous()
+                repetition_select = getattr(sampling_ctx, "repetition_select", None)
+                if repetition_select is not None and repetition_select.dim() >= 2:
+                    sampling_ctx.repetition_select = repetition_select[:, :in_features, ...].contiguous()
+            elif upsampled_features < in_features:
+                raise ShapeError(
+                    "ProdConv.sample upsampling produced too few features for input routing: "
+                    f"got {upsampled_features}, expected at least {in_features}."
+                )
+        else:
+            raise ShapeError(
+                "ProdConv.sample received incompatible sampling context feature width: "
+                f"got {current_features}, expected {out_features} or {in_features}."
+            )
 
         # Sample from input
         self.inputs.sample(

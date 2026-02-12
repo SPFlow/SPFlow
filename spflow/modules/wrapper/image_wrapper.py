@@ -8,7 +8,7 @@ from spflow.exceptions import ShapeError, StructureError
 from spflow.modules.module import Module
 from spflow.modules.wrapper.base import Wrapper
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
 
 
 class MarginalizationContext:
@@ -290,7 +290,13 @@ class ImageWrapper(Wrapper):
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        sampling_ctx = build_root_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            num_features=self.module.out_shape.features,
+            device=data.device,
+        )
 
         # Flatten data to 2D for processing
         flat_data = self.flatten(data)

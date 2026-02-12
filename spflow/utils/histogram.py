@@ -139,7 +139,7 @@ def get_bin_edges_torch(
         if width > 0:
             n_equal_bins = int(torch.ceil((last_edge - first_edge) / width).item())
         else:
-            # If width is zero, fall back to 1 bin
+            # Intentional numeric fallback for degenerate data with zero estimated width.
             n_equal_bins = 1
 
     # Compute bin edges

@@ -11,16 +11,15 @@ import numpy as np
 from abc import abstractmethod, ABC
 from typing import Any, Dict, Optional
 
-from einops import repeat
 from torch import Tensor, nn
 
-from spflow.exceptions import InvalidParameterError
+from spflow.exceptions import InvalidParameterError, ShapeError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.sampling_context import (
     SamplingContext,
-    init_default_sampling_context,
+    require_sampling_context,
 )
 
 
@@ -267,18 +266,21 @@ class Split(Module, ABC):
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
-        # initialize context
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
-        # Expand mask and channels to match input module shape
         num_input_features = self.inputs.out_shape.features
-        if sampling_ctx.mask.shape[1] == num_input_features:
-            mask = sampling_ctx.mask
-            channel_index = sampling_ctx.channel_index
-        else:
-            mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=num_input_features)
-            channel_index = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_input_features)
-        sampling_ctx.update(channel_index=channel_index, mask=mask)
+        ctx_features = sampling_ctx.mask.shape[1]
+        if ctx_features != num_input_features:
+            raise ShapeError(
+                "Split.sample received incompatible sampling context feature width: "
+                f"got {ctx_features}, expected {num_input_features}."
+            )
 
         self.inputs.sample(
             data=data,

@@ -9,6 +9,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.sums.signed_sum import SignedSum
 from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import SamplingContext
 
 
 class _SignedInput(Module):
@@ -56,6 +57,13 @@ class _SignedInput(Module):
         self, marg_rvs: list[int], prune: bool = True, cache: Cache | None = None
     ) -> Module | None:
         return self
+
+
+def _sampling_ctx(batch_size: int, num_features: int = 1) -> SamplingContext:
+    return SamplingContext(
+        channel_index=torch.zeros((batch_size, num_features), dtype=torch.long),
+        mask=torch.ones((batch_size, num_features), dtype=torch.bool),
+    )
 
 
 def test_signed_sum_signed_eval_shapes_and_finiteness():
@@ -201,7 +209,7 @@ def test_signed_sum_sample_success_paths(is_mpe: bool):
         inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[0.9]], [[0.1]]]])
     )
 
-    samples = node.sample(num_samples=5, is_mpe=is_mpe)
+    samples = node.sample(num_samples=5, is_mpe=is_mpe, sampling_ctx=_sampling_ctx(5))
 
     assert samples.shape == (5, 1)
     assert torch.isfinite(samples).all()
@@ -259,14 +267,14 @@ def test_signed_sum_sample_rejects_bad_weight_dim_and_repetitions():
     child = _SignedInput()
     rep_node = SignedSum(inputs=child, out_channels=1, num_repetitions=2, weights=torch.ones((1, 2, 1, 2)))
     with pytest.raises(UnsupportedOperationError):
-        rep_node.sample(num_samples=2)
+        rep_node.sample(num_samples=2, sampling_ctx=_sampling_ctx(2))
 
     bad_dim_node = SignedSum(
         inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[0.7]], [[0.3]]]])
     )
     bad_dim_node.weights = torch.nn.Parameter(bad_dim_node.weights[..., 0])
     with pytest.raises(ShapeError):
-        bad_dim_node.sample(num_samples=2)
+        bad_dim_node.sample(num_samples=2, sampling_ctx=_sampling_ctx(2))
 
 
 def test_signed_sum_sample_rejects_non_4d_weights():
@@ -277,7 +285,7 @@ def test_signed_sum_sample_rejects_non_4d_weights():
     node.weights = torch.nn.Parameter(node.weights[..., 0])
 
     with pytest.raises(ShapeError):
-        node.sample(num_samples=3)
+        node.sample(num_samples=3, sampling_ctx=_sampling_ctx(3))
 
 
 def test_signed_sum_sample_defaults_to_single_sample():

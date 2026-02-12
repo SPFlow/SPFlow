@@ -5,10 +5,13 @@ from __future__ import annotations
 import pytest
 import torch
 
-from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
+from spflow.exceptions import InvalidParameterError, ShapeError, UnsupportedOperationError
+from spflow.meta.data import Scope
+from spflow.modules.leaves import Normal
+from spflow.utils.sampling_context import SamplingContext
 from spflow.zoo.apc.config import ApcConfig, ApcLossWeights
 from spflow.zoo.apc.decoders import MLPDecoder1D
-from spflow.zoo.apc.encoders.convpc_joint_encoder import ConvPcJointEncoder
+from spflow.zoo.apc.encoders.convpc_joint_encoder import ConvPcJointEncoder, _LatentSelectionCapture
 from spflow.zoo.apc.encoders.einet_joint_encoder import EinetJointEncoder
 from spflow.zoo.apc.model import AutoencodingPC
 
@@ -101,3 +104,62 @@ def test_convpc_sample_prior_validation_still_active() -> None:
     enc = _build_convpc()
     with pytest.raises(InvalidParameterError, match="num_samples must be >= 1"):
         enc.sample_prior_z(0)
+
+
+def test_latent_selection_capture_raises_on_unsupported_context_widths() -> None:
+    leaf = Normal(scope=Scope([0, 1, 2, 3]), out_channels=1)
+    capture = _LatentSelectionCapture(inputs=leaf, capture_fn=lambda *args: None)
+
+    ctx = SamplingContext(
+        channel_index=torch.zeros((2, 3), dtype=torch.long),
+        mask=torch.ones((2, 3), dtype=torch.bool),
+    )
+    with pytest.raises(ShapeError, match="channel width mismatch"):
+        capture._capture(ctx, data_num_features=6)
+
+    ctx2 = SamplingContext(
+        channel_index=torch.zeros((2, 1), dtype=torch.long),
+        mask=torch.ones((2, 1), dtype=torch.bool),
+        repetition_index=torch.zeros((2, 3), dtype=torch.long),
+    )
+    with pytest.raises(ShapeError, match="repetition width mismatch"):
+        capture._capture(ctx2, data_num_features=6)
+
+
+def test_convpc_latent_repetition_indices_reject_unsupported_widths() -> None:
+    enc = _build_convpc()
+    ctx = SamplingContext(
+        channel_index=torch.zeros((2, 1), dtype=torch.long),
+        mask=torch.ones((2, 1), dtype=torch.bool),
+        repetition_index=torch.zeros((2, 2), dtype=torch.long),
+    )
+    with pytest.raises(ShapeError, match="Latent repetition index feature mismatch"):
+        enc._resolve_latent_repetition_indices(
+            sampling_ctx=ctx,
+            batch_size=2,
+            loc=torch.zeros((2, 1, 3)),
+        )
+
+
+def test_convpc_latent_selector_choice_mismatch_raises() -> None:
+    enc = _build_convpc()
+    ctx = SamplingContext(
+        channel_index=torch.zeros((2, 1), dtype=torch.long),
+        mask=torch.ones((2, 1), dtype=torch.bool),
+    )
+
+    ctx.channel_select = torch.zeros((2, enc.latent_dim, 2))
+    with pytest.raises(ShapeError, match="channel selector choice mismatch"):
+        enc._resolve_latent_channel_selector(
+            sampling_ctx=ctx,
+            batch_size=2,
+            loc=torch.zeros((2, 3, 2)),
+        )
+
+    ctx.repetition_select = torch.zeros((2, enc.latent_dim, 2))
+    with pytest.raises(ShapeError, match="repetition selector choice mismatch"):
+        enc._resolve_latent_repetition_selector(
+            sampling_ctx=ctx,
+            batch_size=2,
+            loc=torch.zeros((2, 2, 3)),
+        )

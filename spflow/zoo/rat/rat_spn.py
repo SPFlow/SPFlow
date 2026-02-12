@@ -30,7 +30,7 @@ from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
 from spflow.utils.inference import log_posterior
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
 
 
 class RatSPN(Module, Classifier):
@@ -286,9 +286,19 @@ class RatSPN(Module, Classifier):
                 num_samples = 1
             data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
 
-        # if no sampling context is provided, initialize a context by sampling from the root node
-        if sampling_ctx is None and self.n_root_nodes > 1:
-            sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+        # Initialize sampling context at root.
+        sampling_ctx_was_none = sampling_ctx is None
+        sampling_ctx = build_root_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            num_features=self.root_node.out_shape.features,
+            device=data.device,
+        )
+
+        # Preserve explicit caller-provided root routing; only draw root routing
+        # when bootstrapping context at the root entrypoint.
+        if self.n_root_nodes > 1 and sampling_ctx_was_none:
             logits = self.root_node.logits
             if logits.shape != (1, self.n_root_nodes, 1):
                 raise InvalidParameterError(
@@ -302,9 +312,6 @@ class RatSPN(Module, Classifier):
                 sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
             else:
                 sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
-
-        else:
-            sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
 
         # if the model only has one root node, we can directly sample from the mixing layer
         if self.n_root_nodes > 1:

@@ -9,7 +9,7 @@ from spflow.exceptions import InvalidParameterCombinationError, MissingCacheErro
 from spflow.modules.module import Module
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
 
 class RepetitionMixingLayer(Sum):
@@ -121,8 +121,13 @@ class RepetitionMixingLayer(Sum):
                 num_samples = 1
             data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
 
-        # Initialize sampling context if not provided
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         batch_size = int(sampling_ctx.channel_index.shape[0])
         logits = repeat(self.logits, "f co r -> b f co r", b=batch_size)

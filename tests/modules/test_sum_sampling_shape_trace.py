@@ -107,21 +107,21 @@ def test_sum_sample_shape_trace_unconditional():
     )
     data = torch.full((batch_size, out_features), torch.nan)
     sampling_ctx = SamplingContext(
-        channel_index=torch.zeros((batch_size, 1), dtype=torch.long),
-        mask=torch.ones((batch_size, 1), dtype=torch.bool),
+        channel_index=torch.zeros((batch_size, out_features), dtype=torch.long),
+        mask=torch.ones((batch_size, out_features), dtype=torch.bool),
     )
 
     shapes = _trace_sum_sample_shapes(module, sampling_ctx=sampling_ctx, cache=None, is_mpe=False)
-    assert shapes["new_channel_index"] == (batch_size, 1)
+    assert shapes["new_channel_index"] == (batch_size, out_features)
 
     out = module.sample(data=data, sampling_ctx=sampling_ctx)
     assert out.shape == (batch_size, out_features)
-    assert sampling_ctx.channel_index.shape == (batch_size, 1)
-    assert sampling_ctx.mask.shape == (batch_size, 1)
+    assert sampling_ctx.channel_index.shape == (batch_size, out_features)
+    assert sampling_ctx.mask.shape == (batch_size, out_features)
 
 
 def test_sum_sample_shape_trace_conditional_expands_feature_axis():
-    """Print and validate shapes for conditional Sum sampling with feature-axis expansion."""
+    """Print and validate shapes for conditional Sum sampling under strict feature-width context."""
     torch.manual_seed(11)
     batch_size = 3
     out_features = 4
@@ -141,8 +141,8 @@ def test_sum_sample_shape_trace_conditional_expands_feature_axis():
 
     data = torch.full((batch_size, out_features), torch.nan)
     sampling_ctx = SamplingContext(
-        channel_index=torch.zeros((batch_size, 1), dtype=torch.long),
-        mask=torch.ones((batch_size, 1), dtype=torch.bool),
+        channel_index=torch.zeros((batch_size, out_features), dtype=torch.long),
+        mask=torch.ones((batch_size, out_features), dtype=torch.bool),
     )
 
     shapes = _trace_sum_sample_shapes(module, sampling_ctx=sampling_ctx, cache=cache, is_mpe=False)

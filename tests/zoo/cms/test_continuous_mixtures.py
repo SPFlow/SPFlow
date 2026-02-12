@@ -27,6 +27,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.leaves import CLTree
 from spflow.utils.cache import Cache
+from tests.utils.sampling_context_helpers import make_sampling_context
 
 
 def test_joint_log_likelihood_wrapper_reduces_feature_axis():
@@ -40,7 +41,8 @@ def test_joint_log_likelihood_wrapper_reduces_feature_axis():
     base = CLTree(scope=scope, out_channels=1, num_repetitions=1, K=K, parents=parents, log_cpt=log_cpt)
     wrapped = JointLogLikelihood(base)
 
-    data = base.sample(num_samples=5).to(torch.float64)
+    sampling_ctx = make_sampling_context(batch_size=5, num_features=3)
+    data = base.sample(num_samples=5, sampling_ctx=sampling_ctx).to(torch.float64)
     ll_base = base.log_likelihood(data)
     ll_wrapped = wrapped.log_likelihood(data)
 
@@ -135,7 +137,8 @@ def test_learn_continuous_mixture_cltree_smoke_with_lo():
     log_cpt = log_cpt.clamp_min(1e-12).log()
     true_model = CLTree(scope=scope, out_channels=1, num_repetitions=1, K=K, parents=parents, log_cpt=log_cpt)
 
-    data = true_model.sample(num_samples=250).to(torch.float32)
+    sampling_ctx = make_sampling_context(batch_size=250, num_features=3)
+    data = true_model.sample(num_samples=250, sampling_ctx=sampling_ctx).to(torch.float32)
 
     model = learn_continuous_mixture_cltree(
         data,

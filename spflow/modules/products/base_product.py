@@ -11,7 +11,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
 
 class BaseProduct(Module, ABC):
@@ -134,7 +134,13 @@ class BaseProduct(Module, ABC):
         # initialize contexts
         if cache is None:
             cache = Cache()
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         # Map to (i, j) to index left/right inputs
         channel_index = self.map_out_channels_to_in_channels(sampling_ctx.channel_index)

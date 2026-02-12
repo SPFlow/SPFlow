@@ -15,7 +15,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.leaves import apply_nan_strategy, parse_leaf_args
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
 
 class LeafModule(Module, ABC):
@@ -591,7 +591,13 @@ class LeafModule(Module, ABC):
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         scope_cols = self._resolve_scope_columns(num_features=data.shape[1])
         out_of_scope = [idx for idx in range(data.shape[1]) if idx not in scope_cols]
@@ -811,11 +817,6 @@ class LeafModule(Module, ABC):
         ctx_features = sampling_ctx.mask.shape[1]
         scope_size = len(scope_cols)
 
-        if ctx_features == 1:
-            channel_index = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=scope_size)
-            mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=scope_size)
-            return channel_index, mask
-
         if ctx_features == scope_size:
             return sampling_ctx.channel_index, sampling_ctx.mask
 
@@ -824,7 +825,7 @@ class LeafModule(Module, ABC):
 
         raise ShapeError(
             "SamplingContext feature dimension mismatch: "
-            f"got {ctx_features}, expected 1, {scope_size}, or {num_features}."
+            f"got {ctx_features}, expected {scope_size} or {num_features}."
         )
 
     def marginalize(

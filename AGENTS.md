@@ -73,6 +73,7 @@ git commit -m "docs: update RAT-SPN examples in README"
 * Keep modules cohesive; avoid unnecessary coupling.
 * Prefer simple control flow; avoid deeply nested logic.
 * Avoid repetition; follow DRY (Don’t Repeat Yourself).
+* Never implement silent fallbacks when adding new features; fail fast with explicit errors or warnings.
 
 ## Comment Best Practices
 * Use comments to explain intent, invariants, assumptions, and non-obvious tradeoffs.

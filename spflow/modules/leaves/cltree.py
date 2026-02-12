@@ -503,9 +503,15 @@ class CLTree(LeafModule):
                 "CLTree structure is not initialized. Call maximum_likelihood_estimation() or fit_structure() first."
             )
 
-        from spflow.utils.sampling_context import init_default_sampling_context
+        from spflow.utils.sampling_context import require_sampling_context
 
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         scope_cols = self._resolve_scope_columns(num_features=data.shape[1])
         scoped = data[:, scope_cols]

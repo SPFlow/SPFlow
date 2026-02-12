@@ -11,6 +11,7 @@ from spflow.exceptions import OptionalDependencyError
 from spflow.meta.data import Scope
 from spflow.modules.leaves.piecewise_linear import PiecewiseLinear, PiecewiseLinearDist, interp, pairwise
 from spflow.utils.domain import DataType, Domain
+from tests.utils.sampling_context_helpers import make_sampling_context
 
 
 def _randn(*size: int) -> torch.Tensor:
@@ -337,19 +338,14 @@ class TestPiecewiseLinearSampling:
         data = _randn(100, 2)
         domains = [Domain.continuous_inf_support(), Domain.continuous_inf_support()]
         leaf.initialize(data, domains)
-
-        # Manually set repetition index if needed (normally handled by SamplingContext)
-        # However, for direct .sample() call on leaf, usually context is passed or default created
-        # If repetitions > 1, we need to ensure repetition_idx is set in default context or manually
-        # The sample method handles default context creation.
-        # But if repetitions > 1, the sample method implementation in PiecewiseLinear
-        # raises ValueError if repetition_idx is None.
-
-        from spflow.utils.sampling_context import SamplingContext
-
-        sampling_ctx = None
+        repetition_idx = None
         if num_repetitions > 1:
-            sampling_ctx = SamplingContext(num_samples=10, repetition_index=torch.zeros(10, dtype=torch.long))
+            repetition_idx = torch.zeros(10, dtype=torch.long)
+        sampling_ctx = make_sampling_context(
+            batch_size=10,
+            num_features=2,
+            repetition_idx=repetition_idx,
+        )
 
         # Create NaN tensor for sampling
         sample_data = torch.full((10, 2), float("nan"))
@@ -367,8 +363,9 @@ class TestPiecewiseLinearSampling:
         leaf.initialize(data, domains)
 
         sample_data = torch.full((8, 1), float("nan"))
+        sampling_ctx = make_sampling_context(batch_size=8, num_features=1)
         with pytest.raises(ValueError):
-            _ = leaf.sample(num_samples=8, data=sample_data)
+            _ = leaf.sample(num_samples=8, data=sample_data, sampling_ctx=sampling_ctx)
 
     def test_sample_is_mpe_branch(self):
         """Test MPE sampling branch."""
@@ -377,7 +374,8 @@ class TestPiecewiseLinearSampling:
         leaf.initialize(_randn(50, 2), [Domain.continuous_inf_support(), Domain.continuous_inf_support()])
 
         sample_data = torch.full((6, 2), float("nan"))
-        samples = leaf.sample(num_samples=6, data=sample_data, is_mpe=True)
+        sampling_ctx = make_sampling_context(batch_size=6, num_features=2)
+        samples = leaf.sample(num_samples=6, data=sample_data, is_mpe=True, sampling_ctx=sampling_ctx)
 
         assert samples.shape == (6, 2)
         assert torch.isfinite(samples).all()

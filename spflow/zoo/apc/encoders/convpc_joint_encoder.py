@@ -27,7 +27,7 @@ from spflow.modules.products.elementwise_product import ElementwiseProduct
 from spflow.modules.sums import Sum
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 from spflow.zoo.apc.debug_trace import trace_sampling_context, trace_tensor
 from spflow.zoo.apc.encoders.base import LatentStats
 from spflow.zoo.conv.conv_pc import compute_non_overlapping_kernel_and_padding
@@ -114,7 +114,13 @@ class _PairwiseLatentProduct(Module):
         if cache is None:
             cache = Cache()
         data = self._prepare_sample_data(num_samples, data)
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         ctx_features = sampling_ctx.channel_index.shape[1]
         if ctx_features == self.in_shape.features:
@@ -223,7 +229,13 @@ class _LatentFeaturePacking(Module):
         if cache is None:
             cache = Cache()
         data = self._prepare_sample_data(num_samples, data)
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         ctx_features = sampling_ctx.channel_index.shape[1]
         if ctx_features == self.in_shape.features:
@@ -296,7 +308,10 @@ class _LatentSelectionCapture(Module):
             scope_cols = list(self.scope.query)
             channel_idx = sampling_ctx.channel_index[:, scope_cols]
         else:
-            channel_idx = repeat(sampling_ctx.channel_index[:, :1], "b 1 -> b f", f=target_features)
+            raise ShapeError(
+                "Latent selection capture channel width mismatch: "
+                f"got {ctx_features}, expected 1, {target_features}, or {data_num_features}."
+            )
 
         rep_idx = sampling_ctx.repetition_idx
         if rep_idx is None:
@@ -311,7 +326,10 @@ class _LatentSelectionCapture(Module):
             scope_cols = list(self.scope.query)
             repetition_idx = rep_idx[:, scope_cols]
         else:
-            repetition_idx = repeat(rep_idx[:, :1], "b 1 -> b f", f=target_features)
+            raise ShapeError(
+                "Latent selection capture repetition width mismatch: "
+                f"got {rep_idx.shape[1]}, expected 1, {target_features}, or {data_num_features}."
+            )
 
         channel_select = getattr(sampling_ctx, "channel_select", None)
         if channel_select is not None and channel_select.dim() == 3:
@@ -324,12 +342,9 @@ class _LatentSelectionCapture(Module):
                 scope_cols = list(self.scope.query)
                 channel_select = channel_select[:, scope_cols, :]
             else:
-                num_channel_choices = int(channel_select.shape[2])
-                channel_select = repeat(
-                    channel_select[:, :1, :],
-                    "b 1 c -> b f c",
-                    f=target_features,
-                    c=num_channel_choices,
+                raise ShapeError(
+                    "Latent selection capture channel selector width mismatch: "
+                    f"got {channel_select.shape[1]}, expected 1, {target_features}, or {data_num_features}."
                 )
         else:
             channel_select = None
@@ -350,12 +365,9 @@ class _LatentSelectionCapture(Module):
                 scope_cols = list(self.scope.query)
                 repetition_select = repetition_select[:, scope_cols, :]
             else:
-                num_repetition_choices = int(repetition_select.shape[2])
-                repetition_select = repeat(
-                    repetition_select[:, :1, :],
-                    "b 1 r -> b f r",
-                    f=target_features,
-                    r=num_repetition_choices,
+                raise ShapeError(
+                    "Latent selection capture repetition selector width mismatch: "
+                    f"got {repetition_select.shape[1]}, expected 1, {target_features}, or {data_num_features}."
                 )
         else:
             repetition_select = None
@@ -386,7 +398,13 @@ class _LatentSelectionCapture(Module):
         if cache is None:
             cache = Cache()
         data = self._prepare_sample_data(num_samples, data)
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
         self._capture(sampling_ctx, data.shape[1])
         return self.inputs.sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
@@ -1010,12 +1028,12 @@ class ConvPcJointEncoder(nn.Module):
             if channel_idx.shape[1] == 1:
                 num_latent_features = self.latent_dim
                 channel_idx = repeat(channel_idx, "b 1 -> b f", f=num_latent_features)
-            elif channel_idx.shape[1] >= self.latent_dim:
-                channel_idx = channel_idx[:, : self.latent_dim]
+            elif channel_idx.shape[1] == self.latent_dim:
+                pass
             else:
                 raise ShapeError(
                     "Captured latent leaf channel index feature mismatch: "
-                    f"expected at least {self.latent_dim}, got {channel_idx.shape[1]}."
+                    f"expected 1 or {self.latent_dim}, got {channel_idx.shape[1]}."
                 )
             return channel_idx.clamp(min=0, max=loc.shape[1] - 1)
 
@@ -1053,12 +1071,12 @@ class ConvPcJointEncoder(nn.Module):
             if repetition_idx.shape[1] == 1:
                 num_latent_features = self.latent_dim
                 repetition_idx = repeat(repetition_idx, "b 1 -> b f", f=num_latent_features)
-            elif repetition_idx.shape[1] >= self.latent_dim:
-                repetition_idx = repetition_idx[:, : self.latent_dim]
+            elif repetition_idx.shape[1] == self.latent_dim:
+                pass
             else:
                 raise ShapeError(
                     "Captured latent repetition index feature mismatch: "
-                    f"expected at least {self.latent_dim}, got {repetition_idx.shape[1]}."
+                    f"expected 1 or {self.latent_dim}, got {repetition_idx.shape[1]}."
                 )
             return repetition_idx.clamp(min=0, max=loc.shape[2] - 1)
 
@@ -1077,8 +1095,10 @@ class ConvPcJointEncoder(nn.Module):
         elif rep.shape[1] == (self.num_x_features + self.latent_dim):
             repetition_idx = rep[:, self._z_cols]
         else:
-            num_latent_features = self.latent_dim
-            repetition_idx = repeat(rep[:, :1], "b 1 -> b f", f=num_latent_features)
+            raise ShapeError(
+                "Latent repetition index feature mismatch: "
+                f"got {rep.shape[1]}, expected 1, {self.latent_dim}, or {self.num_x_features + self.latent_dim}."
+            )
         return repetition_idx.to(device=loc.device, dtype=torch.long).clamp(min=0, max=loc.shape[2] - 1)
 
     def _resolve_latent_channel_selector(
@@ -1106,15 +1126,17 @@ class ConvPcJointEncoder(nn.Module):
             pass
         elif selector.shape[1] == (self.num_x_features + self.latent_dim):
             selector = selector[:, self._z_cols, :]
-        elif selector.shape[1] >= self.latent_dim:
-            selector = selector[:, : self.latent_dim, :]
         else:
             raise ShapeError(
                 "Latent channel selector feature mismatch: "
-                f"expected at least {self.latent_dim}, got {selector.shape[1]}."
+                f"expected 1, {self.latent_dim}, or {self.num_x_features + self.latent_dim}; "
+                f"got {selector.shape[1]}."
             )
         if selector.shape[2] != loc.shape[1]:
-            return None
+            raise ShapeError(
+                "Latent channel selector choice mismatch: "
+                f"expected {loc.shape[1]} channel choices, got {selector.shape[2]}."
+            )
         return selector.to(device=loc.device, dtype=loc.dtype)
 
     def _resolve_latent_repetition_selector(
@@ -1143,15 +1165,17 @@ class ConvPcJointEncoder(nn.Module):
             pass
         elif selector.shape[1] == (self.num_x_features + self.latent_dim):
             selector = selector[:, self._z_cols, :]
-        elif selector.shape[1] >= self.latent_dim:
-            selector = selector[:, : self.latent_dim, :]
         else:
             raise ShapeError(
                 "Latent repetition selector feature mismatch: "
-                f"expected at least {self.latent_dim}, got {selector.shape[1]}."
+                f"expected 1, {self.latent_dim}, or {self.num_x_features + self.latent_dim}; "
+                f"got {selector.shape[1]}."
             )
         if selector.shape[2] != loc.shape[2]:
-            return None
+            raise ShapeError(
+                "Latent repetition selector choice mismatch: "
+                f"expected {loc.shape[2]} repetition choices, got {selector.shape[2]}."
+            )
         return selector.to(device=loc.device, dtype=loc.dtype)
 
     def _latent_stats_from_leaf_params(self, sampling_ctx: SamplingContext, batch_size: int) -> LatentStats:

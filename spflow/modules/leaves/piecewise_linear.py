@@ -16,13 +16,13 @@ import torch
 from einops import rearrange, repeat
 from torch import Tensor, nn
 
-from spflow.exceptions import OptionalDependencyError
+from spflow.exceptions import OptionalDependencyError, ShapeError
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.cache import Cache
 from spflow.utils.domain import DataType, Domain
 from spflow.utils.histogram import get_bin_edges_torch
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
 logger = logging.getLogger(__name__)
 
@@ -613,15 +613,35 @@ class PiecewiseLinear(LeafModule):
 
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
-        out_of_scope = list(filter(lambda x: x not in self.scope.query, range(data.shape[1])))
+        scope_cols = list(self.scope.query)
+        out_of_scope = list(filter(lambda x: x not in scope_cols, range(data.shape[1])))
         marg_mask = torch.isnan(data)
         marg_mask[:, out_of_scope] = False
 
         # Mask that tells us which feature at which sample is relevant
         samples_mask = marg_mask
-        samples_mask[:, self.scope.query] &= sampling_ctx.mask
+        ctx_features = sampling_ctx.mask.shape[1]
+        scope_size = len(scope_cols)
+        if ctx_features == scope_size:
+            ctx_mask = sampling_ctx.mask
+            ctx_channel_index = sampling_ctx.channel_index
+        elif ctx_features == data.shape[1]:
+            ctx_mask = sampling_ctx.mask[:, scope_cols]
+            ctx_channel_index = sampling_ctx.channel_index[:, scope_cols]
+        else:
+            raise ShapeError(
+                "SamplingContext feature dimension mismatch in PiecewiseLinear.sample: "
+                f"got {ctx_features}, expected {scope_size} or {data.shape[1]}."
+            )
+        samples_mask[:, scope_cols] &= ctx_mask
 
         # Count number of samples to draw
         instance_mask = samples_mask.sum(1) > 0
@@ -665,9 +685,18 @@ class PiecewiseLinear(LeafModule):
             sampling_ctx.channel_index.zero_()
 
         # c_idxs needs shape (N, 1, F, 1) to gather on dim=3
-        c_idxs = sampling_ctx.channel_index[instance_mask]  # (N,)
+        c_idxs = ctx_channel_index[instance_mask]
         num_features = samples.shape[2]
-        c_idxs = repeat(rearrange(c_idxs.reshape(-1), "n -> n 1 1 1"), "n 1 1 1 -> n 1 f 1", f=num_features)
+        if c_idxs.dim() == 1:
+            c_idxs = c_idxs.unsqueeze(1)
+        if c_idxs.shape[1] == 1 and num_features > 1:
+            c_idxs = c_idxs.expand(-1, num_features)
+        elif c_idxs.shape[1] != num_features:
+            raise ShapeError(
+                "sampling_ctx.channel_index has incompatible feature width for PiecewiseLinear.sample: "
+                f"got {c_idxs.shape[1]}, expected 1 or {num_features}."
+            )
+        c_idxs = rearrange(c_idxs.to(torch.long), "n f -> n 1 f 1")
         samples = samples.gather(dim=3, index=c_idxs).squeeze(3)  # (N, 1, F)
 
         # Squeeze channel dimension
@@ -675,11 +704,11 @@ class PiecewiseLinear(LeafModule):
 
         # Update data with samples
         row_indices = instance_mask.nonzero(as_tuple=True)[0]
-        scope_idx = torch.tensor(self.scope.query, dtype=torch.long, device=data.device)
+        scope_idx = torch.tensor(scope_cols, dtype=torch.long, device=data.device)
         num_scope_features = len(scope_idx)
         rows = repeat(row_indices, "n -> n s", s=num_scope_features)
         cols = repeat(scope_idx, "s -> n s", n=n_samples_int)
-        mask_subset = samples_mask[instance_mask][:, self.scope.query]
+        mask_subset = samples_mask[instance_mask][:, scope_cols]
 
         data[rows[mask_subset], cols[mask_subset]] = samples[mask_subset].to(data.dtype)
 

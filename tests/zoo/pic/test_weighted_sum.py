@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 import torch
 
+from spflow.exceptions import ShapeError
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -315,11 +316,15 @@ class TestWeightedSumSamplingAndMarginalize:
         f2s = np.array([[Scope([0]), Scope([0])]], dtype=object)
         inp = DummyInput(feature_to_scope=f2s, channels=2, repetitions=2)
         ws = WeightedSum(inputs=inp, weights=torch.ones(1, 2, 2, 2))
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((2, 1), dtype=torch.long),
+            mask=torch.ones((2, 1), dtype=torch.bool),
+        )
         with pytest.raises(ValueError):
-            ws.sample(data=torch.full((2, 1), float("nan")))
+            ws.sample(data=torch.full((2, 1), float("nan")), sampling_ctx=sampling_ctx)
 
-    def test_sample_uniform_fallback_for_zero_rows(self):
-        """Test stochastic sample branch with zero-sum weight rows."""
+    def test_sample_raises_for_zero_rows(self):
+        """Test stochastic sample branch rejects zero-sum weight rows."""
         f2s = np.array([[Scope([0])]], dtype=object)
         inp = DummyInput(feature_to_scope=f2s, channels=2, repetitions=1)
         ws = WeightedSum(inputs=inp, weights=torch.zeros(1, 2, 2, 1))
@@ -327,8 +332,8 @@ class TestWeightedSumSamplingAndMarginalize:
             channel_index=torch.zeros((2, 1), dtype=torch.long),
             mask=torch.ones((2, 1), dtype=torch.bool),
         )
-        out = ws.sample(data=torch.full((2, 1), float("nan")), sampling_ctx=sampling_ctx)
-        assert out.shape == (2, 1)
+        with pytest.raises(ShapeError, match="zero-sum routing weights"):
+            ws.sample(data=torch.full((2, 1), float("nan")), sampling_ctx=sampling_ctx)
 
     def test_sample_creates_data_when_none(self):
         """Test num_samples/data default creation branch."""
@@ -338,8 +343,8 @@ class TestWeightedSumSamplingAndMarginalize:
         out = ws.sample()
         assert out.shape == (1, 1)
 
-    def test_sample_updates_mask_when_shape_changes(self):
-        """Test sampling_ctx.update branch when channel shape changes."""
+    def test_sample_raises_on_incompatible_mask_width(self):
+        """Test strict mask-width validation when routing shape changes."""
         f2s = np.array([[Scope([0]), Scope([0])], [Scope([1]), Scope([1])]], dtype=object)
         inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=2)
         ws = WeightedSum(inputs=inp, weights=torch.ones(2, 1, 3, 2))
@@ -350,9 +355,8 @@ class TestWeightedSumSamplingAndMarginalize:
         )
         # Deliberately introduce a narrower mask so WeightedSum hits the update() branch.
         sampling_ctx.mask = torch.ones((2, 1), dtype=torch.bool)
-        ws.sample(data=torch.full((2, 2), float("nan")), is_mpe=True, sampling_ctx=sampling_ctx)
-        assert sampling_ctx.channel_index.shape == (2, 2)
-        assert sampling_ctx.mask.shape == (2, 2)
+        with pytest.raises(ShapeError, match="incompatible feature width"):
+            ws.sample(data=torch.full((2, 2), float("nan")), is_mpe=True, sampling_ctx=sampling_ctx)
 
     def test_marginalize_full_scope_returns_none(self):
         """Test full marginalization short-circuit."""

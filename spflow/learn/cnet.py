@@ -231,6 +231,7 @@ def learn_cnet(
         # Normalize weights
         total = sum(weights_list)
         if total == 0:
+            # Intentional statistical fallback for degenerate slices: keep branch mass uniform.
             weights_list = [1.0 / K] * K
         else:
             weights_list = [w / total for w in weights_list]

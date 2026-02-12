@@ -13,10 +13,11 @@ import torch
 from einops import repeat
 from torch import Tensor
 
+from spflow.exceptions import ShapeError
 from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
 
 class SplitByIndex(Split):
@@ -237,36 +238,41 @@ class SplitByIndex(Split):
             Tensor containing the generated samples.
         """
         data = self._prepare_sample_data(num_samples, data)
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         input_features = self.inputs.out_shape.features
 
-        # Check if we need to expand the sampling context
         ctx_features = sampling_ctx.channel_index.shape[1]
 
         if ctx_features == input_features:
-            # Already full size, no expansion needed
-            pass
-        else:
-            # Need to expand - assume context matches first split size and repeat
-            # This handles the case when parent module operates on split outputs
-            first_split_size = len(self._indices[0])
-            if ctx_features == first_split_size:
-                # Repeat for each split (assuming equal split sizes for simplicity)
-                channel_index = repeat(sampling_ctx.channel_index, "b f -> b (f s)", s=self.num_splits)
-                mask = repeat(sampling_ctx.mask, "b f -> b (f s)", s=self.num_splits)
+            self.inputs.sample(
+                data=data,
+                is_mpe=is_mpe,
+                cache=cache,
+                sampling_ctx=sampling_ctx,
+            )
+            return data
 
-                # Truncate if we repeated too much
-                if channel_index.shape[1] > input_features:
-                    channel_index = channel_index[:, :input_features]
-                    mask = mask[:, :input_features]
+        split_sizes = [len(idx_group) for idx_group in self._indices]
+        if any(size != ctx_features for size in split_sizes):
+            raise ShapeError(
+                "SplitByIndex.sample received incompatible sampling context feature width: "
+                f"got {ctx_features}, expected {input_features} or common split width {split_sizes}."
+            )
 
-                sampling_ctx.update(channel_index=channel_index, mask=mask)
-            else:
-                # Expand to full size
-                mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=input_features)
-                channel_index = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=input_features)
-                sampling_ctx.update(channel_index=channel_index, mask=mask)
+        channel_index = sampling_ctx.channel_index.new_zeros((data.shape[0], input_features))
+        mask = sampling_ctx.mask.new_zeros((data.shape[0], input_features))
+        for idx_group in self._indices:
+            dest = torch.as_tensor(idx_group, dtype=torch.long, device=sampling_ctx.channel_index.device)
+            channel_index[:, dest] = sampling_ctx.channel_index
+            mask[:, dest] = sampling_ctx.mask
+        sampling_ctx.update(channel_index=channel_index, mask=mask)
 
         self.inputs.sample(
             data=data,

@@ -17,7 +17,7 @@ from spflow.modules.sums.signed_sum import SignedSum
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
 from spflow.utils.inner_product import inner_product_matrix, log_self_inner_product_scalar
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
 
 def _is_signed_categorical(module: Module) -> bool:
@@ -224,7 +224,13 @@ class SOCS(Module):
         else:
             num_samples = data.shape[0]
 
-        sampling_ctx = init_default_sampling_context(sampling_ctx, num_samples, data.device)
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=num_samples,
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         # Mixture over components with weights proportional to Z_i
         logZs = torch.stack(
@@ -289,4 +295,3 @@ class SOCS(Module):
             out[mask] = x
 
         return out
-

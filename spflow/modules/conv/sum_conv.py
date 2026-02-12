@@ -17,8 +17,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import proj_convex_to_real
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
-from spflow.modules.conv.utils import expand_sampling_context, upsample_sampling_context
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
 
 class SumConv(Module):
@@ -278,8 +277,13 @@ class SumConv(Module):
 
         batch_size = data.shape[0]
 
-        # Initialize sampling context
-        sampling_ctx = init_default_sampling_context(sampling_ctx, batch_size, data.device)
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=batch_size,
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         num_features = self.in_shape.features
 
@@ -296,20 +300,12 @@ class SumConv(Module):
         if H % K != 0 or W % K != 0:
             raise ValueError(f"Spatial dims ({H}, {W}) must be divisible by kernel_size {K}")
 
-        # Expand channel_index and mask to match input features if needed
         current_features = sampling_ctx.channel_index.shape[1]
         if current_features != num_features:
-            if current_features == 1:
-                expand_sampling_context(sampling_ctx, num_features)
-            else:
-                # Upsample from parent spatial dims to input spatial dims
-                upsample_sampling_context(
-                    sampling_ctx,
-                    current_height=H // K,
-                    current_width=W // K,
-                    scale_h=K,
-                    scale_w=K,
-                )
+            raise ShapeError(
+                "SumConv.sample received incompatible sampling context feature width: "
+                f"got {current_features}, expected {num_features}."
+            )
 
         channel_idx = sampling_ctx.channel_index  # (batch, H*W)
 

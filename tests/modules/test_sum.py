@@ -5,6 +5,7 @@ import pytest
 import torch
 
 from spflow.exceptions import (
+    InvalidParameterError,
     InvalidParameterCombinationError,
     InvalidWeightsError,
     MissingCacheError,
@@ -444,19 +445,23 @@ def test_log_likelihood_creates_default_cache():
     assert lls.shape == (4, 2, 2, 1)
 
 
-def test_sample_defaults_to_single_sample_without_data_or_num_samples():
+def test_sample_requires_explicit_sampling_context():
     module = make_sum(in_channels=2, out_channels=2, out_features=3, num_repetitions=1)
-    samples = module.sample()
-    assert samples.shape == (1, 3)
+    with pytest.raises(InvalidParameterError, match="requires an explicit sampling_ctx"):
+        module.sample()
 
 
 def test_sample_requires_repetition_index_for_multiple_repetitions():
     module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=2)
+    sampling_ctx = SamplingContext(
+        channel_index=torch.zeros((3, module.out_shape.features), dtype=torch.long),
+        mask=torch.ones((3, module.out_shape.features), dtype=torch.bool),
+    )
     with pytest.raises(ValueError):
-        module.sample(num_samples=3)
+        module.sample(num_samples=3, sampling_ctx=sampling_ctx)
 
 
-def test_sample_updates_mask_when_feature_shape_expands():
+def test_sample_raises_on_incompatible_mask_width():
     module = make_sum(in_channels=2, out_channels=2, out_features=3, num_repetitions=1)
 
     class _LooseSamplingCtx:
@@ -464,19 +469,14 @@ def test_sample_updates_mask_when_feature_shape_expands():
             self.channel_index = torch.zeros((5, 3), dtype=torch.long)
             self.mask = torch.ones((5, 1), dtype=torch.bool)
             self.repetition_idx = None
-            self.updated = False
 
         def update(self, channel_index, mask):
             self.channel_index = channel_index
             self.mask = mask
-            self.updated = True
 
     sampling_ctx = _LooseSamplingCtx()
-    samples = module.sample(data=torch.full((5, 3), torch.nan), sampling_ctx=sampling_ctx)
-    assert samples.shape == (5, 3)
-    assert sampling_ctx.mask.shape == (5, 3)
-    assert sampling_ctx.channel_index.shape == (5, 3)
-    assert sampling_ctx.updated
+    with pytest.raises(ShapeError, match="incompatible feature width"):
+        module.sample(data=torch.full((5, 3), torch.nan), sampling_ctx=sampling_ctx)
 
 
 def test_expectation_maximization_creates_default_cache_and_raises_for_missing_input_lls():

@@ -12,7 +12,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 from spflow.utils.signed_semiring import signed_logsumexp, sign_of
 
 
@@ -207,7 +207,13 @@ class SignedSum(Module):
                 "SignedSum.sample() is only supported when all weights are non-negative."
             )
 
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         # Only supports scalar feature routing like Sum: choose input-channel per feature.
         # We treat weights as proportional probabilities.
@@ -247,12 +253,10 @@ class SignedSum(Module):
         num_features = int(new_channel_index.shape[1])
         if sampling_ctx.mask.shape[1] == num_features:
             new_mask = sampling_ctx.mask
-        elif sampling_ctx.mask.shape[1] == 1:
-            new_mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=num_features)
         else:
             raise ShapeError(
                 "sampling_ctx.mask has incompatible feature width for sampling update: "
-                f"got {sampling_ctx.mask.shape[1]}, expected 1 or {num_features}."
+                f"got {sampling_ctx.mask.shape[1]}, expected {num_features}."
             )
         sampling_ctx.update(
             channel_index=new_channel_index,

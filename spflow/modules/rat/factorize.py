@@ -21,7 +21,7 @@ from spflow.modules.ops.cat import Cat
 from spflow.modules.products.base_product import BaseProduct
 from spflow.modules.products.product import Product
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
 
 class Factorize(BaseProduct):
@@ -181,8 +181,13 @@ class Factorize(BaseProduct):
         # Prepare data tensor
         data = self._prepare_sample_data(num_samples, data)
 
-        # initialize contexts
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0])
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         if sampling_ctx.repetition_idx is None:
             raise InvalidParameterError(

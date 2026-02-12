@@ -218,3 +218,69 @@ def init_default_sampling_context(
         return sampling_ctx
     else:
         return SamplingContext(num_samples=num_samples, device=device)
+
+
+def build_root_sampling_context(
+    sampling_ctx: SamplingContext | None,
+    *,
+    module_name: str,
+    num_samples: int,
+    num_features: int,
+    device: torch.device | None = None,
+) -> SamplingContext:
+    """Build or validate sampling context at a root sampling entrypoint.
+
+    Root callers should initialize a context whose feature width matches the
+    root module output width so internal modules do not rely on synthetic
+    feature expansion.
+    """
+    if sampling_ctx is None:
+        channel_index = torch.zeros((num_samples, num_features), dtype=torch.long, device=device)
+        mask = torch.ones((num_samples, num_features), dtype=torch.bool, device=device)
+        return SamplingContext(channel_index=channel_index, mask=mask)
+
+    if sampling_ctx.channel_index.shape[0] != num_samples:
+        raise InvalidParameterError(
+            f"{module_name}.sample received sampling_ctx with batch={sampling_ctx.channel_index.shape[0]}, "
+            f"expected {num_samples}."
+        )
+
+    return sampling_ctx
+
+
+def require_sampling_context(
+    sampling_ctx: SamplingContext | None,
+    *,
+    module_name: str,
+    num_samples: int | None = None,
+    module_out_shape: object | None = None,
+    device: torch.device | None = None,
+) -> SamplingContext:
+    """Require explicit sampling context for internal sampling calls."""
+    if sampling_ctx is None:
+        can_bootstrap = (
+            module_out_shape is not None
+            and hasattr(module_out_shape, "features")
+            and hasattr(module_out_shape, "channels")
+            and int(module_out_shape.features) == 1
+            and int(module_out_shape.channels) == 1
+        )
+        if can_bootstrap:
+            if num_samples is None:
+                raise InvalidParameterError(
+                    f"{module_name}.sample cannot initialize sampling context without num_samples."
+                )
+            return SamplingContext(num_samples=num_samples, device=device)
+
+        raise InvalidParameterError(
+            f"{module_name}.sample requires an explicit sampling_ctx for internal sampling unless "
+            "module.out_shape.features == 1 and module.out_shape.channels == 1."
+        )
+
+    if num_samples is not None and sampling_ctx.channel_index.shape[0] != num_samples:
+        raise InvalidParameterError(
+            f"{module_name}.sample received sampling_ctx with batch={sampling_ctx.channel_index.shape[0]}, "
+            f"expected {num_samples}."
+        )
+
+    return sampling_ctx

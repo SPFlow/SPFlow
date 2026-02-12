@@ -5,12 +5,13 @@ import torch
 from einops import repeat
 from torch import Tensor
 
+from spflow.exceptions import ShapeError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
 
 class Product(Module):
@@ -109,17 +110,28 @@ class Product(Module):
                 num_samples = 1
             data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
 
-        # Initialize sampling context if not provided
-        sampling_ctx = init_default_sampling_context(sampling_ctx, data.shape[0], data.device)
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
-        # Expand mask and channels to match input module shape
+        # Map product output feature routing to child feature routing.
         num_input_features = self.inputs.out_shape.features
-        if sampling_ctx.mask.shape[1] == num_input_features:
+        ctx_features = sampling_ctx.mask.shape[1]
+        if ctx_features == num_input_features:
             mask = sampling_ctx.mask
             channel_index = sampling_ctx.channel_index
-        else:
+        elif ctx_features == self.out_shape.features:
             mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=num_input_features)
             channel_index = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_input_features)
+        else:
+            raise ShapeError(
+                "Product.sample received incompatible sampling context feature width: "
+                f"got {ctx_features}, expected {self.out_shape.features} or {num_input_features}."
+            )
         sampling_ctx.update(channel_index=channel_index, mask=mask)
 
         # Delegate to input module for actual sampling

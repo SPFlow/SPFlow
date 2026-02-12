@@ -19,7 +19,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.sums import Sum
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, init_default_sampling_context
+from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
 
 
 def compute_non_overlapping_kernel_and_padding(
@@ -309,6 +309,14 @@ class ConvPc(Module):
         # Conditional sampling needs forward log-likelihoods in the cache.
         if self._has_partial_evidence(data):
             self.log_likelihood(data, cache=cache)
+
+        sampling_ctx = build_root_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            num_features=self.inputs.out_shape.features,
+            device=data.device,
+        )
 
         # Delegate to root (RepetitionMixingLayer or Sum)
         # which handles channel/repetition sampling internally
