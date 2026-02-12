@@ -139,27 +139,3 @@ def test_convpc_latent_repetition_indices_reject_unsupported_widths() -> None:
             batch_size=2,
             loc=torch.zeros((2, 1, 3)),
         )
-
-
-def test_convpc_latent_selector_choice_mismatch_raises() -> None:
-    enc = _build_convpc()
-    ctx = SamplingContext(
-        channel_index=torch.zeros((2, 1), dtype=torch.long),
-        mask=torch.ones((2, 1), dtype=torch.bool),
-    )
-
-    ctx.channel_select = torch.zeros((2, enc.latent_dim, 2))
-    with pytest.raises(ShapeError, match="channel selector choice mismatch"):
-        enc._resolve_latent_channel_selector(
-            sampling_ctx=ctx,
-            batch_size=2,
-            loc=torch.zeros((2, 3, 2)),
-        )
-
-    ctx.repetition_select = torch.zeros((2, enc.latent_dim, 2))
-    with pytest.raises(ShapeError, match="repetition selector choice mismatch"):
-        enc._resolve_latent_repetition_selector(
-            sampling_ctx=ctx,
-            batch_size=2,
-            loc=torch.zeros((2, 2, 3)),
-        )

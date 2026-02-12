@@ -286,12 +286,6 @@ class ProdConv(Module):
                 channel_idx = sampling_ctx.channel_index[:, :in_features].contiguous()
                 mask = sampling_ctx.mask[:, :in_features].contiguous()
                 sampling_ctx.update(channel_index=channel_idx, mask=mask)
-                channel_select = getattr(sampling_ctx, "channel_select", None)
-                if channel_select is not None and channel_select.dim() >= 2:
-                    sampling_ctx.channel_select = channel_select[:, :in_features, ...].contiguous()
-                repetition_select = getattr(sampling_ctx, "repetition_select", None)
-                if repetition_select is not None and repetition_select.dim() >= 2:
-                    sampling_ctx.repetition_select = repetition_select[:, :in_features, ...].contiguous()
             elif upsampled_features < in_features:
                 raise ShapeError(
                     "ProdConv.sample upsampling produced too few features for input routing: "

@@ -268,7 +268,7 @@ class _LatentSelectionCapture(Module):
         self,
         inputs: Module,
         capture_fn: Callable[
-            [Tensor, Tensor | None, Tensor | None, Tensor | None, bool],
+            [Tensor, Tensor | None],
             None,
         ],
     ) -> None:
@@ -298,29 +298,6 @@ class _LatentSelectionCapture(Module):
             return tensor
         if tensor.shape[1] == data_num_features:
             return tensor[:, scope_cols]
-        raise ShapeError(
-            f"Latent selection capture {kind} width mismatch: "
-            f"got {tensor.shape[1]}, expected 1, {target_features}, or {data_num_features}."
-        )
-
-    def _align_feature_width_3d(
-        self,
-        tensor: Tensor | None,
-        *,
-        target_features: int,
-        data_num_features: int,
-        scope_cols: list[int],
-        kind: str,
-    ) -> Tensor | None:
-        if tensor is None or tensor.dim() != 3:
-            return None
-        if tensor.shape[1] == 1:
-            num_choices = int(tensor.shape[2])
-            return repeat(tensor, "b 1 c -> b f c", f=target_features, c=num_choices)
-        if tensor.shape[1] == target_features:
-            return tensor
-        if tensor.shape[1] == data_num_features:
-            return tensor[:, scope_cols, :]
         raise ShapeError(
             f"Latent selection capture {kind} width mismatch: "
             f"got {tensor.shape[1]}, expected 1, {target_features}, or {data_num_features}."
@@ -368,29 +345,10 @@ class _LatentSelectionCapture(Module):
             data_num_features=data_num_features,
             scope_cols=scope_cols,
         )
-        channel_select = self._align_feature_width_3d(
-            getattr(sampling_ctx, "channel_select", None),
-            target_features=target_features,
-            data_num_features=data_num_features,
-            scope_cols=scope_cols,
-            kind="channel selector",
-        )
-        repetition_select = self._align_feature_width_3d(
-            getattr(sampling_ctx, "repetition_select", None),
-            target_features=target_features,
-            data_num_features=data_num_features,
-            scope_cols=scope_cols,
-            kind="repetition selector",
-        )
-
-        keep_selectors_attached = False
 
         self._capture_fn(
             channel_idx.detach().clone().to(dtype=torch.long),
             None if repetition_idx is None else repetition_idx.detach().clone().to(dtype=torch.long),
-            None if channel_select is None else channel_select.clone(),
-            None if repetition_select is None else repetition_select.clone(),
-            keep_selectors_attached,
         )
 
     @cached
@@ -528,8 +486,6 @@ class ConvPcJointEncoder(nn.Module):
 
         self._last_latent_leaf_channel_index: Tensor | None = None
         self._last_latent_leaf_repetition_index: Tensor | None = None
-        self._last_latent_leaf_channel_select: Tensor | None = None
-        self._last_latent_leaf_repetition_select: Tensor | None = None
 
         if architecture == "reference":
             self.pc = self._build_joint_convpc_reference(
@@ -573,32 +529,14 @@ class ConvPcJointEncoder(nn.Module):
         self,
         channel_index: Tensor,
         repetition_idx: Tensor | None,
-        channel_select: Tensor | None,
-        repetition_select: Tensor | None,
-        keep_selectors_attached: bool,
     ) -> None:
         """Capture leaf-level latent routing signals from the sampling path."""
         self._last_latent_leaf_channel_index = channel_index
         self._last_latent_leaf_repetition_index = repetition_idx
-        if channel_select is None:
-            self._last_latent_leaf_channel_select = None
-        elif keep_selectors_attached:
-            self._last_latent_leaf_channel_select = channel_select
-        else:
-            self._last_latent_leaf_channel_select = channel_select.detach().clone()
-
-        if repetition_select is None:
-            self._last_latent_leaf_repetition_select = None
-        elif keep_selectors_attached:
-            self._last_latent_leaf_repetition_select = repetition_select
-        else:
-            self._last_latent_leaf_repetition_select = repetition_select.detach().clone()
 
     def _reset_latent_leaf_selection(self) -> None:
         self._last_latent_leaf_channel_index = None
         self._last_latent_leaf_repetition_index = None
-        self._last_latent_leaf_channel_select = None
-        self._last_latent_leaf_repetition_select = None
 
     def _build_joint_convpc_legacy(
         self,
@@ -1099,83 +1037,6 @@ class ConvPcJointEncoder(nn.Module):
                 f"got {rep.shape[1]}, expected 1, {self.latent_dim}, or {self.num_x_features + self.latent_dim}."
             )
         return repetition_idx.to(device=loc.device, dtype=torch.long).clamp(min=0, max=loc.shape[2] - 1)
-
-    def _resolve_latent_channel_selector(
-        self,
-        *,
-        sampling_ctx: SamplingContext,
-        batch_size: int,
-        loc: Tensor,
-    ) -> Tensor | None:
-        """Resolve soft/hard channel selectors for latent leaf extraction."""
-        selector = self._last_latent_leaf_channel_select
-        if selector is None:
-            selector = getattr(sampling_ctx, "channel_select", None)
-        if selector is None or selector.dim() != 3:
-            return None
-        if selector.shape[0] != batch_size:
-            raise ShapeError(
-                "Latent channel selector batch mismatch: " f"expected {batch_size}, got {selector.shape[0]}."
-            )
-        if selector.shape[1] == 1:
-            num_latent_features = self.latent_dim
-            num_channel_choices = int(selector.shape[2])
-            selector = repeat(selector, "b 1 c -> b f c", f=num_latent_features, c=num_channel_choices)
-        elif selector.shape[1] == self.latent_dim:
-            pass
-        elif selector.shape[1] == (self.num_x_features + self.latent_dim):
-            selector = selector[:, self._z_cols, :]
-        else:
-            raise ShapeError(
-                "Latent channel selector feature mismatch: "
-                f"expected 1, {self.latent_dim}, or {self.num_x_features + self.latent_dim}; "
-                f"got {selector.shape[1]}."
-            )
-        if selector.shape[2] != loc.shape[1]:
-            raise ShapeError(
-                "Latent channel selector choice mismatch: "
-                f"expected {loc.shape[1]} channel choices, got {selector.shape[2]}."
-            )
-        return selector.to(device=loc.device, dtype=loc.dtype)
-
-    def _resolve_latent_repetition_selector(
-        self,
-        *,
-        sampling_ctx: SamplingContext,
-        batch_size: int,
-        loc: Tensor,
-    ) -> Tensor | None:
-        """Resolve soft/hard repetition selectors for latent leaf extraction."""
-        selector = self._last_latent_leaf_repetition_select
-        if selector is None:
-            selector = getattr(sampling_ctx, "repetition_select", None)
-        if selector is None or selector.dim() != 3:
-            return None
-        if selector.shape[0] != batch_size:
-            raise ShapeError(
-                "Latent repetition selector batch mismatch: "
-                f"expected {batch_size}, got {selector.shape[0]}."
-            )
-        if selector.shape[1] == 1:
-            num_latent_features = self.latent_dim
-            num_repetition_choices = int(selector.shape[2])
-            selector = repeat(selector, "b 1 r -> b f r", f=num_latent_features, r=num_repetition_choices)
-        elif selector.shape[1] == self.latent_dim:
-            pass
-        elif selector.shape[1] == (self.num_x_features + self.latent_dim):
-            selector = selector[:, self._z_cols, :]
-        else:
-            raise ShapeError(
-                "Latent repetition selector feature mismatch: "
-                f"expected 1, {self.latent_dim}, or {self.num_x_features + self.latent_dim}; "
-                f"got {selector.shape[1]}."
-            )
-        if selector.shape[2] != loc.shape[2]:
-            raise ShapeError(
-                "Latent repetition selector choice mismatch: "
-                f"expected {loc.shape[2]} repetition choices, got {selector.shape[2]}."
-            )
-        return selector.to(device=loc.device, dtype=loc.dtype)
 
     def _latent_stats_from_leaf_params(self, sampling_ctx: SamplingContext, batch_size: int) -> LatentStats:
         """Extract posterior ``mu/logvar`` from selected latent leaf parameters."""
