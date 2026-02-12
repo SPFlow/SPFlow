@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 import torch
-from einops import repeat
 from torch import Tensor
 
-from spflow.exceptions import ShapeError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -108,21 +106,10 @@ class Product(Module):
             sampling_ctx=sampling_ctx,
         )
 
-        # Map product output feature routing to child feature routing.
-        num_input_features = self.inputs.out_shape.features
-        ctx_features = sampling_ctx.mask.shape[1]
-        if ctx_features == num_input_features:
-            mask = sampling_ctx.mask
-            channel_index = sampling_ctx.channel_index
-        elif ctx_features == self.out_shape.features:
-            mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=num_input_features)
-            channel_index = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_input_features)
-        else:
-            raise ShapeError(
-                "Product.sample received incompatible sampling context feature width: "
-                f"got {ctx_features}, expected {self.out_shape.features} or {num_input_features}."
-            )
-        sampling_ctx.update(channel_index=channel_index, mask=mask)
+        sampling_ctx.broadcast_feature_width(
+            target_features=self.inputs.out_shape.features,
+            allow_from_one=True,
+        )
 
         # Delegate to input module for actual sampling
         self.inputs._sample(

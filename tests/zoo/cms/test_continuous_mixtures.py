@@ -28,7 +28,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.leaves import CLTree
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
-from tests.utils.sampling_context_helpers import make_sampling_context
+from tests.utils.helpers import make_sampling_context
 
 
 def test_joint_log_likelihood_wrapper_reduces_feature_axis():

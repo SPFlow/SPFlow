@@ -11,7 +11,7 @@ from spflow.modules.conv import ProdConv
 from spflow.modules.leaves import Normal
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
-from tests.utils.sampling_context_helpers import make_module_sampling_context
+from tests.utils.helpers import make_module_sampling_context
 
 # Test parameter values
 out_channels_values = [1, 3]

@@ -10,14 +10,15 @@ from typing import Any, Dict, Optional, Sequence
 
 import numpy as np
 import torch
-from einops import repeat
 from torch import Tensor
 
-from spflow.exceptions import ShapeError
 from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import (
+    SamplingContext,
+    require_sampling_context,
+)
 
 
 class SplitByIndex(Split):
@@ -256,20 +257,10 @@ class SplitByIndex(Split):
             )
             return data
 
-        split_sizes = [len(idx_group) for idx_group in self._indices]
-        if any(size != ctx_features for size in split_sizes):
-            raise ShapeError(
-                "SplitByIndex.sample received incompatible sampling context feature width: "
-                f"got {ctx_features}, expected {input_features} or common split width {split_sizes}."
-            )
-
-        channel_index = sampling_ctx.channel_index.new_zeros((data.shape[0], input_features))
-        mask = sampling_ctx.mask.new_zeros((data.shape[0], input_features))
-        for idx_group in self._indices:
-            dest = torch.as_tensor(idx_group, dtype=torch.long, device=sampling_ctx.channel_index.device)
-            channel_index[:, dest] = sampling_ctx.channel_index
-            mask[:, dest] = sampling_ctx.mask
-        sampling_ctx.update(channel_index=channel_index, mask=mask)
+        sampling_ctx.scatter_split_groups_to_input_width(
+            index_groups=self._indices,
+            input_features=input_features,
+        )
 
         self.inputs._sample(
             data=data,

@@ -18,7 +18,10 @@ from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
-from spflow.utils.sampling_context import SamplingContext, update_channel_index_strict
+from spflow.utils.sampling_context import (
+    SamplingContext,
+    update_channel_index_strict,
+)
 
 
 class Sum(Module):
@@ -295,6 +298,7 @@ class Sum(Module):
             data=data,
             sampling_ctx=sampling_ctx,
         )
+        sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
 
         # Index into the correct weight channels given by parent module
         if sampling_ctx.repetition_idx is not None:

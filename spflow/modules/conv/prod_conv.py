@@ -296,6 +296,7 @@ class ProdConv(Module):
                 "ProdConv.sample received incompatible sampling context feature width: "
                 f"got {current_features}, expected {out_features} or {in_features}."
             )
+        sampling_ctx.require_feature_width(expected_features=in_features)
 
         # Sample from input
         self.inputs._sample(

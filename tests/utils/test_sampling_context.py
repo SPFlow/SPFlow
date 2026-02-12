@@ -3,6 +3,7 @@
 import torch
 import pytest
 
+from spflow.exceptions import InvalidParameterError, ShapeError
 from spflow.utils.sampling_context import (
     SamplingContext,
     build_root_sampling_context,
@@ -176,3 +177,212 @@ def test_sampling_context_copy_is_deep():
     assert torch.equal(ctx.channel_index, channel_index)
     assert torch.equal(ctx.mask, mask)
     assert torch.equal(ctx.repetition_idx, repetition_index)
+
+
+def test_require_feature_width_accepts_matching_width():
+    ctx = SamplingContext(
+        channel_index=torch.zeros((2, 3), dtype=torch.long),
+        mask=torch.ones((2, 3), dtype=torch.bool),
+    )
+    ctx.require_feature_width(expected_features=3)
+
+
+def test_require_feature_width_rejects_mismatch():
+    ctx = SamplingContext(
+        channel_index=torch.zeros((2, 2), dtype=torch.long),
+        mask=torch.ones((2, 2), dtype=torch.bool),
+    )
+    with pytest.raises(ShapeError, match="got 2, expected 3"):
+        ctx.require_feature_width(expected_features=3)
+
+
+def test_broadcast_feature_width_from_singleton():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[1], [2]], dtype=torch.long),
+        mask=torch.tensor([[True], [False]], dtype=torch.bool),
+    )
+    ctx.broadcast_feature_width(target_features=4)
+    assert ctx.channel_index.shape == (2, 4)
+    assert ctx.mask.shape == (2, 4)
+    assert torch.equal(ctx.channel_index[0], torch.tensor([1, 1, 1, 1]))
+
+
+def test_broadcast_feature_width_is_noop_when_already_matching():
+    channel_index = torch.tensor([[1, 2, 3]], dtype=torch.long)
+    mask = torch.tensor([[True, False, True]], dtype=torch.bool)
+    ctx = SamplingContext(channel_index=channel_index, mask=mask)
+    before_ptr = ctx.channel_index.data_ptr()
+    ctx.broadcast_feature_width(target_features=3)
+    assert ctx.channel_index.data_ptr() == before_ptr
+    assert torch.equal(ctx.mask, mask)
+
+
+def test_broadcast_feature_width_rejects_non_singleton_context():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[1, 2]], dtype=torch.long),
+        mask=torch.tensor([[True, True]], dtype=torch.bool),
+    )
+    with pytest.raises(ShapeError, match="expected 4 or 1"):
+        ctx.broadcast_feature_width(target_features=4)
+
+
+def test_broadcast_feature_width_respects_allow_from_one_flag():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[5]], dtype=torch.long),
+        mask=torch.tensor([[True]], dtype=torch.bool),
+    )
+    with pytest.raises(ShapeError, match="expected 3"):
+        ctx.broadcast_feature_width(target_features=3, allow_from_one=False)
+
+
+def test_repeat_split_feature_width_expands_split_sized_context():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[3, 7]], dtype=torch.long),
+        mask=torch.tensor([[True, False]], dtype=torch.bool),
+    )
+    ctx.repeat_split_feature_width(
+        num_splits=2,
+        target_features=4,
+    )
+    assert torch.equal(ctx.channel_index, torch.tensor([[3, 7, 3, 7]], dtype=torch.long))
+    assert torch.equal(ctx.mask, torch.tensor([[True, False, True, False]], dtype=torch.bool))
+
+
+def test_repeat_split_feature_width_is_noop_when_already_matching():
+    channel_index = torch.tensor([[1, 2, 3, 4]], dtype=torch.long)
+    mask = torch.tensor([[True, True, True, False]], dtype=torch.bool)
+    ctx = SamplingContext(channel_index=channel_index, mask=mask)
+    before = ctx.channel_index.clone()
+    ctx.repeat_split_feature_width(num_splits=2, target_features=4)
+    assert torch.equal(ctx.channel_index, before)
+    assert torch.equal(ctx.mask, mask)
+
+
+def test_repeat_split_feature_width_rejects_invalid_num_splits():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[0, 1]], dtype=torch.long),
+        mask=torch.tensor([[True, True]], dtype=torch.bool),
+    )
+    with pytest.raises(InvalidParameterError, match="num_splits must be >= 1"):
+        ctx.repeat_split_feature_width(num_splits=0, target_features=4)
+
+
+def test_repeat_split_feature_width_rejects_uneven_target():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[0, 1]], dtype=torch.long),
+        mask=torch.tensor([[True, True]], dtype=torch.bool),
+    )
+    with pytest.raises(ShapeError, match="not divisible by num_splits"):
+        ctx.repeat_split_feature_width(
+            num_splits=2,
+            target_features=5,
+        )
+
+
+def test_repeat_split_feature_width_rejects_incompatible_current_width():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[0, 1, 2]], dtype=torch.long),
+        mask=torch.tensor([[True, True, True]], dtype=torch.bool),
+    )
+    with pytest.raises(ShapeError, match="expected 8 or split width 4"):
+        ctx.repeat_split_feature_width(num_splits=2, target_features=8)
+
+
+def test_scatter_split_groups_to_input_width_scatter_mapping():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[4, 9]], dtype=torch.long),
+        mask=torch.tensor([[True, False]], dtype=torch.bool),
+    )
+    ctx.scatter_split_groups_to_input_width(
+        index_groups=[[0, 2], [1, 3]],
+        input_features=4,
+    )
+    assert torch.equal(ctx.channel_index, torch.tensor([[4, 4, 9, 9]], dtype=torch.long))
+    assert torch.equal(ctx.mask, torch.tensor([[True, True, False, False]], dtype=torch.bool))
+
+
+def test_scatter_split_groups_to_input_width_is_noop_when_already_full_width():
+    channel_index = torch.tensor([[0, 1, 2, 3]], dtype=torch.long)
+    mask = torch.tensor([[True, False, True, True]], dtype=torch.bool)
+    ctx = SamplingContext(channel_index=channel_index, mask=mask)
+    ctx.scatter_split_groups_to_input_width(index_groups=[[0, 2], [1, 3]], input_features=4)
+    assert torch.equal(ctx.channel_index, channel_index)
+    assert torch.equal(ctx.mask, mask)
+
+
+def test_scatter_split_groups_to_input_width_requires_exact_cover():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[1, 2]], dtype=torch.long),
+        mask=torch.tensor([[True, True]], dtype=torch.bool),
+    )
+    with pytest.raises(InvalidParameterError, match="cover all input features"):
+        ctx.scatter_split_groups_to_input_width(
+            index_groups=[[0, 1], [1, 2]],
+            input_features=3,
+        )
+
+
+def test_scatter_split_groups_to_input_width_rejects_width_mismatch():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[1]], dtype=torch.long),
+        mask=torch.tensor([[True]], dtype=torch.bool),
+    )
+    with pytest.raises(ShapeError, match="expected 4 or common split width"):
+        ctx.scatter_split_groups_to_input_width(index_groups=[[0, 1], [2, 3]], input_features=4)
+
+
+def test_slice_feature_ranges_returns_per_child_views():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[0, 1, 2, 3]], dtype=torch.long),
+        mask=torch.tensor([[True, True, False, False]], dtype=torch.bool),
+    )
+    chunks = ctx.slice_feature_ranges(ranges=[(0, 1), (1, 4)])
+    assert len(chunks) == 2
+    assert torch.equal(chunks[0][0], torch.tensor([[0]], dtype=torch.long))
+    assert torch.equal(chunks[1][0], torch.tensor([[1, 2, 3]], dtype=torch.long))
+
+
+@pytest.mark.parametrize("ranges", [[(-1, 1)], [(2, 1)], [(0, 5)]])
+def test_slice_feature_ranges_rejects_invalid_ranges(ranges):
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[0, 1, 2, 3]], dtype=torch.long),
+        mask=torch.tensor([[True, True, True, True]], dtype=torch.bool),
+    )
+    with pytest.raises(InvalidParameterError, match="invalid feature slice range"):
+        ctx.slice_feature_ranges(ranges=ranges)
+
+
+def test_route_channel_offsets_routes_masks_and_indices():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[0, 1, 2, 3]], dtype=torch.long),
+        mask=torch.tensor([[True, True, True, True]], dtype=torch.bool),
+    )
+    routes = ctx.route_channel_offsets(
+        child_channel_counts=[1, 3],
+    )
+    assert len(routes) == 2
+    # Child 0 only owns global channel 0.
+    assert torch.equal(routes[0][0], torch.tensor([[0, 0, 0, 0]], dtype=torch.long))
+    assert torch.equal(routes[0][1], torch.tensor([[True, False, False, False]], dtype=torch.bool))
+    # Child 1 owns channels [1, 2, 3] and should see local ids [0, 1, 2].
+    assert torch.equal(routes[1][0], torch.tensor([[0, 0, 1, 2]], dtype=torch.long))
+    assert torch.equal(routes[1][1], torch.tensor([[False, True, True, True]], dtype=torch.bool))
+
+
+def test_route_channel_offsets_rejects_non_positive_child_count():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[0, 1]], dtype=torch.long),
+        mask=torch.tensor([[True, True]], dtype=torch.bool),
+    )
+    with pytest.raises(InvalidParameterError, match="must all be >= 1"):
+        ctx.route_channel_offsets(child_channel_counts=[1, 0])
+
+
+def test_route_channel_offsets_applies_existing_mask():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[0, 1, 2, 3]], dtype=torch.long),
+        mask=torch.tensor([[True, False, True, True]], dtype=torch.bool),
+    )
+    routes = ctx.route_channel_offsets(child_channel_counts=[2, 2])
+    # Child 0 covers channels [0, 1], but second position is disabled by mask.
+    assert torch.equal(routes[0][1], torch.tensor([[True, False, False, False]], dtype=torch.bool))

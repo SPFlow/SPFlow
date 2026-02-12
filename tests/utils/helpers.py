@@ -1,4 +1,4 @@
-"""Test helpers for constructing explicit sampling contexts."""
+"""Shared helper functions for unit tests."""
 
 from __future__ import annotations
 

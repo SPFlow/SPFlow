@@ -283,12 +283,7 @@ class SumConv(Module):
         if H % K != 0 or W % K != 0:
             raise ValueError(f"Spatial dims ({H}, {W}) must be divisible by kernel_size {K}")
 
-        current_features = sampling_ctx.channel_index.shape[1]
-        if current_features != num_features:
-            raise ShapeError(
-                "SumConv.sample received incompatible sampling context feature width: "
-                f"got {current_features}, expected {num_features}."
-            )
+        sampling_ctx.require_feature_width(expected_features=num_features)
 
         channel_idx = sampling_ctx.channel_index  # (batch, H*W)
 

@@ -11,7 +11,10 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import (
+    SamplingContext,
+    require_sampling_context,
+)
 
 
 class BaseProduct(Module, ABC):
@@ -136,6 +139,7 @@ class BaseProduct(Module, ABC):
             module_out_shape=self.out_shape,
             device=data.device,
         )
+        sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
 
         # Map to (i, j) to index left/right inputs
         channel_index = self.map_out_channels_to_in_channels(sampling_ctx.channel_index)

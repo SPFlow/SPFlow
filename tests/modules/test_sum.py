@@ -487,8 +487,20 @@ def test_sample_raises_on_incompatible_mask_width():
             self.channel_index = channel_index
             self.mask = mask
 
+        def require_feature_width(self, expected_features):
+            if self.channel_index.shape[1] != expected_features:
+                raise ShapeError(
+                    "Received incompatible sampling context feature width: "
+                    f"got {self.channel_index.shape[1]}, expected {expected_features}."
+                )
+            if self.mask.shape[1] != expected_features:
+                raise ShapeError(
+                    "Received incompatible sampling context feature width: "
+                    f"got {self.mask.shape[1]}, expected {expected_features}."
+                )
+
     sampling_ctx = _LooseSamplingCtx()
-    with pytest.raises(ShapeError, match="incompatible feature width"):
+    with pytest.raises(ShapeError, match="incompatible sampling context feature width"):
         module.sample(data=torch.full((5, 3), torch.nan), sampling_ctx=sampling_ctx)
 
 

@@ -185,6 +185,39 @@ def test_split_alternate_sampling():
     assert torch.isfinite(samples).all()
 
 
+def test_split_alternate_sampling_accepts_split_sized_context():
+    scope = Scope(list(range(0, 6)))
+    leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1)
+
+    n_samples = 12
+    data = torch.full((n_samples, 6), torch.nan)
+    # Split-sized context width (features_per_split = 3).
+    channel_index = torch.randint(0, 3, size=(n_samples, 3))
+    mask = torch.ones((n_samples, 3), dtype=torch.bool)
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=torch.zeros(n_samples, dtype=torch.long))
+
+    samples = split.sample(data=data, sampling_ctx=sampling_ctx)
+    assert samples.shape == (n_samples, 6)
+    assert torch.isfinite(samples).all()
+
+
+def test_split_alternate_sampling_rejects_incompatible_split_sized_context():
+    scope = Scope(list(range(0, 5)))
+    leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=1)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1)
+
+    # input_features=5 is not divisible by num_splits, so split-sized adaptation is invalid.
+    data = torch.full((4, 5), torch.nan)
+    sampling_ctx = SamplingContext(
+        channel_index=torch.randint(0, 2, size=(4, 2)),
+        mask=torch.ones((4, 2), dtype=torch.bool),
+        repetition_index=torch.zeros(4, dtype=torch.long),
+    )
+    with pytest.raises(ValueError, match="not divisible by num_splits"):
+        split.sample(data=data, sampling_ctx=sampling_ctx)
+
+
 @pytest.mark.parametrize("num_features", [5, 7, 11])
 def test_split_alternate_uneven_features(num_features):
     """Test alternating split with features that don't divide evenly."""

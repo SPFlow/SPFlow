@@ -11,7 +11,7 @@ from spflow.exceptions import OptionalDependencyError
 from spflow.meta.data import Scope
 from spflow.modules.leaves.piecewise_linear import PiecewiseLinear, PiecewiseLinearDist, interp, pairwise
 from spflow.utils.domain import DataType, Domain
-from tests.utils.sampling_context_helpers import make_sampling_context
+from tests.utils.helpers import make_sampling_context
 
 
 def _randn(*size: int) -> torch.Tensor:

@@ -55,3 +55,42 @@ def test_require_sampling_context_calls_do_not_pass_module_name() -> None:
                 offenders.append(path.relative_to(REPO_ROOT).as_posix())
                 break
     assert offenders == []
+
+
+def test_sampling_p2_helpers_are_used_in_migrated_modules() -> None:
+    expected_calls = {
+        "spflow/modules/sums/sum.py": ["require_feature_width("],
+        "spflow/modules/conv/sum_conv.py": ["require_feature_width("],
+        "spflow/modules/conv/prod_conv.py": ["require_feature_width("],
+        "spflow/modules/ops/cat.py": ["slice_feature_ranges(", "route_channel_offsets("],
+        "spflow/modules/ops/split.py": ["require_feature_width("],
+        "spflow/modules/ops/split_consecutive.py": ["repeat_split_feature_width("],
+        "spflow/modules/ops/split_by_index.py": ["scatter_split_groups_to_input_width("],
+        "spflow/modules/ops/split_interleaved.py": ["repeat_split_feature_width("],
+        "spflow/modules/products/product.py": ["broadcast_feature_width("],
+        "spflow/modules/products/base_product.py": ["require_feature_width("],
+    }
+    offenders: list[str] = []
+    for rel, required_snippets in expected_calls.items():
+        text = _read(rel)
+        missing = [snippet for snippet in required_snippets if snippet not in text]
+        if missing:
+            offenders.append(f"{rel}: missing {missing}")
+    assert offenders == []
+
+
+def test_sampling_p2_bans_reintroduced_ad_hoc_feature_adaptation() -> None:
+    banned_snippets_by_file = {
+        "spflow/modules/ops/split_consecutive.py": ['"b f -> b (f s)"'],
+        "spflow/modules/ops/split_by_index.py": ["new_zeros((data.shape[0], input_features))"],
+        "spflow/modules/products/product.py": ['repeat(sampling_ctx.mask, "b 1 -> b f"'],
+        "spflow/modules/ops/cat.py": ["global_channel_index = sampling_ctx.channel_index"],
+    }
+    offenders: list[str] = []
+    for rel, banned_snippets in banned_snippets_by_file.items():
+        text = _read(rel)
+        for snippet in banned_snippets:
+            if snippet in text:
+                offenders.append(f"{rel}: contains banned snippet `{snippet}`")
+                break
+    assert offenders == []

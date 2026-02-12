@@ -13,6 +13,8 @@ The sampling context is essential for:
 """
 from __future__ import annotations
 
+from typing import Sequence
+
 import torch
 from torch import Tensor
 
@@ -196,6 +198,196 @@ class SamplingContext:
             repetition_index=self.repetition_idx.clone() if self.repetition_idx is not None else None,
         )
 
+    def require_feature_width(self, expected_features: int) -> None:
+        """Assert exact feature width on this sampling context.
+
+        Args:
+            expected_features: Required feature width.
+
+        Raises:
+            ShapeError: If context width does not match `expected_features`.
+        """
+        got_features = int(self.channel_index.shape[1])
+        if got_features != expected_features:
+            raise ShapeError(
+                "Received incompatible sampling context feature width: "
+                f"got {got_features}, expected {expected_features}."
+            )
+
+    def broadcast_feature_width(self, target_features: int, allow_from_one: bool = True) -> None:
+        """Expand singleton feature routing to a target feature width.
+
+        The only supported implicit broadcast is from width `1` to
+        `target_features`, guarded by `allow_from_one`.
+
+        Args:
+            target_features: Desired feature width.
+            allow_from_one: Whether width-1 contexts may be repeated.
+
+        Raises:
+            ShapeError: If width adaptation is not allowed or impossible.
+        """
+        current_features = int(self.channel_index.shape[1])
+        if current_features == target_features:
+            return
+
+        if allow_from_one and current_features == 1:
+            # Repeat along feature axis while preserving per-row batch semantics.
+            self.update(
+                channel_index=self.channel_index.repeat(1, target_features),
+                mask=self.mask.repeat(1, target_features),
+            )
+            return
+
+        if allow_from_one:
+            expected = f"{target_features} or 1"
+        else:
+            expected = str(target_features)
+        raise ShapeError(
+            "Received incompatible sampling context feature width: "
+            f"got {current_features}, expected {expected}."
+        )
+
+    def repeat_split_feature_width(self, num_splits: int, target_features: int) -> None:
+        """Expand split-sized contexts to full input width by feature repetition.
+
+        Args:
+            num_splits: Number of split branches.
+            target_features: Target full feature width.
+
+        Raises:
+            InvalidParameterError: If `num_splits < 1`.
+            ShapeError: If split sizing is incompatible with the target width.
+        """
+        if num_splits < 1:
+            raise InvalidParameterError(f"num_splits must be >= 1, got {num_splits}.")
+
+        current_features = int(self.channel_index.shape[1])
+        if current_features == target_features:
+            return
+
+        if target_features % num_splits != 0:
+            raise ShapeError(
+                "Cannot adapt split-sized sampling context: "
+                f"target features {target_features} are not divisible by num_splits {num_splits}."
+            )
+
+        split_features = target_features // num_splits
+        if current_features != split_features:
+            raise ShapeError(
+                "Received incompatible sampling context feature width: "
+                f"got {current_features}, expected {target_features} or split width {split_features}."
+            )
+
+        self.update(
+            channel_index=self.channel_index.repeat(1, num_splits),
+            mask=self.mask.repeat(1, num_splits),
+        )
+
+    def scatter_split_groups_to_input_width(
+        self,
+        index_groups: Sequence[Sequence[int]],
+        input_features: int,
+    ) -> None:
+        """Scatter split-sized routing tensors into full input-feature positions.
+
+        Args:
+            index_groups: Feature-index groups defining split placement.
+            input_features: Required full input feature width.
+
+        Raises:
+            InvalidParameterError: If index groups are not an exact partition of
+                `[0, input_features)`.
+            ShapeError: If context width cannot be interpreted as a common
+                split-sized width.
+        """
+        current_features = int(self.channel_index.shape[1])
+        if current_features == input_features:
+            return
+
+        flat_indices: list[int] = [idx for group in index_groups for idx in group]
+        if sorted(flat_indices) != list(range(input_features)):
+            raise InvalidParameterError("index_groups must cover all input features exactly once.")
+
+        split_sizes = [len(group) for group in index_groups]
+        if any(size != current_features for size in split_sizes):
+            raise ShapeError(
+                "Received incompatible sampling context feature width: "
+                f"got {current_features}, expected {input_features} or common split width {split_sizes}."
+            )
+
+        # Build full-width tensors and place each split routing slice at its
+        # destination feature positions.
+        channel_index = self.channel_index.new_zeros((self.channel_index.shape[0], input_features))
+        mask = self.mask.new_zeros((self.mask.shape[0], input_features))
+        for group in index_groups:
+            dest = torch.as_tensor(group, dtype=torch.long, device=self.channel_index.device)
+            channel_index[:, dest] = self.channel_index
+            mask[:, dest] = self.mask
+        self.update(channel_index=channel_index, mask=mask)
+
+    def slice_feature_ranges(self, ranges: Sequence[tuple[int, int]]) -> list[tuple[Tensor, Tensor]]:
+        """Slice per-child contiguous feature ranges from a full-width context.
+
+        Args:
+            ranges: Inclusive-exclusive `(start, end)` feature ranges.
+
+        Returns:
+            List of `(channel_index_slice, mask_slice)` tuples, one per range.
+
+        Raises:
+            InvalidParameterError: If any range is outside the context width or has
+                invalid bounds.
+        """
+        ctx_features = int(self.channel_index.shape[1])
+        out: list[tuple[Tensor, Tensor]] = []
+        for start, end in ranges:
+            if start < 0 or end < start or end > ctx_features:
+                raise InvalidParameterError(
+                    f"Received invalid feature slice range ({start}, {end}) "
+                    f"for context width {ctx_features}."
+                )
+            out.append((self.channel_index[:, start:end], self.mask[:, start:end]))
+        return out
+
+    def route_channel_offsets(
+        self,
+        child_channel_counts: Sequence[int],
+    ) -> list[tuple[Tensor, Tensor]]:
+        """Route global channel ids into child-local channel ids with masks.
+
+        Args:
+            child_channel_counts: Number of channels per child in concatenation
+                order.
+
+        Returns:
+            List of `(local_channel_index, child_mask)` tuples, one per child.
+
+        Raises:
+            InvalidParameterError: If any child channel count is less than 1.
+        """
+        if any(count < 1 for count in child_channel_counts):
+            raise InvalidParameterError("child_channel_counts must all be >= 1.")
+
+        out: list[tuple[Tensor, Tensor]] = []
+        global_channel_index = self.channel_index
+        offset = 0
+        for child_channels in child_channel_counts:
+            child_start = offset
+            child_end = offset + child_channels
+            in_child_range = (global_channel_index >= child_start) & (global_channel_index < child_end)
+            local_channel_index = global_channel_index - child_start
+            local_channel_index = torch.where(
+                in_child_range,
+                local_channel_index,
+                # Keep unrouted positions in-bounds for downstream gather ops.
+                torch.zeros_like(local_channel_index),
+            )
+            child_mask = in_child_range & self.mask
+            out.append((local_channel_index, child_mask))
+            offset = child_end
+        return out
+
     def __repr__(self) -> str:
         return f"SamplingContext(channel_index.shape={self.channel_index.shape}), mask.shape={self.mask.shape}), num_samples={self.channel_index.shape[0]})"
 
@@ -265,8 +457,28 @@ def require_sampling_context(
     module_out_shape: object | None = None,
     device: torch.device | None = None,
 ) -> SamplingContext:
-    """Require explicit sampling context for internal sampling calls."""
+    """Validate or bootstrap sampling context for internal sampling calls.
+
+    Internal module calls are expected to receive a context from their parent.
+    The only bootstrap exception is a structural scalar node
+    (`features == 1` and `channels == 1`), where creating a default context is
+    shape-safe and does not require routing decisions.
+
+    Args:
+        sampling_ctx: Existing context from the parent call.
+        num_samples: Expected batch size for validation.
+        module_out_shape: Shape-like object used only for bootstrap eligibility.
+        device: Device used when bootstrap allocation is required.
+
+    Returns:
+        A validated or newly created `SamplingContext`.
+
+    Raises:
+        InvalidParameterError: If context is missing for non-bootstrapable
+            modules, or if batch dimensions mismatch.
+    """
     if sampling_ctx is None:
+        # Bootstrapping is intentionally narrow to avoid hiding routing bugs.
         can_bootstrap = (
             module_out_shape is not None
             and hasattr(module_out_shape, "features")
@@ -297,7 +509,19 @@ def require_sampling_context(
 
 
 def update_channel_index_strict(sampling_ctx: SamplingContext, new_channel_index: Tensor) -> None:
-    """Update channel_index with strict shape checks against the existing mask."""
+    """Replace `channel_index` while preserving context feature-layout invariants.
+
+    This helper is used when only channel assignments change but the feature
+    layout (and therefore `mask` shape) must remain exactly the same.
+
+    Args:
+        sampling_ctx: Context to update.
+        new_channel_index: New per-sample, per-feature channel assignments.
+
+    Raises:
+        ShapeError: If batch size or feature width differs from the existing
+            context mask.
+    """
     if new_channel_index.shape[0] != sampling_ctx.mask.shape[0]:
         raise ShapeError(
             "sampling_ctx.channel_index batch mismatch for update: "
@@ -309,3 +533,4 @@ def update_channel_index_strict(sampling_ctx: SamplingContext, new_channel_index
             f"got {sampling_ctx.mask.shape[1]}, expected {new_channel_index.shape[1]}."
         )
     sampling_ctx.channel_index = new_channel_index
+

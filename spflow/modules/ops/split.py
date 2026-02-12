@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional
 
 from torch import Tensor, nn
 
-from spflow.exceptions import InvalidParameterError, ShapeError
+from spflow.exceptions import InvalidParameterError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -272,13 +272,7 @@ class Split(Module, ABC):
             device=data.device,
         )
 
-        num_input_features = self.inputs.out_shape.features
-        ctx_features = sampling_ctx.mask.shape[1]
-        if ctx_features != num_input_features:
-            raise ShapeError(
-                "Split.sample received incompatible sampling context feature width: "
-                f"got {ctx_features}, expected {num_input_features}."
-            )
+        sampling_ctx.require_feature_width(expected_features=self.inputs.out_shape.features)
 
         self.inputs._sample(
             data=data,

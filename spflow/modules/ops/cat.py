@@ -6,7 +6,6 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
-from spflow.exceptions import ShapeError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -133,62 +132,26 @@ class Cat(Module):
             module_out_shape=self.out_shape,
             device=data.device,
         )
-        ctx_features = sampling_ctx.channel_index.shape[1]
 
         if self.dim == 1:
-            if ctx_features != self.out_shape.features:
-                raise ShapeError(
-                    "Cat.sample received incompatible sampling context feature width for dim=1: "
-                    f"got {ctx_features}, expected {self.out_shape.features}."
-                )
-            # When concatenating features (dim=1), we need to split the sampling context
-            # for each input module based on which INTERNAL feature indices belong to that module.
-            #
-            # IMPORTANT: sampling_ctx.channel_index and mask are indexed by internal feature
-            # position (0, 1, 2, ..., total_features-1), NOT by scope indices. Each module's
-            # features occupy a contiguous range in the concatenated output.
-            channel_index_per_module = []
-            mask_per_module = []
+            sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
+            ranges: list[tuple[int, int]] = []
             feature_offset = 0
             for module in self.inputs:
-                # Get the internal feature indices for this module (contiguous range)
                 num_features = module.out_shape.features
-                feature_indices = list(range(feature_offset, feature_offset + num_features))
-                channel_index_per_module.append(sampling_ctx.channel_index[:, feature_indices])
-                mask_per_module.append(sampling_ctx.mask[:, feature_indices])
+                ranges.append((feature_offset, feature_offset + num_features))
                 feature_offset += num_features
+            per_module = sampling_ctx.slice_feature_ranges(ranges=ranges)
+            channel_index_per_module = [pair[0] for pair in per_module]
+            mask_per_module = [pair[1] for pair in per_module]
 
         elif self.dim == 2:
-            if ctx_features != self.out_shape.features:
-                raise ShapeError(
-                    "Cat.sample received incompatible sampling context feature width for dim=2: "
-                    f"got {ctx_features}, expected {self.out_shape.features}."
-                )
-            # Concatenation happens at out_channels
-            # Route global channel ids to each child via explicit channel offsets.
-            channel_index_per_module = []
-            mask_per_module = []
-            global_channel_index = sampling_ctx.channel_index
-
-            channel_offset = 0
-            for module in self.inputs:
-                child_channels = int(module.out_shape.channels)
-                child_start = channel_offset
-                child_end = channel_offset + child_channels
-
-                in_child_range = (global_channel_index >= child_start) & (global_channel_index < child_end)
-                local_channel_index = global_channel_index - child_start
-                # Keep non-routed positions in-range for downstream gathers.
-                local_channel_index = torch.where(
-                    in_child_range,
-                    local_channel_index,
-                    torch.zeros_like(local_channel_index),
-                )
-                child_mask = in_child_range & sampling_ctx.mask
-
-                channel_index_per_module.append(local_channel_index)
-                mask_per_module.append(child_mask)
-                channel_offset = child_end
+            sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
+            per_module = sampling_ctx.route_channel_offsets(
+                child_channel_counts=[int(module.out_shape.channels) for module in self.inputs],
+            )
+            channel_index_per_module = [pair[0] for pair in per_module]
+            mask_per_module = [pair[1] for pair in per_module]
 
         else:
             raise ValueError("Invalid dimension for concatenation.")
