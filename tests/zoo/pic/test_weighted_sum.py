@@ -353,8 +353,9 @@ class TestWeightedSumSamplingAndMarginalize:
             mask=torch.ones((2, 2), dtype=torch.bool),
             repetition_index=torch.zeros(2, dtype=torch.long),
         )
-        # Deliberately introduce a narrower mask so WeightedSum hits the update() branch.
-        sampling_ctx.mask = torch.ones((2, 1), dtype=torch.bool)
+        # Deliberately introduce a narrower mask (bypassing public setter invariants)
+        # so WeightedSum hits strict update-time shape validation.
+        sampling_ctx._mask = torch.ones((2, 1), dtype=torch.bool)  # type: ignore[attr-defined]
         with pytest.raises(ShapeError, match="incompatible feature width"):
             ws.sample(data=torch.full((2, 2), float("nan")), is_mpe=True, sampling_ctx=sampling_ctx)
 

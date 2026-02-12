@@ -171,7 +171,7 @@ class SamplingContext:
 
     @mask.setter
     def mask(self, mask):
-        if mask.shape[0] != self._channel_index.shape[0]:
+        if mask.shape != self._channel_index.shape:
             raise InvalidParameterError("New mask and previous channel_index must have the same shape.")
         _check_mask_bool(mask)
         self._mask = mask
@@ -243,6 +243,16 @@ def build_root_sampling_context(
         raise InvalidParameterError(
             f"{module_name}.sample received sampling_ctx with batch={sampling_ctx.channel_index.shape[0]}, "
             f"expected {num_samples}."
+        )
+    if sampling_ctx.channel_index.shape != sampling_ctx.mask.shape:
+        raise InvalidParameterError(
+            f"{module_name}.sample received sampling_ctx with mismatched channel_index/mask shapes: "
+            f"{tuple(sampling_ctx.channel_index.shape)} vs {tuple(sampling_ctx.mask.shape)}."
+        )
+    if sampling_ctx.channel_index.shape[1] != num_features:
+        raise InvalidParameterError(
+            f"{module_name}.sample received sampling_ctx with features={sampling_ctx.channel_index.shape[1]}, "
+            f"expected {num_features}."
         )
 
     return sampling_ctx

@@ -167,19 +167,30 @@ class Cat(Module):
                     f"got {ctx_features}, expected {self.out_shape.features}."
                 )
             # Concatenation happens at out_channels
-            # Therefore, we need to use modulo to get the correct output_ids
+            # Route global channel ids to each child via explicit channel offsets.
             channel_index_per_module = []
             mask_per_module = []
+            global_channel_index = sampling_ctx.channel_index
 
-            # Get split assignments
-            split_size = self.out_shape.channels // len(self.inputs)
-            split_assignment = sampling_ctx.channel_index // split_size
-            for i, _ in enumerate(self.inputs):
-                oids = sampling_ctx.channel_index
-                oids_mod = oids.remainder(split_size)
-                channel_index_per_module.append(oids_mod)
-                mask = (split_assignment == i) & sampling_ctx.mask
-                mask_per_module.append(mask)
+            channel_offset = 0
+            for module in self.inputs:
+                child_channels = int(module.out_shape.channels)
+                child_start = channel_offset
+                child_end = channel_offset + child_channels
+
+                in_child_range = (global_channel_index >= child_start) & (global_channel_index < child_end)
+                local_channel_index = global_channel_index - child_start
+                # Keep non-routed positions in-range for downstream gathers.
+                local_channel_index = torch.where(
+                    in_child_range,
+                    local_channel_index,
+                    torch.zeros_like(local_channel_index),
+                )
+                child_mask = in_child_range & sampling_ctx.mask
+
+                channel_index_per_module.append(local_channel_index)
+                mask_per_module.append(child_mask)
+                channel_offset = child_end
 
         else:
             raise ValueError("Invalid dimension for concatenation.")

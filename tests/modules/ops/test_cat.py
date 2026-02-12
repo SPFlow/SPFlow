@@ -7,7 +7,7 @@ import torch
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.meta import Scope
-from spflow.modules.leaves import Categorical, Binomial
+from spflow.modules.leaves import Binomial, Categorical, Normal
 from spflow.modules.ops import Cat
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
@@ -79,6 +79,48 @@ def test_sample(out_channels: int, out_features: int, num_reps, dim: int):
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()
+
+
+def test_sample_dim2_routes_unequal_child_channels_by_offsets():
+    scope = Scope([0, 1])
+    num_samples = 4
+
+    # Child A owns global channel [0], Child B owns global channels [1, 2, 3].
+    child_a = Normal(
+        scope=scope,
+        out_channels=1,
+        num_repetitions=1,
+        loc=torch.full((2, 1, 1), 100.0),
+        scale=torch.full((2, 1, 1), 1e-6),
+    )
+    child_b = Normal(
+        scope=scope,
+        out_channels=3,
+        num_repetitions=1,
+        loc=torch.tensor([0.0, 10.0, 20.0], dtype=torch.get_default_dtype()).view(1, 3, 1).repeat(2, 1, 1),
+        scale=torch.full((2, 3, 1), 1e-6),
+    )
+    module = Cat(inputs=[child_a, child_b], dim=2)
+
+    # Route each sample row through one global output channel.
+    global_channels = torch.tensor([0, 1, 2, 3], dtype=torch.long).view(num_samples, 1).repeat(1, 2)
+    sampling_ctx = SamplingContext(
+        channel_index=global_channels,
+        mask=torch.ones((num_samples, 2), dtype=torch.bool),
+        repetition_index=torch.zeros((num_samples,), dtype=torch.long),
+    )
+    data = torch.full((num_samples, 2), torch.nan)
+
+    samples = module.sample(data=data, is_mpe=True, sampling_ctx=sampling_ctx)
+
+    expected = torch.tensor([100.0, 0.0, 10.0, 20.0], dtype=samples.dtype)
+    for row_idx, value in enumerate(expected):
+        torch.testing.assert_close(
+            samples[row_idx],
+            torch.full((2,), value.item(), dtype=samples.dtype),
+            rtol=0.0,
+            atol=1e-4,
+        )
 
 
 @pytest.mark.parametrize("out_channels,out_features, num_reps, dim", params)
