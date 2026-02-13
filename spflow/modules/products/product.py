@@ -101,11 +101,6 @@ class Product(Module):
             Tensor: Generated samples.
         """
 
-        data, sampling_ctx = self._prepare_internal_sampling_inputs(
-            data=data,
-            sampling_ctx=sampling_ctx,
-        )
-
         sampling_ctx.broadcast_feature_width(
             target_features=self.inputs.out_shape.features,
             allow_from_one=True,

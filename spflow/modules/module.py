@@ -175,22 +175,6 @@ class Module(nn.Module, ABC):
 
         return data
 
-    def _prepare_internal_sampling_inputs(
-        self,
-        data: Tensor | None,
-        sampling_ctx: SamplingContext | None,
-    ) -> tuple[Tensor, SamplingContext]:
-        """Require a prepared data tensor and strict sampling context for internal modules."""
-        if data is None:
-            raise ValueError("Internal _sample(...) requires a prepared data tensor.")
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
-        )
-        return data, sampling_ctx
-
     @abstractmethod
     def log_likelihood(
         self,

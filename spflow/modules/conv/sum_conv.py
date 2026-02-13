@@ -262,10 +262,6 @@ class SumConv(Module):
         Returns:
             Tensor: Sampled values.
         """
-        data, sampling_ctx = self._prepare_internal_sampling_inputs(
-            data=data,
-            sampling_ctx=sampling_ctx,
-        )
         batch_size = data.shape[0]
 
         num_features = self.in_shape.features

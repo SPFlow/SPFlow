@@ -179,11 +179,6 @@ class SignedSum(Module):
 
         Only supported if all weights are >= 0 and no evidence is provided.
         """
-        data, sampling_ctx = self._prepare_internal_sampling_inputs(
-            data=data,
-            sampling_ctx=sampling_ctx,
-        )
-
         if torch.isfinite(data).any():
             raise UnsupportedOperationError(
                 "SignedSum.sample() does not support conditional sampling with evidence."

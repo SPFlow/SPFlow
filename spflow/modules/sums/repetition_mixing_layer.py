@@ -114,11 +114,6 @@ class RepetitionMixingLayer(Sum):
             Tensor: Generated samples.
         """
 
-        data, sampling_ctx = self._prepare_internal_sampling_inputs(
-            data=data,
-            sampling_ctx=sampling_ctx,
-        )
-
         batch_size = int(sampling_ctx.channel_index.shape[0])
         logits = repeat(self.logits, "f co r -> b f co r", b=batch_size)
 

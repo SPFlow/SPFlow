@@ -294,10 +294,6 @@ class Sum(Module):
         Returns:
             Tensor: Sampled values.
         """
-        data, sampling_ctx = self._prepare_internal_sampling_inputs(
-            data=data,
-            sampling_ctx=sampling_ctx,
-        )
         sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
 
         # Index into the correct weight channels given by parent module
