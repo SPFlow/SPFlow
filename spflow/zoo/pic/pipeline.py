@@ -22,7 +22,7 @@ import torch
 from einops import rearrange, repeat
 from torch import Tensor, nn
 
-from spflow.exceptions import InvalidParameterError, ShapeError, StructureError
+from spflow.exceptions import InvalidParameterError, ShapeError, StructureError, UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.meta.region_graph import Region, RegionGraph
 from spflow.modules.module import Module
@@ -31,7 +31,7 @@ from spflow.modules.ops.cat import Cat
 from spflow.modules.products.elementwise_product import ElementwiseProduct
 from spflow.modules.products.outer_product import OuterProduct
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 from spflow.zoo.pic.integral import Integral
 from spflow.zoo.pic.weighted_sum import WeightedSum
 from spflow.zoo.pic.functional_sharing import FunctionGroup
@@ -136,6 +136,18 @@ class PICSum(Module):
         del is_mpe
         raise NotImplementedError("PICSum is symbolic; materialize to QPC with pic2qpc().")
 
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        del data, sampling_ctx, cache, is_mpe
+        raise UnsupportedOperationError(
+            "PICSum is symbolic and does not support differentiable sampling (_rsample)."
+        )
+
     def marginalize(
         self, marg_rvs: list[int], prune: bool = True, cache=None
     ) -> Module | None:  # pragma: no cover
@@ -188,6 +200,18 @@ class PICProduct(Module):
         del cache
         del is_mpe
         raise NotImplementedError("PICProduct is symbolic; materialize to QPC with pic2qpc().")
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        del data, sampling_ctx, cache, is_mpe
+        raise UnsupportedOperationError(
+            "PICProduct is symbolic and does not support differentiable sampling (_rsample)."
+        )
 
     def marginalize(
         self, marg_rvs: list[int], prune: bool = True, cache=None

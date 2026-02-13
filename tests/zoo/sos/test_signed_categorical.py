@@ -2,10 +2,13 @@ import itertools
 import math
 
 import torch
+import pytest
 
+from spflow.exceptions import UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.categorical import Categorical
 from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import DifferentiableSamplingContext
 from spflow.zoo.sos import ExpSOCS, SignedCategorical, log_self_inner_product_scalar
 
 
@@ -72,3 +75,16 @@ def test_signed_categorical_triple_product_path_in_exp_socs():
         rtol=1e-7,
         atol=1e-10,
     )
+
+
+def test_signed_categorical_rsample_is_explicitly_unsupported():
+    leaf = SignedCategorical(
+        scope=Scope([0]),
+        out_channels=1,
+        num_repetitions=1,
+        K=2,
+        weights=torch.tensor([[[[0.1, -0.4]]]], dtype=torch.get_default_dtype()),
+    )
+
+    with pytest.raises(UnsupportedOperationError, match="differentiable sampling"):
+        leaf.rsample(num_samples=3)

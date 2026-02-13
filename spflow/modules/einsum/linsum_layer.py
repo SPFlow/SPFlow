@@ -26,8 +26,12 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.split import Split, SplitMode
 from spflow.modules.ops.split_consecutive import SplitConsecutive
 from spflow.utils.cache import Cache, cached
+from spflow.utils.differentiable_sampling import sample_categorical_differentiably
 from spflow.utils.projections import proj_convex_to_real
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import (
+    DifferentiableSamplingContext,
+    SamplingContext,
+)
 
 
 class LinsumLayer(Module):
@@ -310,13 +314,6 @@ class LinsumLayer(Module):
         """
         # Prepare data tensor
 
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
-        )
-
         # Get logits and select based on context
         logits = self.logits  # (D, O, R, C)
 
@@ -421,6 +418,142 @@ class LinsumLayer(Module):
 
         return data
 
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        """Route channel probabilities differentiably and recurse into children."""
+        sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
+        parent_channel_probs = sampling_ctx.resolve_channel_probs(
+            expected_channels=int(self.out_shape.channels),
+            module_name=f"{self.__class__.__name__}._rsample",
+        )
+
+        repetition_probs = sampling_ctx.resolve_repetition_probs(
+            expected_repetitions=int(self.out_shape.repetitions),
+            module_name=f"{self.__class__.__name__}._rsample",
+        )
+        batch_size = int(data.shape[0])
+
+        log_routing = torch.log_softmax(
+            self.logits / sampling_ctx.temperature_sums,
+            dim=-1,
+        )
+        log_routing = rearrange(log_routing, "f co r ci -> 1 f ci co r")
+        log_routing = log_routing.expand(batch_size, -1, -1, -1, -1)
+
+        left_ll = None
+        right_ll = None
+        if "log_likelihood" in cache:
+            if self._two_inputs:
+                left_ll = cache["log_likelihood"].get(self.inputs[0])
+                right_ll = cache["log_likelihood"].get(self.inputs[1])
+            else:
+                split_ll = cache["log_likelihood"].get(self.inputs)
+                if isinstance(split_ll, (list, tuple)) and len(split_ll) == 2:
+                    left_ll, right_ll = split_ll
+
+        if left_ll is not None and right_ll is not None:
+            if left_ll.ndim == 3:
+                left_ll = rearrange(left_ll, "b f ci -> b f ci 1")
+            if right_ll.ndim == 3:
+                right_ll = rearrange(right_ll, "b f ci -> b f ci 1")
+            if left_ll.ndim != 4 or right_ll.ndim != 4:
+                raise ShapeError(
+                    "Expected cached child log-likelihoods for LinsumLayer._rsample to have "
+                    f"rank 3 or 4, got ranks {left_ll.ndim} and {right_ll.ndim}."
+                )
+            if left_ll.shape != right_ll.shape:
+                raise ShapeError(
+                    "Cached child log-likelihood shape mismatch in LinsumLayer._rsample: "
+                    f"left={tuple(left_ll.shape)}, right={tuple(right_ll.shape)}."
+                )
+            if left_ll.shape[-1] != self.out_shape.repetitions:
+                raise ShapeError(
+                    "Cached child log-likelihood repetition width mismatch in "
+                    f"{self.__class__.__name__}._rsample: got {left_ll.shape[-1]}, "
+                    f"expected {self.out_shape.repetitions}."
+                )
+
+            joint_ll = left_ll + right_ll
+            log_routing = log_routing + rearrange(joint_ll, "b f ci r -> b f ci 1 r")
+            log_routing = log_routing - torch.logsumexp(log_routing, dim=2, keepdim=True)
+
+        routing_probs_by_rep = log_routing.exp()
+        routing_probs = torch.einsum("br,bfcor->bfco", repetition_probs, routing_probs_by_rep)
+
+        routed_selection = sample_categorical_differentiably(
+            logits=torch.log(routing_probs.clamp_min(1e-12)),
+            dim=2,
+            method=sampling_ctx.diff_method,
+            is_mpe=is_mpe,
+            hard=sampling_ctx.hard,
+            temperature=1.0,
+        )
+
+        child_channel_probs = torch.einsum("bfo,bfco->bfc", parent_channel_probs, routed_selection)
+        child_mask = sampling_ctx.mask & (child_channel_probs.sum(dim=-1) > 0.0)
+
+        norm = child_channel_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+        child_channel_probs = torch.where(
+            child_mask.unsqueeze(-1),
+            child_channel_probs / norm,
+            torch.zeros_like(child_channel_probs),
+        )
+
+        original_channel_probs = sampling_ctx.channel_probs
+        original_mask = sampling_ctx.mask
+        original_repetition_probs = sampling_ctx.repetition_probs
+
+        if self._two_inputs:
+            sampling_ctx.update_prob_routing(
+                channel_probs=child_channel_probs,
+                mask=child_mask,
+            )
+            sampling_ctx.repetition_probs = original_repetition_probs
+            self.inputs[0]._rsample(
+                data=data,
+                is_mpe=is_mpe,
+                cache=cache,
+                sampling_ctx=sampling_ctx,
+            )
+
+            sampling_ctx.update_prob_routing(
+                channel_probs=child_channel_probs,
+                mask=child_mask,
+            )
+            sampling_ctx.repetition_probs = original_repetition_probs
+            self.inputs[1]._rsample(
+                data=data,
+                is_mpe=is_mpe,
+                cache=cache,
+                sampling_ctx=sampling_ctx,
+            )
+        else:
+            full_channel_probs = self.inputs.merge_split_tensors(child_channel_probs, child_channel_probs)
+            full_mask = self.inputs.merge_split_tensors(child_mask, child_mask)
+            sampling_ctx.update_prob_routing(
+                channel_probs=full_channel_probs,
+                mask=full_mask,
+            )
+            sampling_ctx.repetition_probs = original_repetition_probs
+            self.inputs._rsample(
+                data=data,
+                is_mpe=is_mpe,
+                cache=cache,
+                sampling_ctx=sampling_ctx,
+            )
+
+        sampling_ctx.update_prob_routing(
+            channel_probs=original_channel_probs,
+            mask=original_mask,
+        )
+        sampling_ctx.repetition_probs = original_repetition_probs
+        return data
+
     def _expectation_maximization_step(
         self,
         data: Tensor,
@@ -472,7 +605,9 @@ class LinsumLayer(Module):
             self.inputs[0]._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
             self.inputs[1]._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
         else:
-            self.inputs.inputs._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
+            self.inputs.inputs._expectation_maximization_step(
+                data, bias_correction=bias_correction, cache=cache
+            )
 
     def marginalize(
         self,

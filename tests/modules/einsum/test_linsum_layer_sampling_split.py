@@ -40,7 +40,7 @@ class TestLinsumLayerSampling:
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
 
-        samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = module.sample(data=data)
 
         assert samples.shape == (num_samples, total_features)
         assert torch.isfinite(samples[:, module.scope.query]).all()
@@ -54,7 +54,7 @@ class TestLinsumLayerSampling:
         mask = torch.ones((num_samples, 2), dtype=torch.bool)
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
 
-        samples = module.sample(data=data, is_mpe=True, sampling_ctx=sampling_ctx)
+        samples = module.sample(data=data, is_mpe=True)
 
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()
@@ -97,7 +97,7 @@ class TestLinsumLayerSplitConsecutiveOptimization:
         mask = torch.ones((num_samples, 2), dtype=torch.bool)
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
 
-        samples = linsum.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = linsum.sample(data=data)
 
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()
@@ -120,6 +120,6 @@ class TestLinsumLayerSplitConsecutiveOptimization:
         mask = torch.ones((num_samples, 2), dtype=torch.bool)
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
 
-        samples = linsum.sample(data=sample_data, sampling_ctx=sampling_ctx)
+        samples = linsum.sample(data=sample_data)
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()

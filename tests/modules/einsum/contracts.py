@@ -121,7 +121,7 @@ class EinsumLikeContractTests(ABC):
         repetition_index = torch.randint(low=0, high=num_reps, size=(n,))
         ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
 
-        samples = module.sample(data=data, sampling_ctx=ctx)
+        samples = module.sample(data=data)
         assert samples.shape == (n, 4)
         assert torch.isfinite(samples[:, module.scope.query]).all()
 

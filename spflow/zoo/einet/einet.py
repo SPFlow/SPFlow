@@ -29,8 +29,9 @@ from spflow.modules.rat.factorize import Factorize
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
+from spflow.utils.differentiable_sampling import sample_categorical_differentiably
 from spflow.utils.inference import log_posterior
-from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 
 
 class Einet(Module, Classifier):
@@ -389,7 +390,6 @@ class Einet(Module, Classifier):
         data: torch.Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> torch.Tensor:
         """Generate samples from the Einet.
 
@@ -414,67 +414,40 @@ class Einet(Module, Classifier):
                 "works for both structures."
             )
 
-        # Handle num_samples case
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, self.num_features), torch.nan, device=self.device)
-        if cache is None:
-            cache = Cache()
-
-        # Conditional sampling needs forward log-likelihoods in the cache.
-        if self._has_partial_evidence(data):
-            self.log_likelihood(data, cache=cache)
-
-        batch_size = data.shape[0]
-
-        root_num_features = 1
-        root_out_shape = getattr(self.root_node, "out_shape", None)
-        if root_out_shape is not None and hasattr(root_out_shape, "features"):
-            root_num_features = int(root_out_shape.features)
-
-        # Initialize sampling context at root
-        sampling_ctx = build_root_sampling_context(
-            sampling_ctx,
-            module_name=self.__class__.__name__,
-            num_samples=batch_size,
-            num_features=root_num_features,
-            device=data.device,
-        )
-
-        # Always initialize repetition_idx (required by Factorize.sample())
-        if sampling_ctx.repetition_idx is None:
-            if self.num_repetitions == 1:
-                # Single repetition: use index 0 for all samples
-                sampling_ctx.repetition_idx = torch.zeros(batch_size, dtype=torch.long, device=data.device)
-            # For num_repetitions > 1, RepetitionMixingLayer will set this
-
-        # Handle class sampling for multi-class models
-        if self.num_classes > 1:
-            logits = self.root_node.logits
-            if logits.shape != (1, self.num_classes, 1):
-                raise InvalidParameterError(
-                    f"Expected logits shape (1, {self.num_classes}, 1), got {logits.shape}"
-                )
-            logits = rearrange(logits, "1 co 1 -> 1 1 co")
-            logits = repeat(logits, "1 1 co -> b 1 co", b=batch_size)
-
-            if is_mpe:
-                sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
-            else:
-                sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
-
-        # Sample from appropriate root
-        if self.num_classes > 1:
-            sample_root = self.root_node.inputs
-        else:
-            sample_root = self.root_node
-
-        return sample_root.sample(
+        return super().sample(
+            num_samples=num_samples,
             data=data,
             is_mpe=is_mpe,
             cache=cache,
-            sampling_ctx=sampling_ctx,
+        )
+
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: torch.Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        diff_method: Literal["simple", "gumbel"] = "simple",
+        hard: bool = False,
+        temperature_sums: float = 1.0,
+        temperature_leaves: float = 1.0,
+    ) -> torch.Tensor:
+        """Generate differentiable samples from the Einet."""
+        if self.structure == "bottom-up":
+            raise NotImplementedError(
+                "Differentiable sampling from bottom-up Einet structure is not yet implemented. "
+                "Use structure='top-down' for rsample()."
+            )
+
+        return super().rsample(
+            num_samples=num_samples,
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            diff_method=diff_method,
+            hard=hard,
+            temperature_sums=temperature_sums,
+            temperature_leaves=temperature_leaves,
         )
 
     def _sample(
@@ -484,13 +457,110 @@ class Einet(Module, Classifier):
         cache: Cache,
         is_mpe: bool = False,
     ) -> torch.Tensor:
-        return self.sample(
-            num_samples=None,
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
+        if self.structure == "bottom-up":
+            raise NotImplementedError(
+                "Sampling from bottom-up Einet structure is not yet implemented. "
+                "Use structure='top-down' for sampling, or use log_likelihood() which "
+                "works for both structures."
+            )
+        if self._has_partial_evidence(data):
+            self.log_likelihood(data, cache=cache)
+        if self.num_classes > 1:
+            logits = self.root_node.logits
+            if logits.shape == (1, self.num_classes, 1, 1):
+                logits = rearrange(logits, "1 ci 1 1 -> 1 1 ci")
+            elif logits.shape == (1, self.num_classes, 1):
+                logits = rearrange(logits, "1 ci 1 -> 1 1 ci")
+            else:
+                raise InvalidParameterError(
+                    f"Expected logits shape (1, {self.num_classes}, 1), got {tuple(logits.shape)}."
+                )
+            logits = repeat(logits, "1 1 ci -> b 1 ci", b=data.shape[0])
+            if is_mpe:
+                sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
+            else:
+                sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
+
+            if hasattr(self.root_node.inputs, "_sample"):
+                return self.root_node.inputs._sample(
+                    data=data,
+                    is_mpe=is_mpe,
+                    cache=cache,
+                    sampling_ctx=sampling_ctx,
+                )
+
+            return self.root_node.inputs.sample(
+                data=data,
+                is_mpe=is_mpe,
+                cache=cache,
+                sampling_ctx=sampling_ctx,
+            )
+
+        return self.root_node._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+
+    def _rsample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        if self.structure == "bottom-up":
+            raise NotImplementedError(
+                "Differentiable sampling from bottom-up Einet structure is not yet implemented. "
+                "Use structure='top-down' for rsample()."
+            )
+        if self._has_partial_evidence(data):
+            self.log_likelihood(data, cache=cache)
+
+        has_root_class_sum = (
+            self.num_classes > 1
+            and isinstance(self.root_node, Sum)
+            and not isinstance(self.root_node, RepetitionMixingLayer)
         )
+        if has_root_class_sum:
+            logits = self.root_node.logits
+            if logits.shape == (1, self.num_classes, 1, 1):
+                logits = rearrange(logits, "1 ci 1 1 -> 1 1 ci")
+            elif logits.shape == (1, self.num_classes, 1):
+                logits = rearrange(logits, "1 ci 1 -> 1 1 ci")
+            else:
+                raise InvalidParameterError(
+                    f"Expected logits shape (1, {self.num_classes}, 1), got {tuple(logits.shape)}."
+                )
+            logits = repeat(logits, "1 1 ci -> b 1 ci", b=data.shape[0])
+            root_channel_probs = sample_categorical_differentiably(
+                logits=logits,
+                dim=-1,
+                method=sampling_ctx.diff_method,
+                is_mpe=is_mpe,
+                hard=sampling_ctx.hard,
+                temperature=sampling_ctx.temperature_sums,
+            )
+            sampling_ctx.update_prob_routing(
+                channel_probs=root_channel_probs,
+                mask=torch.ones((data.shape[0], 1), dtype=torch.bool, device=data.device),
+            )
+            return self.root_node.inputs._rsample(
+                data=data,
+                is_mpe=is_mpe,
+                cache=cache,
+                sampling_ctx=sampling_ctx,
+            )
+
+        if self.num_classes > 1 and isinstance(self.root_node, RepetitionMixingLayer):
+            uniform_root_probs = torch.full(
+                (data.shape[0], 1, self.num_classes),
+                1.0 / float(self.num_classes),
+                dtype=sampling_ctx.channel_probs.dtype,
+                device=data.device,
+            )
+            sampling_ctx.update_prob_routing(
+                channel_probs=uniform_root_probs,
+                mask=torch.ones((data.shape[0], 1), dtype=torch.bool, device=data.device),
+            )
+
+        return self.root_node._rsample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
     def _expectation_maximization_step(
         self,

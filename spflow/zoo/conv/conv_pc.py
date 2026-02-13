@@ -7,6 +7,7 @@ SumConv and ProdConv layers on top of a leaf distribution.
 from __future__ import annotations
 
 import math
+from typing import Literal
 
 import numpy as np
 import torch
@@ -20,7 +21,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.sums import Sum
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 
 
 def compute_non_overlapping_kernel_and_padding(
@@ -283,54 +284,13 @@ class ConvPc(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
-        """Generate samples by sampling top-down through layers.
-
-        Delegates sampling to the root module (RepetitionMixingLayer when
-        num_repetitions > 1, or Sum when num_repetitions == 1), which then
-        recursively propagates sampling to the leaf.
-
-        Args:
-            num_samples: Number of samples to generate.
-            data: Data tensor with NaN values to fill with samples.
-            is_mpe: Whether to perform maximum a posteriori estimation.
-            cache: Optional cache dictionary.
-            sampling_ctx: Optional sampling context.
-
-        Returns:
-            Tensor: Sampled values of shape (num_samples, num_pixels).
-        """
-        # Handle num_samples case
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, len(self.scope.query)), float("nan")).to(self.device)
-        if cache is None:
-            cache = Cache()
-
-        # Conditional sampling needs forward log-likelihoods in the cache.
-        if self._has_partial_evidence(data):
-            self.log_likelihood(data, cache=cache)
-
-        sampling_ctx = build_root_sampling_context(
-            sampling_ctx,
-            module_name=self.__class__.__name__,
-            num_samples=data.shape[0],
-            num_features=self.inputs.out_shape.features,
-            device=data.device,
-        )
-
-        # Delegate to root (RepetitionMixingLayer or Sum)
-        # which handles channel/repetition sampling internally
-        self.inputs._sample(
+        return super().sample(
+            num_samples=num_samples,
             data=data,
             is_mpe=is_mpe,
             cache=cache,
-            sampling_ctx=sampling_ctx,
         )
-
-        return data
 
     def _sample(
         self,
@@ -339,14 +299,53 @@ class ConvPc(Module):
         cache: Cache,
         is_mpe: bool = False,
     ) -> Tensor:
-        return self.sample(
-            num_samples=None,
+        if self._has_partial_evidence(data):
+            self.log_likelihood(data, cache=cache)
+        self.inputs._sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )
+        return data
 
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        diff_method: Literal["simple", "gumbel"] = "simple",
+        hard: bool = False,
+        temperature_sums: float = 1.0,
+        temperature_leaves: float = 1.0,
+    ) -> Tensor:
+        return super().rsample(
+            num_samples=num_samples,
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            diff_method=diff_method,
+            hard=hard,
+            temperature_sums=temperature_sums,
+            temperature_leaves=temperature_leaves,
+        )
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        if self._has_partial_evidence(data):
+            self.log_likelihood(data, cache=cache)
+        return self.inputs._rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
 
     def _expectation_maximization_step(
         self,

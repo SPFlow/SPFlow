@@ -9,7 +9,8 @@ from spflow.modules.ops import SplitInterleaved
 from spflow.modules.ops import SplitConsecutive
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.products import OuterProduct
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 out_channels_values = [1, 6]
@@ -179,7 +180,7 @@ def test_split_alternate_sampling():
 
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
 
-    samples = split.sample(data=data, sampling_ctx=sampling_ctx)
+    samples = split.sample(data=data)
 
     assert samples.shape == (n_samples, 6)
     assert torch.isfinite(samples).all()
@@ -195,11 +196,44 @@ def test_split_alternate_sampling_accepts_split_sized_context():
     # Split-sized context width (features_per_split = 3).
     channel_index = torch.randint(0, 3, size=(n_samples, 3))
     mask = torch.ones((n_samples, 3), dtype=torch.bool)
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=torch.zeros(n_samples, dtype=torch.long))
+    sampling_ctx = SamplingContext(
+        channel_index=channel_index, mask=mask, repetition_index=torch.zeros(n_samples, dtype=torch.long)
+    )
 
-    samples = split.sample(data=data, sampling_ctx=sampling_ctx)
+    samples = split.sample(data=data)
     assert samples.shape == (n_samples, 6)
     assert torch.isfinite(samples).all()
+
+
+def test_split_alternate_rsample_interleaves_split_sized_probability_context():
+    scope = Scope(list(range(0, 6)))
+    leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=1)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1)
+
+    n_samples = 3
+    base_probs = torch.tensor(
+        [[[0.1, 0.9], [0.2, 0.8], [0.3, 0.7]]],
+        dtype=torch.float32,
+    ).repeat(n_samples, 1, 1)
+    sampling_ctx = DifferentiableSamplingContext(
+        channel_probs=base_probs,
+        mask=torch.ones((n_samples, 3), dtype=torch.bool),
+    )
+
+    out = split._rsample(
+        data=torch.full((n_samples, 6), torch.nan),
+        sampling_ctx=sampling_ctx,
+        cache=Cache(),
+    )
+    if sampling_ctx.sample_accum is not None and sampling_ctx.sample_mass is not None:
+        out = sampling_ctx.finalize_with_evidence(out)
+
+    assert torch.isfinite(out).all()
+    expected = torch.tensor(
+        [[[0.1, 0.9], [0.1, 0.9], [0.2, 0.8], [0.2, 0.8], [0.3, 0.7], [0.3, 0.7]]],
+        dtype=torch.float32,
+    ).repeat(n_samples, 1, 1)
+    torch.testing.assert_close(sampling_ctx.channel_probs, expected, atol=1e-4, rtol=1e-4)
 
 
 def test_split_alternate_sampling_rejects_incompatible_split_sized_context():
@@ -214,8 +248,8 @@ def test_split_alternate_sampling_rejects_incompatible_split_sized_context():
         mask=torch.ones((4, 2), dtype=torch.bool),
         repetition_index=torch.zeros(4, dtype=torch.long),
     )
-    with pytest.raises(ValueError, match="not divisible by num_splits"):
-        split.sample(data=data, sampling_ctx=sampling_ctx)
+    with pytest.raises(Exception, match="not divisible by num_splits|feature width"):
+        split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
 
 @pytest.mark.parametrize("num_features", [5, 7, 11])

@@ -10,7 +10,8 @@ from spflow.learn import train_gradient_descent
 from spflow.meta import Scope
 from spflow.modules.leaves import Binomial, Categorical, Normal
 from spflow.modules.ops import Cat
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 out_channels_values = [1, 5]
@@ -76,7 +77,7 @@ def test_sample(out_channels: int, out_features: int, num_reps, dim: int):
     # Always set repetition_index since num_reps is never None
     repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+    samples = module.sample(data=data)
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()
@@ -112,7 +113,55 @@ def test_sample_dim2_routes_unequal_child_channels_by_offsets():
     )
     data = torch.full((num_samples, 2), torch.nan)
 
-    samples = module.sample(data=data, is_mpe=True, sampling_ctx=sampling_ctx)
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache(), is_mpe=True)
+
+    expected = torch.tensor([100.0, 0.0, 10.0, 20.0], dtype=samples.dtype)
+    for row_idx, value in enumerate(expected):
+        torch.testing.assert_close(
+            samples[row_idx],
+            torch.full((2,), value.item(), dtype=samples.dtype),
+            rtol=0.0,
+            atol=1e-4,
+        )
+
+
+def test_rsample_dim2_routes_probability_offsets():
+    scope = Scope([0, 1])
+    num_samples = 4
+
+    child_a = Normal(
+        scope=scope,
+        out_channels=1,
+        num_repetitions=1,
+        loc=torch.full((2, 1, 1), 100.0),
+        scale=torch.full((2, 1, 1), 1e-6),
+    )
+    child_b = Normal(
+        scope=scope,
+        out_channels=3,
+        num_repetitions=1,
+        loc=torch.tensor([0.0, 10.0, 20.0], dtype=torch.get_default_dtype()).view(1, 3, 1).repeat(2, 1, 1),
+        scale=torch.full((2, 3, 1), 1e-6),
+    )
+    module = Cat(inputs=[child_a, child_b], dim=2)
+
+    channel_probs = torch.zeros((num_samples, 2, 4), dtype=torch.float32)
+    channel_probs[0, :, 0] = 1.0
+    channel_probs[1, :, 1] = 1.0
+    channel_probs[2, :, 2] = 1.0
+    channel_probs[3, :, 3] = 1.0
+    sampling_ctx = DifferentiableSamplingContext(
+        channel_probs=channel_probs,
+        mask=torch.ones((num_samples, 2), dtype=torch.bool),
+    )
+
+    out = module._rsample(
+        data=torch.full((num_samples, 2), torch.nan),
+        sampling_ctx=sampling_ctx,
+        cache=Cache(),
+        is_mpe=True,
+    )
+    samples = sampling_ctx.finalize_with_evidence(out)
 
     expected = torch.tensor([100.0, 0.0, 10.0, 20.0], dtype=samples.dtype)
     for row_idx, value in enumerate(expected):
@@ -150,7 +199,7 @@ def test_sample_dim2_rejects_out_of_range_global_channel_id():
     data = torch.full((1, 2), torch.nan)
 
     with pytest.raises(InvalidParameterError, match="out-of-range channel ids"):
-        module.sample(data=data, is_mpe=True, sampling_ctx=sampling_ctx)
+        module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache(), is_mpe=True)
 
 
 @pytest.mark.parametrize("out_channels,out_features, num_reps, dim", params)

@@ -10,8 +10,9 @@ from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
 from spflow.meta import Scope
 from spflow.zoo.einet import Einet
 from spflow.modules.leaves.normal import Normal
+from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 
 
 # Test parameter values
@@ -272,6 +273,297 @@ class TestEinetSampling:
             model.sample(num_samples=10)
 
 
+class TestEinetDifferentiableSampling:
+    """Test differentiable sampling through Einet."""
+
+    @pytest.mark.parametrize("layer_type", layer_type_values)
+    def test_rsample_runs_and_backpropagates(self, layer_type: str):
+        leaf_modules = make_leaf_modules(4, 3, 2)
+        model = Einet(
+            leaf_modules=leaf_modules,
+            num_classes=1,
+            num_sums=5,
+            num_leaves=3,
+            depth=1,
+            num_repetitions=2,
+            layer_type=layer_type,
+            structure="top-down",
+        )
+
+        data = torch.full((6, 4), torch.nan)
+        samples = model.rsample(
+            data=data,
+            diff_method="gumbel",
+            hard=False,
+        )
+        assert samples.shape == data.shape
+        assert torch.isfinite(samples).all()
+
+        loss = samples.square().mean()
+        loss.backward()
+
+        assert model.root_node.logits.grad is not None
+        assert model.leaf_modules[0].loc.grad is not None
+
+    @pytest.mark.parametrize("layer_type", layer_type_values)
+    def test_rsample_preserves_evidence_and_tracks_sample_mass(self, layer_type: str):
+        model = Einet(
+            leaf_modules=make_leaf_modules(4, 3, 1),
+            num_classes=1,
+            num_sums=5,
+            num_leaves=3,
+            depth=1,
+            num_repetitions=1,
+            layer_type=layer_type,
+            structure="top-down",
+        )
+        data = torch.tensor(
+            [
+                [float("nan"), 7.0, float("nan"), float("nan")],
+                [1.0, float("nan"), float("nan"), 4.0],
+            ],
+            dtype=torch.float32,
+        )
+        observed_mask = ~torch.isnan(data)
+        expected_mass = torch.isnan(data).to(torch.float32)
+
+        sampling_ctx = DifferentiableSamplingContext(num_samples=data.shape[0])
+        samples = model._rsample(
+            data=data.clone(),
+            sampling_ctx=sampling_ctx,
+            cache=Cache(),
+            is_mpe=False,
+        )
+        if sampling_ctx.sample_accum is not None and sampling_ctx.sample_mass is not None:
+            samples = sampling_ctx.finalize_with_evidence(data.clone())
+
+        assert samples.shape == data.shape
+        assert torch.isfinite(samples).all()
+        torch.testing.assert_close(samples[observed_mask], data[observed_mask], rtol=0.0, atol=0.0)
+        assert sampling_ctx.sample_mass is not None
+        torch.testing.assert_close(
+            sampling_ctx.sample_mass,
+            expected_mass.to(dtype=sampling_ctx.sample_mass.dtype, device=sampling_ctx.sample_mass.device),
+            atol=1e-4,
+            rtol=1e-4,
+        )
+
+    def test_rsample_initializes_root_routing_context(self, monkeypatch):
+        model = Einet(
+            leaf_modules=make_leaf_modules(4, 3, 1),
+            num_classes=3,
+            num_sums=5,
+            num_leaves=3,
+            depth=1,
+            num_repetitions=1,
+            layer_type="einsum",
+            structure="top-down",
+        )
+
+        monkeypatch.setattr(
+            model.root_node,
+            "logits",
+            nn.Parameter(torch.tensor([[[0.0], [1.0], [2.0]]], dtype=torch.float32)),
+        )
+        sampling_ctx = DifferentiableSamplingContext(num_samples=3)
+
+        captured: dict[str, torch.Tensor] = {}
+
+        def capture_root_rsample(*, data, sampling_ctx, cache, is_mpe=False):
+            del data
+            del cache
+            del is_mpe
+            captured["channel_probs"] = sampling_ctx.channel_probs.clone()
+            captured["mask"] = sampling_ctx.mask.clone()
+            return torch.empty(0)
+
+        monkeypatch.setattr(model.root_node.inputs, "_rsample", capture_root_rsample)
+
+        model._rsample(
+            data=torch.full((3, 4), torch.nan),
+            sampling_ctx=sampling_ctx,
+            cache=Cache(),
+            is_mpe=True,
+        )
+
+        expected = torch.zeros((3, 1, model.num_classes), dtype=captured["channel_probs"].dtype)
+        expected[:, :, 2] = 1.0
+        torch.testing.assert_close(captured["channel_probs"], expected, atol=1e-6, rtol=1e-6)
+        torch.testing.assert_close(captured["mask"], torch.ones((3, 1), dtype=torch.bool))
+
+    def test_rsample_raises_when_root_logits_shape_is_invalid(self, monkeypatch):
+        model = Einet(
+            leaf_modules=make_leaf_modules(4, 3, 1),
+            num_classes=3,
+            num_sums=5,
+            num_leaves=3,
+            depth=1,
+            num_repetitions=1,
+            layer_type="linsum",
+            structure="top-down",
+        )
+        data = torch.full((2, 4), torch.nan)
+
+        monkeypatch.setattr(
+            model.root_node,
+            "logits",
+            nn.Parameter(torch.zeros(1, model.num_classes + 1, 1)),
+        )
+
+        with pytest.raises(InvalidParameterError):
+            model.rsample(data=data)
+
+    def test_bottom_up_rsample_not_implemented(self):
+        model = Einet(
+            leaf_modules=make_leaf_modules(4, 3, 2),
+            num_classes=1,
+            num_sums=5,
+            num_leaves=3,
+            depth=1,
+            num_repetitions=2,
+            layer_type="einsum",
+            structure="bottom-up",
+        )
+        with pytest.raises(NotImplementedError):
+            model.rsample(num_samples=4)
+
+    @pytest.mark.parametrize("layer_type", layer_type_values)
+    def test_rsample_multiclass_multirepetition_initializes_root_routing(self, layer_type: str, monkeypatch):
+        model = Einet(
+            leaf_modules=make_leaf_modules(4, 3, 3),
+            num_classes=3,
+            num_sums=5,
+            num_leaves=3,
+            depth=1,
+            num_repetitions=3,
+            layer_type=layer_type,
+            structure="top-down",
+        )
+
+        assert isinstance(model.root_node, RepetitionMixingLayer)
+
+        captured: dict[str, torch.Tensor] = {}
+
+        def capture_root_child_rsample(*, data, sampling_ctx, cache, is_mpe=False):
+            del data
+            del cache
+            del is_mpe
+            captured["channel_probs"] = sampling_ctx.channel_probs.clone()
+            captured["mask"] = sampling_ctx.mask.clone()
+            captured["repetition_probs"] = sampling_ctx.repetition_probs.clone()
+            return torch.empty(0)
+
+        monkeypatch.setattr(model.root_node.inputs, "_rsample", capture_root_child_rsample)
+
+        batch_size = 6
+        model.rsample(data=torch.full((batch_size, 4), torch.nan))
+
+        channel_probs = captured["channel_probs"]
+        repetition_probs = captured["repetition_probs"]
+        mask = captured["mask"]
+
+        assert channel_probs.shape == (batch_size, 1, model.num_classes)
+        torch.testing.assert_close(
+            channel_probs,
+            torch.full_like(channel_probs, 1.0 / model.num_classes),
+            atol=1e-6,
+            rtol=1e-6,
+        )
+        assert mask.shape == (batch_size, 1)
+        assert mask.all()
+
+        assert repetition_probs.shape == (batch_size, model.num_repetitions)
+        torch.testing.assert_close(
+            repetition_probs.sum(dim=-1),
+            torch.ones(batch_size, dtype=repetition_probs.dtype),
+            atol=1e-4,
+            rtol=1e-4,
+        )
+        assert torch.all(repetition_probs >= 0.0)
+
+    @pytest.mark.parametrize("layer_type", layer_type_values)
+    def test_rsample_multiclass_multirepetition_initializes_uniform_root_probs(
+        self, layer_type: str, monkeypatch
+    ):
+        model = Einet(
+            leaf_modules=make_leaf_modules(4, 3, 3),
+            num_classes=3,
+            num_sums=5,
+            num_leaves=3,
+            depth=1,
+            num_repetitions=3,
+            layer_type=layer_type,
+            structure="top-down",
+        )
+
+        assert isinstance(model.root_node, RepetitionMixingLayer)
+
+        captured: dict[str, torch.Tensor] = {}
+
+        def capture_root_child_rsample(*, data, sampling_ctx, cache, is_mpe=False):
+            del data
+            del cache
+            del is_mpe
+            captured["channel_probs"] = sampling_ctx.channel_probs.clone()
+            captured["repetition_probs"] = sampling_ctx.repetition_probs.clone()
+            return torch.empty(0)
+
+        monkeypatch.setattr(model.root_node.inputs, "_rsample", capture_root_child_rsample)
+
+        batch_size = 5
+        model.rsample(data=torch.full((batch_size, 4), torch.nan))
+
+        expected_channel_probs = torch.full(
+            (batch_size, 1, model.num_classes),
+            1.0 / model.num_classes,
+            dtype=captured["channel_probs"].dtype,
+        )
+        torch.testing.assert_close(captured["channel_probs"], expected_channel_probs, atol=1e-6, rtol=1e-6)
+        repetition_probs = captured["repetition_probs"]
+        assert repetition_probs.shape == (batch_size, model.num_repetitions)
+        torch.testing.assert_close(
+            repetition_probs.sum(dim=-1),
+            torch.ones(batch_size, dtype=repetition_probs.dtype),
+            atol=1e-4,
+            rtol=1e-4,
+        )
+
+    def test_rsample_multiclass_multirepetition_overrides_incompatible_channel_width(self, monkeypatch):
+        model = Einet(
+            leaf_modules=make_leaf_modules(4, 3, 3),
+            num_classes=3,
+            num_sums=5,
+            num_leaves=3,
+            depth=1,
+            num_repetitions=3,
+            layer_type="einsum",
+            structure="top-down",
+        )
+        bad_ctx = DifferentiableSamplingContext(
+            channel_probs=torch.full((2, 1, model.num_classes - 1), 0.5),
+            mask=torch.ones((2, 1), dtype=torch.bool),
+        )
+        captured: dict[str, torch.Tensor] = {}
+
+        def capture_root_child_rsample(*, data, sampling_ctx, cache, is_mpe=False):
+            del data
+            del cache
+            del is_mpe
+            captured["channel_probs"] = sampling_ctx.channel_probs.clone()
+            return torch.empty(0)
+
+        monkeypatch.setattr(model.root_node.inputs, "_rsample", capture_root_child_rsample)
+
+        model._rsample(
+            data=torch.full((2, 4), torch.nan),
+            sampling_ctx=bad_ctx,
+            cache=Cache(),
+            is_mpe=False,
+        )
+        expected = torch.full((2, 1, model.num_classes), 1.0 / model.num_classes, dtype=torch.float32)
+        torch.testing.assert_close(captured["channel_probs"], expected, atol=1e-6, rtol=1e-6)
+
+
 class TestEinetGradient:
     """Test gradient flow through Einet."""
 
@@ -458,7 +750,7 @@ class TestEinetAdditionalCoverage:
         sampling_ctx = SamplingContext(num_samples=4)
         data = torch.full((4, 4), torch.nan)
 
-        samples = model.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = model.sample(data=data)
 
         assert samples.shape == (4, 4)
         assert sampling_ctx.repetition_idx is not None

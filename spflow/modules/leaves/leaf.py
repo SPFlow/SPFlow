@@ -15,7 +15,10 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.leaves import apply_nan_strategy, parse_leaf_args
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import (
+    DifferentiableSamplingContext,
+    SamplingContext,
+)
 
 
 class LeafModule(Module, ABC):
@@ -354,7 +357,9 @@ class LeafModule(Module, ABC):
             # get cached log-likelihood gradients w.r.t. module log-likelihoods
             module_lls = cache["log_likelihood"].get(self)
             if module_lls is None:
-                raise MissingCacheError("Module log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError(
+                    "Module log-likelihoods not found in cache. Call log_likelihood first."
+                )
 
             expectations = module_lls.grad
             if expectations is None:
@@ -598,13 +603,6 @@ class LeafModule(Module, ABC):
         """
         # Prepare data tensor
 
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
-        )
-
         scope_cols = self._resolve_scope_columns(num_features=data.shape[1])
         out_of_scope = [idx for idx in range(data.shape[1]) if idx not in scope_cols]
         marg_mask = torch.isnan(data)
@@ -775,6 +773,137 @@ class LeafModule(Module, ABC):
 
         return data
 
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        """Differentiable sampling with additive writeback and sample-mass tracking."""
+        del cache
+
+        scope_cols = self._resolve_scope_columns(num_features=data.shape[1])
+        out_of_scope = [idx for idx in range(data.shape[1]) if idx not in scope_cols]
+        marg_mask = torch.isnan(data)
+        marg_mask[:, out_of_scope] = False
+
+        samples_mask = marg_mask
+        ctx_channel_probs, ctx_mask = self._slice_differentiable_sampling_context(
+            sampling_ctx=sampling_ctx,
+            num_features=data.shape[1],
+            scope_cols=scope_cols,
+        )
+        samples_mask[:, scope_cols] &= ctx_mask
+
+        instance_mask = samples_mask.sum(1) > 0
+        n_samples = int(instance_mask.sum().item())
+        if n_samples == 0:
+            return data
+
+        repetition_probs = sampling_ctx.resolve_repetition_probs(
+            expected_repetitions=int(self.out_shape.repetitions),
+            module_name="leaf _rsample",
+        )
+
+        if self.is_conditional:
+            evidence = data[instance_mask][:, self.scope.evidence]
+            dist = self.conditional_distribution(evidence)
+        else:
+            dist = self.distribution
+
+        if is_mpe:
+            if not hasattr(dist, "mode"):
+                raise UnsupportedOperationError(
+                    "Differentiable MPE sampling requires a distribution with a 'mode' attribute, "
+                    f"but {dist.__class__.__name__} does not provide one."
+                )
+            samples = dist.mode
+            if not self.is_conditional:
+                if samples.ndim == 1:
+                    samples = repeat(samples, "f -> n f", n=n_samples)
+                elif samples.ndim == 2:
+                    samples = repeat(samples, "f c -> n f c", n=n_samples)
+                elif samples.ndim == 3:
+                    samples = repeat(samples, "f c r -> n f c r", n=n_samples)
+        else:
+            if not hasattr(dist, "rsample"):
+                raise UnsupportedOperationError(
+                    f"Differentiable sampling for {self.__class__.__name__} requires a distribution "
+                    f"with rsample(), but {dist.__class__.__name__} does not provide one."
+                )
+            if self.is_conditional:
+                samples = dist.rsample()
+            else:
+                samples = dist.rsample((n_samples,))
+
+        if samples.ndim == 2:
+            samples = rearrange(samples, "b f -> b f 1")
+        elif samples.ndim == 3:
+            pass
+        elif samples.ndim == 4:
+            pass
+        else:
+            raise ValueError(
+                "Differentiable leaf sampling expects sampled tensors with rank 2, 3, or 4, "
+                f"got rank {samples.ndim}."
+            )
+
+        if samples.ndim == 4:
+            if samples.shape[-1] != self.out_shape.repetitions:
+                raise ValueError(
+                    "Leaf sample repetition axis mismatch in _rsample: "
+                    f"got {samples.shape[-1]}, expected {self.out_shape.repetitions}."
+                )
+            rep_probs = repetition_probs[instance_mask].to(dtype=samples.dtype, device=samples.device)
+            samples = torch.einsum("bfcr,br->bfc", samples, rep_probs)
+        elif self.out_shape.repetitions > 1:
+            raise ValueError(
+                "Leaf _rsample expected sampled tensor with repetition axis for "
+                f"num_repetitions={self.out_shape.repetitions}."
+            )
+
+        channel_probs = ctx_channel_probs[instance_mask].to(dtype=samples.dtype, device=samples.device)
+        if channel_probs.shape[-1] != samples.shape[-1]:
+            if samples.shape[-1] == 1:
+                channel_probs = channel_probs.sum(dim=-1, keepdim=True)
+            elif channel_probs.shape[-1] == 1:
+                expanded = channel_probs.new_zeros(
+                    (channel_probs.shape[0], channel_probs.shape[1], samples.shape[-1])
+                )
+                expanded[:, :, 0] = channel_probs[:, :, 0]
+                channel_probs = expanded
+            else:
+                raise ShapeError(
+                    "Differentiable sampling channel width mismatch in leaf _rsample: "
+                    f"got context width {channel_probs.shape[-1]}, sample width {samples.shape[-1]}."
+                )
+
+        sampled_values = torch.einsum("bfc,bfc->bf", samples, channel_probs)
+        sample_mass = channel_probs.sum(dim=-1)
+
+        values_full = torch.zeros_like(data)
+        weights_full = torch.zeros_like(data)
+
+        row_indices = instance_mask.nonzero(as_tuple=True)[0]
+        scope_idx = torch.tensor(scope_cols, dtype=torch.long, device=data.device)
+        num_scope_features = len(scope_idx)
+
+        rows = repeat(row_indices, "n -> n s", s=num_scope_features)
+        cols = repeat(scope_idx, "s -> n s", n=n_samples)
+        mask_subset = samples_mask[instance_mask][:, scope_cols]
+
+        values_full[rows[mask_subset], cols[mask_subset]] = sampled_values[mask_subset].to(data.dtype)
+        weights_full[rows[mask_subset], cols[mask_subset]] = sample_mass[mask_subset].to(data.dtype)
+
+        # Keep recursion purely additive; evidence merge happens at Module.rsample root.
+        sampling_ctx.accumulate_additive(
+            values_full,
+            weights=weights_full,
+            mask=samples_mask,
+        )
+
+        return data
 
     def _resolve_scope_columns(self, num_features: int) -> list[int]:
         """Resolve the column indices in `data` that correspond to this leaf's scope.
@@ -831,6 +960,27 @@ class LeafModule(Module, ABC):
 
         raise ShapeError(
             "SamplingContext feature dimension mismatch: "
+            f"got {ctx_features}, expected {scope_size} or {num_features}."
+        )
+
+    def _slice_differentiable_sampling_context(
+        self,
+        sampling_ctx: DifferentiableSamplingContext,
+        num_features: int,
+        scope_cols: list[int],
+    ) -> tuple[Tensor, Tensor]:
+        """Slice/expand differentiable context tensors to align with this leaf scope."""
+        ctx_features = sampling_ctx.mask.shape[1]
+        scope_size = len(scope_cols)
+
+        if ctx_features == scope_size:
+            return sampling_ctx.channel_probs, sampling_ctx.mask
+
+        if ctx_features == num_features:
+            return sampling_ctx.channel_probs[:, scope_cols, :], sampling_ctx.mask[:, scope_cols]
+
+        raise ShapeError(
+            "DifferentiableSamplingContext feature dimension mismatch: "
             f"got {ctx_features}, expected {scope_size} or {num_features}."
         )
 

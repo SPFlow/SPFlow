@@ -91,11 +91,11 @@ class TestLinsumLayerEquivalence:
 
         # Sample from Linsum
         torch.manual_seed(42)
-        sample_linsum = linsum.sample(num_samples=batch_size, sampling_ctx=ctx_common.copy())
+        sample_linsum = linsum.sample(num_samples=batch_size)
 
         # Sample from Sum(Prod)
         torch.manual_seed(42)
-        sample_sum = sum_layer.sample(num_samples=batch_size, sampling_ctx=ctx_common.copy())
+        sample_sum = sum_layer.sample(num_samples=batch_size)
 
         torch.testing.assert_close(sample_linsum, sample_sum, rtol=1e-5, atol=1e-8)
 
@@ -165,10 +165,10 @@ class TestLinsumLayerSingleInputEquivalence:
 
         # Sample from Linsum
         torch.manual_seed(42)
-        sample_linsum = linsum.sample(num_samples=batch_size, sampling_ctx=ctx_common.copy())
+        sample_linsum = linsum.sample(num_samples=batch_size)
 
         # Sample from Sum(Prod)
         torch.manual_seed(42)
-        sample_sum = sum_layer.sample(num_samples=batch_size, sampling_ctx=ctx_common.copy())
+        sample_sum = sum_layer.sample(num_samples=batch_size)
 
         torch.testing.assert_close(sample_linsum, sample_sum, rtol=1e-5, atol=1e-8)

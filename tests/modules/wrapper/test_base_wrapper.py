@@ -3,6 +3,7 @@
 import torch
 
 from spflow.modules.wrapper.base import Wrapper
+from spflow.utils.sampling_context import DifferentiableSamplingContext
 from tests.utils.leaves import make_normal_leaf
 
 
@@ -16,13 +17,14 @@ class _IdentityWrapper(Wrapper):
             data=data,
             is_mpe=is_mpe,
             cache=cache,
-            sampling_ctx=sampling_ctx,
         )
 
     def _expectation_maximization_step(self, data, bias_correction: bool = True, *, cache):
         return self.module._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
 
-    def maximum_likelihood_estimation(self, data, weights=None, bias_correction: bool = True, nan_strategy="ignore"):
+    def maximum_likelihood_estimation(
+        self, data, weights=None, bias_correction: bool = True, nan_strategy="ignore"
+    ):
         return self.module.maximum_likelihood_estimation(
             data=data,
             weights=weights,
@@ -61,3 +63,19 @@ def test_wrapper_log_likelihood_passthrough() -> None:
     data = torch.randn(4, 2)
     ll = wrapper.log_likelihood(data)
     assert ll.shape[0] == 4
+
+
+def test_wrapper_rsample_passthrough() -> None:
+    leaf = make_normal_leaf(out_features=2, out_channels=2, num_repetitions=1)
+    wrapper = _IdentityWrapper(module=leaf)
+    num_samples = 5
+    channel_probs = torch.rand((num_samples, wrapper.out_shape.features, wrapper.out_shape.channels))
+    channel_probs = channel_probs / channel_probs.sum(dim=-1, keepdim=True)
+    sampling_ctx = DifferentiableSamplingContext(
+        channel_probs=channel_probs,
+        mask=torch.ones((num_samples, wrapper.out_shape.features), dtype=torch.bool),
+    )
+
+    samples = wrapper.rsample(num_samples=num_samples, diff_method="gumbel")
+    assert samples.shape == (num_samples, 2)
+    assert torch.isfinite(samples).all()

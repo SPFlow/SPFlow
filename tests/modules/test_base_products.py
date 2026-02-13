@@ -6,9 +6,11 @@ import torch
 from spflow.exceptions import ScopeError, ShapeError
 from spflow.learn import expectation_maximization
 from spflow.meta import Scope
+from spflow.modules.ops.split import SplitMode
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.products.outer_product import OuterProduct
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_data, make_leaf, DummyLeaf
 
 cls_values = [ElementwiseProduct, OuterProduct]
@@ -102,7 +104,7 @@ def test_sample(cls, in_channels: int, out_features: int, num_reps):
     # Always set repetition_index since num_reps is never None
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+    samples = module.sample(data=data)
 
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
@@ -139,11 +141,209 @@ def test_sample_two_inputs_broadcasting_channels(cls, out_features: int, num_rep
     # Always set repetition_index since num_reps is never None
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+    samples = module.sample(data=data)
 
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()
+
+
+def test_rsample_elementwise_routes_parent_probabilities_to_children(monkeypatch):
+    out_features = 3
+    scope_a = Scope(list(range(out_features)))
+    scope_b = Scope(list(range(out_features, out_features * 2)))
+    inputs_a = make_leaf(cls=DummyLeaf, out_channels=2, scope=scope_a, num_repetitions=1)
+    inputs_b = make_leaf(cls=DummyLeaf, out_channels=2, scope=scope_b, num_repetitions=1)
+    module = ElementwiseProduct(inputs=[inputs_a, inputs_b])
+
+    channel_probs = torch.tensor(
+        [
+            [[0.8, 0.2], [0.3, 0.7], [0.5, 0.5]],
+            [[0.1, 0.9], [0.6, 0.4], [0.25, 0.75]],
+        ],
+        dtype=torch.float32,
+    )
+    mask = torch.tensor(
+        [
+            [True, True, False],
+            [True, False, True],
+        ],
+        dtype=torch.bool,
+    )
+    sampling_ctx = DifferentiableSamplingContext(channel_probs=channel_probs, mask=mask)
+
+    captured: list[tuple[torch.Tensor, torch.Tensor]] = []
+
+    def capture_rsample(*, data, sampling_ctx, cache, is_mpe=False):
+        del data
+        del cache
+        del is_mpe
+        captured.append((sampling_ctx.channel_probs.clone(), sampling_ctx.mask.clone()))
+        return torch.empty(0)
+
+    monkeypatch.setattr(module.inputs[0], "_rsample", capture_rsample)
+    monkeypatch.setattr(module.inputs[1], "_rsample", capture_rsample)
+
+    module._rsample(
+        data=torch.full((2, len(module.scope.query)), torch.nan),
+        sampling_ctx=sampling_ctx,
+        cache=Cache(),
+        is_mpe=False,
+    )
+
+    assert len(captured) == 2
+    expected_probs = torch.where(
+        mask.unsqueeze(-1),
+        channel_probs,
+        torch.zeros_like(channel_probs),
+    )
+    for child_probs, child_mask in captured:
+        torch.testing.assert_close(child_probs, expected_probs, atol=1e-6, rtol=1e-6)
+        torch.testing.assert_close(child_mask, mask)
+
+
+def test_rsample_outer_product_routes_channel_probabilities(monkeypatch):
+    out_features = 2
+    scope_a = Scope(list(range(out_features)))
+    scope_b = Scope(list(range(out_features, out_features * 2)))
+    inputs_a = make_leaf(cls=DummyLeaf, out_channels=2, scope=scope_a, num_repetitions=1)
+    inputs_b = make_leaf(cls=DummyLeaf, out_channels=2, scope=scope_b, num_repetitions=1)
+    module = OuterProduct(inputs=[inputs_a, inputs_b])
+
+    channel_probs = torch.tensor(
+        [
+            [
+                [0.10, 0.20, 0.30, 0.40],
+                [0.25, 0.25, 0.25, 0.25],
+            ]
+        ],
+        dtype=torch.float32,
+    )
+    mask = torch.tensor([[True, False]], dtype=torch.bool)
+    sampling_ctx = DifferentiableSamplingContext(channel_probs=channel_probs, mask=mask)
+
+    captured: list[tuple[torch.Tensor, torch.Tensor]] = []
+
+    def capture_rsample(*, data, sampling_ctx, cache, is_mpe=False):
+        del data
+        del cache
+        del is_mpe
+        captured.append((sampling_ctx.channel_probs.clone(), sampling_ctx.mask.clone()))
+        return torch.empty(0)
+
+    monkeypatch.setattr(module.inputs[0], "_rsample", capture_rsample)
+    monkeypatch.setattr(module.inputs[1], "_rsample", capture_rsample)
+
+    module._rsample(
+        data=torch.full((1, len(module.scope.query)), torch.nan),
+        sampling_ctx=sampling_ctx,
+        cache=Cache(),
+        is_mpe=False,
+    )
+
+    assert len(captured) == 2
+
+    expected_left = torch.tensor([[[0.30, 0.70], [0.0, 0.0]]], dtype=torch.float32)
+    expected_right = torch.tensor([[[0.40, 0.60], [0.0, 0.0]]], dtype=torch.float32)
+    expected_mask = torch.tensor([[True, False]], dtype=torch.bool)
+
+    torch.testing.assert_close(captured[0][0], expected_left, atol=1e-6, rtol=1e-6)
+    torch.testing.assert_close(captured[1][0], expected_right, atol=1e-6, rtol=1e-6)
+    torch.testing.assert_close(captured[0][1], expected_mask)
+    torch.testing.assert_close(captured[1][1], expected_mask)
+
+
+def test_rsample_elementwise_split_consecutive_routes_features(monkeypatch):
+    leaf = make_leaf(
+        cls=DummyLeaf,
+        out_channels=2,
+        scope=Scope([0, 1, 2, 3]),
+        num_repetitions=1,
+    )
+    module = ElementwiseProduct(inputs=leaf, num_splits=2)
+
+    parent_channel_probs = torch.tensor(
+        [[[0.8, 0.2], [0.3, 0.7]]],
+        dtype=torch.float32,
+    )
+    parent_mask = torch.tensor([[True, True]], dtype=torch.bool)
+    sampling_ctx = DifferentiableSamplingContext(channel_probs=parent_channel_probs, mask=parent_mask)
+
+    captured: dict[str, torch.Tensor] = {}
+
+    def capture_split_rsample(*, data, sampling_ctx, cache, is_mpe=False):
+        del data
+        del cache
+        del is_mpe
+        captured["channel_probs"] = sampling_ctx.channel_probs.clone()
+        captured["mask"] = sampling_ctx.mask.clone()
+        return torch.empty(0)
+
+    monkeypatch.setattr(module.inputs[0], "_rsample", capture_split_rsample)
+
+    module._rsample(
+        data=torch.full((1, 4), torch.nan),
+        sampling_ctx=sampling_ctx,
+        cache=Cache(),
+        is_mpe=False,
+    )
+
+    expected = torch.tensor(
+        [[[0.8, 0.2], [0.3, 0.7], [0.8, 0.2], [0.3, 0.7]]],
+        dtype=torch.float32,
+    )
+    expected_mask = torch.tensor([[True, True, True, True]], dtype=torch.bool)
+
+    torch.testing.assert_close(captured["channel_probs"], expected, atol=1e-6, rtol=1e-6)
+    torch.testing.assert_close(captured["mask"], expected_mask)
+
+
+def test_rsample_elementwise_split_interleaved_routes_features(monkeypatch):
+    leaf = make_leaf(
+        cls=DummyLeaf,
+        out_channels=2,
+        scope=Scope([0, 1, 2, 3]),
+        num_repetitions=1,
+    )
+    module = ElementwiseProduct(
+        inputs=leaf,
+        split_mode=SplitMode.interleaved(num_splits=2),
+    )
+
+    parent_channel_probs = torch.tensor(
+        [[[0.8, 0.2], [0.3, 0.7]]],
+        dtype=torch.float32,
+    )
+    parent_mask = torch.tensor([[True, True]], dtype=torch.bool)
+    sampling_ctx = DifferentiableSamplingContext(channel_probs=parent_channel_probs, mask=parent_mask)
+
+    captured: dict[str, torch.Tensor] = {}
+
+    def capture_split_rsample(*, data, sampling_ctx, cache, is_mpe=False):
+        del data
+        del cache
+        del is_mpe
+        captured["channel_probs"] = sampling_ctx.channel_probs.clone()
+        captured["mask"] = sampling_ctx.mask.clone()
+        return torch.empty(0)
+
+    monkeypatch.setattr(module.inputs[0], "_rsample", capture_split_rsample)
+
+    module._rsample(
+        data=torch.full((1, 4), torch.nan),
+        sampling_ctx=sampling_ctx,
+        cache=Cache(),
+        is_mpe=False,
+    )
+
+    expected = torch.tensor(
+        [[[0.8, 0.2], [0.8, 0.2], [0.3, 0.7], [0.3, 0.7]]],
+        dtype=torch.float32,
+    )
+    expected_mask = torch.tensor([[True, True, True, True]], dtype=torch.bool)
+
+    torch.testing.assert_close(captured["channel_probs"], expected, atol=1e-6, rtol=1e-6)
+    torch.testing.assert_close(captured["mask"], expected_mask)
 
 
 @pytest.mark.parametrize(

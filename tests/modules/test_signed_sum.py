@@ -9,7 +9,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.sums.signed_sum import SignedSum
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 
 
 class _SignedInput(Module):
@@ -57,6 +57,19 @@ class _SignedInput(Module):
         self,
         data: torch.Tensor,
         sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        del cache
+        del is_mpe
+        self.last_sampling_ctx = sampling_ctx
+        data[:, self.scope.query] = 0.0
+        return data
+
+    def _rsample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
         cache: Cache,
         is_mpe: bool = False,
     ) -> torch.Tensor:
@@ -222,13 +235,44 @@ def test_signed_sum_sample_success_paths(is_mpe: bool):
         inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[0.9]], [[0.1]]]])
     )
 
-    samples = node.sample(num_samples=5, is_mpe=is_mpe, sampling_ctx=_sampling_ctx(5))
+    samples = node.sample(num_samples=5, is_mpe=is_mpe)
 
     assert samples.shape == (5, 1)
     assert torch.isfinite(samples).all()
     assert child.last_sampling_ctx is not None
     assert child.last_sampling_ctx.channel_index.shape == (5, 1)
     assert child.last_sampling_ctx.mask.shape == (5, 1)
+
+
+@pytest.mark.parametrize("is_mpe", [True, False])
+def test_signed_sum_rsample_success_paths(is_mpe: bool):
+    child = _SignedInput()
+    node = SignedSum(
+        inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[0.9]], [[0.1]]]])
+    )
+    sampling_ctx = DifferentiableSamplingContext(
+        channel_probs=torch.ones((5, 1, 1), dtype=torch.get_default_dtype()),
+        mask=torch.ones((5, 1), dtype=torch.bool),
+    )
+
+    samples = node.rsample(num_samples=5, is_mpe=is_mpe, diff_method="gumbel")
+
+    assert samples.shape == (5, 1)
+    assert torch.isfinite(samples).all()
+
+
+def test_signed_sum_rsample_rejects_negative_weights():
+    child = _SignedInput()
+    node = SignedSum(
+        inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[1.0]], [[-0.1]]]])
+    )
+    sampling_ctx = DifferentiableSamplingContext(
+        channel_probs=torch.ones((3, 1, 1), dtype=torch.get_default_dtype()),
+        mask=torch.ones((3, 1), dtype=torch.bool),
+    )
+
+    with pytest.raises(UnsupportedOperationError):
+        node.rsample(num_samples=3)
 
 
 def test_signed_sum_sample_rejects_evidence():
@@ -280,14 +324,14 @@ def test_signed_sum_sample_rejects_bad_weight_dim_and_repetitions():
     child = _SignedInput()
     rep_node = SignedSum(inputs=child, out_channels=1, num_repetitions=2, weights=torch.ones((1, 2, 1, 2)))
     with pytest.raises(UnsupportedOperationError):
-        rep_node.sample(num_samples=2, sampling_ctx=_sampling_ctx(2))
+        rep_node.sample(num_samples=2)
 
     bad_dim_node = SignedSum(
         inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[0.7]], [[0.3]]]])
     )
     bad_dim_node.weights = torch.nn.Parameter(bad_dim_node.weights[..., 0])
     with pytest.raises(ShapeError):
-        bad_dim_node.sample(num_samples=2, sampling_ctx=_sampling_ctx(2))
+        bad_dim_node.sample(num_samples=2)
 
 
 def test_signed_sum_sample_rejects_non_4d_weights():
@@ -298,7 +342,7 @@ def test_signed_sum_sample_rejects_non_4d_weights():
     node.weights = torch.nn.Parameter(node.weights[..., 0])
 
     with pytest.raises(ShapeError):
-        node.sample(num_samples=3, sampling_ctx=_sampling_ctx(3))
+        node.sample(num_samples=3)
 
 
 def test_signed_sum_sample_defaults_to_single_sample():

@@ -9,7 +9,10 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import (
+    DifferentiableSamplingContext,
+    SamplingContext,
+)
 
 
 class Product(Module):
@@ -115,6 +118,51 @@ class Product(Module):
         )
         return data
 
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        """Generate differentiable samples by delegating to the input module."""
+
+        sampling_ctx.broadcast_feature_prob_width(
+            target_features=self.inputs.out_shape.features,
+            allow_from_one=True,
+        )
+        resolved_channel_probs = sampling_ctx.resolve_channel_probs(
+            expected_channels=int(self.inputs.out_shape.channels),
+            module_name=f"{self.__class__.__name__}._rsample",
+        )
+        resolved_repetition_probs = sampling_ctx.resolve_repetition_probs(
+            expected_repetitions=int(self.inputs.out_shape.repetitions),
+            module_name=f"{self.__class__.__name__}._rsample",
+        )
+
+        original_channel_probs = sampling_ctx.channel_probs
+        original_mask = sampling_ctx.mask
+        original_repetition_probs = sampling_ctx.repetition_probs
+
+        sampling_ctx.update_prob_routing(
+            channel_probs=resolved_channel_probs,
+            mask=original_mask,
+        )
+        sampling_ctx.repetition_probs = resolved_repetition_probs
+
+        self.inputs._rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
+
+        sampling_ctx.update_prob_routing(
+            channel_probs=original_channel_probs,
+            mask=original_mask,
+        )
+        sampling_ctx.repetition_probs = original_repetition_probs
+        return data
 
     def _expectation_maximization_step(
         self,

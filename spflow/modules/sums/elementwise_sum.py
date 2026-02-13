@@ -21,7 +21,10 @@ from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import (
+    DifferentiableSamplingContext,
+    SamplingContext,
+)
 
 
 class ElementwiseSum(Module):
@@ -284,12 +287,6 @@ class ElementwiseSum(Module):
         # Prepare data tensor
 
         # initialize contexts
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
-        )
 
         # Index into the correct weight channels given by parent module
         # (stay in logits space since Categorical distribution accepts logits directly)
@@ -355,10 +352,7 @@ class ElementwiseSum(Module):
         )
         logits = rearrange(logits, "b f 1 i -> b f i")
 
-        if (
-             "log_likelihood" in cache
-            and all(cache["log_likelihood"][inp] is not None for inp in self.inputs)
-        ):
+        if "log_likelihood" in cache and all(cache["log_likelihood"][inp] is not None for inp in self.inputs):
             input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
             input_lls = torch.stack(input_lls, dim=self.sum_dim)  # torch.stack(input_lls, dim=-1)
             if sampling_ctx.repetition_idx is not None:
@@ -414,6 +408,111 @@ class ElementwiseSum(Module):
                 sampling_ctx=sampling_ctx_cpy,
             )
 
+        return data
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
+        parent_channel_probs = sampling_ctx.resolve_channel_probs(
+            expected_channels=int(self.out_shape.channels),
+            module_name=f"{self.__class__.__name__}._rsample",
+        )
+
+        repetition_probs = sampling_ctx.resolve_repetition_probs(
+            expected_repetitions=int(self.out_shape.repetitions),
+            module_name=f"{self.__class__.__name__}._rsample",
+        )
+        batch_size = int(data.shape[0])
+        in_channels = int(self.in_shape.channels)
+        num_sums = int(self._num_sums)
+        num_inputs = len(self.inputs)
+
+        # (B, F, CI, CO, I, R) where CO is logical sum-index axis.
+        log_routing = torch.log_softmax(
+            self.logits / sampling_ctx.temperature_sums,
+            dim=self.sum_dim,
+        )
+        log_routing = repeat(
+            log_routing,
+            "f ci co i r -> b f ci co i r",
+            b=batch_size,
+        )
+
+        if "log_likelihood" in cache and all(
+            cache["log_likelihood"].get(inp) is not None for inp in self.inputs
+        ):
+            input_lls = []
+            for inp in self.inputs:
+                inp_ll = cache["log_likelihood"][inp]
+                if inp_ll.ndim == 3:
+                    inp_ll = rearrange(inp_ll, "b f ci -> b f ci 1")
+                if inp_ll.shape[2] == 1 and in_channels > 1:
+                    inp_ll = repeat(inp_ll, "b f 1 r -> b f ci r", ci=in_channels)
+                if inp_ll.shape[2] != in_channels:
+                    raise ShapeError(
+                        "ElementwiseSum._rsample cached input channel width mismatch: "
+                        f"got {inp_ll.shape[2]}, expected {in_channels} or 1."
+                    )
+                if inp_ll.shape[-1] != self.out_shape.repetitions:
+                    raise ShapeError(
+                        "ElementwiseSum._rsample cached input repetition width mismatch: "
+                        f"got {inp_ll.shape[-1]}, expected {self.out_shape.repetitions}."
+                    )
+                input_lls.append(inp_ll)
+            stacked_input_lls = torch.stack(input_lls, dim=3)  # (B, F, CI, I, R)
+            log_routing = log_routing + rearrange(stacked_input_lls, "b f ci i r -> b f ci 1 i r")
+            log_routing = log_routing - torch.logsumexp(log_routing, dim=4, keepdim=True)
+
+        routing_probs_by_rep = log_routing.exp()
+        routing_probs = torch.einsum("br,bfcoir->bfcoi", repetition_probs, routing_probs_by_rep)
+
+        parent_probs_struct = parent_channel_probs.reshape(
+            batch_size,
+            self.out_shape.features,
+            in_channels,
+            num_sums,
+        )
+        input_select_probs = torch.einsum("bfcs,bfcsi->bfcsi", parent_probs_struct, routing_probs)
+        child_channel_input_probs = input_select_probs.sum(dim=3)  # (B, F, CI, I)
+
+        original_channel_probs = sampling_ctx.channel_probs
+        original_mask = sampling_ctx.mask
+
+        for input_idx, input_module in enumerate(self.inputs):
+            child_channels = int(input_module.out_shape.channels)
+            routed = child_channel_input_probs[..., input_idx]
+            if child_channels == 1:
+                child_channel_probs = routed.sum(dim=2, keepdim=True)
+            elif child_channels == in_channels:
+                child_channel_probs = routed
+            else:
+                raise ShapeError(
+                    "ElementwiseSum._rsample child channel width is incompatible with routing assumptions: "
+                    f"got {child_channels}, expected 1 or {in_channels}."
+                )
+
+            child_mask = sampling_ctx.mask & (child_channel_probs.sum(dim=-1) > 0.0)
+            norm = child_channel_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+            child_channel_probs = torch.where(
+                child_mask.unsqueeze(-1),
+                child_channel_probs / norm,
+                torch.zeros_like(child_channel_probs),
+            )
+
+            sampling_ctx.update_prob_routing(channel_probs=child_channel_probs, mask=child_mask)
+            input_module._rsample(
+                data=data,
+                is_mpe=is_mpe,
+                cache=cache,
+                sampling_ctx=sampling_ctx,
+            )
+
+        sampling_ctx.update_prob_routing(channel_probs=original_channel_probs, mask=original_mask)
         return data
 
     @cached

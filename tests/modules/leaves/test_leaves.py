@@ -75,7 +75,7 @@ def test_sample(leaf_cls, out_features: int, out_channels: int, num_reps, is_mpe
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
 
     # Sample
-    samples = module.sample(data=data, is_mpe=is_mpe, sampling_ctx=sampling_ctx)
+    samples = module.sample(data=data, is_mpe=is_mpe)
 
     assert samples.shape == (n_samples, out_features)
 

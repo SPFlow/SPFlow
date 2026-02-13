@@ -6,8 +6,9 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
+from spflow.exceptions import UnsupportedOperationError
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.meta.data.scope import Scope
@@ -100,6 +101,16 @@ class Integral(Module):
         is_mpe: bool = False,
     ) -> Tensor:
         raise NotImplementedError("Sampling from Integral nodes is not implemented.")
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        del data, sampling_ctx, cache, is_mpe
+        raise UnsupportedOperationError("Integral does not support differentiable sampling (_rsample).")
 
     def marginalize(
         self, marg_rvs: list[int], prune: bool = True, cache: Cache | None = None

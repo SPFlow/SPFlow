@@ -16,13 +16,16 @@ import torch
 from einops import rearrange, repeat
 from torch import Tensor, nn
 
-from spflow.exceptions import OptionalDependencyError, ShapeError
+from spflow.exceptions import OptionalDependencyError, ShapeError, UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.cache import Cache
 from spflow.utils.domain import DataType, Domain
 from spflow.utils.histogram import get_bin_edges_torch
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import (
+    DifferentiableSamplingContext,
+    SamplingContext,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -611,12 +614,6 @@ class PiecewiseLinear(LeafModule):
             )
 
         # Prepare data tensor
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
-        )
 
         scope_cols = self._resolve_scope_columns(num_features=data.shape[1])
         out_of_scope = list(filter(lambda x: x not in scope_cols, range(data.shape[1])))
@@ -702,3 +699,18 @@ class PiecewiseLinear(LeafModule):
         data[rows[mask_subset], cols[mask_subset]] = samples[mask_subset].to(data.dtype)
 
         return data
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        del data
+        del sampling_ctx
+        del cache
+        del is_mpe
+        raise UnsupportedOperationError(
+            "PiecewiseLinear does not support differentiable sampling (_rsample) in this rollout."
+        )

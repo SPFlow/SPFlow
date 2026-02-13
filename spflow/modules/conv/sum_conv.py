@@ -16,8 +16,12 @@ from spflow.exceptions import InvalidWeightsError, MissingCacheError, ShapeError
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
+from spflow.utils.differentiable_sampling import sample_categorical_differentiably
 from spflow.utils.projections import proj_convex_to_real
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import (
+    DifferentiableSamplingContext,
+    SamplingContext,
+)
 
 
 class SumConv(Module):
@@ -310,10 +314,7 @@ class SumConv(Module):
 
         # Check for cached likelihoods (conditional sampling)
         input_lls = None
-        if (
-             "log_likelihood" in cache
-            and cache["log_likelihood"].get(self.inputs) is not None
-        ):
+        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
             input_lls = cache["log_likelihood"][self.inputs]  # (batch, features, in_c, reps)
 
             # Select repetition
@@ -401,6 +402,99 @@ class SumConv(Module):
             sampling_ctx=sampling_ctx,
         )
 
+        return data
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        num_features = int(self.in_shape.features)
+        H = W = int(num_features**0.5)
+        K = self.kernel_size
+        if H * W != num_features:
+            raise ValueError(
+                f"SumConv requires square spatial dimensions. Got {num_features} features "
+                f"which is not a perfect square."
+            )
+        if H % K != 0 or W % K != 0:
+            raise ValueError(f"Spatial dims ({H}, {W}) must be divisible by kernel_size {K}")
+
+        sampling_ctx.require_feature_width(expected_features=num_features)
+        parent_channel_probs = sampling_ctx.resolve_channel_probs(
+            expected_channels=int(self.out_shape.channels),
+            module_name=f"{self.__class__.__name__}._rsample",
+        )
+
+        repetition_probs = sampling_ctx.resolve_repetition_probs(
+            expected_repetitions=int(self.out_shape.repetitions),
+            module_name=f"{self.__class__.__name__}._rsample",
+        )
+        batch_size = int(data.shape[0])
+        out_channels = int(self.out_shape.channels)
+        in_channels = int(self.in_channels)
+
+        row_pos = repeat(torch.arange(H, device=data.device), "h -> h w", w=W)
+        col_pos = repeat(torch.arange(W, device=data.device), "w -> h w", h=H)
+        k_row = (row_pos % K).reshape(-1)
+        k_col = (col_pos % K).reshape(-1)
+
+        # (F, CI, CO, R)
+        per_feature_logits = self.logits[:, :, k_row, k_col, :]
+        per_feature_logits = rearrange(per_feature_logits, "co ci f r -> f ci co r")
+
+        log_routing = torch.log_softmax(
+            per_feature_logits / sampling_ctx.temperature_sums,
+            dim=1,
+        )
+        log_routing = repeat(log_routing, "f ci co r -> b f ci co r", b=batch_size)
+
+        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
+            input_lls = cache["log_likelihood"][self.inputs]
+            if input_lls.ndim == 3:
+                input_lls = rearrange(input_lls, "b f ci -> b f ci 1")
+            if input_lls.shape[2] != in_channels:
+                raise ShapeError(
+                    "Cached input channel width mismatch in SumConv._rsample: "
+                    f"got {input_lls.shape[2]}, expected {in_channels}."
+                )
+            if input_lls.shape[-1] != self.out_shape.repetitions:
+                raise ShapeError(
+                    "Cached input repetition width mismatch in SumConv._rsample: "
+                    f"got {input_lls.shape[-1]}, expected {self.out_shape.repetitions}."
+                )
+            log_routing = log_routing + rearrange(input_lls, "b f ci r -> b f ci 1 r")
+            log_routing = log_routing - torch.logsumexp(log_routing, dim=2, keepdim=True)
+
+        routing_probs_by_rep = log_routing.exp()
+        routing_probs = torch.einsum("br,bfcor->bfco", repetition_probs, routing_probs_by_rep)
+
+        routed_selection = sample_categorical_differentiably(
+            logits=torch.log(routing_probs.clamp_min(1e-12)),
+            dim=2,
+            method=sampling_ctx.diff_method,
+            is_mpe=is_mpe,
+            hard=sampling_ctx.hard,
+            temperature=1.0,
+        )
+        child_channel_probs = torch.einsum("bfo,bfco->bfc", parent_channel_probs, routed_selection)
+        child_mask = sampling_ctx.mask & (child_channel_probs.sum(dim=-1) > 0.0)
+        norm = child_channel_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+        child_channel_probs = torch.where(
+            child_mask.unsqueeze(-1),
+            child_channel_probs / norm,
+            torch.zeros_like(child_channel_probs),
+        )
+
+        sampling_ctx.update_prob_routing(channel_probs=child_channel_probs, mask=child_mask)
+        self.inputs._rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
         return data
 
     def _expectation_maximization_step(

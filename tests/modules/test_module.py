@@ -117,9 +117,7 @@ class _SuperPassProbe(Module):
         return torch.zeros((data.shape[0], 1, 1, 1), dtype=data.dtype, device=data.device)
 
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
-        Module.sample(
-            self, num_samples=num_samples, data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx
-        )
+        Module.sample(self, num_samples=num_samples, data=data, is_mpe=is_mpe, cache=cache)
         data = self._prepare_sample_data(num_samples, data)
         data[:] = torch.nan_to_num(data, nan=0.0)
         return data

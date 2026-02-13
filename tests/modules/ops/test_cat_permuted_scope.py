@@ -127,7 +127,7 @@ class TestCatPermutedScope:
             repetition_index=repetition_idx,
         )
 
-        samples = cat.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = cat.sample(data=data)
 
         # Expected: each position i should have value i
         expected = torch.tensor([[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]] * num_samples)
@@ -162,7 +162,7 @@ class TestCatPermutedScope:
             repetition_index=repetition_idx,
         )
 
-        samples = cat.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = cat.sample(data=data)
 
         # Expected: each position i should have value i (the RV index)
         # Position 0 -> value 0, Position 1 -> value 1, etc.

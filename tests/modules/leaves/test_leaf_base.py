@@ -7,7 +7,8 @@ from spflow.meta import Scope
 from spflow.meta.data.interval_evidence import IntervalEvidence
 from spflow.modules.leaves import Categorical
 from spflow.modules.leaves.leaf import LeafModule
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 
 
 class SimpleParameterNet(nn.Module):
@@ -200,14 +201,12 @@ def test_mle_rejects_conditional_leaf():
         leaf.maximum_likelihood_estimation(data=data)
 
 
-def test_sample_requires_repetition_index_for_multiple_repetitions():
-    """Sampling multi-repetition leaves requires repetition index in context."""
+def test_sample_defaults_singleton_repetition_index_for_multiple_repetitions():
+    """Sampling multi-repetition leaves defaults to singleton repetition routing."""
     leaf = TinyLeaf(scope=Scope([0]), num_repetitions=2)
-
-    with pytest.raises(
-        ValueError,
-    ):
-        leaf.sample(num_samples=2)
+    samples = leaf.sample(num_samples=2)
+    assert samples.shape == (2, 1)
+    assert torch.isfinite(samples).all()
 
 
 @pytest.mark.parametrize("is_mpe", [False, True])
@@ -218,13 +217,53 @@ def test_sample_accepts_column_vector_repetition_index(is_mpe: bool):
     sampling_ctx = SamplingContext(num_samples=4)
     sampling_ctx.repetition_idx = torch.tensor([[0], [1], [0], [1]], dtype=torch.long)
 
-    samples = leaf.sample(data=data, is_mpe=is_mpe, sampling_ctx=sampling_ctx)
+    samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache(), is_mpe=is_mpe)
 
     assert samples.shape == (4, 1)
     assert torch.isfinite(samples).all()
     assert sampling_ctx.repetition_idx is not None
     assert sampling_ctx.repetition_idx.shape == (4,)
     assert sampling_ctx.repetition_idx.dtype == torch.long
+
+
+def test_rsample_tracks_sample_mass_and_preserves_evidence():
+    leaf = TinyLeaf(scope=Scope([0, 1]), out_channels=2, num_repetitions=1)
+    data = torch.tensor([[float("nan"), 7.0], [float("nan"), float("nan")]])
+    sampling_ctx = DifferentiableSamplingContext(
+        channel_probs=torch.full((2, 2, 2), 0.5),
+        mask=torch.ones((2, 2), dtype=torch.bool),
+    )
+
+    out = leaf._rsample(data=data.clone(), sampling_ctx=sampling_ctx, cache=Cache(), is_mpe=False)
+    out = sampling_ctx.finalize_with_evidence(out)
+
+    assert torch.isfinite(out).all()
+    assert out[0, 1].item() == pytest.approx(7.0)
+    assert sampling_ctx.sample_mass is not None
+    torch.testing.assert_close(
+        sampling_ctx.sample_mass,
+        torch.tensor([[1.0, 0.0], [1.0, 1.0]], dtype=sampling_ctx.sample_mass.dtype),
+        atol=1e-4,
+        rtol=1e-4,
+    )
+
+    loss = out.sum()
+    loss.backward()
+    assert leaf.loc.grad is not None
+    assert torch.isfinite(leaf.loc.grad).all()
+
+
+def test_rsample_conditional_requires_distribution_rsample(monkeypatch):
+    class DistNoRsample:
+        pass
+
+    leaf = TinyLeaf(scope=Scope(query=[0], evidence=[1]), parameter_fn=SimpleParameterNet(value=0.0))
+    monkeypatch.setattr(leaf, "conditional_distribution", lambda evidence: DistNoRsample())
+    sampling_ctx = DifferentiableSamplingContext(num_samples=2)
+    data = torch.tensor([[float("nan"), 1.0], [float("nan"), 2.0]])
+
+    with pytest.raises(UnsupportedOperationError, match="requires a distribution with rsample"):
+        leaf.rsample(data=data)
 
 
 def test_feature_to_scope():

@@ -9,7 +9,8 @@ from spflow.exceptions import ShapeError
 from spflow.meta import Scope
 from spflow.modules.ops import SplitByIndex, SplitMode
 from spflow.modules.products import ElementwiseProduct, OuterProduct
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 
@@ -165,7 +166,7 @@ class TestSplitByIndexSampling:
 
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
 
-        samples = split.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = split.sample(data=data)
 
         assert samples.shape == (n_samples, 6)
         assert torch.isfinite(samples).all()
@@ -184,7 +185,7 @@ class TestSplitByIndexSampling:
 
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
 
-        samples = split.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = split.sample(data=data)
 
         assert samples.shape == (n_samples, 6)
         assert torch.isfinite(samples).all()
@@ -366,7 +367,7 @@ class TestSplitByIndexSamplingContextExpansion:
             repetition_index=torch.zeros(n, dtype=torch.long),
         )
 
-        out = split.sample(data=data, sampling_ctx=sampling_ctx)
+        out = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache(), is_mpe=False)
         assert out.shape == (n, 4)
         assert sampling_ctx.channel_index.shape == (n, 4)
         assert sampling_ctx.mask.shape == (n, 4)
@@ -385,4 +386,35 @@ class TestSplitByIndexSamplingContextExpansion:
         )
 
         with pytest.raises(ShapeError, match="incompatible sampling context feature width"):
-            split.sample(data=data, sampling_ctx=sampling_ctx)
+            split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache(), is_mpe=False)
+
+    def test_rsample_scatter_maps_split_sized_probability_context(self):
+        scope = Scope(list(range(0, 4)))
+        leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=1)
+        split = SplitByIndex(inputs=leaf, indices=[[0, 2], [1, 3]])
+
+        n = 2
+        base_probs = torch.tensor(
+            [[[0.2, 0.8], [0.7, 0.3]]],
+            dtype=torch.float32,
+        ).repeat(n, 1, 1)
+        sampling_ctx = DifferentiableSamplingContext(
+            channel_probs=base_probs,
+            mask=torch.ones((n, 2), dtype=torch.bool),
+        )
+
+        out = split._rsample(
+            data=torch.full((n, 4), torch.nan),
+            sampling_ctx=sampling_ctx,
+            cache=Cache(),
+            is_mpe=False,
+        )
+        if sampling_ctx.sample_accum is not None and sampling_ctx.sample_mass is not None:
+            out = sampling_ctx.finalize_with_evidence(out)
+
+        assert torch.isfinite(out).all()
+        expected = torch.tensor(
+            [[[0.2, 0.8], [0.2, 0.8], [0.7, 0.3], [0.7, 0.3]]],
+            dtype=torch.float32,
+        ).repeat(n, 1, 1)
+        torch.testing.assert_close(sampling_ctx.channel_probs, expected, atol=1e-4, rtol=1e-4)

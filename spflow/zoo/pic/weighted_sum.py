@@ -17,7 +17,12 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, update_channel_index_strict
+from spflow.utils.differentiable_sampling import sample_categorical_differentiably
+from spflow.utils.sampling_context import (
+    DifferentiableSamplingContext,
+    SamplingContext,
+    update_channel_index_strict,
+)
 
 
 class WeightedSum(Module):
@@ -265,6 +270,65 @@ class WeightedSum(Module):
             sampling_ctx=sampling_ctx,
         )
 
+        return data
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
+        parent_channel_probs = sampling_ctx.resolve_channel_probs(
+            expected_channels=int(self.out_shape.channels),
+            module_name=f"{self.__class__.__name__}._rsample",
+        )
+
+        repetition_probs = sampling_ctx.resolve_repetition_probs(
+            expected_repetitions=int(self.out_shape.repetitions),
+            module_name=f"{self.__class__.__name__}._rsample",
+        )
+        routing_weights = torch.einsum("br,fcor->bfco", repetition_probs, self.weights)
+
+        denom = routing_weights.sum(dim=2, keepdim=True)
+        active_parent = sampling_ctx.mask.unsqueeze(-1) & (parent_channel_probs > 0.0)
+        invalid = active_parent.unsqueeze(2) & (denom <= 0.0)
+        if invalid.any():
+            raise ShapeError(
+                "WeightedSum._rsample encountered zero-sum routing weights on active parent channels."
+            )
+
+        routing_probs = torch.where(
+            denom > 0.0,
+            routing_weights / denom.clamp_min(1e-12),
+            torch.zeros_like(routing_weights),
+        )
+
+        routed_selection = sample_categorical_differentiably(
+            logits=torch.log(routing_probs.clamp_min(1e-12)),
+            dim=2,
+            method=sampling_ctx.diff_method,
+            is_mpe=is_mpe,
+            hard=sampling_ctx.hard,
+            temperature=1.0,
+        )
+        child_channel_probs = torch.einsum("bfo,bfco->bfc", parent_channel_probs, routed_selection)
+        child_mask = sampling_ctx.mask & (child_channel_probs.sum(dim=-1) > 0.0)
+        child_norm = child_channel_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+        child_channel_probs = torch.where(
+            child_mask.unsqueeze(-1),
+            child_channel_probs / child_norm,
+            torch.zeros_like(child_channel_probs),
+        )
+
+        sampling_ctx.update_prob_routing(channel_probs=child_channel_probs, mask=child_mask)
+        self.inputs._rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
         return data
 
     def marginalize(

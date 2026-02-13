@@ -11,6 +11,7 @@ from spflow.modules.leaves.cltree import (
     _prim_maximum_spanning_tree,
     _validate_discrete_values,
 )
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 
 
@@ -101,7 +102,7 @@ def test_mpe_fills_missing_values_consistently():
     node = _make_chain_cltree(K=K)
 
     evidence = torch.tensor([[float("nan"), 2.0, float("nan")]], dtype=torch.float64)
-    mpe = node.sample(data=evidence.clone(), is_mpe=True, sampling_ctx=_sampling_ctx(1, 3))
+    mpe = node.sample(data=evidence.clone(), is_mpe=True)
     mpe_vals = tuple(int(v) for v in mpe[0].tolist())
 
     # Brute force MAP under evidence x1=2
@@ -123,14 +124,14 @@ def test_sampling_produces_valid_domain_values():
     K = 3
     node = _make_chain_cltree(K=K)
 
-    samples = node.sample(num_samples=200, sampling_ctx=_sampling_ctx(200, 3))
+    samples = node.sample(num_samples=200)
     assert samples.shape == (200, 3)
     assert torch.isfinite(samples).all()
     assert ((samples >= 0) & (samples < K)).all()
 
     # Conditional sampling preserves evidence.
     evidence = torch.tensor([[1.0, float("nan"), 0.0]] * 50, dtype=torch.float64)
-    filled = node.sample(data=evidence.clone(), is_mpe=False, sampling_ctx=_sampling_ctx(50, 3))
+    filled = node.sample(data=evidence.clone(), is_mpe=False)
     torch.testing.assert_close(filled[:, 0], torch.ones(50, dtype=torch.float64))
     torch.testing.assert_close(filled[:, 2], torch.zeros(50, dtype=torch.float64))
     assert ((filled[:, 1] >= 0) & (filled[:, 1] < K)).all()
@@ -142,7 +143,7 @@ def test_mle_update_improves_likelihood_on_training_data():
 
     # Generate synthetic data from a known model.
     true_node = _make_chain_cltree(K=K)
-    data = true_node.sample(num_samples=500, sampling_ctx=_sampling_ctx(500, 3)).to(torch.float64)
+    data = true_node.sample(num_samples=500).to(torch.float64)
 
     # Fit structure once, then compare random CPT vs MLE CPT.
     model = CLTree(scope=Scope([0, 1, 2]), out_channels=1, num_repetitions=1, K=K)
@@ -283,7 +284,11 @@ def test_mle_input_checks_and_sampling_context_errors():
         mask=torch.tensor([[True, True, True]], dtype=torch.bool),
     )
     with pytest.raises(InvalidParameterError):
-        node.sample(data=torch.tensor([[float("nan"), float("nan"), float("nan")]]), sampling_ctx=bad_ctx)
+        node._sample(
+            data=torch.tensor([[float("nan"), float("nan"), float("nan")]]),
+            sampling_ctx=bad_ctx,
+            cache=Cache(),
+        )
 
     base = _make_chain_cltree(K=3)
     multi_rep = CLTree(
@@ -294,8 +299,13 @@ def test_mle_input_checks_and_sampling_context_errors():
         parents=base.parents.clone(),
         log_cpt=base.log_cpt.detach().repeat(1, 1, 2, 1, 1),
     )
-    with pytest.raises(InvalidParameterError):
-        multi_rep.sample(
-            data=torch.tensor([[float("nan"), float("nan"), float("nan")]]),
-            sampling_ctx=_sampling_ctx(1, 3),
-        )
+    sampling_ctx = _sampling_ctx(1, 3)
+    sampled = multi_rep._sample(
+        data=torch.tensor([[float("nan"), float("nan"), float("nan")]]),
+        sampling_ctx=sampling_ctx,
+        cache=Cache(),
+    )
+    assert sampled.shape == (1, 3)
+    assert torch.isfinite(sampled).all()
+    assert sampling_ctx.repetition_idx is not None
+    assert torch.equal(sampling_ctx.repetition_idx, torch.zeros(1, dtype=torch.long))

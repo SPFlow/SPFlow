@@ -12,7 +12,7 @@ from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 
 
 class SignedCategorical(Module):
@@ -192,4 +192,16 @@ class SignedCategorical(Module):
         raise UnsupportedOperationError(
             "SignedCategorical.sample() is not supported. "
             "Convert to a monotone proposal first (e.g., via build_abs_weight_proposal)."
+        )
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        del data, sampling_ctx, cache, is_mpe
+        raise UnsupportedOperationError(
+            "SignedCategorical does not support differentiable sampling (_rsample)."
         )

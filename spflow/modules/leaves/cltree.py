@@ -24,6 +24,7 @@ from spflow.meta import Scope
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.cache import Cache, cached
 from spflow.utils.leaves import apply_nan_strategy
+from spflow.utils.sampling_context import DifferentiableSamplingContext
 
 
 @dataclass(frozen=True)
@@ -500,15 +501,6 @@ class CLTree(LeafModule):
                 "CLTree structure is not initialized. Call maximum_likelihood_estimation() or fit_structure() first."
             )
 
-        from spflow.utils.sampling_context import require_sampling_context
-
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
-        )
-
         scope_cols = self._resolve_scope_columns(num_features=data.shape[1])
         scoped = data[:, scope_cols]
         marg_mask = torch.isnan(scoped)
@@ -614,3 +606,18 @@ class CLTree(LeafModule):
                     data[row_idx, col] = assignment[j].to(dtype=data.dtype, device=data.device)
 
         return data
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        del data
+        del sampling_ctx
+        del cache
+        del is_mpe
+        raise UnsupportedOperationError(
+            "CLTree does not support differentiable sampling (_rsample) in this rollout."
+        )

@@ -9,7 +9,11 @@ from spflow.exceptions import InvalidParameterCombinationError, MissingCacheErro
 from spflow.modules.module import Module
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.differentiable_sampling import sample_categorical_differentiably
+from spflow.utils.sampling_context import (
+    DifferentiableSamplingContext,
+    SamplingContext,
+)
 
 
 class RepetitionMixingLayer(Sum):
@@ -118,10 +122,7 @@ class RepetitionMixingLayer(Sum):
         logits = repeat(self.logits, "f co r -> b f co r", b=batch_size)
 
         # Check if we have cached input log-likelihoods to compute posterior
-        if (
-             "log_likelihood" in cache
-            and cache["log_likelihood"].get(self.inputs) is not None
-        ):
+        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
             # Compute log posterior by reweighing logits with input lls
             input_lls = cache["log_likelihood"][self.inputs]
             log_prior = logits
@@ -144,6 +145,59 @@ class RepetitionMixingLayer(Sum):
 
         # Sample from input module
         self.inputs._sample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
+
+        return data
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        """Route repetition probabilities differentiably and recurse into the input."""
+        sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
+        parent_channel_probs = sampling_ctx.resolve_channel_probs(
+            expected_channels=int(self.out_shape.channels),
+            module_name=f"{self.__class__.__name__}._rsample",
+        )
+
+        logits = self.logits / sampling_ctx.temperature_sums
+        log_weights = torch.log_softmax(logits, dim=-1).unsqueeze(0).expand(data.shape[0], -1, -1, -1)
+
+        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
+            input_lls = cache["log_likelihood"][self.inputs]
+            if input_lls.ndim == 3:
+                input_lls = rearrange(input_lls, "b f co -> b f co 1")
+            log_weights = log_weights + input_lls
+            log_weights = log_weights - torch.logsumexp(log_weights, dim=-1, keepdim=True)
+
+        rep_probs_per_feature = torch.einsum("bfc,bfcr->bfr", parent_channel_probs, log_weights.exp())
+        feature_weights = sampling_ctx.mask.to(rep_probs_per_feature.dtype)
+        feature_norm = feature_weights.sum(dim=1, keepdim=True).clamp_min(1.0)
+        rep_probs = (rep_probs_per_feature * feature_weights.unsqueeze(-1)).sum(dim=1) / feature_norm
+
+        rep_probs = torch.where(
+            rep_probs.sum(dim=-1, keepdim=True) > 0.0,
+            rep_probs / rep_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12),
+            torch.zeros_like(rep_probs),
+        )
+
+        sampling_ctx.repetition_probs = sample_categorical_differentiably(
+            logits=torch.log(rep_probs.clamp_min(1e-12)),
+            dim=-1,
+            method=sampling_ctx.diff_method,
+            is_mpe=is_mpe,
+            hard=sampling_ctx.hard,
+            temperature=1.0,
+        )
+
+        self.inputs._rsample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,

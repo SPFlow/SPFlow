@@ -6,6 +6,7 @@ from einops import rearrange, repeat
 from torch import Tensor
 
 from spflow.exceptions import (
+    InvalidParameterError,
     InvalidParameterCombinationError,
     InvalidWeightsError,
     MissingCacheError,
@@ -15,10 +16,12 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
+from spflow.utils.differentiable_sampling import sample_categorical_differentiably
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
 from spflow.utils.sampling_context import (
+    DifferentiableSamplingContext,
     SamplingContext,
     update_channel_index_strict,
 )
@@ -340,10 +343,7 @@ class Sum(Module):
         logits = rearrange(logits, "b f ci 1 -> b f ci")
 
         # Check if evidence is given (cached log-likelihoods)
-        if (
-             "log_likelihood" in cache
-            and cache["log_likelihood"].get(self.inputs) is not None
-        ):
+        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
             # Get the log likelihoods from the cache
             input_lls = cache["log_likelihood"][self.inputs]
 
@@ -390,6 +390,84 @@ class Sum(Module):
 
         return data
 
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        """Generate differentiable samples by routing channel probabilities."""
+        sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
+        parent_channel_probs = sampling_ctx.resolve_channel_probs(
+            expected_channels=int(self.out_shape.channels),
+            module_name=f"{self.__class__.__name__}._rsample",
+        )
+
+        repetition_probs = sampling_ctx.resolve_repetition_probs(
+            expected_repetitions=int(self.out_shape.repetitions),
+            module_name=f"{self.__class__.__name__}._rsample",
+        )
+
+        # Base conditional routing probabilities p(child_channel | out_channel, repetition).
+        log_routing = torch.log_softmax(
+            self.logits / sampling_ctx.temperature_sums,
+            dim=self.sum_dim,
+        ).unsqueeze(0)
+        log_routing = log_routing.expand(data.shape[0], -1, -1, -1, -1)
+
+        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
+            input_lls = cache["log_likelihood"][self.inputs]
+            if input_lls.ndim == 3:
+                input_lls = rearrange(input_lls, "b f ci -> b f ci 1")
+            elif input_lls.ndim != 4:
+                raise ShapeError(
+                    "Expected cached input log-likelihoods for Sum._rsample to have rank 3 or 4, "
+                    f"got rank {input_lls.ndim}."
+                )
+            if input_lls.shape[-1] != self.out_shape.repetitions:
+                raise ShapeError(
+                    "Cached input log-likelihood repetition width mismatch in Sum._rsample: "
+                    f"got {input_lls.shape[-1]}, expected {self.out_shape.repetitions}."
+                )
+            log_routing = log_routing + rearrange(input_lls, "b f ci r -> b f ci 1 r")
+            log_routing = log_routing - torch.logsumexp(log_routing, dim=2, keepdim=True)
+
+        routing_probs_by_rep = log_routing.exp()
+        routing_probs = torch.einsum("br,bfcor->bfco", repetition_probs, routing_probs_by_rep)
+
+        routed_selection = sample_categorical_differentiably(
+            logits=torch.log(routing_probs.clamp_min(1e-12)),
+            dim=2,
+            method=sampling_ctx.diff_method,
+            is_mpe=is_mpe,
+            hard=sampling_ctx.hard,
+            temperature=1.0,
+        )
+
+        child_channel_probs = torch.einsum("bfo,bfco->bfc", parent_channel_probs, routed_selection)
+        child_mask = sampling_ctx.mask & (child_channel_probs.sum(dim=-1) > 0.0)
+
+        norm = child_channel_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+        child_channel_probs = torch.where(
+            child_mask.unsqueeze(-1),
+            child_channel_probs / norm,
+            torch.zeros_like(child_channel_probs),
+        )
+
+        sampling_ctx.update_prob_routing(
+            channel_probs=child_channel_probs,
+            mask=child_mask,
+        )
+
+        self.inputs._rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
+
+        return data
 
     def _expectation_maximization_step(
         self,

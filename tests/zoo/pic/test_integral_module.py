@@ -3,8 +3,10 @@
 import pytest
 import torch
 
+from spflow.exceptions import UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.zoo.pic.integral import Integral
+from spflow.utils.sampling_context import DifferentiableSamplingContext
 from tests.utils.leaves import DummyLeaf, make_leaf
 
 
@@ -45,5 +47,7 @@ def test_integral_not_implemented_methods(dummy_input_module) -> None:
         module.log_likelihood(data)
     with pytest.raises(NotImplementedError):
         module.sample(num_samples=3)
+    with pytest.raises(UnsupportedOperationError):
+        module.rsample(num_samples=3)
     with pytest.raises(NotImplementedError):
         module.marginalize([0])

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import random
-from typing import Iterable, cast
+from typing import Iterable, Literal, cast
 
 import numpy as np
 import torch
@@ -16,7 +16,11 @@ from spflow.modules.module import Module
 from spflow.modules.products.product import Product
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
+from spflow.utils.sampling_context import (
+    DifferentiableSamplingContext,
+    SamplingContext,
+    build_root_sampling_context,
+)
 from spflow.zoo.sos.exp_socs import ExpSOCS
 from spflow.zoo.sos.signed_categorical import SignedCategorical
 from spflow.modules.sums.signed_sum import SignedSum
@@ -508,6 +512,44 @@ class SOSModel(Module):
     ) -> Tensor:
         return self.socs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: DifferentiableSamplingContext | None = None,
+        diff_method: Literal["simple", "gumbel"] = "simple",
+        hard: bool = False,
+        temperature_sums: float = 1.0,
+        temperature_leaves: float = 1.0,
+    ) -> Tensor:
+        if data is None:
+            if num_samples is None:
+                num_samples = 1
+            data = torch.full((num_samples, len(self.scope.query)), float("nan"), device=self.device)
+        if cache is None:
+            cache = Cache()
+        if sampling_ctx is None:
+            sampling_ctx = DifferentiableSamplingContext(
+                num_samples=data.shape[0],
+                device=data.device,
+                diff_method=diff_method,
+                hard=hard,
+                temperature_sums=temperature_sums,
+                temperature_leaves=temperature_leaves,
+            )
+        return self.socs._rsample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        return self.socs._rsample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+
 
 class ExpSOSModel(Module):
     """High-level ExpSOS/µSOCS constructor with reference-style arguments."""
@@ -666,3 +708,41 @@ class ExpSOSModel(Module):
         is_mpe: bool = False,
     ) -> Tensor:
         return self.exp_socs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+
+    def rsample(
+        self,
+        num_samples: int | None = None,
+        data: Tensor | None = None,
+        is_mpe: bool = False,
+        cache: Cache | None = None,
+        sampling_ctx: DifferentiableSamplingContext | None = None,
+        diff_method: Literal["simple", "gumbel"] = "simple",
+        hard: bool = False,
+        temperature_sums: float = 1.0,
+        temperature_leaves: float = 1.0,
+    ) -> Tensor:
+        if data is None:
+            if num_samples is None:
+                num_samples = 1
+            data = torch.full((num_samples, len(self.scope.query)), float("nan"), device=self.device)
+        if cache is None:
+            cache = Cache()
+        if sampling_ctx is None:
+            sampling_ctx = DifferentiableSamplingContext(
+                num_samples=data.shape[0],
+                device=data.device,
+                diff_method=diff_method,
+                hard=hard,
+                temperature_sums=temperature_sums,
+                temperature_leaves=temperature_leaves,
+            )
+        return self.exp_socs._rsample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        return self.exp_socs._rsample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)

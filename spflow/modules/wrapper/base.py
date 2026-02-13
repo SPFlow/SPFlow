@@ -14,7 +14,7 @@ from torch import Tensor
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 
 
 class Wrapper(Module, ABC):
@@ -105,6 +105,20 @@ class Wrapper(Module, ABC):
         is_mpe: bool = False,
     ) -> Tensor:
         return self.module._sample(
+            data=data,
+            sampling_ctx=sampling_ctx,
+            cache=cache,
+            is_mpe=is_mpe,
+        )
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        return self.module._rsample(
             data=data,
             sampling_ctx=sampling_ctx,
             cache=cache,

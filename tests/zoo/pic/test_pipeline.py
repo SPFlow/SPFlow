@@ -5,7 +5,7 @@ import pytest
 import torch
 from torch import Tensor, nn
 
-from spflow.exceptions import InvalidParameterError, ShapeError, StructureError
+from spflow.exceptions import InvalidParameterError, ShapeError, StructureError, UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.meta.region_graph import Region, RegionGraph
 from spflow.modules.module import Module
@@ -25,6 +25,7 @@ from spflow.zoo.pic import (
 from spflow.zoo.pic.functional_sharing import FunctionGroup
 from spflow.zoo.pic.pipeline import _maybe_attach_function_group, _merge_units
 from spflow.zoo.pic.tensorized.qpc import TensorizedQPCConfig
+from spflow.utils.sampling_context import DifferentiableSamplingContext
 
 
 class ConstantOneFunction(nn.Module):
@@ -226,6 +227,19 @@ def test_pic_sum_eq4_no_cross_channel_mixing():
 
     expected = torch.log(0.25 * torch.tensor([1.0, 2.0, 3.0]) + 0.75 * torch.tensor([10.0, 20.0, 30.0]))
     assert torch.allclose(ll, expected, atol=1e-6)
+
+
+def test_pic_symbolic_nodes_rsample_fail_fast() -> None:
+    z = Scope([10])
+    left = ConstantPICInput(Scope([0]), z, values=torch.zeros(3))
+    right = ConstantPICInput(Scope([1]), z, values=torch.zeros(3))
+    pic_sum = PICSum(inputs=[left], weights=torch.tensor([1.0]), latent_scope=z)
+    pic_prod = PICProduct(left, right)
+
+    with pytest.raises(UnsupportedOperationError, match="differentiable sampling"):
+        pic_sum.rsample(num_samples=2)
+    with pytest.raises(UnsupportedOperationError, match="differentiable sampling"):
+        pic_prod.rsample(num_samples=2)
 
 
 def test_product_materialization_kronecker_vs_hadamard():

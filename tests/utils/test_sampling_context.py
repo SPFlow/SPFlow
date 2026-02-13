@@ -1,10 +1,13 @@
 """Tests for sampling context utilities."""
 
-import torch
-import pytest
+import inspect
 
-from spflow.exceptions import InvalidParameterError, ShapeError
+import pytest
+import torch
+
+from spflow.exceptions import InvalidParameterError, ShapeError, UnsupportedOperationError
 from spflow.utils.sampling_context import (
+    DifferentiableSamplingContext,
     SamplingContext,
     build_root_sampling_context,
     init_default_sampling_context,
@@ -19,6 +22,8 @@ def test_sampling_context_init_defaults():
     assert ctx.channel_index.shape == (3, 1)
     assert ctx.mask.dtype == torch.bool
     assert ctx.channel_index.dtype == torch.long
+    assert ctx.repetition_idx is not None
+    assert torch.equal(ctx.repetition_idx, torch.zeros(3, dtype=torch.long))
     assert ctx.samples_mask.tolist() == [True, True, True]
 
 
@@ -409,3 +414,132 @@ def test_route_channel_offsets_allows_out_of_range_when_masked_off():
     assert routes[1][0][0, 0].item() == 0
     covered = torch.stack([child_mask for _, child_mask in routes], dim=0).any(dim=0)
     assert torch.equal(covered, torch.tensor([[False, True, True]], dtype=torch.bool))
+
+
+def test_differentiable_sampling_context_init_defaults():
+    ctx = DifferentiableSamplingContext(num_samples=3)
+
+    assert ctx.mask.shape == (3, 1)
+    assert ctx.channel_probs.shape == (3, 1, 1)
+    assert ctx.diff_method == "simple"
+    assert ctx.hard is False
+    assert ctx.temperature_sums == pytest.approx(1.0)
+    assert ctx.temperature_leaves == pytest.approx(1.0)
+    assert torch.equal(ctx.channel_probs, torch.ones((3, 1, 1)))
+    assert ctx.repetition_probs is not None
+    assert torch.equal(ctx.repetition_probs, torch.ones((3, 1)))
+
+
+def test_differentiable_sampling_context_public_api_has_no_tau_parameter():
+    sig = inspect.signature(DifferentiableSamplingContext.__init__)
+    assert "tau" not in sig.parameters
+
+
+def test_differentiable_sampling_context_rejects_non_simplex_channel_probs():
+    with pytest.raises(InvalidParameterError, match="must sum to 1"):
+        DifferentiableSamplingContext(
+            channel_probs=torch.tensor([[[0.7, 0.7]]], dtype=torch.float32),
+            mask=torch.tensor([[True]], dtype=torch.bool),
+        )
+
+
+def test_differentiable_sampling_context_copy_is_deep():
+    ctx = DifferentiableSamplingContext(
+        channel_probs=torch.tensor(
+            [
+                [[0.25, 0.75], [0.6, 0.4]],
+                [[0.1, 0.9], [0.9, 0.1]],
+            ],
+            dtype=torch.float32,
+        ),
+        mask=torch.tensor([[True, True], [True, False]], dtype=torch.bool),
+        repetition_probs=torch.tensor([[0.8, 0.2], [0.3, 0.7]], dtype=torch.float32),
+        diff_method="gumbel",
+        hard=True,
+        temperature_sums=0.7,
+        temperature_leaves=0.9,
+        sample_accum=torch.tensor([[1.0, 2.0], [3.0, 4.0]]),
+        sample_mass=torch.tensor([[0.5, 0.5], [1.0, 0.0]]),
+    )
+
+    copied = ctx.copy()
+    copied.channel_probs[0, 0, 0] = 0.0
+    copied.mask[1, 0] = False
+    copied.repetition_probs[0, 0] = 0.0
+    copied.sample_accum[0, 0] = 9.0
+    copied.sample_mass[0, 0] = 9.0
+
+    assert copied is not ctx
+    assert copied.diff_method == "gumbel"
+    assert copied.hard is True
+    assert ctx.channel_probs[0, 0, 0] == pytest.approx(0.25)
+    assert ctx.mask[1, 0].item() is True
+    assert ctx.repetition_probs[0, 0] == pytest.approx(0.8)
+    assert ctx.sample_accum[0, 0] == pytest.approx(1.0)
+    assert ctx.sample_mass[0, 0] == pytest.approx(0.5)
+
+
+def test_differentiable_sampling_context_disallows_index_api():
+    ctx = DifferentiableSamplingContext(num_samples=1)
+
+    with pytest.raises(UnsupportedOperationError, match="channel_index"):
+        _ = ctx.channel_index
+    with pytest.raises(UnsupportedOperationError, match="repetition_idx"):
+        _ = ctx.repetition_idx
+    with pytest.raises(UnsupportedOperationError, match="index-based updates"):
+        ctx.update(
+            channel_index=torch.zeros((1, 1), dtype=torch.long),
+            mask=torch.ones((1, 1), dtype=torch.bool),
+        )
+
+
+def test_differentiable_sampling_context_probability_helpers():
+    ctx = DifferentiableSamplingContext(
+        channel_probs=torch.tensor(
+            [
+                [[1.0, 0.0, 0.0, 0.0], [0.0, 0.2, 0.8, 0.0]],
+            ],
+            dtype=torch.float32,
+        ),
+        mask=torch.tensor([[True, True]], dtype=torch.bool),
+    )
+
+    chunks = ctx.slice_feature_prob_ranges([(0, 1), (1, 2)])
+    assert len(chunks) == 2
+    assert chunks[0][0].shape == (1, 1, 4)
+    assert torch.equal(chunks[1][1], torch.tensor([[True]], dtype=torch.bool))
+
+    routes = ctx.route_channel_prob_offsets([1, 3])
+    assert len(routes) == 2
+    assert routes[0][0].shape == (1, 2, 1)
+    assert torch.equal(routes[0][1], torch.tensor([[True, False]], dtype=torch.bool))
+    assert routes[1][0].shape == (1, 2, 3)
+    assert torch.equal(routes[1][1], torch.tensor([[False, True]], dtype=torch.bool))
+
+    singleton = DifferentiableSamplingContext(
+        channel_probs=torch.tensor([[[0.3, 0.7]]], dtype=torch.float32),
+        mask=torch.tensor([[True]], dtype=torch.bool),
+    )
+    singleton.broadcast_feature_prob_width(target_features=3)
+    assert singleton.channel_probs.shape == (1, 3, 2)
+    assert singleton.mask.shape == (1, 3)
+
+
+def test_differentiable_sampling_context_accumulate_and_finalize_with_evidence():
+    ctx = DifferentiableSamplingContext(num_samples=2)
+    values = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
+    weights = torch.tensor([[0.5, 0.5], [0.25, 0.75]])
+    mask = torch.tensor([[True, False], [True, True]], dtype=torch.bool)
+
+    ctx.accumulate_additive(values, weights=weights, mask=mask)
+
+    assert torch.equal(ctx.sample_accum, torch.tensor([[0.5, 0.0], [0.75, 3.0]]))
+    assert torch.equal(ctx.sample_mass, torch.tensor([[0.5, 0.0], [0.25, 0.75]]))
+
+    evidence = torch.tensor([[float("nan"), 9.0], [float("nan"), float("nan")]])
+    out = ctx.finalize_with_evidence(evidence)
+
+    assert out[0, 0] == pytest.approx(0.5)
+    assert out[0, 1] == pytest.approx(9.0)
+    assert out[1, 0] == pytest.approx(0.75)
+    assert out[1, 1] == pytest.approx(3.0)

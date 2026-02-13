@@ -13,6 +13,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import DifferentiableSamplingContext
 from spflow.zoo.sos import ExpSOCS
 from spflow.zoo.sos import SignedSum
 from spflow.modules.sos.socs import _signed_eval
@@ -178,6 +179,8 @@ def test_exp_socs_constructor_and_unsupported_ops():
         model.maximum_likelihood_estimation(torch.zeros((2, 1)))
     with pytest.raises(UnsupportedOperationError):
         model.sample(num_samples=2)
+    with pytest.raises(UnsupportedOperationError):
+        model.rsample(num_samples=2)
 
 
 def test_exp_socs_partition_cache_and_marginalize_branches():

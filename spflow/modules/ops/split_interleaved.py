@@ -16,8 +16,8 @@ from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import (
+    DifferentiableSamplingContext,
     SamplingContext,
-    require_sampling_context,
 )
 
 
@@ -120,13 +120,6 @@ class SplitInterleaved(Split):
         cache: Cache,
         is_mpe: bool = False,
     ) -> Tensor:
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
-        )
-
         input_features = self.inputs.out_shape.features
         before_features = int(sampling_ctx.channel_index.shape[1])
         sampling_ctx.repeat_split_feature_width(
@@ -149,6 +142,47 @@ class SplitInterleaved(Split):
             sampling_ctx.update(channel_index=channel_index, mask=mask)
 
         self.inputs._sample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
+        return data
+
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        """Differentiable structural passthrough for interleaved splits."""
+
+        input_features = self.inputs.out_shape.features
+        before_features = int(sampling_ctx.channel_probs.shape[1])
+        sampling_ctx.repeat_split_feature_prob_width(
+            num_splits=self.num_splits,
+            target_features=input_features,
+        )
+
+        # Split-sized adaptation repeats by split first, then needs interleaving.
+        if before_features != input_features:
+            channel_probs = rearrange(
+                sampling_ctx.channel_probs,
+                "b (split f) c -> b (f split) c",
+                split=self.num_splits,
+            )
+            mask = rearrange(
+                sampling_ctx.mask,
+                "b (split f) -> b (f split)",
+                split=self.num_splits,
+            )
+            sampling_ctx.update_prob_routing(
+                channel_probs=channel_probs,
+                mask=mask,
+            )
+
+        self.inputs._rsample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,

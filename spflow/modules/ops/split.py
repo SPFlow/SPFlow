@@ -19,8 +19,8 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import (
+    DifferentiableSamplingContext,
     SamplingContext,
-    require_sampling_context,
 )
 
 
@@ -265,13 +265,6 @@ class Split(Module, ABC):
         """
         # Prepare data tensor
 
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
-            num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
-        )
-
         sampling_ctx.require_feature_width(expected_features=self.inputs.out_shape.features)
 
         self.inputs._sample(
@@ -282,6 +275,23 @@ class Split(Module, ABC):
         )
         return data
 
+    def _rsample(
+        self,
+        data: Tensor,
+        sampling_ctx: DifferentiableSamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        """Differentiable structural passthrough for split modules."""
+        sampling_ctx.require_feature_width(expected_features=self.inputs.out_shape.features)
+
+        self.inputs._rsample(
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
+        return data
 
     def marginalize(
         self,

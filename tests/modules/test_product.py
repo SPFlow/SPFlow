@@ -5,7 +5,7 @@ import torch
 
 from spflow.learn import expectation_maximization
 from spflow.modules.products import Product
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 # Constants
@@ -47,10 +47,37 @@ def test_sample(in_channels: int, out_features: int, num_reps):
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
-        samples = product_layer.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = product_layer.sample(data=data)
         assert samples.shape == data.shape
         samples_query = samples[:, product_layer.scope.query]
         assert torch.isfinite(samples_query).all()
+
+
+@pytest.mark.parametrize("in_channels,out_features,num_reps", params)
+def test_rsample(in_channels: int, out_features: int, num_reps):
+    n_samples = 8
+    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
+    channel_probs = torch.rand(
+        (n_samples, product_layer.out_shape.features, product_layer.out_shape.channels)
+    )
+    channel_probs = channel_probs / channel_probs.sum(dim=-1, keepdim=True)
+    kwargs = {}
+    if num_reps > 1:
+        repetition_probs = torch.rand((n_samples, num_reps))
+        repetition_probs = repetition_probs / repetition_probs.sum(dim=-1, keepdim=True)
+        kwargs["repetition_probs"] = repetition_probs
+    sampling_ctx = DifferentiableSamplingContext(
+        channel_probs=channel_probs,
+        mask=torch.ones((n_samples, product_layer.out_shape.features), dtype=torch.bool),
+        **kwargs,
+    )
+
+    samples = product_layer.rsample(
+        num_samples=n_samples,
+        diff_method="gumbel",
+    )
+    assert samples.shape == (n_samples, out_features)
+    assert torch.isfinite(samples).all()
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps", params)
@@ -174,8 +201,8 @@ def test_multiple_inputs():
         channel_index=channel_index, mask=mask, repetition_index=repetition_index
     )
 
-    samples_a = module_a.sample(data=data_a, is_mpe=True, sampling_ctx=sampling_ctx_a)
-    samples_b = module_b.sample(data=data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
+    samples_a = module_a.sample(data=data_a, is_mpe=True)
+    samples_b = module_b.sample(data=data_b, is_mpe=True)
 
     torch.testing.assert_close(samples_a, samples_b, rtol=0.0, atol=0.0)
 
