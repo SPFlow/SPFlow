@@ -364,13 +364,28 @@ class SamplingContext:
             List of `(local_channel_index, child_mask)` tuples, one per child.
 
         Raises:
-            InvalidParameterError: If any child channel count is less than 1.
+            InvalidParameterError: If any child channel count is less than 1, or
+                if active channel ids fall outside the concatenated child range.
         """
         if any(count < 1 for count in child_channel_counts):
             raise InvalidParameterError("child_channel_counts must all be >= 1.")
 
+        total_channels = int(sum(child_channel_counts))
         out: list[tuple[Tensor, Tensor]] = []
         global_channel_index = self.channel_index
+        active_channels = global_channel_index[self.mask]
+        if active_channels.numel() > 0:
+            invalid = (active_channels < 0) | (active_channels >= total_channels)
+            if invalid.any():
+                invalid_values = active_channels[invalid]
+                observed_min = int(invalid_values.min().item())
+                observed_max = int(invalid_values.max().item())
+                raise InvalidParameterError(
+                    "sampling_ctx.channel_index contains out-of-range channel ids on active positions: "
+                    f"valid range is [0, {total_channels - 1}], observed min={observed_min}, "
+                    f"max={observed_max}."
+                )
+
         offset = 0
         for child_channels in child_channel_counts:
             child_start = offset
@@ -380,7 +395,8 @@ class SamplingContext:
             local_channel_index = torch.where(
                 in_child_range,
                 local_channel_index,
-                # Keep unrouted positions in-bounds for downstream gather ops.
+                # Keep non-owned positions in-bounds for downstream gather ops;
+                # correctness is enforced via child_mask and the range check above.
                 torch.zeros_like(local_channel_index),
             )
             child_mask = in_child_range & self.mask
@@ -488,9 +504,7 @@ def require_sampling_context(
         )
         if can_bootstrap:
             if num_samples is None:
-                raise InvalidParameterError(
-                    "Cannot initialize sampling context without num_samples."
-                )
+                raise InvalidParameterError("Cannot initialize sampling context without num_samples.")
             return SamplingContext(num_samples=num_samples, device=device)
 
         raise InvalidParameterError(
@@ -533,4 +547,3 @@ def update_channel_index_strict(sampling_ctx: SamplingContext, new_channel_index
             f"got {sampling_ctx.mask.shape[1]}, expected {new_channel_index.shape[1]}."
         )
     sampling_ctx.channel_index = new_channel_index
-

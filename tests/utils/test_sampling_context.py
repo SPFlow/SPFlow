@@ -386,3 +386,26 @@ def test_route_channel_offsets_applies_existing_mask():
     routes = ctx.route_channel_offsets(child_channel_counts=[2, 2])
     # Child 0 covers channels [0, 1], but second position is disabled by mask.
     assert torch.equal(routes[0][1], torch.tensor([[True, False, False, False]], dtype=torch.bool))
+
+
+def test_route_channel_offsets_rejects_out_of_range_active_channels():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[0, 4, 2]], dtype=torch.long),
+        mask=torch.tensor([[True, True, True]], dtype=torch.bool),
+    )
+    with pytest.raises(InvalidParameterError, match="out-of-range channel ids"):
+        ctx.route_channel_offsets(child_channel_counts=[1, 3])
+
+
+def test_route_channel_offsets_allows_out_of_range_when_masked_off():
+    ctx = SamplingContext(
+        channel_index=torch.tensor([[4, 0, 2]], dtype=torch.long),
+        mask=torch.tensor([[False, True, True]], dtype=torch.bool),
+    )
+    routes = ctx.route_channel_offsets(child_channel_counts=[1, 3])
+    assert len(routes) == 2
+    # Masked-off invalid channels are ignored by all children, but remain in-bounds for gathers.
+    assert routes[0][0][0, 0].item() == 0
+    assert routes[1][0][0, 0].item() == 0
+    covered = torch.stack([child_mask for _, child_mask in routes], dim=0).any(dim=0)
+    assert torch.equal(covered, torch.tensor([[False, True, True]], dtype=torch.bool))

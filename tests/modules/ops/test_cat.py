@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 import torch
 
+from spflow.exceptions import InvalidParameterError
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.meta import Scope
@@ -121,6 +122,35 @@ def test_sample_dim2_routes_unequal_child_channels_by_offsets():
             rtol=0.0,
             atol=1e-4,
         )
+
+
+def test_sample_dim2_rejects_out_of_range_global_channel_id():
+    scope = Scope([0, 1])
+    child_a = Normal(
+        scope=scope,
+        out_channels=1,
+        num_repetitions=1,
+        loc=torch.full((2, 1, 1), 100.0),
+        scale=torch.full((2, 1, 1), 1e-6),
+    )
+    child_b = Normal(
+        scope=scope,
+        out_channels=3,
+        num_repetitions=1,
+        loc=torch.tensor([0.0, 10.0, 20.0], dtype=torch.get_default_dtype()).view(1, 3, 1).repeat(2, 1, 1),
+        scale=torch.full((2, 3, 1), 1e-6),
+    )
+    module = Cat(inputs=[child_a, child_b], dim=2)
+
+    sampling_ctx = SamplingContext(
+        channel_index=torch.full((1, 2), 4, dtype=torch.long),
+        mask=torch.ones((1, 2), dtype=torch.bool),
+        repetition_index=torch.zeros((1,), dtype=torch.long),
+    )
+    data = torch.full((1, 2), torch.nan)
+
+    with pytest.raises(InvalidParameterError, match="out-of-range channel ids"):
+        module.sample(data=data, is_mpe=True, sampling_ctx=sampling_ctx)
 
 
 @pytest.mark.parametrize("out_channels,out_features, num_reps, dim", params)
