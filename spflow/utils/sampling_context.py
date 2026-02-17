@@ -76,7 +76,7 @@ class SamplingContext:
                 Can be inferred from other tensor dimensions if not provided.
                 Defaults to None.
             device (torch.device | None, optional): PyTorch device for tensor storage.
-                If None, uses torch.get_default_device() or CPU. Defaults to None.
+                If None, uses torch.get_default_device(). Defaults to None.
             channel_index (Tensor | None, optional): Channel indices for each sample
                 and feature. Shape: (batch_size, num_features). If None, samples
                 from all channels. Defaults to None.
@@ -92,11 +92,7 @@ class SamplingContext:
                 or num_samples conflicts with tensor dimensions.
         """
         if device is None:
-            # device = torch.device("cpu" if not torch.cuda.is_available() else "cuda:0")
-            if hasattr(torch, "get_default_device"):
-                device = torch.get_default_device()
-            else:
-                device = torch.device("cpu")
+            device = torch.get_default_device()
 
         if channel_index is not None and mask is not None:
             if not channel_index.shape == mask.shape:
