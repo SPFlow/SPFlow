@@ -8,8 +8,7 @@ import torch
 from spflow.meta import Scope
 from spflow.modules.ops import SplitInterleaved
 from spflow.modules.ops import SplitConsecutive
-from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
+from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 out_channels_values = [1, 5]
@@ -74,36 +73,10 @@ def test_sample(out_channels: int, features_values_multiplier: int, num_splits: 
     # Always set repetition_index since num_reps is never None
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module.sample(data=data)
+    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
     assert samples.shape == data.shape
-
-
-def test_rsample_split_consecutive_expands_split_sized_probability_context():
-    scope = Scope(list(range(6)))
-    leaf = make_normal_leaf(scope=scope, out_channels=2, num_repetitions=1)
-    split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
-
-    n_samples = 4
-    base_probs = torch.tensor(
-        [[[0.1, 0.9], [0.2, 0.8], [0.3, 0.7]]],
-        dtype=torch.float32,
-    ).repeat(n_samples, 1, 1)
-    sampling_ctx = DifferentiableSamplingContext(
-        channel_probs=base_probs,
-        mask=torch.ones((n_samples, 3), dtype=torch.bool),
-    )
-
-    out = split._rsample(
-        data=torch.full((n_samples, 6), torch.nan),
-        sampling_ctx=sampling_ctx,
-        cache=Cache(),
-    )
-    if sampling_ctx.sample_accum is not None and sampling_ctx.sample_mass is not None:
-        out = sampling_ctx.finalize_with_evidence(out)
-
-    assert torch.isfinite(out).all()
-    expected = base_probs.repeat(1, 2, 1)
-    torch.testing.assert_close(sampling_ctx.channel_probs, expected, atol=1e-4, rtol=1e-4)
+    samples_query = samples[:, module.scope.query]
+    assert torch.isfinite(samples_query).all()
 
 
 def test_split_inherits_scope_from_input():

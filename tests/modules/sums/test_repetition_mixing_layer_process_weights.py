@@ -6,8 +6,6 @@ import torch
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta import Scope
 from spflow.modules.sums import RepetitionMixingLayer
-from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import DifferentiableSamplingContext
 
 
 def _rand(*size: int) -> torch.Tensor:
@@ -255,29 +253,3 @@ class TestProcessWeightsParameter:
         )
         # Values should be the same, just with added dimension
         torch.testing.assert_close(weights.squeeze(0), input_weights, rtol=0.0, atol=0.0)
-
-    def test_rsample_routes_repetition_probs(self, layer):
-        """Differentiable sampling should produce valid repetition probabilities."""
-        num_samples = 6
-        data = torch.full((num_samples, layer.out_shape.features), torch.nan)
-        sampling_ctx = DifferentiableSamplingContext(
-            channel_probs=torch.full(
-                (num_samples, layer.out_shape.features, layer.out_shape.channels),
-                1.0 / layer.out_shape.channels,
-            ),
-            mask=torch.ones((num_samples, layer.out_shape.features), dtype=torch.bool),
-        )
-
-        out = layer._rsample(data=data, sampling_ctx=sampling_ctx, cache=Cache(), is_mpe=False)
-        if sampling_ctx.sample_accum is not None and sampling_ctx.sample_mass is not None:
-            out = sampling_ctx.finalize_with_evidence(out)
-
-        assert torch.isfinite(out).all()
-        assert sampling_ctx.repetition_probs is not None
-        assert sampling_ctx.repetition_probs.shape == (num_samples, layer.out_shape.repetitions)
-        torch.testing.assert_close(
-            sampling_ctx.repetition_probs.sum(dim=-1),
-            torch.ones((num_samples,), dtype=sampling_ctx.repetition_probs.dtype),
-            atol=1e-4,
-            rtol=1e-4,
-        )

@@ -11,11 +11,8 @@ from spflow.modules.leaves import Normal, Bernoulli
 from spflow.modules.ops import SplitMode
 from spflow.utils.cache import Cache
 from spflow.zoo.rat import RatSPN
-from spflow.utils.sampling_context import (
-    DifferentiableSamplingContext,
-    SamplingContext,
-    init_default_sampling_context,
-)
+from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import init_default_sampling_context
 from tests.utils.leaves import make_leaf, make_data
 
 depth = [1, 3]
@@ -144,7 +141,7 @@ def test_sample(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_p
     mask = torch.full((n_samples, module.out_shape.features), True)
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module.sample(data=data)
+    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()
@@ -195,7 +192,7 @@ def test_multidistribution_input(region_nodes, leaves, num_reps, root_nodes, out
     repetition_idx = torch.zeros((1,), dtype=torch.long)
     sampling_ctx = init_default_sampling_context(sampling_ctx=None, num_samples=1)
     sampling_ctx.repetition_idx = repetition_idx
-    samples = model.sample()
+    samples = model.sample(sampling_ctx=sampling_ctx)
 
     assert samples.shape == (1, out_features_1 + out_features_2)
 
@@ -444,20 +441,20 @@ def test_sample_initializes_channel_index_for_mpe_and_stochastic(monkeypatch):
     )
 
     captured: dict[str, SamplingContext] = {}
-    original_sample = module.root_node.inputs._sample
+    original_sample = module.root_node.inputs.sample
 
-    def capture_sample(*, data, sampling_ctx, cache, is_mpe=False):
-        captured["ctx"] = sampling_ctx.copy()
-        return original_sample(data=data, sampling_ctx=sampling_ctx, cache=cache, is_mpe=is_mpe)
+    def capture_sample(*args, **kwargs):
+        captured["ctx"] = kwargs["sampling_ctx"]
+        return original_sample(*args, **kwargs)
 
-    monkeypatch.setattr(module.root_node.inputs, "_sample", capture_sample)
+    monkeypatch.setattr(module.root_node.inputs, "sample", capture_sample)
 
-    module.sample(data=data, is_mpe=True)
+    module.sample(data=data, is_mpe=True, sampling_ctx=None)
     mpe_channel_index = captured["ctx"].channel_index
     assert mpe_channel_index is not None
     assert mpe_channel_index.shape[0] == data.shape[0]
 
-    module.sample(data=data, is_mpe=False)
+    module.sample(data=data, is_mpe=False, sampling_ctx=None)
     random_channel_index = captured["ctx"].channel_index
     assert random_channel_index is not None
     assert random_channel_index.shape[0] == data.shape[0]
@@ -483,151 +480,7 @@ def test_sample_raises_when_logits_shape_is_invalid(monkeypatch):
         torch.nn.Parameter(torch.zeros(1, module.n_root_nodes + 1, 1)),
     )
     with pytest.raises(InvalidParameterError):
-        module.sample(data=data)
-
-
-def test_rsample_runs_and_backpropagates():
-    num_features = 8
-    module = make_rat_spn(
-        leaf_cls=Normal,
-        depth=1,
-        n_region_nodes=2,
-        num_leaves=3,
-        num_repetitions=2,
-        n_root_nodes=3,
-        num_features=num_features,
-        outer_product=False,
-        split_mode=SplitMode.consecutive(),
-    )
-    data = torch.full((6, num_features), torch.nan)
-
-    samples = module.rsample(
-        data=data,
-        diff_method="gumbel",
-        hard=False,
-    )
-    assert torch.isfinite(samples).all()
-
-    loss = samples.square().mean()
-    loss.backward()
-
-    assert module.root_node.logits.grad is not None
-    assert module.leaf_modules[0].loc.grad is not None
-    assert torch.isfinite(module.root_node.logits.grad).all()
-    assert torch.isfinite(module.leaf_modules[0].loc.grad).all()
-
-
-def test_rsample_preserves_evidence_and_tracks_sample_mass():
-    num_features = 4
-    module = make_rat_spn(
-        leaf_cls=Normal,
-        depth=1,
-        n_region_nodes=2,
-        num_leaves=3,
-        num_repetitions=1,
-        n_root_nodes=1,
-        num_features=num_features,
-        outer_product=False,
-        split_mode=SplitMode.consecutive(),
-    )
-    data = torch.tensor(
-        [
-            [float("nan"), 1.5, float("nan"), float("nan")],
-            [2.0, float("nan"), float("nan"), 4.0],
-        ],
-        dtype=torch.float32,
-    )
-    observed_mask = ~torch.isnan(data)
-    expected_mass = torch.isnan(data).to(torch.float32)
-
-    sampling_ctx = DifferentiableSamplingContext(num_samples=data.shape[0])
-    samples = module._rsample(
-        data=data.clone(),
-        sampling_ctx=sampling_ctx,
-        cache=Cache(),
-        is_mpe=False,
-    )
-    if sampling_ctx.sample_accum is not None and sampling_ctx.sample_mass is not None:
-        samples = sampling_ctx.finalize_with_evidence(data.clone())
-
-    assert torch.isfinite(samples).all()
-    torch.testing.assert_close(samples[observed_mask], data[observed_mask], rtol=0.0, atol=0.0)
-    assert sampling_ctx.sample_mass is not None
-    torch.testing.assert_close(
-        sampling_ctx.sample_mass,
-        expected_mass.to(dtype=sampling_ctx.sample_mass.dtype, device=sampling_ctx.sample_mass.device),
-        atol=1e-4,
-        rtol=1e-4,
-    )
-
-
-def test_rsample_initializes_root_routing_context(monkeypatch):
-    num_features = 6
-    module = make_rat_spn(
-        leaf_cls=Normal,
-        depth=1,
-        n_region_nodes=2,
-        num_leaves=2,
-        num_repetitions=1,
-        n_root_nodes=3,
-        num_features=num_features,
-        outer_product=False,
-        split_mode=SplitMode.consecutive(),
-    )
-
-    monkeypatch.setattr(
-        module.root_node,
-        "logits",
-        torch.nn.Parameter(torch.tensor([[[0.0], [1.0], [2.0]]], dtype=torch.float32)),
-    )
-    sampling_ctx = DifferentiableSamplingContext(num_samples=3)
-
-    captured: dict[str, torch.Tensor] = {}
-
-    def capture_root_rsample(*, data, sampling_ctx, cache, is_mpe=False):
-        del data
-        del cache
-        del is_mpe
-        captured["channel_probs"] = sampling_ctx.channel_probs.clone()
-        captured["mask"] = sampling_ctx.mask.clone()
-        return torch.empty(0)
-
-    monkeypatch.setattr(module.root_node.inputs, "_rsample", capture_root_rsample)
-
-    module._rsample(
-        data=torch.full((3, num_features), torch.nan),
-        sampling_ctx=sampling_ctx,
-        cache=Cache(),
-        is_mpe=True,
-    )
-
-    expected = torch.zeros((3, 1, module.n_root_nodes), dtype=captured["channel_probs"].dtype)
-    expected[:, :, 2] = 1.0
-    torch.testing.assert_close(captured["channel_probs"], expected, atol=1e-6, rtol=1e-6)
-    torch.testing.assert_close(captured["mask"], torch.ones((3, 1), dtype=torch.bool))
-
-
-def test_rsample_raises_when_logits_shape_is_invalid(monkeypatch):
-    module = make_rat_spn(
-        leaf_cls=Normal,
-        depth=1,
-        n_region_nodes=2,
-        num_leaves=2,
-        num_repetitions=1,
-        n_root_nodes=3,
-        num_features=6,
-        outer_product=False,
-        split_mode=SplitMode.consecutive(),
-    )
-    data = torch.full((2, 6), torch.nan)
-
-    monkeypatch.setattr(
-        module.root_node,
-        "logits",
-        torch.nn.Parameter(torch.zeros(1, module.n_root_nodes + 1, 1)),
-    )
-    with pytest.raises(InvalidParameterError):
-        module.rsample(data=data)
+        module.sample(data=data, sampling_ctx=None)
 
 
 def test_expectation_maximization_delegates_and_mle_is_unsupported(monkeypatch):

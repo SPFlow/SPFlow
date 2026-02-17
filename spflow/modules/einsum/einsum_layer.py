@@ -26,12 +26,8 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.split import Split, SplitMode
 from spflow.modules.ops.split_consecutive import SplitConsecutive
 from spflow.utils.cache import Cache, cached
-from spflow.utils.differentiable_sampling import sample_categorical_differentiably
 from spflow.utils.projections import proj_convex_to_real
-from spflow.utils.sampling_context import (
-    DifferentiableSamplingContext,
-    SamplingContext,
-)
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
 
 class EinsumLayer(Module):
@@ -338,6 +334,13 @@ class EinsumLayer(Module):
         """
         # Prepare data tensor
 
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
+
         # Get logits and select based on context
         logits = self.logits  # (D, O, R, I, J)
 
@@ -462,190 +465,6 @@ class EinsumLayer(Module):
 
         return data
 
-    def _rsample(
-        self,
-        data: Tensor,
-        sampling_ctx: DifferentiableSamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> Tensor:
-        """Route pair-channel probabilities differentiably and recurse."""
-        sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
-        parent_channel_probs = sampling_ctx.resolve_channel_probs(
-            expected_channels=int(self.out_shape.channels),
-            module_name=f"{self.__class__.__name__}._rsample",
-        )
-
-        repetition_probs = sampling_ctx.resolve_repetition_probs(
-            expected_repetitions=int(self.out_shape.repetitions),
-            module_name=f"{self.__class__.__name__}._rsample",
-        )
-        batch_size = int(data.shape[0])
-        num_left_channels = int(self._left_channels)
-        num_right_channels = int(self._right_channels)
-
-        flat_logits = rearrange(
-            self.logits / sampling_ctx.temperature_sums,
-            "f co r i j -> f co r (i j)",
-        )
-        log_routing = torch.log_softmax(flat_logits, dim=-1)
-        log_routing = rearrange(
-            log_routing,
-            "f co r (i j) -> 1 f i j co r",
-            i=num_left_channels,
-            j=num_right_channels,
-        )
-        log_routing = log_routing.expand(batch_size, -1, -1, -1, -1, -1)
-
-        left_ll = None
-        right_ll = None
-        if "log_likelihood" in cache:
-            if self._two_inputs:
-                left_ll = cache["log_likelihood"].get(self.inputs[0])
-                right_ll = cache["log_likelihood"].get(self.inputs[1])
-            else:
-                split_ll = cache["log_likelihood"].get(self.inputs)
-                if isinstance(split_ll, (list, tuple)) and len(split_ll) == 2:
-                    left_ll, right_ll = split_ll
-
-        if left_ll is not None and right_ll is not None:
-            if left_ll.ndim == 3:
-                left_ll = rearrange(left_ll, "b f i -> b f i 1")
-            if right_ll.ndim == 3:
-                right_ll = rearrange(right_ll, "b f j -> b f j 1")
-            if left_ll.ndim != 4 or right_ll.ndim != 4:
-                raise ShapeError(
-                    "Expected cached child log-likelihoods for EinsumLayer._rsample to have "
-                    f"rank 3 or 4, got ranks {left_ll.ndim} and {right_ll.ndim}."
-                )
-            if left_ll.shape[0] != right_ll.shape[0] or left_ll.shape[1] != right_ll.shape[1]:
-                raise ShapeError(
-                    "Cached child log-likelihood batch/feature shape mismatch in "
-                    f"{self.__class__.__name__}._rsample: left={tuple(left_ll.shape)}, "
-                    f"right={tuple(right_ll.shape)}."
-                )
-            if left_ll.shape[2] != num_left_channels or right_ll.shape[2] != num_right_channels:
-                raise ShapeError(
-                    "Cached child log-likelihood channel width mismatch in "
-                    f"{self.__class__.__name__}._rsample: left={left_ll.shape[2]} "
-                    f"(expected {num_left_channels}), right={right_ll.shape[2]} "
-                    f"(expected {num_right_channels})."
-                )
-            if (
-                left_ll.shape[-1] != self.out_shape.repetitions
-                or right_ll.shape[-1] != self.out_shape.repetitions
-            ):
-                raise ShapeError(
-                    "Cached child log-likelihood repetition width mismatch in "
-                    f"{self.__class__.__name__}._rsample: left={left_ll.shape[-1]}, "
-                    f"right={right_ll.shape[-1]}, expected {self.out_shape.repetitions}."
-                )
-
-            joint_ll = rearrange(left_ll, "b f i r -> b f i 1 r") + rearrange(
-                right_ll,
-                "b f j r -> b f 1 j r",
-            )
-            log_routing = log_routing + rearrange(joint_ll, "b f i j r -> b f i j 1 r")
-            flat_routing = rearrange(log_routing, "b f i j co r -> b f (i j) co r")
-            flat_routing = flat_routing - torch.logsumexp(flat_routing, dim=2, keepdim=True)
-            log_routing = rearrange(
-                flat_routing,
-                "b f (i j) co r -> b f i j co r",
-                i=num_left_channels,
-                j=num_right_channels,
-            )
-
-        routing_probs_by_rep = log_routing.exp()
-        routing_probs = torch.einsum("br,bfijor->bfijo", repetition_probs, routing_probs_by_rep)
-        flat_routing_probs = rearrange(routing_probs, "b f i j co -> b f (i j) co")
-
-        routed_pairs_flat = sample_categorical_differentiably(
-            logits=torch.log(flat_routing_probs.clamp_min(1e-12)),
-            dim=2,
-            method=sampling_ctx.diff_method,
-            is_mpe=is_mpe,
-            hard=sampling_ctx.hard,
-            temperature=1.0,
-        )
-        routed_pairs = rearrange(
-            routed_pairs_flat,
-            "b f (i j) co -> b f i j co",
-            i=num_left_channels,
-            j=num_right_channels,
-        )
-
-        left_channel_probs = torch.einsum("bfo,bfijo->bfi", parent_channel_probs, routed_pairs)
-        right_channel_probs = torch.einsum("bfo,bfijo->bfj", parent_channel_probs, routed_pairs)
-
-        left_mask = sampling_ctx.mask & (left_channel_probs.sum(dim=-1) > 0.0)
-        right_mask = sampling_ctx.mask & (right_channel_probs.sum(dim=-1) > 0.0)
-
-        left_norm = left_channel_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
-        right_norm = right_channel_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
-        left_channel_probs = torch.where(
-            left_mask.unsqueeze(-1),
-            left_channel_probs / left_norm,
-            torch.zeros_like(left_channel_probs),
-        )
-        right_channel_probs = torch.where(
-            right_mask.unsqueeze(-1),
-            right_channel_probs / right_norm,
-            torch.zeros_like(right_channel_probs),
-        )
-
-        original_channel_probs = sampling_ctx.channel_probs
-        original_mask = sampling_ctx.mask
-        original_repetition_probs = sampling_ctx.repetition_probs
-
-        if self._two_inputs:
-            sampling_ctx.update_prob_routing(
-                channel_probs=left_channel_probs,
-                mask=left_mask,
-            )
-            sampling_ctx.repetition_probs = original_repetition_probs
-            self.inputs[0]._rsample(
-                data=data,
-                is_mpe=is_mpe,
-                cache=cache,
-                sampling_ctx=sampling_ctx,
-            )
-
-            sampling_ctx.update_prob_routing(
-                channel_probs=right_channel_probs,
-                mask=right_mask,
-            )
-            sampling_ctx.repetition_probs = original_repetition_probs
-            self.inputs[1]._rsample(
-                data=data,
-                is_mpe=is_mpe,
-                cache=cache,
-                sampling_ctx=sampling_ctx,
-            )
-        else:
-            full_channel_probs = self.inputs.merge_split_tensors(
-                left_channel_probs,
-                right_channel_probs,
-            )
-            full_mask = self.inputs.merge_split_tensors(left_mask, right_mask)
-            sampling_ctx.update_prob_routing(
-                channel_probs=full_channel_probs,
-                mask=full_mask,
-            )
-            sampling_ctx.repetition_probs = original_repetition_probs
-            self.inputs._rsample(
-                data=data,
-                is_mpe=is_mpe,
-                cache=cache,
-                sampling_ctx=sampling_ctx,
-            )
-
-        sampling_ctx.update_prob_routing(
-            channel_probs=original_channel_probs,
-            mask=original_mask,
-        )
-        sampling_ctx.repetition_probs = original_repetition_probs
-        return data
-
     def _expectation_maximization_step(
         self,
         data: Tensor,
@@ -705,9 +524,7 @@ class EinsumLayer(Module):
             self.inputs[0]._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
             self.inputs[1]._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
         else:
-            self.inputs.inputs._expectation_maximization_step(
-                data, bias_correction=bias_correction, cache=cache
-            )
+            self.inputs.inputs._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
 
     def marginalize(
         self,

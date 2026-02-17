@@ -17,10 +17,7 @@ from spflow.modules.sums.signed_sum import SignedSum
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
 from spflow.utils.inner_product import inner_product_matrix, log_self_inner_product_scalar
-from spflow.utils.sampling_context import (
-    DifferentiableSamplingContext,
-    SamplingContext,
-)
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
 
 def _is_signed_categorical(module: Module) -> bool:
@@ -191,6 +188,7 @@ class SOCS(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
 
@@ -214,6 +212,7 @@ class SOCS(Module):
             data=data,
             is_mpe=is_mpe,
             cache=cache,
+            sampling_ctx=sampling_ctx,
         )
 
     def _sample(
@@ -304,13 +303,3 @@ class SOCS(Module):
             out[mask] = x
 
         return out
-
-    def _rsample(
-        self,
-        data: Tensor,
-        sampling_ctx: DifferentiableSamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> Tensor:
-        del data, sampling_ctx, cache, is_mpe
-        raise UnsupportedOperationError("SOCS does not support differentiable sampling (_rsample).")

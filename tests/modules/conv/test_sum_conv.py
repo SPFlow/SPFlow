@@ -7,12 +7,12 @@ import numpy as np
 import pytest
 import torch
 
-from spflow.exceptions import InvalidWeightsError, MissingCacheError, ShapeError
+from spflow.exceptions import InvalidParameterError, InvalidWeightsError, MissingCacheError, ShapeError
 from spflow.meta.data import Scope
 from spflow.modules.conv import SumConv
 from spflow.modules.leaves import Normal
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
+from spflow.utils.sampling_context import SamplingContext
 from tests.utils.helpers import make_module_sampling_context
 
 # Test parameter values
@@ -243,7 +243,7 @@ class TestSumConvSample:
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
         num_samples = 20
-        samples = module.sample(num_samples=num_samples)
+        samples = module.sample(num_samples=num_samples, sampling_ctx=make_module_sampling_context(module, batch_size=num_samples))
 
         assert samples.shape == (num_samples, height * width)
 
@@ -254,7 +254,7 @@ class TestSumConvSample:
         leaf = make_normal_leaf(height, width, out_channels=in_channels)
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
-        samples = module.sample(num_samples=10)
+        samples = module.sample(num_samples=10, sampling_ctx=make_module_sampling_context(module, batch_size=10))
         assert torch.isfinite(samples).all()
 
     @pytest.mark.parametrize("in_channels,out_channels,hw", sample_params)
@@ -265,10 +265,10 @@ class TestSumConvSample:
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
         sampling_ctx1 = make_module_sampling_context(module, batch_size=5)
-        samples1 = module.sample(num_samples=5, is_mpe=True)
+        samples1 = module.sample(num_samples=5, is_mpe=True, sampling_ctx=sampling_ctx1)
 
         sampling_ctx2 = make_module_sampling_context(module, batch_size=5)
-        samples2 = module.sample(num_samples=5, is_mpe=True)
+        samples2 = module.sample(num_samples=5, is_mpe=True, sampling_ctx=sampling_ctx2)
 
         # MPE should give deterministic results (same selection)
         # Note: actual values may vary due to leaf sampling
@@ -279,7 +279,7 @@ class TestSumConvSample:
         leaf = make_normal_leaf(4, 4, out_channels=2)
         module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
 
-        samples = module.sample()
+        samples = module.sample(sampling_ctx=make_module_sampling_context(module, batch_size=1))
         assert samples.shape == (1, 16)
 
     def test_sample_uses_repetition_index_and_cached_input_lls(self):
@@ -298,7 +298,9 @@ class TestSumConvSample:
             repetition_index=torch.tensor([0, 1, 0], dtype=torch.long),
         )
 
-        out = module.sample(data=torch.full((batch_size, 16), float("nan")), cache=cache)
+        out = module.sample(
+            data=torch.full((batch_size, 16), float("nan")), cache=cache, sampling_ctx=sampling_ctx
+        )
         assert out.shape == (batch_size, 16)
         assert sampling_ctx.channel_index.shape == (batch_size, 16)
 
@@ -314,29 +316,7 @@ class TestSumConvSample:
         )
 
         with pytest.raises(ShapeError, match="incompatible sampling context feature width"):
-            module._sample(
-                data=torch.full((batch_size, 16), float("nan")),
-                sampling_ctx=sampling_ctx,
-                cache=Cache(),
-            )
-
-    @pytest.mark.parametrize("in_channels,out_channels,hw", sample_params)
-    def test_rsample_shape_and_finite(self, in_channels, out_channels, hw):
-        height, width = hw
-        leaf = make_normal_leaf(height, width, out_channels=in_channels)
-        module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
-
-        num_samples = 9
-        channel_probs = torch.rand((num_samples, module.out_shape.features, module.out_shape.channels))
-        channel_probs = channel_probs / channel_probs.sum(dim=-1, keepdim=True)
-        sampling_ctx = DifferentiableSamplingContext(
-            channel_probs=channel_probs,
-            mask=torch.ones((num_samples, module.out_shape.features), dtype=torch.bool),
-        )
-
-        samples = module.rsample(num_samples=num_samples, diff_method="gumbel")
-        assert samples.shape == (num_samples, height * width)
-        assert torch.isfinite(samples).all()
+            module.sample(data=torch.full((batch_size, 16), float("nan")), sampling_ctx=sampling_ctx)
 
     def test_sample_invalid_context_width_raises_shape_error(self):
         """Test sample rejects sampling context widths incompatible with spatial upsampling."""
@@ -351,11 +331,7 @@ class TestSumConvSample:
         )
 
         with pytest.raises(ShapeError, match="incompatible sampling context feature width"):
-            module._sample(
-                data=torch.full((batch_size, 16), float("nan")),
-                sampling_ctx=sampling_ctx,
-                cache=Cache(),
-            )
+            module.sample(data=torch.full((batch_size, 16), float("nan")), sampling_ctx=sampling_ctx)
 
     def test_sample_non_square_features_raises(self):
         """Test sample rejects non-square feature counts."""
@@ -367,7 +343,7 @@ class TestSumConvSample:
         )
 
         with pytest.raises(ValueError):
-            module.sample(num_samples=2)
+            module.sample(num_samples=2, sampling_ctx=sampling_ctx)
 
     def test_sample_non_divisible_spatial_dims_raises(self):
         """Test sample rejects square dims not divisible by kernel size."""
@@ -379,14 +355,13 @@ class TestSumConvSample:
         )
 
         with pytest.raises(ValueError):
-            module.sample(num_samples=2)
+            module.sample(num_samples=2, sampling_ctx=sampling_ctx)
 
     def test_sample_requires_context_for_non_scalar_output(self):
         leaf = make_normal_leaf(4, 4, out_channels=2)
         module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
-        out = module.sample(num_samples=2)
-        assert out.shape == (2, 16)
-        assert torch.isfinite(out).all()
+        with pytest.raises(InvalidParameterError, match="requires an explicit sampling_ctx"):
+            module.sample(num_samples=2)
 
 
 class TestSumConvFeatureToScope:

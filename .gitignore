@@ -172,3 +172,5 @@ uv.lock
 *ubyte
 *ubyte.gz
 
+reference-repos/
+PLANS/

@@ -10,7 +10,7 @@ from __future__ import annotations
 import torch
 from einops import repeat
 
-from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
+from spflow.utils.sampling_context import SamplingContext
 
 
 def upsample_sampling_context(
@@ -53,33 +53,3 @@ def upsample_sampling_context(
     mask = mask.view(batch_size, new_features)
 
     sampling_ctx.update(channel_index=channel_idx, mask=mask)
-
-
-def upsample_differentiable_sampling_context(
-    sampling_ctx: DifferentiableSamplingContext,
-    current_height: int,
-    current_width: int,
-    scale_h: int,
-    scale_w: int,
-) -> None:
-    """Upsample differentiable routing tensors to higher spatial resolution.
-
-    Used when propagating from a smaller spatial layer to a larger one during
-    differentiable sampling. Modifies ``sampling_ctx`` in-place.
-    """
-    batch_size = sampling_ctx.channel_probs.shape[0]
-    num_channels = sampling_ctx.channel_probs.shape[2]
-    channel_probs = sampling_ctx.channel_probs
-    mask = sampling_ctx.mask
-
-    channel_probs = channel_probs.view(batch_size, current_height, current_width, num_channels)
-    mask = mask.view(batch_size, current_height, current_width)
-
-    channel_probs = repeat(channel_probs, "b h w c -> b (h sh) (w sw) c", sh=scale_h, sw=scale_w)
-    mask = repeat(mask, "b h w -> b (h sh) (w sw)", sh=scale_h, sw=scale_w)
-
-    new_features = current_height * scale_h * current_width * scale_w
-    channel_probs = channel_probs.view(batch_size, new_features, num_channels)
-    mask = mask.view(batch_size, new_features)
-
-    sampling_ctx.update_prob_routing(channel_probs=channel_probs, mask=mask)

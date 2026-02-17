@@ -26,14 +26,14 @@ from einops import rearrange, repeat
 from torch import Tensor, nn
 from torch.nn import functional as F
 
-from spflow.exceptions import InvalidParameterError, ShapeError, StructureError, UnsupportedOperationError
+from spflow.exceptions import InvalidParameterError, ShapeError, StructureError
 from spflow.meta.region_graph import Region, RegionGraph
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.zoo.pic.pipeline import QuadratureRule
 from spflow.zoo.pic.tensorized.utils import eval_collapsed_cp, eval_mixing, eval_tucker
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
+from spflow.utils.sampling_context import SamplingContext
 
 
 @dataclasses.dataclass(frozen=True)
@@ -550,16 +550,6 @@ class TensorizedQPC(Module):
         is_mpe: bool = False,
     ) -> Tensor:
         raise NotImplementedError("Sampling is not implemented for TensorizedQPC yet.")
-
-    def _rsample(
-        self,
-        data: Tensor,
-        sampling_ctx: DifferentiableSamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> Tensor:
-        del data, sampling_ctx, cache, is_mpe
-        raise UnsupportedOperationError("TensorizedQPC does not support differentiable sampling (_rsample).")
 
     def marginalize(
         self, marg_rvs: list[int], prune: bool = True, cache: Cache | None = None

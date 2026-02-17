@@ -43,7 +43,7 @@ class TestEinsumLayerSampling:
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
 
-        samples = module.sample(data=data)
+        samples = module.sample(data=data, sampling_ctx=sampling_ctx)
 
         assert samples.shape == (num_samples, total_features)
         assert torch.isfinite(samples[:, module.scope.query]).all()
@@ -57,7 +57,7 @@ class TestEinsumLayerSampling:
         mask = torch.ones((num_samples, 2), dtype=torch.bool)
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
 
-        samples = module.sample(data=data, is_mpe=True)
+        samples = module.sample(data=data, is_mpe=True, sampling_ctx=sampling_ctx)
 
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()
@@ -102,7 +102,7 @@ class TestEinsumLayerSplitOptimization:
         mask = torch.ones((num_samples, 2), dtype=torch.bool)
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
 
-        samples = einsum.sample(data=data)
+        samples = einsum.sample(data=data, sampling_ctx=sampling_ctx)
 
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()
@@ -127,6 +127,6 @@ class TestEinsumLayerSplitOptimization:
         mask = torch.ones((num_samples, 2), dtype=torch.bool)
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
 
-        samples = einsum.sample(data=sample_data)
+        samples = einsum.sample(data=sample_data, sampling_ctx=sampling_ctx)
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()

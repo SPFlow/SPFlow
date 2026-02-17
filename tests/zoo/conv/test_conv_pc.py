@@ -10,7 +10,6 @@ from spflow.meta.data import Scope
 from spflow.zoo.conv import ConvPc
 from spflow.modules.leaves import Normal
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import DifferentiableSamplingContext
 
 # Test parameter values
 out_channels_values = [1, 3]
@@ -297,34 +296,6 @@ class TestConvPcSample:
         )
 
         samples = model.sample(num_samples=10, is_mpe=True)
-        assert torch.isfinite(samples).all()
-
-    @pytest.mark.parametrize("out_channels,hw,depth,num_repetitions,use_sum_conv", sample_params)
-    def test_rsample(self, out_channels, hw, depth, num_repetitions, use_sum_conv):
-        height, width = hw
-        leaf = make_normal_leaf(height, width, out_channels=out_channels, num_repetitions=num_repetitions)
-        model = ConvPc(
-            leaf=leaf,
-            input_height=height,
-            input_width=width,
-            channels=5,
-            depth=depth,
-            num_repetitions=num_repetitions,
-            use_sum_conv=use_sum_conv,
-        )
-
-        num_samples = 8
-        root_features = int(model.inputs.out_shape.features)
-        root_channels = int(model.inputs.out_shape.channels)
-        channel_probs = torch.rand((num_samples, root_features, root_channels))
-        channel_probs = channel_probs / channel_probs.sum(dim=-1, keepdim=True)
-        sampling_ctx = DifferentiableSamplingContext(
-            channel_probs=channel_probs,
-            mask=torch.ones((num_samples, root_features), dtype=torch.bool),
-        )
-
-        samples = model.rsample(num_samples=num_samples, diff_method="gumbel")
-        assert samples.shape == (num_samples, height * width)
         assert torch.isfinite(samples).all()
 
 

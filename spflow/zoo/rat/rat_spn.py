@@ -11,8 +11,6 @@ Reference:
 
 from __future__ import annotations
 
-from typing import Literal
-
 import numpy as np
 import torch
 from einops import rearrange, repeat
@@ -31,9 +29,8 @@ from spflow.modules.rat.factorize import Factorize
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
-from spflow.utils.differentiable_sampling import sample_categorical_differentiably
 from spflow.utils.inference import log_posterior
-from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
+from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
 
 
 class RatSPN(Module, Classifier):
@@ -268,34 +265,67 @@ class RatSPN(Module, Classifier):
         data: torch.Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
     ) -> torch.Tensor:
-        return super().sample(
-            num_samples=num_samples,
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
+        """Generate samples from the RAT-SPN.
+
+        Args:
+            num_samples: Number of samples to generate.
+            data: Data tensor with NaN values to fill with samples.
+            is_mpe: Whether to perform maximum a posteriori estimation.
+            cache: Optional cache dictionary.
+            sampling_ctx: Optional sampling context.
+
+        Returns:
+            Sampled values.
+        """
+
+        # Handle num_samples case (create empty data tensor)
+        if data is None:
+            if num_samples is None:
+                num_samples = 1
+            data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
+        if cache is None:
+            cache = Cache()
+
+        # Initialize sampling context at root.
+        sampling_ctx_was_none = sampling_ctx is None
+        sampling_ctx = build_root_sampling_context(
+            sampling_ctx,
+            module_name=self.__class__.__name__,
+            num_samples=data.shape[0],
+            num_features=self.root_node.out_shape.features,
+            device=data.device,
         )
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: torch.Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        diff_method: Literal["simple", "gumbel"] = "simple",
-        hard: bool = False,
-        temperature_sums: float = 1.0,
-        temperature_leaves: float = 1.0,
-    ) -> torch.Tensor:
-        return super().rsample(
-            num_samples=num_samples,
+        # Preserve explicit caller-provided root routing; only draw root routing
+        # when bootstrapping context at the root entrypoint.
+        if self.n_root_nodes > 1 and sampling_ctx_was_none:
+            logits = self.root_node.logits
+            if logits.shape != (1, self.n_root_nodes, 1):
+                raise InvalidParameterError(
+                    f"Expected logits shape (1, {self.n_root_nodes}, 1), but got {logits.shape}"
+                )
+            logits = rearrange(logits, "1 co 1 -> 1 1 co")
+            batch_size = data.shape[0]
+            logits = repeat(logits, "1 1 co -> b 1 co", b=batch_size)  # shape [b, 1, n_root_nodes]
+
+            if is_mpe:
+                sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
+            else:
+                sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
+
+        # if the model only has one root node, we can directly sample from the mixing layer
+        if self.n_root_nodes > 1:
+            sample_root = self.root_node.inputs
+        else:
+            sample_root = self.root_node
+
+        return sample_root.sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,
-            diff_method=diff_method,
-            hard=hard,
-            temperature_sums=temperature_sums,
-            temperature_leaves=temperature_leaves,
+            sampling_ctx=sampling_ctx,
         )
 
     def _sample(
@@ -305,72 +335,13 @@ class RatSPN(Module, Classifier):
         cache: Cache,
         is_mpe: bool = False,
     ) -> torch.Tensor:
-        if torch.isnan(data).any() and torch.isfinite(data).any():
-            self.log_likelihood(data, cache=cache)
-        if self.n_root_nodes > 1:
-            logits = self.root_node.logits
-            if logits.shape == (1, self.n_root_nodes, 1, 1):
-                logits = rearrange(logits, "1 co 1 1 -> 1 1 co")
-            elif logits.shape == (1, self.n_root_nodes, 1):
-                logits = rearrange(logits, "1 co 1 -> 1 1 co")
-            else:
-                raise InvalidParameterError(
-                    f"Expected logits shape (1, {self.n_root_nodes}, 1), but got {tuple(logits.shape)}."
-                )
-            logits = repeat(logits, "1 1 co -> b 1 co", b=data.shape[0])
-            if is_mpe:
-                sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
-            else:
-                sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
-            return self.root_node.inputs._sample(
-                data=data,
-                is_mpe=is_mpe,
-                cache=cache,
-                sampling_ctx=sampling_ctx,
-            )
-
-        return self.root_node._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
-
-    def _rsample(
-        self,
-        data: torch.Tensor,
-        sampling_ctx: DifferentiableSamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> torch.Tensor:
-        if torch.isnan(data).any() and torch.isfinite(data).any():
-            self.log_likelihood(data, cache=cache)
-        if self.n_root_nodes > 1:
-            logits = self.root_node.logits
-            if logits.shape == (1, self.n_root_nodes, 1, 1):
-                logits = rearrange(logits, "1 co 1 1 -> 1 1 co")
-            elif logits.shape == (1, self.n_root_nodes, 1):
-                logits = rearrange(logits, "1 co 1 -> 1 1 co")
-            else:
-                raise InvalidParameterError(
-                    f"Expected logits shape (1, {self.n_root_nodes}, 1), but got {tuple(logits.shape)}."
-                )
-            logits = repeat(logits, "1 1 co -> b 1 co", b=data.shape[0])
-            root_channel_probs = sample_categorical_differentiably(
-                logits=logits,
-                dim=-1,
-                method=sampling_ctx.diff_method,
-                is_mpe=is_mpe,
-                hard=sampling_ctx.hard,
-                temperature=sampling_ctx.temperature_sums,
-            )
-            sampling_ctx.update_prob_routing(
-                channel_probs=root_channel_probs,
-                mask=torch.ones((data.shape[0], 1), dtype=torch.bool, device=data.device),
-            )
-            return self.root_node.inputs._rsample(
-                data=data,
-                is_mpe=is_mpe,
-                cache=cache,
-                sampling_ctx=sampling_ctx,
-            )
-
-        return self.root_node._rsample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        return self.sample(
+            num_samples=None,
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            sampling_ctx=sampling_ctx,
+        )
 
     def _expectation_maximization_step(
         self,

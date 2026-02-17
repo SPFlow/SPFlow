@@ -9,7 +9,6 @@ import torch
 from spflow.meta import Scope
 from spflow.modules.ops import SplitInterleaved, SplitConsecutive
 from spflow.modules.products import ElementwiseProduct, OuterProduct
-from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
@@ -63,7 +62,7 @@ def test_split_operations_sampling():
 
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
 
-    samples = split.sample(data=data)
+    samples = split.sample(data=data, sampling_ctx=sampling_ctx)
 
     # Verify samples
     assert samples.shape == (n_samples, num_features)
@@ -215,7 +214,7 @@ def test_split_sampling_mpe_mode(split_type):
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
 
     # Sample in MPE mode
-    samples = split.sample(data=data, is_mpe=True)
+    samples = split.sample(data=data, sampling_ctx=sampling_ctx, is_mpe=True)
 
     assert samples.shape == (n_samples, num_features)
     assert torch.isfinite(samples).all()
@@ -294,7 +293,7 @@ def test_split_with_partial_mask_sampling():
 
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
 
-    samples = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache(), is_mpe=False)
+    samples = split.sample(data=data, sampling_ctx=sampling_ctx)
 
     # Masked features should still be NaN
     assert torch.isnan(samples[:, ::2]).any()

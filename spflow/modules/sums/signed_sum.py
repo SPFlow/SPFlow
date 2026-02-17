@@ -12,12 +12,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
-from spflow.utils.differentiable_sampling import sample_categorical_differentiably
-from spflow.utils.sampling_context import (
-    DifferentiableSamplingContext,
-    SamplingContext,
-    update_channel_index_strict,
-)
+from spflow.utils.sampling_context import SamplingContext, update_channel_index_strict
 from spflow.utils.signed_semiring import signed_logsumexp, sign_of
 
 
@@ -212,9 +207,7 @@ class SignedSum(Module):
         if context_features == num_weight_features:
             oidx = repeat(sampling_ctx.channel_index, "b f -> b f ci 1", ci=in_channels_total)
         elif context_features == 1:
-            oidx = repeat(
-                sampling_ctx.channel_index, "b 1 -> b f ci 1", f=num_weight_features, ci=in_channels_total
-            )
+            oidx = repeat(sampling_ctx.channel_index, "b 1 -> b f ci 1", f=num_weight_features, ci=in_channels_total)
         else:
             raise ShapeError(
                 f"Expected channel_index feature width 1 or {num_weight_features}, got {context_features}."
@@ -232,68 +225,4 @@ class SignedSum(Module):
 
         update_channel_index_strict(sampling_ctx, new_channel_index)
         self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
-        return data
-
-    def _rsample(
-        self,
-        data: Tensor,
-        sampling_ctx: DifferentiableSamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> Tensor:
-        if torch.isfinite(data).any():
-            raise UnsupportedOperationError(
-                "SignedSum.rsample() does not support conditional sampling with evidence."
-            )
-        if (self.weights < 0).any():
-            raise UnsupportedOperationError(
-                "SignedSum.rsample() is only supported when all weights are non-negative."
-            )
-        if self.out_shape.repetitions != 1:
-            raise UnsupportedOperationError(
-                "SignedSum.rsample() currently supports num_repetitions == 1 only."
-            )
-        num_features = int(self.in_shape.features)
-        ctx_features = int(sampling_ctx.channel_probs.shape[1])
-        if ctx_features == 1:
-            sampling_ctx.broadcast_feature_prob_width(target_features=num_features)
-        elif ctx_features != num_features:
-            raise ShapeError(f"Expected channel_probs feature width 1 or {num_features}, got {ctx_features}.")
-        parent_channel_probs = sampling_ctx.resolve_channel_probs(
-            expected_channels=int(self.out_shape.channels),
-            module_name=f"{self.__class__.__name__}._rsample",
-        )
-
-        routing_weights = repeat(self.weights[..., 0], "f ci co -> b f ci co", b=data.shape[0])
-        denom = routing_weights.sum(dim=2, keepdim=True)
-        active_parent = sampling_ctx.mask.unsqueeze(-1) & (parent_channel_probs > 0.0)
-        invalid = active_parent.unsqueeze(2) & (denom <= 0.0)
-        if invalid.any():
-            raise ShapeError(
-                "SignedSum._rsample encountered zero-sum routing weights on active parent channels."
-            )
-
-        routing_probs = torch.where(
-            denom > 0.0,
-            routing_weights / denom.clamp_min(1e-12),
-            torch.zeros_like(routing_weights),
-        )
-        routed_selection = sample_categorical_differentiably(
-            logits=torch.log(routing_probs.clamp_min(1e-12)),
-            dim=2,
-            method=sampling_ctx.diff_method,
-            is_mpe=is_mpe,
-            hard=sampling_ctx.hard,
-            temperature=1.0,
-        )
-        child_channel_probs = torch.einsum("bfo,bfco->bfc", parent_channel_probs, routed_selection)
-        child_mask = sampling_ctx.mask & (child_channel_probs.sum(dim=-1) > 0.0)
-        norm = child_channel_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
-        child_channel_probs = torch.where(
-            child_mask.unsqueeze(-1),
-            child_channel_probs / norm,
-            torch.zeros_like(child_channel_probs),
-        )
-        sampling_ctx.update_prob_routing(channel_probs=child_channel_probs, mask=child_mask)
-        self.inputs._rsample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
         return data

@@ -59,8 +59,8 @@ def test_split_result(cls, out_channels: int, out_features: int, num_repetitions
     sampling_ctx = SamplingContext(channel_index=channel_index, repetition_index=rep_index, mask=mask)
     sampling_ctx2 = SamplingContext(channel_index=channel_index, repetition_index=rep_index, mask=mask)
 
-    s1 = spn1.sample(data=data1, is_mpe=True)
-    s2 = spn2.sample(data=data2, is_mpe=True)
+    s1 = spn1.sample(data=data1, sampling_ctx=sampling_ctx, is_mpe=True)
+    s2 = spn2.sample(data=data2, sampling_ctx=sampling_ctx2, is_mpe=True)
 
     torch.testing.assert_close(s1, s2, rtol=0.0, atol=0.0)
 
@@ -178,7 +178,7 @@ def test_split_mode_sampling_consistency():
 
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
 
-    samples = split.sample(data=data)
+    samples = split.sample(data=data, sampling_ctx=sampling_ctx)
 
     assert samples.shape == (n_samples, 6)
     assert torch.isfinite(samples).all()

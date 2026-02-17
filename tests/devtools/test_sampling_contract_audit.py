@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
@@ -40,6 +41,20 @@ def test_split_by_index_has_no_repeat_truncate_heuristic() -> None:
 def test_conv_utils_expand_helper_removed() -> None:
     text = _read("spflow/modules/conv/utils.py")
     assert "def expand_sampling_context(" not in text
+
+
+def test_require_sampling_context_calls_do_not_pass_module_name() -> None:
+    offenders: list[str] = []
+    call_pattern = re.compile(r"require_sampling_context\((.*?)\)", re.DOTALL)
+    for path in list((REPO_ROOT / "spflow" / "modules").rglob("*.py")) + list(
+        (REPO_ROOT / "spflow" / "zoo").rglob("*.py")
+    ):
+        text = path.read_text(encoding="utf-8")
+        for match in call_pattern.finditer(text):
+            if "module_name=" in match.group(1):
+                offenders.append(path.relative_to(REPO_ROOT).as_posix())
+                break
+    assert offenders == []
 
 
 def test_sampling_p2_helpers_are_used_in_migrated_modules() -> None:

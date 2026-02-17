@@ -19,7 +19,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.sums import Sum
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
+from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, DummyLeaf
 
 in_channels_values = [1, 4]
@@ -184,7 +184,7 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps
     mask = torch.full((n_samples, module.out_shape.features), True)
     repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module.sample(data=data)
+    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()
@@ -220,64 +220,10 @@ def test_sample_product_inputs(in_channels: int, out_channels: int, out_features
     mask = torch.full((n_samples, module.out_shape.features), True)
     repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module.sample(data=data)
+    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()
-
-
-def test_rsample_produces_finite_samples_and_gradients():
-    module = make_sum(in_channels=3, out_channels=2, out_features=4, num_repetitions=1)
-    num_samples = 8
-    data = torch.full((num_samples, module.out_shape.features), torch.nan)
-
-    sampling_ctx = DifferentiableSamplingContext(
-        channel_probs=torch.full(
-            (num_samples, module.out_shape.features, module.out_shape.channels),
-            1.0 / module.out_shape.channels,
-        ),
-        mask=torch.ones((num_samples, module.out_shape.features), dtype=torch.bool),
-    )
-    cache = Cache()
-
-    sampled = module._rsample(
-        data=data,
-        sampling_ctx=sampling_ctx,
-        cache=cache,
-        is_mpe=False,
-    )
-    samples = sampling_ctx.finalize_with_evidence(sampled)
-    assert torch.isfinite(samples).all()
-
-    loss = samples.square().mean()
-    loss.backward()
-    assert module.logits.grad is not None
-    assert module.inputs.loc.grad is not None
-    assert torch.isfinite(module.logits.grad).all()
-    assert torch.isfinite(module.inputs.loc.grad).all()
-
-    torch.testing.assert_close(
-        sampling_ctx.sample_mass,
-        torch.ones_like(sampling_ctx.sample_mass),
-        atol=1e-4,
-        rtol=1e-4,
-    )
-
-
-def test_rsample_rejects_singleton_repetition_probs_for_multiple_repetitions():
-    module = make_sum(in_channels=2, out_channels=2, out_features=3, num_repetitions=2)
-    num_samples = 4
-    data = torch.full((num_samples, module.out_shape.features), torch.nan)
-    sampling_ctx = DifferentiableSamplingContext(
-        channel_probs=torch.full(
-            (num_samples, module.out_shape.features, module.out_shape.channels),
-            1.0 / module.out_shape.channels,
-        ),
-        mask=torch.ones((num_samples, module.out_shape.features), dtype=torch.bool),
-    )
-    out = module._rsample(data=data, sampling_ctx=sampling_ctx, cache=Cache(), is_mpe=False)
-    out = sampling_ctx.finalize_with_evidence(out)
-    assert torch.isfinite(out).all()
 
 
 @pytest.mark.parametrize(
@@ -302,11 +248,19 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
 
     data_copy = data.clone()
 
+    channel_index = _randint(
+        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
+    )
+    mask = torch.full(channel_index.shape, True)
+    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+
     cache = Cache()
     samples = module.sample_with_evidence(
         evidence=data,
         is_mpe=False,
         cache=cache,
+        sampling_ctx=sampling_ctx,
     )
 
     # Check that log_likelihood is cached
@@ -504,22 +458,20 @@ def test_log_likelihood_creates_default_cache():
     assert lls.shape == (4, 2, 2, 1)
 
 
-def test_sample_bootstraps_sampling_context():
+def test_sample_requires_explicit_sampling_context():
     module = make_sum(in_channels=2, out_channels=2, out_features=3, num_repetitions=1)
-    out = module.sample(num_samples=2)
-    assert out.shape == (2, module.out_shape.features)
+    with pytest.raises(InvalidParameterError, match="requires an explicit sampling_ctx"):
+        module.sample()
 
 
-def test_sample_defaults_singleton_repetition_index_for_multiple_repetitions():
+def test_sample_requires_repetition_index_for_multiple_repetitions():
     module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=2)
     sampling_ctx = SamplingContext(
         channel_index=torch.zeros((3, module.out_shape.features), dtype=torch.long),
         mask=torch.ones((3, module.out_shape.features), dtype=torch.bool),
     )
-    samples = module.sample(num_samples=3)
-    assert samples.shape == (3, module.out_shape.features)
-    assert sampling_ctx.repetition_idx is not None
-    assert torch.equal(sampling_ctx.repetition_idx, torch.zeros(3, dtype=torch.long))
+    with pytest.raises(ValueError):
+        module.sample(num_samples=3, sampling_ctx=sampling_ctx)
 
 
 def test_sample_raises_on_incompatible_mask_width():
@@ -549,12 +501,7 @@ def test_sample_raises_on_incompatible_mask_width():
 
     sampling_ctx = _LooseSamplingCtx()
     with pytest.raises(ShapeError, match="incompatible sampling context feature width"):
-        module._sample(
-            data=torch.full((5, 3), torch.nan),
-            sampling_ctx=sampling_ctx,
-            cache=Cache(),
-            is_mpe=False,
-        )
+        module.sample(data=torch.full((5, 3), torch.nan), sampling_ctx=sampling_ctx)
 
 
 def test_expectation_maximization_requires_cached_lls():
@@ -711,8 +658,8 @@ def test_multiple_input():
         channel_index=channel_index, mask=mask, repetition_index=repetition_index
     )
 
-    samples_a = module_a.sample(data=data_a, is_mpe=True)
-    samples_b = module_b.sample(data=data_b, is_mpe=True)
+    samples_a = module_a.sample(data=data_a, is_mpe=True, sampling_ctx=sampling_ctx_a)
+    samples_b = module_b.sample(data=data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
 
     torch.testing.assert_close(samples_a, samples_b, rtol=0.0, atol=0.0)
 

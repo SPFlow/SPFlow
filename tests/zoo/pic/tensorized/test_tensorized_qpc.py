@@ -1,15 +1,12 @@
 """Tests for folded tensorized QPC materialization."""
 
 import numpy as np
-import pytest
 import torch
 from torch import Tensor
 
-from spflow.exceptions import UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.meta.region_graph import Region, RegionGraph
 from spflow.modules.module import Module
-from spflow.utils.sampling_context import DifferentiableSamplingContext
 from spflow.zoo.pic import QuadratureRule, pic2qpc
 from spflow.zoo.pic.tensorized.qpc import InnerNet, IntegralGroupArgs, TensorizedQPC, TensorizedQPCConfig
 
@@ -106,17 +103,3 @@ def test_innernet_normalizes_over_norm_dim():
     # Sum over norm dims should be 1 for each function.
     summed = param.sum(dim=(1, 2))
     assert torch.allclose(summed, torch.ones_like(summed), atol=1e-4)
-
-
-def test_tensorized_qpc_rsample_is_explicitly_unsupported():
-    leaves = [Region(Scope([i])) for i in range(2)]
-    root = Region(Scope([0, 1]))
-    root.add_partition(tuple(leaves))
-    rg = RegionGraph(root)
-
-    rule = QuadratureRule(points=torch.linspace(-1, 1, 3), weights=torch.ones(3) * (2.0 / 3.0))
-    cfg = TensorizedQPCConfig(leaf_type="normal", layer_cls="cp", n_chunks=1)
-    qpc = TensorizedQPC.from_region_graph(rg, quadrature_rule=rule, config=cfg)
-
-    with pytest.raises(UnsupportedOperationError, match="differentiable sampling"):
-        qpc.rsample(num_samples=2)

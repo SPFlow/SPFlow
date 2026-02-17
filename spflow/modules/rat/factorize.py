@@ -13,7 +13,7 @@ import torch
 from einops import rearrange, repeat
 from torch import Tensor
 
-from spflow.exceptions import InvalidParameterError, ShapeError, StructureError
+from spflow.exceptions import InvalidParameterError, StructureError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -21,10 +21,7 @@ from spflow.modules.ops.cat import Cat
 from spflow.modules.products.base_product import BaseProduct
 from spflow.modules.products.product import Product
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import (
-    DifferentiableSamplingContext,
-    SamplingContext,
-)
+from spflow.utils.sampling_context import SamplingContext, require_sampling_context
 
 
 class Factorize(BaseProduct):
@@ -182,6 +179,13 @@ class Factorize(BaseProduct):
         """
         # Prepare data tensor
 
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
+
         if sampling_ctx.repetition_idx is None:
             raise InvalidParameterError(
                 "sampling_ctx.repetition_idx must be provided when sampling from Factorize."
@@ -220,62 +224,6 @@ class Factorize(BaseProduct):
         sampling_ctx.update(channel_index=channel_index, mask=mask)
 
         self.inputs[0]._sample(
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-        )
-
-        return data
-
-    def _rsample(
-        self,
-        data: Tensor,
-        sampling_ctx: DifferentiableSamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> Tensor:
-        """Map output routing probabilities to input feature probabilities."""
-        parent_channel_probs = sampling_ctx.resolve_channel_probs(
-            expected_channels=int(self.out_shape.channels),
-            module_name=f"{self.__class__.__name__}._rsample",
-        )
-        repetition_probs = sampling_ctx.resolve_repetition_probs(
-            expected_repetitions=int(self.out_shape.repetitions),
-            module_name=f"{self.__class__.__name__}._rsample",
-        )
-
-        factor_indices = self.indices.to(
-            dtype=sampling_ctx.channel_probs.dtype, device=sampling_ctx.channel_probs.device
-        )
-
-        input_channel_probs = torch.einsum(
-            "br,ior,boc->bic",
-            repetition_probs,
-            factor_indices,
-            parent_channel_probs,
-        )
-        input_mask_mass = torch.einsum(
-            "br,ior,bo->bi",
-            repetition_probs,
-            factor_indices,
-            sampling_ctx.mask.to(dtype=input_channel_probs.dtype),
-        )
-        input_mask = input_mask_mass > 0.0
-
-        norm = input_channel_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
-        input_channel_probs = torch.where(
-            input_mask.unsqueeze(-1),
-            input_channel_probs / norm,
-            torch.zeros_like(input_channel_probs),
-        )
-
-        sampling_ctx.update_prob_routing(
-            channel_probs=input_channel_probs,
-            mask=input_mask,
-        )
-
-        self.inputs[0]._rsample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,

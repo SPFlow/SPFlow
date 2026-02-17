@@ -26,10 +26,8 @@ from spflow.meta import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.leaves import CLTree
-from spflow.modules.products.product import Product
-from spflow.modules.leaves.normal import Normal
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
+from spflow.utils.sampling_context import SamplingContext
 from tests.utils.helpers import make_sampling_context
 
 
@@ -45,29 +43,13 @@ def test_joint_log_likelihood_wrapper_reduces_feature_axis():
     wrapped = JointLogLikelihood(base)
 
     sampling_ctx = make_sampling_context(batch_size=5, num_features=3)
-    data = base.sample(num_samples=5).to(torch.float64)
+    data = base.sample(num_samples=5, sampling_ctx=sampling_ctx).to(torch.float64)
     ll_base = base.log_likelihood(data)
     ll_wrapped = wrapped.log_likelihood(data)
 
     assert ll_base.shape[1] == 3
     assert ll_wrapped.shape[1] == 1
     torch.testing.assert_close(ll_wrapped.squeeze(1), ll_base.sum(dim=1), rtol=1e-6, atol=1e-6)
-
-
-def test_joint_log_likelihood_rsample_delegates_to_wrapped_module():
-    base = Product(inputs=Normal(scope=Scope([0, 1]), out_channels=2, num_repetitions=1))
-    wrapped = JointLogLikelihood(base)
-    num_samples = 5
-    channel_probs = torch.rand((num_samples, base.out_shape.features, base.out_shape.channels))
-    channel_probs = channel_probs / channel_probs.sum(dim=-1, keepdim=True)
-    sampling_ctx = DifferentiableSamplingContext(
-        channel_probs=channel_probs,
-        mask=torch.ones((num_samples, base.out_shape.features), dtype=torch.bool),
-    )
-
-    out = wrapped.rsample(num_samples=num_samples, diff_method="gumbel")
-    assert out.shape == (num_samples, 2)
-    assert torch.isfinite(out).all()
 
 
 def test_learn_continuous_mixture_factorized_bernoulli_smoke_with_lo():
@@ -157,7 +139,7 @@ def test_learn_continuous_mixture_cltree_smoke_with_lo():
     true_model = CLTree(scope=scope, out_channels=1, num_repetitions=1, K=K, parents=parents, log_cpt=log_cpt)
 
     sampling_ctx = make_sampling_context(batch_size=250, num_features=3)
-    data = true_model.sample(num_samples=250).to(torch.float32)
+    data = true_model.sample(num_samples=250, sampling_ctx=sampling_ctx).to(torch.float32)
 
     model = learn_continuous_mixture_cltree(
         data,

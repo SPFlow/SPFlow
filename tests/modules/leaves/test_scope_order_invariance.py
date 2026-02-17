@@ -239,7 +239,7 @@ class TestScopeOrderInvariance:
         )
 
         # Sample from the leaf
-        samples = leaf.sample(data=data)
+        samples = leaf.sample(data=data, sampling_ctx=sampling_ctx)
 
         # The expected behavior: data[idx] should equal idx for all idx in scope
         # This is because:
@@ -295,7 +295,7 @@ class TestScopeOrderInvariance:
                 num_repetitions=num_repetitions,
             )
 
-            samples = leaf.sample(data=data)
+            samples = leaf.sample(data=data, sampling_ctx=sampling_ctx)
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
                 f"For permutation {list(perm)}, expected {expected[0].tolist()}, "
@@ -328,7 +328,7 @@ class TestScopeOrderInvariance:
                 channel=1,
             )
 
-            samples = leaf.sample(data=data)
+            samples = leaf.sample(data=data, sampling_ctx=sampling_ctx)
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
                 f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
@@ -360,7 +360,7 @@ class TestScopeOrderInvariance:
                 repetition=1,
             )
 
-            samples = leaf.sample(data=data)
+            samples = leaf.sample(data=data, sampling_ctx=sampling_ctx)
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
                 f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
@@ -408,7 +408,7 @@ class TestScopeOrderInvariance:
                 num_repetitions=num_repetitions,
             )
 
-            samples = leaf.sample(data=data)
+            samples = leaf.sample(data=data, sampling_ctx=sampling_ctx)
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
                 f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
@@ -439,7 +439,7 @@ class TestScopeOrderInvariance:
                 num_repetitions=num_repetitions,
             )
 
-            samples = leaf.sample(data=data, is_mpe=True)
+            samples = leaf.sample(data=data, is_mpe=True, sampling_ctx=sampling_ctx)
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
                 f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
@@ -469,7 +469,7 @@ class TestScopeOrderInvariance:
             num_repetitions=num_repetitions,
         )
 
-        samples = leaf.sample(data=data)
+        samples = leaf.sample(data=data, sampling_ctx=sampling_ctx)
 
         for scope_idx in scope_query:
             torch.testing.assert_close(
@@ -511,7 +511,7 @@ class TestScopeOrderInvariance:
                 repetition_index=repetition_index,
             )
 
-            samples = leaf.sample(data=data)
+            samples = leaf.sample(data=data, sampling_ctx=sampling_ctx)
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
                 f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"

@@ -15,9 +15,7 @@ def _make_sum(in_channels: int, out_channels: int, out_features: int, num_repeti
     return Sum(inputs=inputs, out_channels=out_channels, num_repetitions=num_repetitions)
 
 
-def _trace_sum_sample_shapes(
-    module: Sum, sampling_ctx: SamplingContext, cache: Cache | None, is_mpe: bool
-) -> dict[str, tuple[int, ...]]:
+def _trace_sum_sample_shapes(module: Sum, sampling_ctx: SamplingContext, cache: Cache | None, is_mpe: bool) -> dict[str, tuple[int, ...]]:
     """Trace and print intermediate tensor shapes from Sum.sample logic."""
     shapes: dict[str, tuple[int, ...]] = {}
 
@@ -25,7 +23,9 @@ def _trace_sum_sample_shapes(
     print(f"TRACE sampling_ctx.mask:          {tuple(sampling_ctx.mask.shape)}")
 
     if sampling_ctx.repetition_idx is not None:
-        logits = module.logits.unsqueeze(0).expand(sampling_ctx.channel_index.shape[0], -1, -1, -1, -1)
+        logits = module.logits.unsqueeze(0).expand(
+            sampling_ctx.channel_index.shape[0], -1, -1, -1, -1
+        )
         shapes["logits_expand_repetition"] = tuple(logits.shape)
         print(f"TRACE logits_expand_repetition:  {shapes['logits_expand_repetition']}")
 
@@ -59,11 +59,7 @@ def _trace_sum_sample_shapes(
     shapes["logits_after_parent_index"] = tuple(logits.shape)
     print(f"TRACE logits_after_parent_index: {shapes['logits_after_parent_index']}")
 
-    if (
-        cache is not None
-        and "log_likelihood" in cache
-        and cache["log_likelihood"].get(module.inputs) is not None
-    ):
+    if cache is not None and "log_likelihood" in cache and cache["log_likelihood"].get(module.inputs) is not None:
         input_lls = cache["log_likelihood"][module.inputs]
         shapes["input_lls_raw"] = tuple(input_lls.shape)
         print(f"TRACE input_lls_raw:             {shapes['input_lls_raw']}")
@@ -118,7 +114,7 @@ def test_sum_sample_shape_trace_unconditional():
     shapes = _trace_sum_sample_shapes(module, sampling_ctx=sampling_ctx, cache=None, is_mpe=False)
     assert shapes["new_channel_index"] == (batch_size, out_features)
 
-    out = module.sample(data=data)
+    out = module.sample(data=data, sampling_ctx=sampling_ctx)
     assert out.shape == (batch_size, out_features)
     assert sampling_ctx.channel_index.shape == (batch_size, out_features)
     assert sampling_ctx.mask.shape == (batch_size, out_features)
@@ -153,7 +149,7 @@ def test_sum_sample_shape_trace_conditional_expands_feature_axis():
     assert shapes["input_lls_squeezed"] == (batch_size, out_features, in_channels)
     assert shapes["new_channel_index"] == (batch_size, out_features)
 
-    out = module.sample(data=data, cache=cache)
+    out = module.sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
     assert out.shape == (batch_size, out_features)
     assert sampling_ctx.channel_index.shape == (batch_size, out_features)
     assert sampling_ctx.mask.shape == (batch_size, out_features)

@@ -9,20 +9,18 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from typing import Literal
 
 import numpy as np
 import torch
 from torch import Tensor, nn
 
-from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
 from spflow.meta.data.scope import Scope
-from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import (
-    DifferentiableSamplingContext,
     SamplingContext,
+    require_sampling_context,
 )
+from spflow.modules.module_shape import ModuleShape
 
 
 class Module(nn.Module, ABC):
@@ -207,6 +205,7 @@ class Module(nn.Module, ABC):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Generate samples from the module's probability distribution.
 
@@ -220,6 +219,8 @@ class Module(nn.Module, ABC):
             is_mpe (bool, optional): If True, returns most probable values instead of
                 random samples. Defaults to False.
             cache (Cache | None, optional): Cache for intermediate computations. Defaults to None.
+            sampling_ctx (SamplingContext | None, optional): Context for routing samples
+                through the circuit. Defaults to None.
 
         Returns:
             Tensor: Sampled values of shape (batch_size, num_features).
@@ -230,12 +231,12 @@ class Module(nn.Module, ABC):
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
             cache = Cache()
-        num_features = int(self.out_shape.features)
-        sampling_ctx = SamplingContext(
-            channel_index=torch.zeros((data.shape[0], num_features), dtype=torch.long, device=data.device),
-            mask=torch.ones((data.shape[0], num_features), dtype=torch.bool, device=data.device),
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
         )
-
         return self._sample(
             data=data,
             sampling_ctx=sampling_ctx,
@@ -259,90 +260,12 @@ class Module(nn.Module, ABC):
         """
         pass
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        diff_method: Literal["simple", "gumbel"] = "simple",
-        hard: bool = False,
-        temperature_sums: float = 1.0,
-        temperature_leaves: float = 1.0,
-    ) -> Tensor:
-        """Generate differentiable samples from the module's distribution.
-
-        This is the public differentiable sampling entrypoint. Recursive module
-        calls must use ``_rsample(...)``.
-
-        Args:
-            num_samples: Number of samples to generate.
-            data: Pre-allocated tensor with NaNs indicating where to sample.
-            is_mpe: If True, use deterministic routing where implemented.
-            cache: Cache for intermediate computations.
-            diff_method: Differentiable categorical routing method.
-            hard: Whether differentiable categorical routing should use hard outputs.
-            temperature_sums: Temperature for sum-family routing.
-            temperature_leaves: Temperature for differentiable leaf sampling.
-
-        Returns:
-            Tensor: Sampled values of shape (batch_size, num_features).
-        """
-        if diff_method not in ("simple", "gumbel"):
-            raise InvalidParameterError(
-                f"diff_method must be one of ('simple', 'gumbel'), got {diff_method!r}."
-            )
-        if temperature_sums <= 0.0:
-            raise InvalidParameterError(f"temperature_sums must be > 0, got {temperature_sums}.")
-        if temperature_leaves <= 0.0:
-            raise InvalidParameterError(f"temperature_leaves must be > 0, got {temperature_leaves}.")
-
-        data = self._prepare_sample_data(num_samples=num_samples, data=data)
-        if cache is None:
-            cache = Cache()
-        num_features = int(self.out_shape.features)
-        channel_probs = torch.ones(
-            (data.shape[0], num_features, 1),
-            dtype=torch.get_default_dtype(),
-            device=data.device,
-        )
-        mask = torch.ones((data.shape[0], num_features), dtype=torch.bool, device=data.device)
-        sampling_ctx = DifferentiableSamplingContext(
-            channel_probs=channel_probs,
-            mask=mask,
-            diff_method=diff_method,
-            hard=hard,
-            temperature_sums=temperature_sums,
-            temperature_leaves=temperature_leaves,
-        )
-        out = self._rsample(
-            data=data,
-            sampling_ctx=sampling_ctx,
-            cache=cache,
-            is_mpe=is_mpe,
-        )
-        if sampling_ctx.sample_accum is not None and sampling_ctx.sample_mass is not None:
-            return sampling_ctx.finalize_with_evidence(out)
-        return out
-
-    def _rsample(
-        self,
-        data: Tensor,
-        sampling_ctx: DifferentiableSamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> Tensor:
-        """Internal differentiable sampling hook used for recursive calls."""
-        del data, sampling_ctx, cache, is_mpe
-        raise UnsupportedOperationError(
-            f"{self.__class__.__name__} does not implement differentiable sampling (_rsample)."
-        )
-
     def mpe(
         self,
         num_samples: int | None = None,
         data: Tensor | None = None,
         cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Generate most probable explanation from the module's probability distribution.
 
@@ -355,6 +278,8 @@ class Module(nn.Module, ABC):
             data (Tensor | None, optional): Pre-allocated tensor with NaN values indicating
                 where to sample. If None, creates new tensor. Defaults to None.
             cache (Cache | None, optional): Cache for intermediate computations. Defaults to None.
+            sampling_ctx (SamplingContext | None, optional): Context for routing samples
+                through the circuit. Defaults to None.
 
         Returns:
             Tensor: MPE values of shape (batch_size, num_features).
@@ -367,6 +292,7 @@ class Module(nn.Module, ABC):
             data=data,
             is_mpe=True,
             cache=cache,
+            sampling_ctx=sampling_ctx,
         )
 
     def sample_with_evidence(
@@ -374,6 +300,7 @@ class Module(nn.Module, ABC):
         evidence: Tensor,
         is_mpe: bool = False,
         cache: Cache | None = None,
+        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Samples from module with evidence.
 
@@ -384,6 +311,8 @@ class Module(nn.Module, ABC):
             is_mpe: Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
                 Defaults to False.
             cache: Optional cache dictionary to reuse across calls.
+            sampling_ctx: Optional sampling context containing the instances (i.e., rows) of
+                ``data`` to fill with sampled values and the output indices of the node to sample from.
 
         Returns:
             Tensor containing the sampled values. Each row corresponds to a sample.
@@ -396,6 +325,7 @@ class Module(nn.Module, ABC):
         return self.sample(
             data=evidence,
             is_mpe=is_mpe,
+            sampling_ctx=sampling_ctx,
             cache=cache,
         )
 

@@ -1,18 +1,14 @@
-from typing import Literal, Optional, Union
+from typing import Optional, Union
 
 import torch
 from einops import rearrange
 from torch import Tensor
 
-from spflow.exceptions import InvalidParameterError, ShapeError, StructureError
+from spflow.exceptions import ShapeError, StructureError
 from spflow.modules.module import Module
 from spflow.modules.wrapper.base import Wrapper
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import (
-    DifferentiableSamplingContext,
-    SamplingContext,
-    build_root_sampling_context,
-)
+from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
 
 
 class MarginalizationContext:
@@ -309,86 +305,6 @@ class ImageWrapper(Wrapper):
         )
         return self.to_image_format(flat_data)
 
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: DifferentiableSamplingContext | None = None,
-        diff_method: Literal["simple", "gumbel"] = "simple",
-        hard: bool = False,
-        temperature_sums: float = 1.0,
-        temperature_leaves: float = 1.0,
-    ) -> Tensor:
-        """Generate differentiable samples in image format."""
-        data = self._prepare_sample_data(num_samples, data)
-        if cache is None:
-            cache = Cache()
-
-        batch_size = int(data.shape[0])
-        root_features = int(self.module.out_shape.features)
-        root_channels = int(self.module.out_shape.channels)
-
-        if sampling_ctx is None:
-            channel_probs = torch.full(
-                (batch_size, root_features, root_channels),
-                1.0 / float(root_channels),
-                dtype=torch.get_default_dtype(),
-                device=data.device,
-            )
-            mask = torch.ones((batch_size, root_features), dtype=torch.bool, device=data.device)
-            sampling_ctx = DifferentiableSamplingContext(
-                channel_probs=channel_probs,
-                mask=mask,
-                diff_method=diff_method,
-                hard=hard,
-                temperature_sums=temperature_sums,
-                temperature_leaves=temperature_leaves,
-            )
-        else:
-            if sampling_ctx.channel_probs.shape[0] != batch_size:
-                raise InvalidParameterError(
-                    f"{self.__class__.__name__}.rsample received sampling_ctx with "
-                    f"batch={sampling_ctx.channel_probs.shape[0]}, expected {batch_size}."
-                )
-            if sampling_ctx.channel_probs.shape[1] != root_features:
-                raise InvalidParameterError(
-                    f"{self.__class__.__name__}.rsample received sampling_ctx with "
-                    f"features={sampling_ctx.channel_probs.shape[1]}, expected {root_features}."
-                )
-            if sampling_ctx.channel_probs.shape[2] != root_channels:
-                raise InvalidParameterError(
-                    f"{self.__class__.__name__}.rsample received sampling_ctx with "
-                    f"channels={sampling_ctx.channel_probs.shape[2]}, expected {root_channels}."
-                )
-
-        flat_data = self.flatten(data)
-        out = self.module._rsample(
-            data=flat_data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-        )
-        if sampling_ctx.sample_accum is not None and sampling_ctx.sample_mass is not None:
-            out = sampling_ctx.finalize_with_evidence(out)
-        return self.to_image_format(out)
-
-    def _rsample(
-        self,
-        data: Tensor,
-        sampling_ctx: DifferentiableSamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> Tensor:
-        flat_data = self.flatten(data)
-        out = self.module._rsample(
-            data=flat_data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-        )
-        return self.to_image_format(out)
 
     def marginalize(
         self,

@@ -96,10 +96,10 @@ class TestEinsumLayerEquivalence:
 
         # Sample from Einsum
         torch.manual_seed(42)
-        sample_einsum = einsum.sample(num_samples=batch_size)
+        sample_einsum = einsum.sample(num_samples=batch_size, sampling_ctx=ctx_common.copy())
 
         # Sample from Sum(Prod)
         torch.manual_seed(42)
-        sample_sum = sum_layer.sample(num_samples=batch_size)
+        sample_sum = sum_layer.sample(num_samples=batch_size, sampling_ctx=ctx_common.copy())
 
         torch.testing.assert_close(sample_einsum, sample_sum, rtol=1e-5, atol=1e-8)

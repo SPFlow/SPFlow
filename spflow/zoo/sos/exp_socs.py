@@ -12,7 +12,7 @@ from spflow.modules.module import Module
 from spflow.utils.inner_product import triple_product_scalar
 from spflow.utils.cache import Cache, cached
 from spflow.modules.sos.socs import _signed_eval
-from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
+from spflow.utils.sampling_context import SamplingContext
 
 
 class ExpSOCS(Module):
@@ -143,13 +143,3 @@ class ExpSOCS(Module):
         is_mpe: bool = False,
     ) -> Tensor:
         raise UnsupportedOperationError("ExpSOCS.sample() is not supported.")
-
-    def _rsample(
-        self,
-        data: Tensor,
-        sampling_ctx: DifferentiableSamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> Tensor:
-        del data, sampling_ctx, cache, is_mpe
-        raise UnsupportedOperationError("ExpSOCS does not support differentiable sampling (_rsample).")

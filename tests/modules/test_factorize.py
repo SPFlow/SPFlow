@@ -7,8 +7,7 @@ from spflow.exceptions import StructureError
 from spflow.learn import expectation_maximization
 from spflow.meta.data.scope import Scope
 from spflow.modules.rat import Factorize
-from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
+from spflow.utils.sampling_context import SamplingContext
 from spflow.utils.sampling_context import init_default_sampling_context
 from tests.utils.leaves import DummyLeaf, make_data, make_leaf, make_normal_data, make_normal_leaf
 
@@ -69,7 +68,7 @@ def test_sample(in_channels: int, out_features: int, num_reps, depth):
     else:
         repetition_index = None
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = factorization_layer.sample(data=data)
+    samples = factorization_layer.sample(data=data, sampling_ctx=sampling_ctx)
     assert samples.shape == data.shape
     samples_query = samples[:, factorization_layer.scope.query]
     assert torch.isfinite(samples_query).all()
@@ -91,71 +90,9 @@ def test_sample_accepts_column_vector_repetition_idx():
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples, 1))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
 
-    samples = factorization_layer.sample(data=data)
+    samples = factorization_layer.sample(data=data, sampling_ctx=sampling_ctx)
     assert samples.shape == data.shape
     assert torch.isfinite(samples[:, factorization_layer.scope.query]).all()
-
-
-def test_rsample_accepts_singleton_repetition_probs_for_multiple_repetitions():
-    factorization_layer = make_product(
-        in_channels=2,
-        out_features=8,
-        num_repetitions=3,
-        depth=2,
-    )
-    n_samples = 3
-    sampling_ctx = DifferentiableSamplingContext(
-        channel_probs=torch.full(
-            (n_samples, factorization_layer.out_shape.features, factorization_layer.out_shape.channels),
-            1.0 / factorization_layer.out_shape.channels,
-        ),
-        mask=torch.ones((n_samples, factorization_layer.out_shape.features), dtype=torch.bool),
-    )
-    out = factorization_layer._rsample(
-        data=torch.full((n_samples, 8), torch.nan),
-        sampling_ctx=sampling_ctx,
-        cache=Cache(),
-        is_mpe=False,
-    )
-    out = sampling_ctx.finalize_with_evidence(out)
-    assert torch.isfinite(out).all()
-
-
-def test_rsample_factorize_probability_mapping():
-    num_reps = 2
-    leaf = make_normal_leaf(out_features=4, out_channels=2, num_repetitions=num_reps)
-    factorize = Factorize(inputs=[leaf], depth=1, num_repetitions=num_reps)
-
-    # rep 0: [0,1] -> out0 and [2,3] -> out1
-    # rep 1: [0,1] -> out1 and [2,3] -> out0
-    indices = torch.zeros((4, 2, num_reps))
-    indices[0:2, 0, 0] = 1
-    indices[2:4, 1, 0] = 1
-    indices[0:2, 1, 1] = 1
-    indices[2:4, 0, 1] = 1
-    factorize.indices = indices
-
-    n_samples = 1
-    sampling_ctx = DifferentiableSamplingContext(
-        channel_probs=torch.tensor([[[1.0, 0.0], [0.0, 1.0]]], dtype=torch.float32),
-        mask=torch.ones((n_samples, 2), dtype=torch.bool),
-        repetition_probs=torch.tensor([[0.75, 0.25]], dtype=torch.float32),
-    )
-
-    out = factorize._rsample(
-        data=torch.full((n_samples, 4), torch.nan),
-        sampling_ctx=sampling_ctx,
-        cache=Cache(),
-        is_mpe=False,
-    )
-    out = sampling_ctx.finalize_with_evidence(out)
-
-    assert torch.isfinite(out).all()
-    expected = torch.tensor(
-        [[[0.75, 0.25], [0.75, 0.25], [0.25, 0.75], [0.25, 0.75]]],
-        dtype=torch.float32,
-    )
-    torch.testing.assert_close(sampling_ctx.channel_probs, expected, atol=1e-4, rtol=1e-4)
 
 
 def test_factorization():
@@ -281,7 +218,7 @@ def test_multidistribution_input():
 
     # Create data tensor to populate with samples
     data_to_sample = torch.full((1, out_features_1 + out_features_2), torch.nan)
-    samples = module.sample(data=data_to_sample)
+    samples = module.sample(data=data_to_sample, sampling_ctx=sampling_ctx)
 
     assert samples.shape == (1, out_features_1 + out_features_2)
 

@@ -8,7 +8,7 @@ from spflow.exceptions import ShapeError
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
-from spflow.utils.sampling_context import DifferentiableSamplingContext, SamplingContext
+from spflow.utils.sampling_context import SamplingContext
 from spflow.modules.leaves.normal import Normal
 from spflow.zoo.pic.weighted_sum import WeightedSum
 
@@ -318,40 +318,13 @@ class TestWeightedSumSamplingAndMarginalize:
             mask=torch.ones((3, 1), dtype=torch.bool),
             repetition_index=torch.tensor([1, 0, 1], dtype=torch.long),
         )
-        out = ws.sample(data=torch.full((3, 1), float("nan")), is_mpe=True)
+        out = ws.sample(data=torch.full((3, 1), float("nan")), is_mpe=True, sampling_ctx=sampling_ctx)
 
         assert out.shape == (3, 1)
         assert inp.sample_calls[-1].channel_index.shape == (3, 1)
 
-
-def test_weighted_sum_rsample_smoke() -> None:
-    leaf = Normal(scope=Scope([0, 1]), out_channels=2)
-    weights = torch.tensor(
-        [
-            [[[0.3], [0.7]], [[0.6], [0.4]]],
-            [[[0.5], [0.5]], [[0.2], [0.8]]],
-        ],
-        dtype=torch.get_default_dtype(),
-    )
-    module = WeightedSum(inputs=leaf, weights=weights)
-
-    num_samples = 7
-    channel_probs = torch.rand((num_samples, module.out_shape.features, module.out_shape.channels))
-    channel_probs = channel_probs / channel_probs.sum(dim=-1, keepdim=True)
-    sampling_ctx = DifferentiableSamplingContext(
-        channel_probs=channel_probs,
-        mask=torch.ones((num_samples, module.out_shape.features), dtype=torch.bool),
-    )
-
-    samples = module.rsample(
-        num_samples=num_samples,
-        diff_method="gumbel",
-    )
-    assert samples.shape == (num_samples, 2)
-    assert torch.isfinite(samples).all()
-
-    def test_sample_defaults_singleton_repetition_index_when_repetitions_gt_1(self):
-        """Test singleton repetition-index defaults when repetitions > 1."""
+    def test_sample_requires_repetition_index_when_repetitions_gt_1(self):
+        """Test validation when repetitions > 1 and repetition_idx is missing."""
         f2s = np.array([[Scope([0]), Scope([0])]], dtype=object)
         inp = DummyInput(feature_to_scope=f2s, channels=2, repetitions=2)
         ws = WeightedSum(inputs=inp, weights=torch.ones(1, 2, 2, 2))
@@ -359,11 +332,8 @@ def test_weighted_sum_rsample_smoke() -> None:
             channel_index=torch.zeros((2, 1), dtype=torch.long),
             mask=torch.ones((2, 1), dtype=torch.bool),
         )
-        samples = ws.sample(data=torch.full((2, 1), float("nan")))
-        assert samples.shape == (2, 1)
-        assert torch.isfinite(samples).all()
-        assert sampling_ctx.repetition_idx is not None
-        assert torch.equal(sampling_ctx.repetition_idx, torch.zeros(2, dtype=torch.long))
+        with pytest.raises(ValueError):
+            ws.sample(data=torch.full((2, 1), float("nan")), sampling_ctx=sampling_ctx)
 
     def test_sample_raises_for_zero_rows(self):
         """Test stochastic sample branch rejects zero-sum weight rows."""
@@ -375,7 +345,7 @@ def test_weighted_sum_rsample_smoke() -> None:
             mask=torch.ones((2, 1), dtype=torch.bool),
         )
         with pytest.raises(ShapeError, match="zero-sum routing weights"):
-            ws.sample(data=torch.full((2, 1), float("nan")))
+            ws.sample(data=torch.full((2, 1), float("nan")), sampling_ctx=sampling_ctx)
 
     def test_sample_creates_data_when_none(self):
         """Test num_samples/data default creation branch."""
@@ -399,7 +369,7 @@ def test_weighted_sum_rsample_smoke() -> None:
         # so WeightedSum hits strict update-time shape validation.
         sampling_ctx._mask = torch.ones((2, 1), dtype=torch.bool)  # type: ignore[attr-defined]
         with pytest.raises(ShapeError, match="incompatible feature width"):
-            ws.sample(data=torch.full((2, 2), float("nan")), is_mpe=True)
+            ws.sample(data=torch.full((2, 2), float("nan")), is_mpe=True, sampling_ctx=sampling_ctx)
 
     def test_marginalize_full_scope_returns_none(self):
         """Test full marginalization short-circuit."""

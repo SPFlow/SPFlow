@@ -12,7 +12,6 @@ from spflow.modules.products import Product
 from spflow.modules.sums import Sum
 from spflow.modules.wrapper.image_wrapper import ImageWrapper, MarginalizationContext
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import DifferentiableSamplingContext
 from tests.utils.leaves import DummyLeaf, make_data, make_normal_leaf
 
 num_channel = [1, 3]
@@ -67,24 +66,6 @@ def test_sample(num_channel: int, is_mpe: bool):
     assert samples.shape == (1, num_channel, height, width)
 
     # Check finite
-    assert torch.isfinite(samples).all()
-
-
-@pytest.mark.parametrize("num_channel", num_channel)
-def test_rsample(num_channel: int):
-    module = make_wrapper(num_channel, num_reps=1)
-    n_samples = 6
-    root_features = int(module.module.out_shape.features)
-    root_channels = int(module.module.out_shape.channels)
-    channel_probs = torch.rand((n_samples, root_features, root_channels))
-    channel_probs = channel_probs / channel_probs.sum(dim=-1, keepdim=True)
-    sampling_ctx = DifferentiableSamplingContext(
-        channel_probs=channel_probs,
-        mask=torch.ones((n_samples, root_features), dtype=torch.bool),
-    )
-
-    samples = module.rsample(num_samples=n_samples, diff_method="gumbel")
-    assert samples.shape == (n_samples, num_channel, 4, 4)
     assert torch.isfinite(samples).all()
 
 
@@ -231,3 +212,4 @@ class TestImageWrapperExceptions:
         wrong_data = torch.randn(10, 3, 4, 5)
         with pytest.raises(ShapeError):
             wrapper._expectation_maximization_step(wrong_data, cache=Cache())
+

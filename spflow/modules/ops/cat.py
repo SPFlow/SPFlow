@@ -11,8 +11,8 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import (
-    DifferentiableSamplingContext,
     SamplingContext,
+    require_sampling_context,
 )
 
 
@@ -126,6 +126,13 @@ class Cat(Module):
         """
         # Prepare data tensor
 
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
+
         if self.dim == 1:
             sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
             ranges: list[tuple[int, int]] = []
@@ -161,67 +168,6 @@ class Cat(Module):
                 sampling_ctx=sampling_ctx_copy,
             )
 
-        return data
-
-    def _rsample(
-        self,
-        data: Tensor,
-        sampling_ctx: DifferentiableSamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> Tensor:
-        """Differentiable structural passthrough for concatenation nodes."""
-        sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
-        original_channel_probs = sampling_ctx.channel_probs
-        original_mask = sampling_ctx.mask
-
-        if self.dim == 1:
-            ranges: list[tuple[int, int]] = []
-            feature_offset = 0
-            for module in self.inputs:
-                num_features = module.out_shape.features
-                ranges.append((feature_offset, feature_offset + num_features))
-                feature_offset += num_features
-            per_module = sampling_ctx.slice_feature_prob_ranges(ranges=ranges)
-            channel_probs_per_module = [pair[0] for pair in per_module]
-            mask_per_module = [pair[1] for pair in per_module]
-
-        elif self.dim == 2:
-            child_channel_counts = [int(module.out_shape.channels) for module in self.inputs]
-            resolved_channel_probs = sampling_ctx.resolve_channel_probs(
-                expected_channels=int(sum(child_channel_counts)),
-                module_name=f"{self.__class__.__name__}._rsample",
-            )
-            if resolved_channel_probs is not sampling_ctx.channel_probs:
-                sampling_ctx.update_prob_routing(
-                    channel_probs=resolved_channel_probs,
-                    mask=sampling_ctx.mask,
-                )
-            per_module = sampling_ctx.route_channel_prob_offsets(
-                child_channel_counts=child_channel_counts,
-            )
-            channel_probs_per_module = [pair[0] for pair in per_module]
-            mask_per_module = [pair[1] for pair in per_module]
-
-        else:
-            raise ValueError("Invalid dimension for concatenation.")
-
-        for i, input_module in enumerate(self.inputs):
-            sampling_ctx.update_prob_routing(
-                channel_probs=channel_probs_per_module[i],
-                mask=mask_per_module[i],
-            )
-            input_module._rsample(
-                data=data,
-                is_mpe=is_mpe,
-                cache=cache,
-                sampling_ctx=sampling_ctx,
-            )
-
-        sampling_ctx.update_prob_routing(
-            channel_probs=original_channel_probs,
-            mask=original_mask,
-        )
         return data
 
     def marginalize(

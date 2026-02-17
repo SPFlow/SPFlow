@@ -17,22 +17,14 @@ Notes:
 
 from __future__ import annotations
 
-from typing import Literal
-
 import numpy as np
-import torch
 from torch import Tensor
 
-from spflow.exceptions import InvalidParameterError
 from spflow.meta.data.scope import Scope
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.wrapper.base import Wrapper
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import (
-    DifferentiableSamplingContext,
-    SamplingContext,
-    build_root_sampling_context,
-)
+from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
 
 
 class JointLogLikelihood(Wrapper):
@@ -92,73 +84,6 @@ class JointLogLikelihood(Wrapper):
         is_mpe: bool = False,
     ) -> Tensor:
         return self.module._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
-
-    def rsample(
-        self,
-        num_samples: int | None = None,
-        data: Tensor | None = None,
-        is_mpe: bool = False,
-        cache: Cache | None = None,
-        sampling_ctx: DifferentiableSamplingContext | None = None,
-        diff_method: Literal["simple", "gumbel"] = "simple",
-        hard: bool = False,
-        temperature_sums: float = 1.0,
-        temperature_leaves: float = 1.0,
-    ) -> Tensor:
-        data = self._prepare_sample_data(num_samples=num_samples, data=data)
-        if cache is None:
-            cache = Cache()
-
-        batch_size = int(data.shape[0])
-        root_features = int(self.module.out_shape.features)
-        root_channels = int(self.module.out_shape.channels)
-
-        if sampling_ctx is None:
-            channel_probs = torch.full(
-                (batch_size, root_features, root_channels),
-                1.0 / float(root_channels),
-                dtype=torch.get_default_dtype(),
-                device=data.device,
-            )
-            mask = torch.ones((batch_size, root_features), dtype=torch.bool, device=data.device)
-            sampling_ctx = DifferentiableSamplingContext(
-                channel_probs=channel_probs,
-                mask=mask,
-                diff_method=diff_method,
-                hard=hard,
-                temperature_sums=temperature_sums,
-                temperature_leaves=temperature_leaves,
-            )
-        else:
-            if sampling_ctx.channel_probs.shape[0] != batch_size:
-                raise InvalidParameterError(
-                    f"{self.__class__.__name__}.rsample received sampling_ctx with "
-                    f"batch={sampling_ctx.channel_probs.shape[0]}, expected {batch_size}."
-                )
-            if sampling_ctx.channel_probs.shape[1] != root_features:
-                raise InvalidParameterError(
-                    f"{self.__class__.__name__}.rsample received sampling_ctx with "
-                    f"features={sampling_ctx.channel_probs.shape[1]}, expected {root_features}."
-                )
-            if sampling_ctx.channel_probs.shape[2] != root_channels:
-                raise InvalidParameterError(
-                    f"{self.__class__.__name__}.rsample received sampling_ctx with "
-                    f"channels={sampling_ctx.channel_probs.shape[2]}, expected {root_channels}."
-                )
-
-        out = self.module._rsample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
-        if sampling_ctx.sample_accum is not None and sampling_ctx.sample_mass is not None:
-            return sampling_ctx.finalize_with_evidence(out)
-        return out
-
-    def _rsample(
-        self,
-        data: Tensor,
-        sampling_ctx: DifferentiableSamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> Tensor:
-        return self.module._rsample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
     def marginalize(self, marg_rvs: list[int], prune: bool = True, cache: Cache | None = None):
         child = self.module.marginalize(marg_rvs=marg_rvs, prune=prune, cache=cache)

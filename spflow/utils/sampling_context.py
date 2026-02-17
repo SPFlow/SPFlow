@@ -1,117 +1,58 @@
 """Sampling context utilities for SPFlow probabilistic circuits.
 
-This module provides context management for both hard and differentiable
-sampling operations in SPFlow. Sampling contexts track routing state across
-recursive module calls.
+This module provides context management for sampling operations in SPFlow,
+including the SamplingContext class that tracks sampling state across
+recursive module calls and utility functions for context initialization
+and management.
+
+The sampling context is essential for:
+- Managing which instances and features to sample
+- Handling evidence during sampling (conditional sampling)
+- Tracking channel indices for multi-output modules
+- Supporting repetition-based sampling structures
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Literal, Sequence
+from typing import Sequence
 
 import torch
 from torch import Tensor
 
-from spflow.exceptions import InvalidParameterError, ShapeError, UnsupportedOperationError
-
-DiffSampleMethod = Literal["simple", "gumbel"]
-
-
-def _resolve_device(device: torch.device | None) -> torch.device:
-    """Resolve target tensor device for context allocation."""
-    if device is not None:
-        return device
-    if hasattr(torch, "get_default_device"):
-        return torch.get_default_device()
-    return torch.device("cpu")
+from spflow.exceptions import InvalidParameterError, ShapeError
 
 
 def _check_mask_bool(mask: Tensor) -> None:
-    """Check if mask tensor has boolean dtype."""
+    """Check if mask tensor has boolean dtype.
+
+    Args:
+        mask: Tensor to check for boolean dtype.
+
+    Raises:
+        InvalidParameterError: If mask tensor does not have torch.bool dtype.
+    """
     if not mask.dtype == torch.bool:
         raise InvalidParameterError("Mask must be of type torch.bool.")
 
 
-def _raise_feature_width_mismatch(*, got: int, expected: str) -> None:
-    """Raise a consistent feature-width mismatch error."""
-    raise ShapeError(
-        "Received incompatible sampling context feature width: " f"got {got}, expected {expected}."
-    )
+class SamplingContext:
+    """Context information manager for sampling operations in probabilistic circuits.
 
+    Manages sampling state across recursive module calls, tracking which instances
+    to sample, which output channels to use, and any evidence constraints. This
+    is essential for conditional sampling, structured sampling, and maintaining
+    consistency across complex circuit hierarchies. channel_index determines which output channels to use for sampling,
+    mask allows selective sampling of subsets of instances/features, repetition_index supports structured circuit representations,
+    and all tensors must have compatible shapes for proper operation.
 
-class AbstractSamplingContext(ABC):
-    """Abstract base class for sampling contexts.
-
-    Shared state:
-    - `mask` indicating which batch/feature positions are active.
-    - `device` where context tensors are stored.
-    - `num_samples` derived from context tensors.
+    Attributes:
+        num_samples (int): Number of samples to generate.
+        device (torch.device): Device on which tensors are stored.
+        channel_index (Tensor | None): Channel indices to sample from for each
+            instance and feature. Shape: (batch_size, num_features).
+        mask (Tensor | None): Boolean mask indicating which instances/features
+            should be sampled. Shape matches channel_index.
+        repetition_index (Tensor | None): Indices for repetition-based structures.
     """
-
-    def __init__(
-        self,
-        *,
-        num_samples: int | None = None,
-        device: torch.device | None = None,
-        mask: Tensor | None = None,
-    ) -> None:
-        if mask is None:
-            if num_samples is None:
-                raise InvalidParameterError("num_samples must be provided when mask is None.")
-            resolved_device = _resolve_device(device)
-            mask = torch.full((num_samples, 1), True, dtype=torch.bool, device=resolved_device)
-        else:
-            _check_mask_bool(mask)
-            if num_samples is not None and num_samples != mask.shape[0]:
-                raise InvalidParameterError(
-                    "num_samples must be equal to the number of samples in mask or be ommitted."
-                )
-
-        self._mask = mask
-        self.device = mask.device
-
-    @property
-    def mask(self) -> Tensor:
-        """Boolean routing mask with shape `(num_samples, num_features)`."""
-        return self._mask
-
-    @mask.setter
-    def mask(self, mask: Tensor) -> None:
-        _check_mask_bool(mask)
-        if mask.shape[0] != self.num_samples:
-            raise InvalidParameterError(
-                "New mask has incompatible batch dimension: "
-                f"got {mask.shape[0]}, expected {self.num_samples}."
-            )
-        self._mask = mask
-
-    @property
-    def num_samples(self) -> int:
-        """Number of samples represented by this context."""
-        return int(self.mask.shape[0])
-
-    @property
-    def samples_mask(self) -> Tensor:
-        """Row-level active-sample mask."""
-        return self.mask.sum(1) > 0
-
-    def require_feature_width(self, expected_features: int) -> None:
-        """Assert exact feature width on this sampling context."""
-        got_features = int(self._feature_width())
-        if got_features != expected_features:
-            _raise_feature_width_mismatch(got=got_features, expected=str(expected_features))
-
-    @abstractmethod
-    def _feature_width(self) -> int:
-        """Return context feature width used for routing."""
-
-    @abstractmethod
-    def copy(self) -> AbstractSamplingContext:
-        """Return a deep copy of this sampling context."""
-
-
-class SamplingContext(AbstractSamplingContext):
-    """Hard-routing sampling context using per-feature channel indices."""
 
     def __init__(
         self,
@@ -121,6 +62,42 @@ class SamplingContext(AbstractSamplingContext):
         mask: Tensor | None = None,
         repetition_index: Tensor | None = None,
     ) -> None:
+        """Initialize SamplingContext for managing sampling operations.
+
+        Creates a sampling context with specified parameters. The context manages
+        which instances and features to sample, handles evidence constraints, and supports
+        structured sampling through repetition indices. Channel_index determines which output
+        channels to use for sampling, mask allows selective sampling of subsets of
+        instances/features, and repetition_index supports structured circuit representations.
+        All tensors must have compatible shapes for proper operation.
+
+        Args:
+            num_samples (int | None, optional): Number of samples to generate.
+                Can be inferred from other tensor dimensions if not provided.
+                Defaults to None.
+            device (torch.device | None, optional): PyTorch device for tensor storage.
+                If None, uses torch.get_default_device() or CPU. Defaults to None.
+            channel_index (Tensor | None, optional): Channel indices for each sample
+                and feature. Shape: (batch_size, num_features). If None, samples
+                from all channels. Defaults to None.
+            mask (Tensor | None, optional): Boolean mask indicating which instances/
+                features to sample from. Must be torch.bool type. Shape must match
+                channel_index if provided. Defaults to None.
+            repetition_index (Tensor | None, optional): Indices for repetition-based
+                sampling structures. Used by circuits with repeated computations.
+                Defaults to None.
+
+        Raises:
+            InvalidParameterError: If tensor shapes are incompatible, mask has wrong dtype,
+                or num_samples conflicts with tensor dimensions.
+        """
+        if device is None:
+            # device = torch.device("cpu" if not torch.cuda.is_available() else "cuda:0")
+            if hasattr(torch, "get_default_device"):
+                device = torch.get_default_device()
+            else:
+                device = torch.device("cpu")
+
         if channel_index is not None and mask is not None:
             if not channel_index.shape == mask.shape:
                 raise InvalidParameterError("channel_index and mask must have the same shape.")
@@ -145,31 +122,33 @@ class SamplingContext(AbstractSamplingContext):
             num_samples = mask.shape[0]
 
         if (channel_index is None) ^ (mask is None):
+            # channel_index and mask must be both None or both not None
             raise InvalidParameterError("channel_index and mask must be both None or both not None.")
-
-        if channel_index is None and mask is None:
+        elif channel_index is not None and mask is not None:
+            # channel_index and mask are both not None
+            _check_mask_bool(mask)
+            self._mask = mask
+            self._channel_index = channel_index
+            self.device = device
+        else:
+            # channel_index and mask are both None
             if num_samples is None:
                 raise InvalidParameterError(
                     "num_samples must be provided when channel_index and mask are None."
                 )
-            resolved_device = _resolve_device(device)
-            channel_index = torch.zeros((num_samples, 1), dtype=torch.long, device=resolved_device)
-            mask = torch.full((num_samples, 1), True, dtype=torch.bool, device=resolved_device)
+            self._mask = torch.full((num_samples, 1), True, dtype=torch.bool, device=device)
+            self._channel_index = torch.zeros((num_samples, 1), dtype=torch.long, device=device)
+            self.device = self.mask.device
 
-        super().__init__(num_samples=num_samples, device=device, mask=mask)
-
-        if channel_index is None:
-            raise InvalidParameterError("channel_index could not be initialized.")
-        if channel_index.shape != self.mask.shape:
-            raise InvalidParameterError("channel_index and mask must have the same shape.")
-
-        self._channel_index = channel_index
-        if repetition_index is None:
-            repetition_index = torch.zeros((self.num_samples,), dtype=torch.long, device=self.device)
         self.repetition_idx = repetition_index
 
-    def update(self, channel_index: Tensor, mask: Tensor) -> None:
-        """Update the hard-routing state (`channel_index` and `mask`)."""
+    def update(self, channel_index: Tensor, mask: Tensor):
+        """Updates the sampling context with new channel index and mask.
+
+        Args:
+            channel_index: Tensor containing the channel indices to sample from.
+            mask: Boolean tensor containing the mask to apply to the samples.
+        """
         if not channel_index.shape == mask.shape:
             raise InvalidParameterError("channel_index and mask must have the same shape.")
 
@@ -179,59 +158,107 @@ class SamplingContext(AbstractSamplingContext):
         self._mask = mask
 
     @property
-    def channel_index(self) -> Tensor:
+    def channel_index(self):
         return self._channel_index
 
     @channel_index.setter
-    def channel_index(self, channel_index: Tensor) -> None:
+    def channel_index(self, channel_index):
         if channel_index.shape != self._mask.shape:
             raise InvalidParameterError("New channel_index and previous mask must have the same shape.")
         self._channel_index = channel_index
 
     @property
-    def mask(self) -> Tensor:
+    def mask(self):
         return self._mask
 
     @mask.setter
-    def mask(self, mask: Tensor) -> None:
+    def mask(self, mask):
         if mask.shape != self._channel_index.shape:
             raise InvalidParameterError("New mask and previous channel_index must have the same shape.")
         _check_mask_bool(mask)
         self._mask = mask
 
     @property
-    def channel_index_masked(self) -> Tensor:
+    def samples_mask(self):
+        return self.mask.sum(1) > 0
+
+    @property
+    def channel_index_masked(self):
         return self.channel_index[self.samples_mask]
 
     def copy(self) -> SamplingContext:
-        """Return a copy of the sampling context."""
+        """Return a copy of the sampling context.
+
+        Returns:
+            SamplingContext: A new SamplingContext instance with copied tensors.
+        """
         return SamplingContext(
             channel_index=self.channel_index.clone(),
             mask=self.mask.clone(),
             repetition_index=self.repetition_idx.clone() if self.repetition_idx is not None else None,
         )
 
-    def _feature_width(self) -> int:
-        return int(self.channel_index.shape[1])
+    def require_feature_width(self, expected_features: int) -> None:
+        """Assert exact feature width on this sampling context.
+
+        Args:
+            expected_features: Required feature width.
+
+        Raises:
+            ShapeError: If context width does not match `expected_features`.
+        """
+        got_features = int(self.channel_index.shape[1])
+        if got_features != expected_features:
+            raise ShapeError(
+                "Received incompatible sampling context feature width: "
+                f"got {got_features}, expected {expected_features}."
+            )
 
     def broadcast_feature_width(self, target_features: int, allow_from_one: bool = True) -> None:
-        """Expand singleton feature routing to a target feature width."""
+        """Expand singleton feature routing to a target feature width.
+
+        The only supported implicit broadcast is from width `1` to
+        `target_features`, guarded by `allow_from_one`.
+
+        Args:
+            target_features: Desired feature width.
+            allow_from_one: Whether width-1 contexts may be repeated.
+
+        Raises:
+            ShapeError: If width adaptation is not allowed or impossible.
+        """
         current_features = int(self.channel_index.shape[1])
         if current_features == target_features:
             return
 
         if allow_from_one and current_features == 1:
+            # Repeat along feature axis while preserving per-row batch semantics.
             self.update(
                 channel_index=self.channel_index.repeat(1, target_features),
                 mask=self.mask.repeat(1, target_features),
             )
             return
 
-        expected = f"{target_features} or 1" if allow_from_one else str(target_features)
-        _raise_feature_width_mismatch(got=current_features, expected=expected)
+        if allow_from_one:
+            expected = f"{target_features} or 1"
+        else:
+            expected = str(target_features)
+        raise ShapeError(
+            "Received incompatible sampling context feature width: "
+            f"got {current_features}, expected {expected}."
+        )
 
     def repeat_split_feature_width(self, num_splits: int, target_features: int) -> None:
-        """Expand split-sized contexts to full input width by feature repetition."""
+        """Expand split-sized contexts to full input width by feature repetition.
+
+        Args:
+            num_splits: Number of split branches.
+            target_features: Target full feature width.
+
+        Raises:
+            InvalidParameterError: If `num_splits < 1`.
+            ShapeError: If split sizing is incompatible with the target width.
+        """
         if num_splits < 1:
             raise InvalidParameterError(f"num_splits must be >= 1, got {num_splits}.")
 
@@ -247,9 +274,9 @@ class SamplingContext(AbstractSamplingContext):
 
         split_features = target_features // num_splits
         if current_features != split_features:
-            _raise_feature_width_mismatch(
-                got=current_features,
-                expected=f"{target_features} or split width {split_features}",
+            raise ShapeError(
+                "Received incompatible sampling context feature width: "
+                f"got {current_features}, expected {target_features} or split width {split_features}."
             )
 
         self.update(
@@ -262,7 +289,18 @@ class SamplingContext(AbstractSamplingContext):
         index_groups: Sequence[Sequence[int]],
         input_features: int,
     ) -> None:
-        """Scatter split-sized routing tensors into full input-feature positions."""
+        """Scatter split-sized routing tensors into full input-feature positions.
+
+        Args:
+            index_groups: Feature-index groups defining split placement.
+            input_features: Required full input feature width.
+
+        Raises:
+            InvalidParameterError: If index groups are not an exact partition of
+                `[0, input_features)`.
+            ShapeError: If context width cannot be interpreted as a common
+                split-sized width.
+        """
         current_features = int(self.channel_index.shape[1])
         if current_features == input_features:
             return
@@ -273,11 +311,13 @@ class SamplingContext(AbstractSamplingContext):
 
         split_sizes = [len(group) for group in index_groups]
         if any(size != current_features for size in split_sizes):
-            _raise_feature_width_mismatch(
-                got=current_features,
-                expected=f"{input_features} or common split width {split_sizes}",
+            raise ShapeError(
+                "Received incompatible sampling context feature width: "
+                f"got {current_features}, expected {input_features} or common split width {split_sizes}."
             )
 
+        # Build full-width tensors and place each split routing slice at its
+        # destination feature positions.
         channel_index = self.channel_index.new_zeros((self.channel_index.shape[0], input_features))
         mask = self.mask.new_zeros((self.mask.shape[0], input_features))
         for group in index_groups:
@@ -287,7 +327,18 @@ class SamplingContext(AbstractSamplingContext):
         self.update(channel_index=channel_index, mask=mask)
 
     def slice_feature_ranges(self, ranges: Sequence[tuple[int, int]]) -> list[tuple[Tensor, Tensor]]:
-        """Slice per-child contiguous feature ranges from a full-width context."""
+        """Slice per-child contiguous feature ranges from a full-width context.
+
+        Args:
+            ranges: Inclusive-exclusive `(start, end)` feature ranges.
+
+        Returns:
+            List of `(channel_index_slice, mask_slice)` tuples, one per range.
+
+        Raises:
+            InvalidParameterError: If any range is outside the context width or has
+                invalid bounds.
+        """
         ctx_features = int(self.channel_index.shape[1])
         out: list[tuple[Tensor, Tensor]] = []
         for start, end in ranges:
@@ -303,7 +354,19 @@ class SamplingContext(AbstractSamplingContext):
         self,
         child_channel_counts: Sequence[int],
     ) -> list[tuple[Tensor, Tensor]]:
-        """Route global channel ids into child-local channel ids with masks."""
+        """Route global channel ids into child-local channel ids with masks.
+
+        Args:
+            child_channel_counts: Number of channels per child in concatenation
+                order.
+
+        Returns:
+            List of `(local_channel_index, child_mask)` tuples, one per child.
+
+        Raises:
+            InvalidParameterError: If any child channel count is less than 1, or
+                if active channel ids fall outside the concatenated child range.
+        """
         if any(count < 1 for count in child_channel_counts):
             raise InvalidParameterError("child_channel_counts must all be >= 1.")
 
@@ -332,6 +395,8 @@ class SamplingContext(AbstractSamplingContext):
             local_channel_index = torch.where(
                 in_child_range,
                 local_channel_index,
+                # Keep non-owned positions in-bounds for downstream gather ops;
+                # correctness is enforced via child_mask and the range check above.
                 torch.zeros_like(local_channel_index),
             )
             child_mask = in_child_range & self.mask
@@ -340,563 +405,27 @@ class SamplingContext(AbstractSamplingContext):
         return out
 
     def __repr__(self) -> str:
-        return (
-            "SamplingContext("
-            f"channel_index.shape={tuple(self.channel_index.shape)}, "
-            f"mask.shape={tuple(self.mask.shape)}, "
-            f"num_samples={self.num_samples}"
-            ")"
-        )
-
-
-class DifferentiableSamplingContext(AbstractSamplingContext):
-    """Differentiable sampling context using probability routing tensors."""
-
-    def __init__(
-        self,
-        num_samples: int | None = None,
-        device: torch.device | None = None,
-        channel_probs: Tensor | None = None,
-        mask: Tensor | None = None,
-        repetition_probs: Tensor | None = None,
-        diff_method: DiffSampleMethod = "simple",
-        hard: bool = False,
-        temperature_sums: float = 1.0,
-        temperature_leaves: float = 1.0,
-        sample_accum: Tensor | None = None,
-        sample_mass: Tensor | None = None,
-    ) -> None:
-        if diff_method not in {"simple", "gumbel"}:
-            raise InvalidParameterError(
-                f"diff_method must be one of ('simple', 'gumbel'), got {diff_method!r}."
-            )
-        if temperature_sums <= 0.0:
-            raise InvalidParameterError(f"temperature_sums must be > 0, got {temperature_sums}.")
-        if temperature_leaves <= 0.0:
-            raise InvalidParameterError(f"temperature_leaves must be > 0, got {temperature_leaves}.")
-
-        if (channel_probs is None) ^ (mask is None):
-            raise InvalidParameterError("channel_probs and mask must be both None or both not None.")
-
-        if channel_probs is None and mask is None:
-            if num_samples is None:
-                raise InvalidParameterError(
-                    "num_samples must be provided when channel_probs and mask are None."
-                )
-            resolved_device = _resolve_device(device)
-            mask = torch.full((num_samples, 1), True, dtype=torch.bool, device=resolved_device)
-            channel_probs = torch.ones(
-                (num_samples, 1, 1),
-                dtype=torch.get_default_dtype(),
-                device=resolved_device,
-            )
-        else:
-            if channel_probs is None or mask is None:
-                raise InvalidParameterError("channel_probs and mask must be both None or both not None.")
-            if channel_probs.ndim != 3:
-                raise InvalidParameterError(
-                    "channel_probs must have shape (num_samples, num_features, num_channels)."
-                )
-            if channel_probs.shape[0] != mask.shape[0] or channel_probs.shape[1] != mask.shape[1]:
-                raise InvalidParameterError("channel_probs and mask must match on batch and feature axes.")
-            if num_samples is not None and num_samples != channel_probs.shape[0]:
-                raise InvalidParameterError(
-                    "num_samples must be equal to the number of samples in channel_probs or be ommitted."
-                )
-
-        super().__init__(num_samples=num_samples, device=device, mask=mask)
-
-        if channel_probs is None:
-            raise InvalidParameterError("channel_probs could not be initialized.")
-        self._validate_channel_probs(channel_probs, self.mask)
-        self._channel_probs = channel_probs
-
-        if repetition_probs is None:
-            repetition_probs = torch.ones(
-                (self.num_samples, 1),
-                dtype=self.channel_probs.dtype,
-                device=self.channel_probs.device,
-            )
-        else:
-            self._validate_repetition_probs(repetition_probs, self.num_samples)
-        self.repetition_probs = repetition_probs
-
-        self.diff_method: DiffSampleMethod = diff_method
-        self.hard = bool(hard)
-        self.temperature_sums = float(temperature_sums)
-        self.temperature_leaves = float(temperature_leaves)
-
-        self.sample_accum = sample_accum.clone() if sample_accum is not None else None
-        self.sample_mass = sample_mass.clone() if sample_mass is not None else None
-
-        if self.sample_accum is not None and self.sample_accum.shape[0] != self.num_samples:
-            raise InvalidParameterError(
-                "sample_accum has incompatible batch size: "
-                f"got {self.sample_accum.shape[0]}, expected {self.num_samples}."
-            )
-        if self.sample_mass is not None and self.sample_mass.shape[0] != self.num_samples:
-            raise InvalidParameterError(
-                "sample_mass has incompatible batch size: "
-                f"got {self.sample_mass.shape[0]}, expected {self.num_samples}."
-            )
-        if self.sample_accum is not None and self.sample_mass is not None:
-            if self.sample_accum.shape != self.sample_mass.shape:
-                raise InvalidParameterError(
-                    "sample_accum and sample_mass must have the same shape, "
-                    f"got {tuple(self.sample_accum.shape)} and {tuple(self.sample_mass.shape)}."
-                )
-
-    @staticmethod
-    def _validate_channel_probs(channel_probs: Tensor, mask: Tensor) -> None:
-        if channel_probs.ndim != 3:
-            raise InvalidParameterError(
-                "channel_probs must have shape (num_samples, num_features, num_channels)."
-            )
-        if channel_probs.shape[2] < 1:
-            raise InvalidParameterError("channel_probs must have at least one channel.")
-
-        active_probs = channel_probs[mask]
-        if active_probs.numel() == 0:
-            return
-
-        if (active_probs < 0).any():
-            raise InvalidParameterError("channel_probs must be non-negative on active positions.")
-
-        simplex_mass = active_probs.sum(dim=-1)
-        if not torch.allclose(
-            simplex_mass,
-            torch.ones_like(simplex_mass),
-            atol=1e-4,
-            rtol=1e-4,
-        ):
-            raise InvalidParameterError(
-                "channel_probs must sum to 1 on active positions (within atol=1e-4, rtol=1e-4)."
-            )
-
-    def _set_channel_probs_and_mask(self, channel_probs: Tensor, mask: Tensor) -> None:
-        """Set `channel_probs` and `mask` together with joint validation."""
-        _check_mask_bool(mask)
-        if channel_probs.shape[0] != mask.shape[0] or channel_probs.shape[1] != mask.shape[1]:
-            raise InvalidParameterError("channel_probs and mask must match on batch and feature axes.")
-        self._validate_channel_probs(channel_probs, mask)
-        self._channel_probs = channel_probs
-        self._mask = mask
-
-    @staticmethod
-    def _validate_repetition_probs(repetition_probs: Tensor, num_samples: int) -> None:
-        if repetition_probs.ndim != 2:
-            raise InvalidParameterError("repetition_probs must have shape (num_samples, num_repetitions).")
-        if repetition_probs.shape[0] != num_samples:
-            raise InvalidParameterError(
-                "repetition_probs has incompatible batch size: "
-                f"got {repetition_probs.shape[0]}, expected {num_samples}."
-            )
-        if repetition_probs.shape[1] < 1:
-            raise InvalidParameterError("repetition_probs must have at least one repetition.")
-
-        if (repetition_probs < 0).any():
-            raise InvalidParameterError("repetition_probs must be non-negative.")
-
-        simplex_mass = repetition_probs.sum(dim=-1)
-        if not torch.allclose(
-            simplex_mass,
-            torch.ones_like(simplex_mass),
-            atol=1e-4,
-            rtol=1e-4,
-        ):
-            raise InvalidParameterError(
-                "repetition_probs must sum to 1 per sample (within atol=1e-4, rtol=1e-4)."
-            )
-
-    @property
-    def channel_probs(self) -> Tensor:
-        return self._channel_probs
-
-    @channel_probs.setter
-    def channel_probs(self, channel_probs: Tensor) -> None:
-        self._set_channel_probs_and_mask(channel_probs, self.mask)
-
-    @property
-    def mask(self) -> Tensor:
-        return self._mask
-
-    @mask.setter
-    def mask(self, mask: Tensor) -> None:
-        if hasattr(self, "_channel_probs"):
-            self._set_channel_probs_and_mask(self._channel_probs, mask)
-            return
-        _check_mask_bool(mask)
-        self._mask = mask
-
-    @property
-    def channel_index(self) -> Tensor:
-        raise UnsupportedOperationError(
-            "DifferentiableSamplingContext does not support channel_index; use channel_probs instead."
-        )
-
-    @channel_index.setter
-    def channel_index(self, channel_index: Tensor) -> None:
-        del channel_index
-        raise UnsupportedOperationError(
-            "DifferentiableSamplingContext does not support channel_index; use channel_probs instead."
-        )
-
-    @property
-    def repetition_idx(self) -> Tensor:
-        raise UnsupportedOperationError(
-            "DifferentiableSamplingContext does not support repetition_idx; use repetition_probs instead."
-        )
-
-    @repetition_idx.setter
-    def repetition_idx(self, repetition_idx: Tensor) -> None:
-        del repetition_idx
-        raise UnsupportedOperationError(
-            "DifferentiableSamplingContext does not support repetition_idx; use repetition_probs instead."
-        )
-
-    @property
-    def repetition_index(self) -> Tensor:
-        raise UnsupportedOperationError(
-            "DifferentiableSamplingContext does not support repetition_index; use repetition_probs instead."
-        )
-
-    @repetition_index.setter
-    def repetition_index(self, repetition_index: Tensor) -> None:
-        del repetition_index
-        raise UnsupportedOperationError(
-            "DifferentiableSamplingContext does not support repetition_index; use repetition_probs instead."
-        )
-
-    def update(self, channel_index: Tensor, mask: Tensor) -> None:
-        del channel_index
-        del mask
-        raise UnsupportedOperationError(
-            "DifferentiableSamplingContext does not support index-based updates; update channel_probs/mask directly."
-        )
-
-    def update_prob_routing(self, channel_probs: Tensor, mask: Tensor) -> None:
-        """Atomically update probability-routing tensors."""
-        self._set_channel_probs_and_mask(channel_probs, mask)
-
-    def _feature_width(self) -> int:
-        return int(self.channel_probs.shape[1])
-
-    def copy(self) -> DifferentiableSamplingContext:
-        """Return a copy of the differentiable sampling context."""
-        return DifferentiableSamplingContext(
-            channel_probs=self.channel_probs.clone(),
-            mask=self.mask.clone(),
-            repetition_probs=self.repetition_probs.clone() if self.repetition_probs is not None else None,
-            diff_method=self.diff_method,
-            hard=self.hard,
-            temperature_sums=self.temperature_sums,
-            temperature_leaves=self.temperature_leaves,
-            sample_accum=self.sample_accum.clone() if self.sample_accum is not None else None,
-            sample_mass=self.sample_mass.clone() if self.sample_mass is not None else None,
-        )
-
-    def slice_feature_prob_ranges(self, ranges: Sequence[tuple[int, int]]) -> list[tuple[Tensor, Tensor]]:
-        """Slice per-child contiguous feature ranges from a full-width probability context."""
-        ctx_features = int(self.channel_probs.shape[1])
-        out: list[tuple[Tensor, Tensor]] = []
-        for start, end in ranges:
-            if start < 0 or end < start or end > ctx_features:
-                raise InvalidParameterError(
-                    f"Received invalid feature slice range ({start}, {end}) "
-                    f"for context width {ctx_features}."
-                )
-            out.append((self.channel_probs[:, start:end, :], self.mask[:, start:end]))
-        return out
-
-    def route_channel_prob_offsets(
-        self,
-        child_channel_counts: Sequence[int],
-    ) -> list[tuple[Tensor, Tensor]]:
-        """Route global channel probabilities into child-local channel probability tensors."""
-        if any(count < 1 for count in child_channel_counts):
-            raise InvalidParameterError("child_channel_counts must all be >= 1.")
-
-        total_channels = int(sum(child_channel_counts))
-        got_channels = int(self.channel_probs.shape[2])
-        if got_channels != total_channels:
-            raise ShapeError(
-                "Received incompatible channel_probs width for channel routing: "
-                f"got {got_channels}, expected {total_channels}."
-            )
-
-        out: list[tuple[Tensor, Tensor]] = []
-        offset = 0
-        for child_channels in child_channel_counts:
-            child_start = offset
-            child_end = offset + child_channels
-            child_probs = self.channel_probs[:, :, child_start:child_end]
-            child_mask = self.mask & (child_probs.sum(dim=-1) > 0.0)
-            out.append((child_probs, child_mask))
-            offset = child_end
-        return out
-
-    def repeat_split_feature_prob_width(self, num_splits: int, target_features: int) -> None:
-        """Expand split-sized probability routing to full input width by repetition."""
-        if num_splits < 1:
-            raise InvalidParameterError(f"num_splits must be >= 1, got {num_splits}.")
-
-        current_features = int(self.channel_probs.shape[1])
-        if current_features == target_features:
-            return
-
-        if target_features % num_splits != 0:
-            raise ShapeError(
-                "Cannot adapt split-sized sampling context: "
-                f"target features {target_features} are not divisible by num_splits {num_splits}."
-            )
-
-        split_features = target_features // num_splits
-        if current_features != split_features:
-            _raise_feature_width_mismatch(
-                got=current_features,
-                expected=f"{target_features} or split width {split_features}",
-            )
-
-        self._set_channel_probs_and_mask(
-            self.channel_probs.repeat(1, num_splits, 1),
-            self.mask.repeat(1, num_splits),
-        )
-
-    def scatter_split_prob_groups_to_input_width(
-        self,
-        index_groups: Sequence[Sequence[int]],
-        input_features: int,
-    ) -> None:
-        """Scatter split-sized probability routing tensors to full input-feature positions."""
-        current_features = int(self.channel_probs.shape[1])
-        if current_features == input_features:
-            return
-
-        flat_indices: list[int] = [idx for group in index_groups for idx in group]
-        if sorted(flat_indices) != list(range(input_features)):
-            raise InvalidParameterError("index_groups must cover all input features exactly once.")
-
-        split_sizes = [len(group) for group in index_groups]
-        if any(size != current_features for size in split_sizes):
-            _raise_feature_width_mismatch(
-                got=current_features,
-                expected=f"{input_features} or common split width {split_sizes}",
-            )
-
-        channel_probs = self.channel_probs.new_zeros(
-            (self.channel_probs.shape[0], input_features, self.channel_probs.shape[2])
-        )
-        mask = self.mask.new_zeros((self.mask.shape[0], input_features))
-        for group in index_groups:
-            dest = torch.as_tensor(group, dtype=torch.long, device=self.channel_probs.device)
-            channel_probs[:, dest, :] = self.channel_probs
-            mask[:, dest] = self.mask
-        self._set_channel_probs_and_mask(channel_probs, mask)
-
-    def broadcast_feature_prob_width(self, target_features: int, allow_from_one: bool = True) -> None:
-        """Expand singleton feature probabilities to a target feature width."""
-        current_features = int(self.channel_probs.shape[1])
-        if current_features == target_features:
-            return
-
-        if allow_from_one and current_features == 1:
-            self._set_channel_probs_and_mask(
-                self.channel_probs.repeat(1, target_features, 1),
-                self.mask.repeat(1, target_features),
-            )
-            return
-
-        expected = f"{target_features} or 1" if allow_from_one else str(target_features)
-        _raise_feature_width_mismatch(got=current_features, expected=expected)
-
-    def resolve_repetition_probs(
-        self,
-        *,
-        expected_repetitions: int,
-        module_name: str,
-    ) -> Tensor:
-        """Resolve repetition probabilities for differentiable routing.
-
-        Args:
-            expected_repetitions: Expected repetition width for the current module.
-            module_name: Module identifier used in error messages.
-        """
-        if expected_repetitions < 1:
-            raise InvalidParameterError(f"expected_repetitions must be >= 1, got {expected_repetitions}.")
-
-        if self.repetition_probs is None:
-            if expected_repetitions > 1:
-                raise InvalidParameterError(
-                    "sampling_ctx.repetition_probs must be provided when differentiably sampling "
-                    f"{module_name} with num_repetitions > 1."
-                )
-            return torch.ones(
-                (self.num_samples, 1),
-                dtype=self.channel_probs.dtype,
-                device=self.channel_probs.device,
-            )
-
-        repetition_probs = self.repetition_probs
-        if repetition_probs.shape[1] == expected_repetitions:
-            return repetition_probs
-
-        if repetition_probs.shape[1] == 1 and expected_repetitions > 1:
-            # Root differentiable contexts start with singleton repetition routing.
-            # Align with hard sampling semantics by routing all mass to repetition 0.
-            expanded = repetition_probs.new_zeros((self.num_samples, expected_repetitions))
-            expanded[:, 0] = repetition_probs[:, 0]
-            return expanded
-
-        raise ShapeError(
-            "sampling_ctx.repetition_probs has incompatible repetition width for "
-            f"{module_name}: got {repetition_probs.shape[1]}, "
-            f"expected {expected_repetitions}."
-        )
-
-    def resolve_channel_probs(
-        self,
-        *,
-        expected_channels: int,
-        module_name: str,
-    ) -> Tensor:
-        """Resolve channel routing probabilities for a module channel width.
-
-        Root differentiable contexts are initialized with a singleton channel axis.
-        When a module expects more channels, we map that singleton mass to channel 0,
-        mirroring hard-sampling behavior where root channel indices initialize to 0.
-        """
-        if expected_channels < 1:
-            raise InvalidParameterError(f"expected_channels must be >= 1, got {expected_channels}.")
-
-        channel_probs = self.channel_probs
-        got_channels = int(channel_probs.shape[2])
-        if got_channels == expected_channels:
-            return channel_probs
-
-        if got_channels == 1 and expected_channels > 1:
-            expanded = channel_probs.new_zeros(
-                (channel_probs.shape[0], channel_probs.shape[1], expected_channels)
-            )
-            expanded[:, :, 0] = channel_probs[:, :, 0]
-            return expanded
-
-        raise ShapeError(
-            "sampling_ctx.channel_probs has incompatible channel width for "
-            f"{module_name}: got {got_channels}, expected {expected_channels}."
-        )
-
-    def initialize_accumulators(
-        self,
-        *,
-        num_features: int,
-        dtype: torch.dtype | None = None,
-        device: torch.device | None = None,
-    ) -> None:
-        """Initialize additive sampling accumulators."""
-        if num_features < 1:
-            raise InvalidParameterError(f"num_features must be >= 1, got {num_features}.")
-
-        dtype = dtype if dtype is not None else self.channel_probs.dtype
-        device = device if device is not None else self.channel_probs.device
-        self.sample_accum = torch.zeros((self.num_samples, num_features), dtype=dtype, device=device)
-        self.sample_mass = torch.zeros((self.num_samples, num_features), dtype=dtype, device=device)
-
-    def accumulate_additive(
-        self,
-        values: Tensor,
-        *,
-        weights: Tensor | None = None,
-        mask: Tensor | None = None,
-    ) -> None:
-        """Accumulate additive differentiable sampling contributions."""
-        if values.ndim != 2:
-            raise ShapeError(
-                "values for additive accumulation must be 2D with shape " "(num_samples, num_features)."
-            )
-
-        if values.shape[0] != self.num_samples:
-            raise ShapeError(
-                "values for additive accumulation have incompatible batch size: "
-                f"got {values.shape[0]}, expected {self.num_samples}."
-            )
-
-        if self.sample_accum is None or self.sample_mass is None:
-            self.initialize_accumulators(
-                num_features=int(values.shape[1]), dtype=values.dtype, device=values.device
-            )
-
-        if self.sample_accum is None or self.sample_mass is None:
-            raise InvalidParameterError("Failed to initialize additive sampling accumulators.")
-
-        if values.shape != self.sample_accum.shape:
-            raise ShapeError(
-                "values for additive accumulation have incompatible shape: "
-                f"got {tuple(values.shape)}, expected {tuple(self.sample_accum.shape)}."
-            )
-
-        if weights is None:
-            weights = torch.ones_like(values)
-        if weights.shape != values.shape:
-            raise ShapeError(
-                "weights for additive accumulation must match values shape, "
-                f"got {tuple(weights.shape)} and {tuple(values.shape)}."
-            )
-
-        if mask is None:
-            mask = torch.ones_like(values, dtype=torch.bool)
-        _check_mask_bool(mask)
-        if mask.shape != values.shape:
-            raise ShapeError(
-                "mask for additive accumulation must match values shape, "
-                f"got {tuple(mask.shape)} and {tuple(values.shape)}."
-            )
-
-        weighted_values = values * weights
-        weighted_values = torch.where(mask, weighted_values, torch.zeros_like(weighted_values))
-        masked_weights = torch.where(mask, weights, torch.zeros_like(weights))
-
-        self.sample_accum = self.sample_accum + weighted_values
-        self.sample_mass = self.sample_mass + masked_weights
-
-    def finalize_with_evidence(self, data: Tensor) -> Tensor:
-        """Finalize additive sampling output by filling only NaN positions in evidence."""
-        if self.sample_accum is None or self.sample_mass is None:
-            raise InvalidParameterError(
-                "Cannot finalize differentiable sampling output before accumulators are initialized."
-            )
-
-        if data.shape != self.sample_accum.shape:
-            raise ShapeError(
-                "data has incompatible shape for finalize_with_evidence: "
-                f"got {tuple(data.shape)}, expected {tuple(self.sample_accum.shape)}."
-            )
-
-        out = data.clone()
-        fill_mask = torch.isnan(out)
-        out[fill_mask] = self.sample_accum[fill_mask]
-        return out
-
-    def __repr__(self) -> str:
-        return (
-            "DifferentiableSamplingContext("
-            f"channel_probs.shape={tuple(self.channel_probs.shape)}, "
-            f"mask.shape={tuple(self.mask.shape)}, "
-            f"num_samples={self.num_samples}, "
-            f"diff_method={self.diff_method!r}, "
-            f"hard={self.hard}"
-            ")"
-        )
+        return f"SamplingContext(channel_index.shape={self.channel_index.shape}), mask.shape={self.mask.shape}), num_samples={self.channel_index.shape[0]})"
 
 
 def init_default_sampling_context(
-    sampling_ctx: SamplingContext | None,
-    num_samples: int | None = None,
-    device: torch.device | None = None,
+    sampling_ctx: SamplingContext | None, num_samples: int | None = None, device: torch.device | None = None
 ) -> SamplingContext:
-    """Initialize hard sampling context if not already initialized."""
+    """Initializes sampling context if not already initialized.
+
+    Args:
+        sampling_ctx: SamplingContext object or None.
+        num_samples: Integer specifying the number of samples.
+        device: PyTorch device for tensor storage.
+
+    Returns:
+        Original sampling context if not None or a new initialized sampling context.
+    """
+    # Ensure, that either sampling_ctx or num_samples is not None
     if sampling_ctx is not None:
         return sampling_ctx
-    return SamplingContext(num_samples=num_samples, device=device)
+    else:
+        return SamplingContext(num_samples=num_samples, device=device)
 
 
 def build_root_sampling_context(
@@ -907,7 +436,12 @@ def build_root_sampling_context(
     num_features: int,
     device: torch.device | None = None,
 ) -> SamplingContext:
-    """Build or validate hard sampling context at a root sampling entrypoint."""
+    """Build or validate sampling context at a root sampling entrypoint.
+
+    Root callers should initialize a context whose feature width matches the
+    root module output width so internal modules do not rely on synthetic
+    feature expansion.
+    """
     if sampling_ctx is None:
         channel_index = torch.zeros((num_samples, num_features), dtype=torch.long, device=device)
         mask = torch.ones((num_samples, num_features), dtype=torch.bool, device=device)
@@ -932,8 +466,76 @@ def build_root_sampling_context(
     return sampling_ctx
 
 
+def require_sampling_context(
+    sampling_ctx: SamplingContext | None,
+    *,
+    num_samples: int | None = None,
+    module_out_shape: object | None = None,
+    device: torch.device | None = None,
+) -> SamplingContext:
+    """Validate or bootstrap sampling context for internal sampling calls.
+
+    Internal module calls are expected to receive a context from their parent.
+    The only bootstrap exception is a structural scalar node
+    (`features == 1` and `channels == 1`), where creating a default context is
+    shape-safe and does not require routing decisions.
+
+    Args:
+        sampling_ctx: Existing context from the parent call.
+        num_samples: Expected batch size for validation.
+        module_out_shape: Shape-like object used only for bootstrap eligibility.
+        device: Device used when bootstrap allocation is required.
+
+    Returns:
+        A validated or newly created `SamplingContext`.
+
+    Raises:
+        InvalidParameterError: If context is missing for non-bootstrapable
+            modules, or if batch dimensions mismatch.
+    """
+    if sampling_ctx is None:
+        # Bootstrapping is intentionally narrow to avoid hiding routing bugs.
+        can_bootstrap = (
+            module_out_shape is not None
+            and hasattr(module_out_shape, "features")
+            and hasattr(module_out_shape, "channels")
+            and int(module_out_shape.features) == 1
+            and int(module_out_shape.channels) == 1
+        )
+        if can_bootstrap:
+            if num_samples is None:
+                raise InvalidParameterError("Cannot initialize sampling context without num_samples.")
+            return SamplingContext(num_samples=num_samples, device=device)
+
+        raise InvalidParameterError(
+            "Sampling requires an explicit sampling_ctx for internal sampling unless "
+            "module.out_shape.features == 1 and module.out_shape.channels == 1."
+        )
+
+    if num_samples is not None and sampling_ctx.channel_index.shape[0] != num_samples:
+        raise InvalidParameterError(
+            "sampling_ctx batch size mismatch: "
+            f"got {sampling_ctx.channel_index.shape[0]}, "
+            f"expected {num_samples}."
+        )
+
+    return sampling_ctx
+
+
 def update_channel_index_strict(sampling_ctx: SamplingContext, new_channel_index: Tensor) -> None:
-    """Replace `channel_index` while preserving context feature-layout invariants."""
+    """Replace `channel_index` while preserving context feature-layout invariants.
+
+    This helper is used when only channel assignments change but the feature
+    layout (and therefore `mask` shape) must remain exactly the same.
+
+    Args:
+        sampling_ctx: Context to update.
+        new_channel_index: New per-sample, per-feature channel assignments.
+
+    Raises:
+        ShapeError: If batch size or feature width differs from the existing
+            context mask.
+    """
     if new_channel_index.shape[0] != sampling_ctx.mask.shape[0]:
         raise ShapeError(
             "sampling_ctx.channel_index batch mismatch for update: "

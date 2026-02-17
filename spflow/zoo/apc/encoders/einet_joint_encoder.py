@@ -231,7 +231,7 @@ class EinetJointEncoder(nn.Module):
         del tau
         evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
         sampling_ctx = SamplingContext(num_samples=x_flat.shape[0], device=x_flat.device)
-        joint = self.pc.sample(data=evidence, is_mpe=mpe)
+        joint = self.pc.sample(data=evidence, is_mpe=mpe, sampling_ctx=sampling_ctx)
         z = joint[:, self._z_cols]
         if return_sampling_ctx:
             return z, sampling_ctx
@@ -330,4 +330,6 @@ class EinetJointEncoder(nn.Module):
     def latent_stats(self, x: Tensor, *, tau: float = 1.0) -> LatentStats:
         """Return latent stats from selected latent leaf parameters."""
         del x, tau
-        raise UnsupportedOperationError("APC latent stats are not available after sample rollback.")
+        raise UnsupportedOperationError(
+            "APC latent stats are not available after sample rollback."
+        )

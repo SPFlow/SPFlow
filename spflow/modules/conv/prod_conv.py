@@ -17,14 +17,8 @@ from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import (
-    DifferentiableSamplingContext,
-    SamplingContext,
-)
-from spflow.modules.conv.utils import (
-    upsample_differentiable_sampling_context,
-    upsample_sampling_context,
-)
+from spflow.utils.sampling_context import SamplingContext
+from spflow.modules.conv.utils import upsample_sampling_context
 
 
 class ProdConv(Module):
@@ -271,8 +265,8 @@ class ProdConv(Module):
 
             # Handle explicit padding case: trim padded spatial positions to input size.
             if upsampled_features > in_features:
-                expected_padded_features = (self._input_h + 2 * self.padding_h) * (
-                    self._input_w + 2 * self.padding_w
+                expected_padded_features = (
+                    (self._input_h + 2 * self.padding_h) * (self._input_w + 2 * self.padding_w)
                 )
                 if self.padding_h == 0 and self.padding_w == 0:
                     raise ShapeError(
@@ -308,76 +302,6 @@ class ProdConv(Module):
             sampling_ctx=sampling_ctx,
         )
 
-        return data
-
-    def _rsample(
-        self,
-        data: Tensor,
-        sampling_ctx: DifferentiableSamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> Tensor:
-        in_features = int(self.in_shape.features)
-        out_features = int(self.out_shape.features)
-        current_features = int(sampling_ctx.channel_probs.shape[1])
-
-        if current_features == in_features:
-            pass
-        elif current_features == out_features:
-            upsample_differentiable_sampling_context(
-                sampling_ctx,
-                current_height=self._output_h,
-                current_width=self._output_w,
-                scale_h=self.kernel_size_h,
-                scale_w=self.kernel_size_w,
-            )
-            upsampled_features = int(sampling_ctx.channel_probs.shape[1])
-            expected_upsampled_features = (
-                self._output_h * self.kernel_size_h * self._output_w * self.kernel_size_w
-            )
-            if upsampled_features != expected_upsampled_features:
-                raise ShapeError(
-                    "ProdConv.rsample produced unexpected feature width after upsampling: "
-                    f"got {upsampled_features}, expected {expected_upsampled_features}."
-                )
-
-            if upsampled_features > in_features:
-                expected_padded_features = (self._input_h + 2 * self.padding_h) * (
-                    self._input_w + 2 * self.padding_w
-                )
-                if self.padding_h == 0 and self.padding_w == 0:
-                    raise ShapeError(
-                        "ProdConv.rsample received oversized upsampled feature width without padding: "
-                        f"got {upsampled_features}, input features are {in_features}."
-                    )
-                if upsampled_features != expected_padded_features:
-                    raise ShapeError(
-                        "ProdConv.rsample only trims in the exact padding case. "
-                        f"Got upsampled width {upsampled_features}, expected padded width "
-                        f"{expected_padded_features}, input width {in_features}."
-                    )
-                sampling_ctx.update_prob_routing(
-                    channel_probs=sampling_ctx.channel_probs[:, :in_features, :].contiguous(),
-                    mask=sampling_ctx.mask[:, :in_features].contiguous(),
-                )
-            elif upsampled_features < in_features:
-                raise ShapeError(
-                    "ProdConv.rsample upsampling produced too few features for input routing: "
-                    f"got {upsampled_features}, expected at least {in_features}."
-                )
-        else:
-            raise ShapeError(
-                "ProdConv.rsample received incompatible sampling context feature width: "
-                f"got {current_features}, expected {out_features} or {in_features}."
-            )
-
-        sampling_ctx.require_feature_width(expected_features=in_features)
-        self.inputs._rsample(
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-        )
         return data
 
     def _expectation_maximization_step(

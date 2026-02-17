@@ -15,8 +15,8 @@ from spflow.modules.module import Module
 from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import (
-    DifferentiableSamplingContext,
     SamplingContext,
+    require_sampling_context,
 )
 
 
@@ -118,6 +118,12 @@ class SplitConsecutive(Split):
         Returns:
             Tensor containing the generated samples.
         """
+        sampling_ctx = require_sampling_context(
+            sampling_ctx,
+            num_samples=data.shape[0],
+            module_out_shape=self.out_shape,
+            device=data.device,
+        )
 
         input_features = self.inputs.out_shape.features
 
@@ -127,29 +133,6 @@ class SplitConsecutive(Split):
         )
 
         self.inputs._sample(
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-        )
-        return data
-
-    def _rsample(
-        self,
-        data: Tensor,
-        sampling_ctx: DifferentiableSamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> Tensor:
-        """Differentiable structural passthrough for consecutive splits."""
-
-        input_features = self.inputs.out_shape.features
-        sampling_ctx.repeat_split_feature_prob_width(
-            num_splits=self.num_splits,
-            target_features=input_features,
-        )
-
-        self.inputs._rsample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,
