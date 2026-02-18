@@ -11,7 +11,6 @@ from spflow.exceptions import OptionalDependencyError
 from spflow.meta.data import Scope
 from spflow.modules.leaves.piecewise_linear import PiecewiseLinear, PiecewiseLinearDist, interp, pairwise
 from spflow.utils.domain import DataType, Domain
-from tests.utils.helpers import make_sampling_context
 
 
 def _randn(*size: int) -> torch.Tensor:
@@ -338,34 +337,13 @@ class TestPiecewiseLinearSampling:
         data = _randn(100, 2)
         domains = [Domain.continuous_inf_support(), Domain.continuous_inf_support()]
         leaf.initialize(data, domains)
-        repetition_idx = None
-        if num_repetitions > 1:
-            repetition_idx = torch.zeros(10, dtype=torch.long)
-        sampling_ctx = make_sampling_context(
-            batch_size=10,
-            num_features=2,
-            repetition_idx=repetition_idx,
-        )
 
         # Create NaN tensor for sampling
         sample_data = torch.full((10, 2), float("nan"))
-        samples = leaf.sample(num_samples=10, data=sample_data, sampling_ctx=sampling_ctx)
+        samples = leaf.sample(num_samples=10, data=sample_data)
 
         assert samples.shape == (10, 2)
         assert not torch.isnan(samples).any()
-
-    def test_sample_requires_repetition_idx_for_multiple_repetitions(self):
-        """Test repetition-index validation in sample."""
-        scope = Scope([0])
-        leaf = PiecewiseLinear(scope=scope, out_channels=1, num_repetitions=2)
-        data = _randn(100, 1)
-        domains = [Domain.continuous_inf_support()]
-        leaf.initialize(data, domains)
-
-        sample_data = torch.full((8, 1), float("nan"))
-        sampling_ctx = make_sampling_context(batch_size=8, num_features=1)
-        with pytest.raises(ValueError):
-            _ = leaf.sample(num_samples=8, data=sample_data, sampling_ctx=sampling_ctx)
 
     def test_sample_is_mpe_branch(self):
         """Test MPE sampling branch."""
@@ -374,8 +352,7 @@ class TestPiecewiseLinearSampling:
         leaf.initialize(_randn(50, 2), [Domain.continuous_inf_support(), Domain.continuous_inf_support()])
 
         sample_data = torch.full((6, 2), float("nan"))
-        sampling_ctx = make_sampling_context(batch_size=6, num_features=2)
-        samples = leaf.sample(num_samples=6, data=sample_data, is_mpe=True, sampling_ctx=sampling_ctx)
+        samples = leaf.sample(num_samples=6, data=sample_data, is_mpe=True)
 
         assert samples.shape == (6, 2)
         assert torch.isfinite(samples).all()

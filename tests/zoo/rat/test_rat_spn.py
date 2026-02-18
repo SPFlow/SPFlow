@@ -135,13 +135,7 @@ def test_sample(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_p
         split_mode=split_mode,
     )
     data = torch.full((n_samples, num_features), torch.nan)
-    channel_index = torch.randint(
-        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-    )
-    mask = torch.full((n_samples, module.out_shape.features), True)
-    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+    samples = module.sample(data=data)
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()
@@ -192,7 +186,7 @@ def test_multidistribution_input(region_nodes, leaves, num_reps, root_nodes, out
     repetition_idx = torch.zeros((1,), dtype=torch.long)
     sampling_ctx = init_default_sampling_context(sampling_ctx=None, num_samples=1)
     sampling_ctx.repetition_idx = repetition_idx
-    samples = model.sample(sampling_ctx=sampling_ctx)
+    samples = model.sample()
 
     assert samples.shape == (1, out_features_1 + out_features_2)
 
@@ -441,20 +435,20 @@ def test_sample_initializes_channel_index_for_mpe_and_stochastic(monkeypatch):
     )
 
     captured: dict[str, SamplingContext] = {}
-    original_sample = module.root_node.inputs.sample
+    original_sample = module.root_node.inputs._sample
 
     def capture_sample(*args, **kwargs):
         captured["ctx"] = kwargs["sampling_ctx"]
         return original_sample(*args, **kwargs)
 
-    monkeypatch.setattr(module.root_node.inputs, "sample", capture_sample)
+    monkeypatch.setattr(module.root_node.inputs, "_sample", capture_sample)
 
-    module.sample(data=data, is_mpe=True, sampling_ctx=None)
+    module.sample(data=data, is_mpe=True)
     mpe_channel_index = captured["ctx"].channel_index
     assert mpe_channel_index is not None
     assert mpe_channel_index.shape[0] == data.shape[0]
 
-    module.sample(data=data, is_mpe=False, sampling_ctx=None)
+    module.sample(data=data, is_mpe=False)
     random_channel_index = captured["ctx"].channel_index
     assert random_channel_index is not None
     assert random_channel_index.shape[0] == data.shape[0]
@@ -480,7 +474,7 @@ def test_sample_raises_when_logits_shape_is_invalid(monkeypatch):
         torch.nn.Parameter(torch.zeros(1, module.n_root_nodes + 1, 1)),
     )
     with pytest.raises(InvalidParameterError):
-        module.sample(data=data, sampling_ctx=None)
+        module.sample(data=data)
 
 
 def test_expectation_maximization_delegates_and_mle_is_unsupported(monkeypatch):

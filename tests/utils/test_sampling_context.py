@@ -6,7 +6,6 @@ import pytest
 from spflow.exceptions import InvalidParameterError, ShapeError
 from spflow.utils.sampling_context import (
     SamplingContext,
-    build_root_sampling_context,
     init_default_sampling_context,
 )
 
@@ -116,39 +115,6 @@ def test_sampling_context_property_setters():
     updated_mask = torch.tensor([[True, False], [True, True]], dtype=torch.bool)
     ctx.mask = updated_mask
     assert torch.equal(ctx.mask, updated_mask)
-
-
-def test_build_root_sampling_context_validates_feature_width():
-    """Provided root context must match expected feature width."""
-    ctx = SamplingContext(
-        channel_index=torch.zeros((2, 3), dtype=torch.long),
-        mask=torch.ones((2, 3), dtype=torch.bool),
-    )
-    with pytest.raises(ValueError, match="features=3, expected 1"):
-        build_root_sampling_context(
-            sampling_ctx=ctx,
-            module_name="TestRoot",
-            num_samples=2,
-            num_features=1,
-        )
-
-
-def test_build_root_sampling_context_validates_channel_mask_consistency():
-    """Root context validation should catch inconsistent channel/mask shapes."""
-    ctx = SamplingContext(
-        channel_index=torch.zeros((2, 2), dtype=torch.long),
-        mask=torch.ones((2, 2), dtype=torch.bool),
-    )
-    # Bypass setter validations to simulate corrupted state.
-    ctx._mask = torch.ones((2, 3), dtype=torch.bool)  # type: ignore[attr-defined]
-
-    with pytest.raises(ValueError, match="mismatched channel_index/mask shapes"):
-        build_root_sampling_context(
-            sampling_ctx=ctx,
-            module_name="TestRoot",
-            num_samples=2,
-            num_features=2,
-        )
 
 
 def test_sampling_context_samples_and_channels_masking():

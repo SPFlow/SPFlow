@@ -68,7 +68,7 @@ def test_sample(in_channels: int, out_features: int, num_reps, depth):
     else:
         repetition_index = None
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = factorization_layer.sample(data=data, sampling_ctx=sampling_ctx)
+    samples = factorization_layer.sample(data=data)
     assert samples.shape == data.shape
     samples_query = samples[:, factorization_layer.scope.query]
     assert torch.isfinite(samples_query).all()
@@ -90,7 +90,7 @@ def test_sample_accepts_column_vector_repetition_idx():
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples, 1))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
 
-    samples = factorization_layer.sample(data=data, sampling_ctx=sampling_ctx)
+    samples = factorization_layer.sample(data=data)
     assert samples.shape == data.shape
     assert torch.isfinite(samples[:, factorization_layer.scope.query]).all()
 
@@ -218,7 +218,7 @@ def test_multidistribution_input():
 
     # Create data tensor to populate with samples
     data_to_sample = torch.full((1, out_features_1 + out_features_2), torch.nan)
-    samples = module.sample(data=data_to_sample, sampling_ctx=sampling_ctx)
+    samples = module.sample(data=data_to_sample)
 
     assert samples.shape == (1, out_features_1 + out_features_2)
 

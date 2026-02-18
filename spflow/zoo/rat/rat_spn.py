@@ -282,8 +282,6 @@ class RatSPN(Module, Classifier):
             cache = Cache()
         batch_size = data.shape[0]
         sampling_ctx = build_root_sampling_context(
-            None,
-            module_name=self.__class__.__name__,
             num_samples=batch_size,
             num_features=self.root_node.out_shape.features,
             device=data.device,

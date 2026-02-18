@@ -8,6 +8,7 @@ from spflow.exceptions import ShapeError
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from spflow.modules.leaves.normal import Normal
 from spflow.zoo.pic.weighted_sum import WeightedSum
@@ -313,18 +314,13 @@ class TestWeightedSumSamplingAndMarginalize:
         weights = torch.tensor([[[[1.0, 3.0], [5.0, 2.0]], [[2.0, 1.0], [4.0, 7.0]]]])
         ws = WeightedSum(inputs=inp, weights=weights)
 
-        sampling_ctx = SamplingContext(
-            channel_index=torch.zeros((3, 1), dtype=torch.long),
-            mask=torch.ones((3, 1), dtype=torch.bool),
-            repetition_index=torch.tensor([1, 0, 1], dtype=torch.long),
-        )
-        out = ws.sample(data=torch.full((3, 1), float("nan")), is_mpe=True, sampling_ctx=sampling_ctx)
+        out = ws.sample(data=torch.full((3, 1), float("nan")), is_mpe=True)
 
         assert out.shape == (3, 1)
         assert inp.sample_calls[-1].channel_index.shape == (3, 1)
 
-    def test_sample_requires_repetition_index_when_repetitions_gt_1(self):
-        """Test validation when repetitions > 1 and repetition_idx is missing."""
+    def test_sample_requires_repetition_index_when_repetitions_gt_1_internal_context(self):
+        """Internal _sample must reject missing repetition_idx for multi-repetition modules."""
         f2s = np.array([[Scope([0]), Scope([0])]], dtype=object)
         inp = DummyInput(feature_to_scope=f2s, channels=2, repetitions=2)
         ws = WeightedSum(inputs=inp, weights=torch.ones(1, 2, 2, 2))
@@ -332,31 +328,19 @@ class TestWeightedSumSamplingAndMarginalize:
             channel_index=torch.zeros((2, 1), dtype=torch.long),
             mask=torch.ones((2, 1), dtype=torch.bool),
         )
-        with pytest.raises(ValueError):
-            ws.sample(data=torch.full((2, 1), float("nan")), sampling_ctx=sampling_ctx)
+        with pytest.raises(ValueError, match="repetition_idx must be provided"):
+            ws._sample(data=torch.full((2, 1), float("nan")), sampling_ctx=sampling_ctx, cache=Cache())
 
     def test_sample_raises_for_zero_rows(self):
         """Test stochastic sample branch rejects zero-sum weight rows."""
         f2s = np.array([[Scope([0])]], dtype=object)
         inp = DummyInput(feature_to_scope=f2s, channels=2, repetitions=1)
         ws = WeightedSum(inputs=inp, weights=torch.zeros(1, 2, 2, 1))
-        sampling_ctx = SamplingContext(
-            channel_index=torch.zeros((2, 1), dtype=torch.long),
-            mask=torch.ones((2, 1), dtype=torch.bool),
-        )
         with pytest.raises(ShapeError, match="zero-sum routing weights"):
-            ws.sample(data=torch.full((2, 1), float("nan")), sampling_ctx=sampling_ctx)
+            ws.sample(data=torch.full((2, 1), float("nan")))
 
-    def test_sample_creates_data_when_none(self):
-        """Test num_samples/data default creation branch."""
-        f2s = np.array([[Scope([0])]], dtype=object)
-        inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=1)
-        ws = WeightedSum(inputs=inp, weights=torch.ones(1, 1, 1, 1))
-        out = ws.sample()
-        assert out.shape == (1, 1)
-
-    def test_sample_raises_on_incompatible_mask_width(self):
-        """Test strict mask-width validation when routing shape changes."""
+    def test_sample_raises_on_incompatible_mask_width_internal_context(self):
+        """Internal _sample should fail fast if mask width diverges from channel width."""
         f2s = np.array([[Scope([0]), Scope([0])], [Scope([1]), Scope([1])]], dtype=object)
         inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=2)
         ws = WeightedSum(inputs=inp, weights=torch.ones(2, 1, 3, 2))
@@ -365,11 +349,17 @@ class TestWeightedSumSamplingAndMarginalize:
             mask=torch.ones((2, 2), dtype=torch.bool),
             repetition_index=torch.zeros(2, dtype=torch.long),
         )
-        # Deliberately introduce a narrower mask (bypassing public setter invariants)
-        # so WeightedSum hits strict update-time shape validation.
         sampling_ctx._mask = torch.ones((2, 1), dtype=torch.bool)  # type: ignore[attr-defined]
         with pytest.raises(ShapeError, match="incompatible feature width"):
-            ws.sample(data=torch.full((2, 2), float("nan")), is_mpe=True, sampling_ctx=sampling_ctx)
+            ws._sample(data=torch.full((2, 2), float("nan")), is_mpe=True, sampling_ctx=sampling_ctx, cache=Cache())
+
+    def test_sample_creates_data_when_none(self):
+        """Test num_samples/data default creation branch."""
+        f2s = np.array([[Scope([0])]], dtype=object)
+        inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=1)
+        ws = WeightedSum(inputs=inp, weights=torch.ones(1, 1, 1, 1))
+        out = ws.sample()
+        assert out.shape == (1, 1)
 
     def test_marginalize_full_scope_returns_none(self):
         """Test full marginalization short-circuit."""

@@ -37,7 +37,7 @@ class _ContainerModule(Module):
     def log_likelihood(self, data: Tensor, cache=None) -> Tensor:
         return torch.zeros((data.shape[0], len(self.scope.query), 1, 1), dtype=data.dtype, device=data.device)
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None) -> Tensor:
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None) -> Tensor:
         if data is None:
             n = 1 if num_samples is None else num_samples
             return torch.zeros((n, len(self.scope.query)), dtype=torch.get_default_dtype())

@@ -11,7 +11,6 @@ from spflow.modules.conv import ProdConv
 from spflow.modules.leaves import Normal
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
-from tests.utils.helpers import make_module_sampling_context
 
 # Test parameter values
 out_channels_values = [1, 3]
@@ -191,8 +190,7 @@ class TestProdConvSample:
         module = ProdConv(inputs=leaf, kernel_size_h=kernel_h, kernel_size_w=kernel_w)
 
         num_samples = 20
-        sampling_ctx = make_module_sampling_context(module, batch_size=num_samples)
-        samples = module.sample(num_samples=num_samples, sampling_ctx=sampling_ctx)
+        samples = module.sample(num_samples=num_samples)
 
         assert samples.shape == (num_samples, height * width)
 
@@ -203,8 +201,7 @@ class TestProdConvSample:
         leaf = make_normal_leaf(height, width, out_channels=out_channels)
         module = ProdConv(inputs=leaf, kernel_size_h=kernel_h, kernel_size_w=kernel_w)
 
-        sampling_ctx = make_module_sampling_context(module, batch_size=10)
-        samples = module.sample(num_samples=10, sampling_ctx=sampling_ctx)
+        samples = module.sample(num_samples=10)
         assert torch.isfinite(samples).all()
 
     @pytest.mark.parametrize("out_channels,hwk", sample_params)
@@ -223,10 +220,9 @@ class TestProdConvSample:
             channel_idx[:, i] = i % out_channels
 
         mask = torch.ones(batch_size, out_features, dtype=torch.bool)
-        sampling_ctx = SamplingContext(channel_index=channel_idx, mask=mask)
 
         data = torch.full((batch_size, height * width), float("nan"))
-        module.sample(data=data, sampling_ctx=sampling_ctx)
+        module.sample(data=data)
 
         # After upsampling, samples should be finite
         assert torch.isfinite(data).all()
@@ -258,7 +254,7 @@ class _DummyInput(Module):
             (data.shape[0], self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions)
         )
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None):
         data[:] = torch.nan_to_num(data, nan=0.0)
         return data
 
@@ -301,47 +297,6 @@ def test_feature_to_scope_handles_full_padding_patch():
     )
     f2s = node.feature_to_scope
     assert any(len(s.query) == 0 for s in f2s.flatten())
-
-
-def test_log_likelihood_cache_none_sample_default_and_context_branches():
-    node = ProdConv(
-        inputs=_DummyInput(features=16, channels=2),
-        kernel_size_h=2,
-        kernel_size_w=2,
-        padding_h=1,
-        padding_w=1,
-    )
-
-    ll = node.log_likelihood(torch.zeros((2, 16)), cache=None)
-    assert ll.shape[0] == 2
-
-    # num_samples default branch
-    out = node.sample(
-        num_samples=None,
-        data=None,
-        cache=Cache(),
-        sampling_ctx=make_module_sampling_context(node, batch_size=1),
-    )
-    assert out.shape[0] == 1
-
-    # current_features == out_features -> upsample + trim branch
-    out_features = node.out_shape.features
-    ctx = SamplingContext(
-        channel_index=torch.zeros((2, out_features), dtype=torch.long),
-        mask=torch.ones((2, out_features), dtype=torch.bool),
-    )
-    data = torch.full((2, 16), float("nan"))
-    node.sample(data=data, sampling_ctx=ctx)
-    assert torch.isfinite(data).all()
-
-    # current_features not in {1, out_features, in_features} -> explicit error
-    ctx2 = SamplingContext(
-        channel_index=torch.zeros((2, 2), dtype=torch.long),
-        mask=torch.ones((2, 2), dtype=torch.bool),
-    )
-    data2 = torch.full((2, 16), float("nan"))
-    with pytest.raises(ShapeError, match="incompatible sampling context feature width"):
-        node.sample(data=data2, sampling_ctx=ctx2)
 
 
 def test_em_and_marginalize_paths():

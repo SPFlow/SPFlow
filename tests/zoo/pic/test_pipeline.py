@@ -69,7 +69,7 @@ class NormalPICInput(Module):
         raise NotImplementedError("NormalPICInput is symbolic; materialize to QPC with pic2qpc().")
 
     def sample(
-        self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None
+        self, num_samples=None, data=None, is_mpe=False, cache=None
     ) -> Tensor:  # pragma: no cover
         raise NotImplementedError
 
@@ -105,7 +105,7 @@ class ConstantPICInput(Module):
         raise NotImplementedError("ConstantPICInput is symbolic; materialize to QPC with pic2qpc().")
 
     def sample(
-        self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None
+        self, num_samples=None, data=None, is_mpe=False, cache=None
     ) -> Tensor:  # pragma: no cover
         raise NotImplementedError
 
@@ -137,7 +137,7 @@ class ConstantQPCModule(Module):
         ll = self.log_values.to(device=data.device, dtype=data.dtype)
         return ll.view(1, 1, -1, 1).expand(B, 1, -1, 1)
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None) -> Tensor:
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None) -> Tensor:
         raise NotImplementedError
 
     def _sample(self, data: Tensor, sampling_ctx, cache, is_mpe: bool = False) -> Tensor:
@@ -259,7 +259,7 @@ class _NoLatentLeaf(Module):
     def log_likelihood(self, data: Tensor, cache=None) -> Tensor:
         raise NotImplementedError
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None) -> Tensor:
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None) -> Tensor:
         raise NotImplementedError
 
     def _sample(self, data: Tensor, sampling_ctx, cache, is_mpe: bool = False) -> Tensor:
@@ -285,7 +285,7 @@ class _BareModule(Module):
     def log_likelihood(self, data: Tensor, cache=None) -> Tensor:
         return data.new_zeros((data.shape[0], 1, 1, 1))
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None) -> Tensor:
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None) -> Tensor:
         raise NotImplementedError
 
     def _sample(self, data: Tensor, sampling_ctx, cache, is_mpe: bool = False) -> Tensor:
@@ -315,7 +315,7 @@ class _VariableChannelPICInput(Module):
     def log_likelihood(self, data: Tensor, cache=None) -> Tensor:
         raise NotImplementedError
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None) -> Tensor:
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None) -> Tensor:
         raise NotImplementedError
 
     def _sample(self, data: Tensor, sampling_ctx, cache, is_mpe: bool = False) -> Tensor:

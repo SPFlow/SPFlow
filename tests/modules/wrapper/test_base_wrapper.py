@@ -10,13 +10,12 @@ class _IdentityWrapper(Wrapper):
     def log_likelihood(self, data, cache=None):
         return self.module.log_likelihood(data, cache=cache)
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None):
         return self.module.sample(
             num_samples=num_samples,
             data=data,
             is_mpe=is_mpe,
             cache=cache,
-            sampling_ctx=sampling_ctx,
         )
 
     def _expectation_maximization_step(self, data, bias_correction: bool = True, *, cache):

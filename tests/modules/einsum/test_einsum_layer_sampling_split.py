@@ -39,11 +39,8 @@ class TestEinsumLayerSampling:
         mask = torch.ones((num_samples, module.out_shape.features), dtype=torch.bool)
         repetition_index = torch.randint(low=0, high=num_reps, size=(num_samples,))
 
-        sampling_ctx = SamplingContext(
-            channel_index=channel_index, mask=mask, repetition_index=repetition_index
-        )
 
-        samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = module.sample(data=data)
 
         assert samples.shape == (num_samples, total_features)
         assert torch.isfinite(samples[:, module.scope.query]).all()
@@ -55,9 +52,8 @@ class TestEinsumLayerSampling:
         data = torch.full((num_samples, 4), torch.nan)
         channel_index = torch.zeros((num_samples, 2), dtype=torch.long)
         mask = torch.ones((num_samples, 2), dtype=torch.bool)
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
 
-        samples = module.sample(data=data, is_mpe=True, sampling_ctx=sampling_ctx)
+        samples = module.sample(data=data, is_mpe=True)
 
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()
@@ -100,9 +96,8 @@ class TestEinsumLayerSplitOptimization:
         data = torch.full((num_samples, 4), torch.nan)
         channel_index = torch.zeros((num_samples, 2), dtype=torch.long)
         mask = torch.ones((num_samples, 2), dtype=torch.bool)
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
 
-        samples = einsum.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = einsum.sample(data=data)
 
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()
@@ -125,8 +120,7 @@ class TestEinsumLayerSplitOptimization:
         sample_data = torch.full((num_samples, 4), torch.nan)
         channel_index = torch.zeros((num_samples, 2), dtype=torch.long)
         mask = torch.ones((num_samples, 2), dtype=torch.bool)
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
 
-        samples = einsum.sample(data=sample_data, sampling_ctx=sampling_ctx)
+        samples = einsum.sample(data=sample_data)
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()

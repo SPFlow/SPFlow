@@ -303,8 +303,6 @@ class ConvPc(Module):
         if cache is None:
             cache = Cache()
         sampling_ctx = build_root_sampling_context(
-            None,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             num_features=self.inputs.out_shape.features,
             device=data.device,

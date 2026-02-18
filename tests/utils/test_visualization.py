@@ -49,7 +49,7 @@ class DummyModule(Module):
     def log_likelihood(self, data, cache=None):
         return torch.zeros((data.shape[0], 1, 1))
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None):
         if data is None:
             if num_samples is None:
                 num_samples = 1

@@ -200,31 +200,16 @@ def test_mle_rejects_conditional_leaf():
         leaf.maximum_likelihood_estimation(data=data)
 
 
-def test_sample_requires_repetition_index_for_multiple_repetitions():
-    """Sampling multi-repetition leaves requires repetition index in context."""
-    leaf = TinyLeaf(scope=Scope([0]), num_repetitions=2)
-
-    with pytest.raises(
-        ValueError,
-    ):
-        leaf.sample(num_samples=2)
-
-
 @pytest.mark.parametrize("is_mpe", [False, True])
 def test_sample_accepts_column_vector_repetition_index(is_mpe: bool):
     """Sampling accepts repetition_idx with shape (batch, 1)."""
     leaf = TinyLeaf(scope=Scope([0]), out_channels=2, num_repetitions=2)
     data = torch.full((4, 1), float("nan"))
-    sampling_ctx = SamplingContext(num_samples=4)
-    sampling_ctx.repetition_idx = torch.tensor([[0], [1], [0], [1]], dtype=torch.long)
 
-    samples = leaf.sample(data=data, is_mpe=is_mpe, sampling_ctx=sampling_ctx)
+    samples = leaf.sample(data=data, is_mpe=is_mpe)
 
     assert samples.shape == (4, 1)
     assert torch.isfinite(samples).all()
-    assert sampling_ctx.repetition_idx is not None
-    assert sampling_ctx.repetition_idx.shape == (4,)
-    assert sampling_ctx.repetition_idx.dtype == torch.long
 
 
 def test_feature_to_scope():

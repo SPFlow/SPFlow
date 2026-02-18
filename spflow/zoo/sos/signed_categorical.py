@@ -171,7 +171,6 @@ class SignedCategorical(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx=None,
     ) -> Tensor:
         raise UnsupportedOperationError(
             "SignedCategorical.sample() is not supported. "

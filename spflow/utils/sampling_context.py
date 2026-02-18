@@ -425,41 +425,19 @@ def init_default_sampling_context(
 
 
 def build_root_sampling_context(
-    sampling_ctx: SamplingContext | None,
-    *,
-    module_name: str,
     num_samples: int,
     num_features: int,
     device: torch.device | None = None,
 ) -> SamplingContext:
-    """Build or validate sampling context at a root sampling entrypoint.
+    """Build sampling context at a root sampling entrypoint.
 
     Root callers should initialize a context whose feature width matches the
     root module output width so internal modules do not rely on synthetic
     feature expansion.
     """
-    if sampling_ctx is None:
-        channel_index = torch.zeros((num_samples, num_features), dtype=torch.long, device=device)
-        mask = torch.ones((num_samples, num_features), dtype=torch.bool, device=device)
-        return SamplingContext(channel_index=channel_index, mask=mask)
-
-    if sampling_ctx.channel_index.shape[0] != num_samples:
-        raise InvalidParameterError(
-            f"{module_name}.sample received sampling_ctx with batch={sampling_ctx.channel_index.shape[0]}, "
-            f"expected {num_samples}."
-        )
-    if sampling_ctx.channel_index.shape != sampling_ctx.mask.shape:
-        raise InvalidParameterError(
-            f"{module_name}.sample received sampling_ctx with mismatched channel_index/mask shapes: "
-            f"{tuple(sampling_ctx.channel_index.shape)} vs {tuple(sampling_ctx.mask.shape)}."
-        )
-    if sampling_ctx.channel_index.shape[1] != num_features:
-        raise InvalidParameterError(
-            f"{module_name}.sample received sampling_ctx with features={sampling_ctx.channel_index.shape[1]}, "
-            f"expected {num_features}."
-        )
-
-    return sampling_ctx
+    channel_index = torch.zeros((num_samples, num_features), dtype=torch.long, device=device)
+    mask = torch.ones((num_samples, num_features), dtype=torch.bool, device=device)
+    return SamplingContext(channel_index=channel_index, mask=mask)
 
 
 def require_sampling_context(

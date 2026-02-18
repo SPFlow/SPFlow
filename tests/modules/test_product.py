@@ -47,7 +47,7 @@ def test_sample(in_channels: int, out_features: int, num_reps):
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
-        samples = product_layer.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = product_layer.sample(data=data)
         assert samples.shape == data.shape
         samples_query = samples[:, product_layer.scope.query]
         assert torch.isfinite(samples_query).all()
@@ -174,8 +174,8 @@ def test_multiple_inputs():
         channel_index=channel_index, mask=mask, repetition_index=repetition_index
     )
 
-    samples_a = module_a.sample(data=data_a, is_mpe=True, sampling_ctx=sampling_ctx_a)
-    samples_b = module_b.sample(data=data_b, is_mpe=True, sampling_ctx=sampling_ctx_b)
+    samples_a = module_a.sample(data=data_a, is_mpe=True)
+    samples_b = module_b.sample(data=data_b, is_mpe=True)
 
     torch.testing.assert_close(samples_a, samples_b, rtol=0.0, atol=0.0)
 

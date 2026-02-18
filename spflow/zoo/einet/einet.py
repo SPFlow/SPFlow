@@ -423,8 +423,6 @@ class Einet(Module, Classifier):
             root_num_features = int(root_out_shape.features)
 
         sampling_ctx = build_root_sampling_context(
-            None,
-            module_name=self.__class__.__name__,
             num_samples=batch_size,
             num_features=root_num_features,
             device=data.device,

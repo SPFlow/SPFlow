@@ -131,7 +131,6 @@ class ExpSOCS(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         raise UnsupportedOperationError("ExpSOCS.sample() is not supported.")
 

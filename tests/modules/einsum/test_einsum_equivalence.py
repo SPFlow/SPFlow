@@ -9,7 +9,6 @@ from spflow.meta import Scope
 from spflow.modules.einsum import EinsumLayer
 from spflow.modules.sums import Sum
 from spflow.modules.products import OuterProduct
-from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data, DummyLeaf, make_leaf
 
 
@@ -84,22 +83,12 @@ class TestEinsumLayerEquivalence:
         # if input is list: out_shape.features = inputs[0].out_shape.features (= half_features)
         # So we use half_features for shape access.
 
-        out_features = einsum.out_shape.features
-
-        channel_indices = torch.randint(0, out_channels, (batch_size, out_features))
-        repetition_indices = torch.randint(0, num_reps, (batch_size,))
-        mask = torch.ones((batch_size, out_features), dtype=torch.bool)
-
-        ctx_common = SamplingContext(
-            channel_index=channel_indices, repetition_index=repetition_indices, mask=mask
-        )
-
         # Sample from Einsum
         torch.manual_seed(42)
-        sample_einsum = einsum.sample(num_samples=batch_size, sampling_ctx=ctx_common.copy())
+        sample_einsum = einsum.sample(num_samples=batch_size)
 
         # Sample from Sum(Prod)
         torch.manual_seed(42)
-        sample_sum = sum_layer.sample(num_samples=batch_size, sampling_ctx=ctx_common.copy())
+        sample_sum = sum_layer.sample(num_samples=batch_size)
 
         torch.testing.assert_close(sample_einsum, sample_sum, rtol=1e-5, atol=1e-8)

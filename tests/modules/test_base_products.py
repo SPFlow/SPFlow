@@ -102,7 +102,7 @@ def test_sample(cls, in_channels: int, out_features: int, num_reps):
     # Always set repetition_index since num_reps is never None
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+    samples = module.sample(data=data)
 
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
@@ -139,7 +139,7 @@ def test_sample_two_inputs_broadcasting_channels(cls, out_features: int, num_rep
     # Always set repetition_index since num_reps is never None
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+    samples = module.sample(data=data)
 
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]

@@ -538,7 +538,6 @@ class TensorizedQPC(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         raise NotImplementedError("Sampling is not implemented for TensorizedQPC yet.")
 

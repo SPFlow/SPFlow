@@ -118,9 +118,7 @@ class PICSum(Module):
     def log_likelihood(self, data: Tensor, cache=None) -> Tensor:  # pragma: no cover
         raise NotImplementedError("PICSum is symbolic; materialize to QPC with pic2qpc().")
 
-    def sample(
-        self, num_samples=None, data=None, is_mpe: bool = False, cache=None, sampling_ctx=None
-    ) -> Tensor:  # pragma: no cover
+    def sample(self, num_samples=None, data=None, is_mpe: bool = False, cache=None) -> Tensor:  # pragma: no cover
         raise NotImplementedError("PICSum is symbolic; materialize to QPC with pic2qpc().")
 
     def _sample(
@@ -171,9 +169,7 @@ class PICProduct(Module):
     def log_likelihood(self, data: Tensor, cache=None) -> Tensor:  # pragma: no cover
         raise NotImplementedError("PICProduct is symbolic; materialize to QPC with pic2qpc().")
 
-    def sample(
-        self, num_samples=None, data=None, is_mpe: bool = False, cache=None, sampling_ctx=None
-    ) -> Tensor:  # pragma: no cover
+    def sample(self, num_samples=None, data=None, is_mpe: bool = False, cache=None) -> Tensor:  # pragma: no cover
         raise NotImplementedError("PICProduct is symbolic; materialize to QPC with pic2qpc().")
 
     def _sample(

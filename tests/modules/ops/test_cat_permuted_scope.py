@@ -117,17 +117,9 @@ class TestCatPermutedScope:
 
         # Sample
         data = torch.full((num_samples, num_features), float("nan"))
-        channel_index = torch.zeros(num_samples, num_features, dtype=torch.long)
-        mask = torch.ones(num_samples, num_features, dtype=torch.bool)
-        repetition_idx = torch.zeros(num_samples, dtype=torch.long)
 
-        sampling_ctx = SamplingContext(
-            channel_index=channel_index,
-            mask=mask,
-            repetition_index=repetition_idx,
-        )
 
-        samples = cat.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = cat.sample(data=data)
 
         # Expected: each position i should have value i
         expected = torch.tensor([[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]] * num_samples)
@@ -152,17 +144,7 @@ class TestCatPermutedScope:
 
         # Sample
         data = torch.full((num_samples, num_features), float("nan"))
-        channel_index = torch.zeros(num_samples, num_features, dtype=torch.long)
-        mask = torch.ones(num_samples, num_features, dtype=torch.bool)
-        repetition_idx = torch.zeros(num_samples, dtype=torch.long)
-
-        sampling_ctx = SamplingContext(
-            channel_index=channel_index,
-            mask=mask,
-            repetition_index=repetition_idx,
-        )
-
-        samples = cat.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = cat.sample(data=data)
 
         # Expected: each position i should have value i (the RV index)
         # Position 0 -> value 0, Position 1 -> value 1, etc.

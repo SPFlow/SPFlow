@@ -53,7 +53,6 @@ class JointLogLikelihood(Wrapper):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
@@ -68,8 +67,6 @@ class JointLogLikelihood(Wrapper):
                 except StopIteration:
                     context_device = None
         sampling_ctx = build_root_sampling_context(
-            sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             num_features=self.module.out_shape.features,
             device=context_device,

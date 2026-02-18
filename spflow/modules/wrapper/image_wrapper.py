@@ -243,7 +243,6 @@ class ImageWrapper(Wrapper):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: Optional[SamplingContext] = None,
     ) -> Tensor:
         r"""Samples from the wrapped module, returning results in image format.
 
@@ -258,8 +257,6 @@ class ImageWrapper(Wrapper):
                 Defaults to False.
             cache:
                 Optional cache dictionary for memoization.
-            sampling_ctx:
-                Optional sampling context containing the instances (i.e., rows) of ``data`` to fill with sampled values and the output indices of the node to sample from.
 
         Returns:
             Four-dimensional PyTorch tensor in image format containing the sampled values.
@@ -271,8 +268,6 @@ class ImageWrapper(Wrapper):
             cache = Cache()
 
         sampling_ctx = build_root_sampling_context(
-            sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             num_features=self.module.out_shape.features,
             device=data.device,

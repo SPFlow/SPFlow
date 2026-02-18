@@ -18,7 +18,7 @@ from spflow.meta.data.scope import Scope
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import (
     SamplingContext,
-    require_sampling_context,
+    build_root_sampling_context,
 )
 from spflow.modules.module_shape import ModuleShape
 
@@ -205,7 +205,6 @@ class Module(nn.Module, ABC):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Generate samples from the module's probability distribution.
 
@@ -219,8 +218,6 @@ class Module(nn.Module, ABC):
             is_mpe (bool, optional): If True, returns most probable values instead of
                 random samples. Defaults to False.
             cache (Cache | None, optional): Cache for intermediate computations. Defaults to None.
-            sampling_ctx (SamplingContext | None, optional): Context for routing samples
-                through the circuit. Defaults to None.
 
         Returns:
             Tensor: Sampled values of shape (batch_size, num_features).
@@ -231,12 +228,13 @@ class Module(nn.Module, ABC):
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
             cache = Cache()
-        sampling_ctx = require_sampling_context(
-            sampling_ctx,
+        sampling_ctx = build_root_sampling_context(
             num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
+            num_features=self.out_shape.features,
             device=data.device,
         )
+        if sampling_ctx.repetition_idx is None:
+            sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
         return self._sample(
             data=data,
             sampling_ctx=sampling_ctx,
@@ -265,7 +263,6 @@ class Module(nn.Module, ABC):
         num_samples: int | None = None,
         data: Tensor | None = None,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Generate most probable explanation from the module's probability distribution.
 
@@ -278,8 +275,6 @@ class Module(nn.Module, ABC):
             data (Tensor | None, optional): Pre-allocated tensor with NaN values indicating
                 where to sample. If None, creates new tensor. Defaults to None.
             cache (Cache | None, optional): Cache for intermediate computations. Defaults to None.
-            sampling_ctx (SamplingContext | None, optional): Context for routing samples
-                through the circuit. Defaults to None.
 
         Returns:
             Tensor: MPE values of shape (batch_size, num_features).
@@ -292,7 +287,6 @@ class Module(nn.Module, ABC):
             data=data,
             is_mpe=True,
             cache=cache,
-            sampling_ctx=sampling_ctx,
         )
 
     def sample_with_evidence(
@@ -300,7 +294,6 @@ class Module(nn.Module, ABC):
         evidence: Tensor,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Samples from module with evidence.
 
@@ -311,8 +304,6 @@ class Module(nn.Module, ABC):
             is_mpe: Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
                 Defaults to False.
             cache: Optional cache dictionary to reuse across calls.
-            sampling_ctx: Optional sampling context containing the instances (i.e., rows) of
-                ``data`` to fill with sampled values and the output indices of the node to sample from.
 
         Returns:
             Tensor containing the sampled values. Each row corresponds to a sample.
@@ -325,7 +316,6 @@ class Module(nn.Module, ABC):
         return self.sample(
             data=evidence,
             is_mpe=is_mpe,
-            sampling_ctx=sampling_ctx,
             cache=cache,
         )
 

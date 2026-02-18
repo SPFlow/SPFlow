@@ -482,7 +482,6 @@ class SOSModel(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         if data is None:
             if num_samples is None:
@@ -491,8 +490,6 @@ class SOSModel(Module):
         if cache is None:
             cache = Cache()
         sampling_ctx = build_root_sampling_context(
-            sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             num_features=self.socs.out_shape.features,
             device=data.device,
@@ -641,7 +638,6 @@ class ExpSOSModel(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         if data is None:
             if num_samples is None:
@@ -650,8 +646,6 @@ class ExpSOSModel(Module):
         if cache is None:
             cache = Cache()
         sampling_ctx = build_root_sampling_context(
-            sampling_ctx,
-            module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             num_features=self.exp_socs.out_shape.features,
             device=data.device,

@@ -88,7 +88,6 @@ class Integral(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         raise NotImplementedError("Sampling from Integral nodes is not implemented.")
 

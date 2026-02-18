@@ -35,7 +35,7 @@ class _TinyLeaf(Module):
             )
         return torch.zeros((b, self.out_shape.features, self.out_shape.channels))
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None):
         data = self._prepare_sample_data(num_samples, data)
         return torch.nan_to_num(data, nan=0.0)
 

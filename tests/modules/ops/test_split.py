@@ -66,14 +66,7 @@ def test_sample(out_channels: int, features_values_multiplier: int, num_splits: 
         num_reps=num_reps,
     )
     data = torch.full((n_samples, module.out_shape.features), torch.nan)
-    channel_index = torch.randint(
-        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-    )
-    mask = torch.full((n_samples, module.out_shape.features), True, dtype=torch.bool)
-    # Always set repetition_index since num_reps is never None
-    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module.sample(data=data, sampling_ctx=sampling_ctx)
+    samples = module.sample(data=data)
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()

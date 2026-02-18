@@ -68,14 +68,9 @@ def test_sample(leaf_cls, out_features: int, out_channels: int, num_reps, is_mpe
     # Setup sampling context
     n_samples = 10
     data = torch.full((n_samples, out_features), torch.nan)
-    channel_index = torch.randint(low=0, high=out_channels, size=(n_samples, out_features))
-    mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
-    # Always provide repetition_index with num_repetitions dimension
-    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
 
     # Sample
-    samples = module.sample(data=data, is_mpe=is_mpe, sampling_ctx=sampling_ctx)
+    samples = module.sample(data=data, is_mpe=is_mpe)
 
     assert samples.shape == (n_samples, out_features)
 

@@ -9,6 +9,7 @@ from spflow.exceptions import ShapeError
 from spflow.meta import Scope
 from spflow.modules.ops import SplitByIndex, SplitMode
 from spflow.modules.products import ElementwiseProduct, OuterProduct
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
@@ -159,13 +160,8 @@ class TestSplitByIndexSampling:
 
         n_samples = 20
         data = torch.full((n_samples, 6), torch.nan)
-        channel_index = torch.randint(0, 3, size=(n_samples, 6))
-        mask = torch.ones((n_samples, 6), dtype=torch.bool)
-        rep_index = torch.randint(0, num_reps, size=(n_samples,))
 
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
-
-        samples = split.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = split.sample(data=data)
 
         assert samples.shape == (n_samples, 6)
         assert torch.isfinite(samples).all()
@@ -178,13 +174,8 @@ class TestSplitByIndexSampling:
 
         n_samples = 20
         data = torch.full((n_samples, 6), torch.nan)
-        channel_index = torch.randint(0, 3, size=(n_samples, 6))
-        mask = torch.ones((n_samples, 6), dtype=torch.bool)
-        rep_index = torch.zeros(n_samples, dtype=torch.long)
 
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
-
-        samples = split.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = split.sample(data=data)
 
         assert samples.shape == (n_samples, 6)
         assert torch.isfinite(samples).all()
@@ -360,29 +351,20 @@ class TestSplitByIndexSamplingContextExpansion:
 
         n = 6
         data = torch.full((n, 4), torch.nan)
-        sampling_ctx = SamplingContext(
-            channel_index=torch.zeros((n, 2), dtype=torch.long),
-            mask=torch.ones((n, 2), dtype=torch.bool),
-            repetition_index=torch.zeros(n, dtype=torch.long),
-        )
 
-        out = split.sample(data=data, sampling_ctx=sampling_ctx)
+        out = split.sample(data=data)
         assert out.shape == (n, 4)
-        assert sampling_ctx.channel_index.shape == (n, 4)
-        assert sampling_ctx.mask.shape == (n, 4)
 
-    def test_sample_rejects_singleton_context_width(self):
+    def test_sample_rejects_singleton_context_width_internal_context(self):
         scope = Scope(list(range(0, 4)))
         leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
         split = SplitByIndex(inputs=leaf, indices=[[0, 1], [2, 3]])
-
-        n = 5
-        data = torch.full((n, 4), torch.nan)
+        data = torch.full((5, 4), torch.nan)
         sampling_ctx = SamplingContext(
-            channel_index=torch.ones((n, 1), dtype=torch.long),
-            mask=torch.ones((n, 1), dtype=torch.bool),
-            repetition_index=torch.zeros(n, dtype=torch.long),
+            channel_index=torch.ones((5, 1), dtype=torch.long),
+            mask=torch.ones((5, 1), dtype=torch.bool),
+            repetition_index=torch.zeros(5, dtype=torch.long),
         )
 
         with pytest.raises(ShapeError, match="incompatible sampling context feature width"):
-            split.sample(data=data, sampling_ctx=sampling_ctx)
+            split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())

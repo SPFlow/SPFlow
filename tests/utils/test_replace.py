@@ -36,7 +36,7 @@ class MockModule(Module):
         self.call_count += 1
         return torch.tensor([1.0, 2.0, 3.0])
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None):
         """Mock sample method."""
         return torch.randn(num_samples or 1, 1)
 
@@ -76,7 +76,7 @@ class StubModule(Module):
         # Return zeros so replacements are visibly different
         return torch.zeros(batch_size, self.out_shape.channels, 1)
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, sampling_ctx=None):
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None):
         """Return fake samples."""
         return torch.randn(num_samples or 1, len(self._scope.query))
 

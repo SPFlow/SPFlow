@@ -940,10 +940,15 @@ class ConvPcJointEncoder(nn.Module):
         del tau
         self._reset_latent_leaf_selection()
         evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
-        sampling_ctx = SamplingContext(num_samples=x_flat.shape[0], device=x_flat.device)
-        joint = self.pc.sample(data=evidence, is_mpe=mpe, sampling_ctx=sampling_ctx)
+        if return_sampling_ctx:
+            sampling_ctx = SamplingContext(num_samples=x_flat.shape[0], device=x_flat.device)
+            joint = self.pc._sample(data=evidence, is_mpe=mpe, cache=Cache(), sampling_ctx=sampling_ctx)
+        else:
+            sampling_ctx = None
+            joint = self.pc.sample(data=evidence, is_mpe=mpe)
         z = joint[:, self._z_cols]
         if return_sampling_ctx:
+            assert sampling_ctx is not None
             return z, sampling_ctx
         return z
 

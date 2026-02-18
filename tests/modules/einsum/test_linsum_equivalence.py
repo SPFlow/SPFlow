@@ -9,7 +9,6 @@ from spflow.meta import Scope
 from spflow.modules.einsum import LinsumLayer
 from spflow.modules.sums import Sum
 from spflow.modules.products import ElementwiseProduct
-from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data, DummyLeaf, make_leaf
 
 
@@ -79,23 +78,13 @@ class TestLinsumLayerEquivalence:
         linsum, sum_layer = self._create_models(in_channels, out_channels, in_features, num_reps)
         batch_size = 10
 
-        # Common Sampling Context
-        torch.manual_seed(42)
-        channel_indices = torch.randint(0, out_channels, (batch_size, linsum.out_shape.features))
-        repetition_indices = torch.randint(0, num_reps, (batch_size,))
-        mask = torch.ones((batch_size, linsum.out_shape.features), dtype=torch.bool)
-
-        ctx_common = SamplingContext(
-            channel_index=channel_indices, repetition_index=repetition_indices, mask=mask
-        )
-
         # Sample from Linsum
         torch.manual_seed(42)
-        sample_linsum = linsum.sample(num_samples=batch_size, sampling_ctx=ctx_common.copy())
+        sample_linsum = linsum.sample(num_samples=batch_size)
 
         # Sample from Sum(Prod)
         torch.manual_seed(42)
-        sample_sum = sum_layer.sample(num_samples=batch_size, sampling_ctx=ctx_common.copy())
+        sample_sum = sum_layer.sample(num_samples=batch_size)
 
         torch.testing.assert_close(sample_linsum, sample_sum, rtol=1e-5, atol=1e-8)
 
@@ -153,22 +142,12 @@ class TestLinsumLayerSingleInputEquivalence:
         linsum, sum_layer = self._create_single_input_models(in_channels, out_channels, in_features, num_reps)
         batch_size = 10
 
-        # Common Sampling Context
-        torch.manual_seed(42)
-        channel_indices = torch.randint(0, out_channels, (batch_size, linsum.out_shape.features))
-        repetition_indices = torch.randint(0, num_reps, (batch_size,))
-        mask = torch.ones((batch_size, linsum.out_shape.features), dtype=torch.bool)
-
-        ctx_common = SamplingContext(
-            channel_index=channel_indices, repetition_index=repetition_indices, mask=mask
-        )
-
         # Sample from Linsum
         torch.manual_seed(42)
-        sample_linsum = linsum.sample(num_samples=batch_size, sampling_ctx=ctx_common.copy())
+        sample_linsum = linsum.sample(num_samples=batch_size)
 
         # Sample from Sum(Prod)
         torch.manual_seed(42)
-        sample_sum = sum_layer.sample(num_samples=batch_size, sampling_ctx=ctx_common.copy())
+        sample_sum = sum_layer.sample(num_samples=batch_size)
 
         torch.testing.assert_close(sample_linsum, sample_sum, rtol=1e-5, atol=1e-8)

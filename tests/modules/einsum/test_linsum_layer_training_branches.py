@@ -206,27 +206,10 @@ class TestLinsumLayerCoverageBranches:
         module = LinsumLayer(inputs=leaf, out_channels=3, split_mode=SplitMode.interleaved(num_splits=2))
         assert isinstance(module.inputs, SplitInterleaved)
 
-    def test_sample_requires_repetition_index_for_multi_rep(self):
-        module = make_linsum_single_input(2, 3, 4, 2)
-        num_samples = 5
-        data = torch.full((num_samples, 4), torch.nan)
-        channel_index = torch.zeros((num_samples, module.out_shape.features), dtype=torch.long)
-        mask = torch.ones((num_samples, module.out_shape.features), dtype=torch.bool)
-        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
-
-        with pytest.raises(ValueError):
-            module.sample(data=data, sampling_ctx=sampling_ctx)
-
     def test_sample_two_inputs_uses_cached_log_likelihoods(self):
         module = make_linsum_two_inputs(2, 3, 4, 2)
         batch_size = 8
         data = torch.full((batch_size, 8), torch.nan)
-        channel_index = torch.randint(0, module.out_shape.channels, (batch_size, module.out_shape.features))
-        mask = torch.ones((batch_size, module.out_shape.features), dtype=torch.bool)
-        repetition_index = torch.randint(0, module.out_shape.repetitions, (batch_size,))
-        sampling_ctx = SamplingContext(
-            channel_index=channel_index, mask=mask, repetition_index=repetition_index
-        )
 
         left_ll = torch.randn(
             batch_size, module.out_shape.features, module.in_shape.channels, module.out_shape.repetitions
@@ -236,7 +219,7 @@ class TestLinsumLayerCoverageBranches:
         cache["log_likelihood"][module.inputs[0]] = left_ll
         cache["log_likelihood"][module.inputs[1]] = right_ll
 
-        samples = module.sample(data=data, cache=cache, sampling_ctx=sampling_ctx, is_mpe=True)
+        samples = module.sample(data=data, cache=cache, is_mpe=True)
         assert samples.shape == data.shape
         assert torch.isfinite(samples[:, module.scope.query]).all()
 

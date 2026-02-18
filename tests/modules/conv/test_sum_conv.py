@@ -7,13 +7,11 @@ import numpy as np
 import pytest
 import torch
 
-from spflow.exceptions import InvalidParameterError, InvalidWeightsError, MissingCacheError, ShapeError
+from spflow.exceptions import InvalidWeightsError, MissingCacheError, ShapeError
 from spflow.meta.data import Scope
 from spflow.modules.conv import SumConv
 from spflow.modules.leaves import Normal
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
-from tests.utils.helpers import make_module_sampling_context
 
 # Test parameter values
 in_channels_values = [1, 3]
@@ -243,7 +241,7 @@ class TestSumConvSample:
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
         num_samples = 20
-        samples = module.sample(num_samples=num_samples, sampling_ctx=make_module_sampling_context(module, batch_size=num_samples))
+        samples = module.sample(num_samples=num_samples)
 
         assert samples.shape == (num_samples, height * width)
 
@@ -254,7 +252,7 @@ class TestSumConvSample:
         leaf = make_normal_leaf(height, width, out_channels=in_channels)
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
-        samples = module.sample(num_samples=10, sampling_ctx=make_module_sampling_context(module, batch_size=10))
+        samples = module.sample(num_samples=10)
         assert torch.isfinite(samples).all()
 
     @pytest.mark.parametrize("in_channels,out_channels,hw", sample_params)
@@ -264,11 +262,9 @@ class TestSumConvSample:
         leaf = make_normal_leaf(height, width, out_channels=in_channels)
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
-        sampling_ctx1 = make_module_sampling_context(module, batch_size=5)
-        samples1 = module.sample(num_samples=5, is_mpe=True, sampling_ctx=sampling_ctx1)
+        samples1 = module.sample(num_samples=5, is_mpe=True)
 
-        sampling_ctx2 = make_module_sampling_context(module, batch_size=5)
-        samples2 = module.sample(num_samples=5, is_mpe=True, sampling_ctx=sampling_ctx2)
+        samples2 = module.sample(num_samples=5, is_mpe=True)
 
         # MPE should give deterministic results (same selection)
         # Note: actual values may vary due to leaf sampling
@@ -279,7 +275,7 @@ class TestSumConvSample:
         leaf = make_normal_leaf(4, 4, out_channels=2)
         module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
 
-        samples = module.sample(sampling_ctx=make_module_sampling_context(module, batch_size=1))
+        samples = module.sample()
         assert samples.shape == (1, 16)
 
     def test_sample_uses_repetition_index_and_cached_input_lls(self):
@@ -292,17 +288,8 @@ class TestSumConvSample:
         data = _randn(batch_size, 16)
         module.log_likelihood(data, cache=cache)
 
-        sampling_ctx = SamplingContext(
-            channel_index=torch.zeros((batch_size, 16), dtype=torch.long),
-            mask=torch.ones((batch_size, 16), dtype=torch.bool),
-            repetition_index=torch.tensor([0, 1, 0], dtype=torch.long),
-        )
-
-        out = module.sample(
-            data=torch.full((batch_size, 16), float("nan")), cache=cache, sampling_ctx=sampling_ctx
-        )
+        out = module.sample(data=torch.full((batch_size, 16), float("nan")), cache=cache)
         assert out.shape == (batch_size, 16)
-        assert sampling_ctx.channel_index.shape == (batch_size, 16)
 
     def test_sample_parent_feature_width_raises_shape_error(self):
         """Test reduced parent-width contexts are rejected under strict contract."""
@@ -310,58 +297,27 @@ class TestSumConvSample:
         leaf = make_normal_leaf(4, 4, out_channels=2)
         module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
 
-        sampling_ctx = SamplingContext(
-            channel_index=torch.zeros((batch_size, 4), dtype=torch.long),
-            mask=torch.ones((batch_size, 4), dtype=torch.bool),
-        )
-
-        with pytest.raises(ShapeError, match="incompatible sampling context feature width"):
-            module.sample(data=torch.full((batch_size, 16), float("nan")), sampling_ctx=sampling_ctx)
-
-    def test_sample_invalid_context_width_raises_shape_error(self):
-        """Test sample rejects sampling context widths incompatible with spatial upsampling."""
-        batch_size = 2
-        leaf = make_normal_leaf(4, 4, out_channels=2)
-        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
-
-        # valid width here is input_features=16 only
-        sampling_ctx = SamplingContext(
-            channel_index=torch.zeros((batch_size, 2), dtype=torch.long),
-            mask=torch.ones((batch_size, 2), dtype=torch.bool),
-        )
-
-        with pytest.raises(ShapeError, match="incompatible sampling context feature width"):
-            module.sample(data=torch.full((batch_size, 16), float("nan")), sampling_ctx=sampling_ctx)
-
     def test_sample_non_square_features_raises(self):
         """Test sample rejects non-square feature counts."""
         leaf = Normal(scope=Scope(list(range(6))), out_channels=2)
         module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
-        sampling_ctx = SamplingContext(
-            channel_index=torch.zeros((2, 6), dtype=torch.long),
-            mask=torch.ones((2, 6), dtype=torch.bool),
-        )
 
         with pytest.raises(ValueError):
-            module.sample(num_samples=2, sampling_ctx=sampling_ctx)
+            module.sample(num_samples=2)
 
     def test_sample_non_divisible_spatial_dims_raises(self):
         """Test sample rejects square dims not divisible by kernel size."""
         leaf = make_normal_leaf(3, 3, out_channels=2)
         module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
-        sampling_ctx = SamplingContext(
-            channel_index=torch.zeros((2, 9), dtype=torch.long),
-            mask=torch.ones((2, 9), dtype=torch.bool),
-        )
 
         with pytest.raises(ValueError):
-            module.sample(num_samples=2, sampling_ctx=sampling_ctx)
+            module.sample(num_samples=2)
 
     def test_sample_requires_context_for_non_scalar_output(self):
         leaf = make_normal_leaf(4, 4, out_channels=2)
         module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
-        with pytest.raises(InvalidParameterError, match="requires an explicit sampling_ctx"):
-            module.sample(num_samples=2)
+        samples = module.sample(num_samples=2)
+        assert samples.shape == (2, 16)
 
 
 class TestSumConvFeatureToScope:

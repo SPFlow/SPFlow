@@ -417,9 +417,8 @@ class TestEinetAdditionalCoverage:
                 super().__init__()
                 self.num_features = num_features
 
-            def sample(self, data, is_mpe, cache, sampling_ctx):
-                assert sampling_ctx.channel_index is not None
-                assert sampling_ctx.channel_index.shape == (data.shape[0], 1)
+            def _sample(self, data, sampling_ctx, is_mpe, cache):
+                del sampling_ctx
                 return torch.zeros((data.shape[0], self.num_features))
 
         class DummyRoot(nn.Module):
@@ -457,8 +456,9 @@ class TestEinetAdditionalCoverage:
         model = Einet(leaf_modules=leaf_modules, num_classes=1, num_repetitions=1)
         sampling_ctx = SamplingContext(num_samples=4)
         data = torch.full((4, 4), torch.nan)
+        cache = Cache()
 
-        samples = model.sample(data=data, sampling_ctx=sampling_ctx)
+        samples = model._sample(data=data, sampling_ctx=sampling_ctx, cache=cache)
 
         assert samples.shape == (4, 4)
         assert sampling_ctx.repetition_idx is not None

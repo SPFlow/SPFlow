@@ -188,7 +188,6 @@ class SOCS(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
 
@@ -212,7 +211,6 @@ class SOCS(Module):
             data=data,
             is_mpe=is_mpe,
             cache=cache,
-            sampling_ctx=sampling_ctx,
         )
 
     def _sample(
