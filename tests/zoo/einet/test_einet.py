@@ -464,6 +464,18 @@ class TestEinetAdditionalCoverage:
         assert sampling_ctx.repetition_index is not None
         assert torch.equal(sampling_ctx.repetition_index, torch.zeros(4, dtype=torch.long))
 
+    def test_sample_validates_internal_sampling_context(self):
+        leaf_modules = make_leaf_modules(4, 3, 1)
+        model = Einet(leaf_modules=leaf_modules, num_classes=1, num_repetitions=1)
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((2, 1), dtype=torch.long),
+            mask=torch.ones((2, 1), dtype=torch.bool),
+            repetition_index=torch.zeros((2,), dtype=torch.long),
+        )
+        sampling_ctx._mask = torch.ones((2, 2), dtype=torch.bool)  # type: ignore[attr-defined]
+        with pytest.raises(InvalidParameterError, match="mismatched channel_index/mask shapes"):
+            model._sample(data=torch.full((2, 4), torch.nan), sampling_ctx=sampling_ctx, cache=Cache())
+
     def test_delegating_methods(self, monkeypatch: pytest.MonkeyPatch):
         leaf_modules = make_leaf_modules(4, 3, 1)
         model = Einet(leaf_modules=leaf_modules, num_classes=1, num_repetitions=1)

@@ -12,7 +12,6 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import (
     SamplingContext,
-    validate_sampling_context,
 )
 
 
@@ -125,8 +124,7 @@ class Cat(Module):
         """
         # Prepare data tensor
 
-        validate_sampling_context(
-            sampling_ctx,
+        sampling_ctx.validate_sampling_context(
             num_samples=data.shape[0],
             num_features=self.out_shape.features,
             num_channels=self.out_shape.channels,

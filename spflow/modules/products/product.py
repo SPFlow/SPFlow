@@ -9,7 +9,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 
 class Product(Module):
@@ -99,8 +99,7 @@ class Product(Module):
         Returns:
             Tensor: Generated samples.
         """
-        validate_sampling_context(
-            sampling_ctx,
+        sampling_ctx.validate_sampling_context(
             num_samples=data.shape[0],
             num_features=self.out_shape.features,
             num_channels=self.out_shape.channels,

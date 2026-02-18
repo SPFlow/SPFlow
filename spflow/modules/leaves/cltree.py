@@ -499,10 +499,7 @@ class CLTree(LeafModule):
                 "CLTree structure is not initialized. Call maximum_likelihood_estimation() or fit_structure() first."
             )
 
-        from spflow.utils.sampling_context import validate_sampling_context
-
-        validate_sampling_context(
-            sampling_ctx,
+        sampling_ctx.validate_sampling_context(
             num_samples=data.shape[0],
             num_features=self.out_shape.features,
             num_channels=self.out_shape.channels,

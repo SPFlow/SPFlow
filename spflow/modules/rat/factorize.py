@@ -21,7 +21,7 @@ from spflow.modules.ops.cat import Cat
 from spflow.modules.products.base_product import BaseProduct
 from spflow.modules.products.product import Product
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 
 class Factorize(BaseProduct):
@@ -178,8 +178,7 @@ class Factorize(BaseProduct):
         """
         # Prepare data tensor
 
-        validate_sampling_context(
-            sampling_ctx,
+        sampling_ctx.validate_sampling_context(
             num_samples=data.shape[0],
             num_features=self.out_shape.features,
             num_channels=self.out_shape.channels,

@@ -6,7 +6,6 @@ import pytest
 from spflow.exceptions import InvalidParameterError, ShapeError
 from spflow.utils.sampling_context import (
     SamplingContext,
-    validate_sampling_context,
 )
 
 
@@ -32,12 +31,6 @@ def test_sampling_context_requires_num_samples_when_no_tensors_provided():
     """SamplingContext requires num_samples if channel_index/mask are not provided."""
     with pytest.raises(InvalidParameterError):
         SamplingContext()
-
-
-def test_validate_sampling_context_rejects_missing_context():
-    """Internal sampling validation requires an explicit sampling context."""
-    with pytest.raises(InvalidParameterError, match="explicit sampling_ctx"):
-        validate_sampling_context(None, num_samples=2)
 
 
 def test_sampling_context_init_with_tensors():
@@ -513,8 +506,7 @@ def test_route_channel_offsets_allows_out_of_range_when_masked_off():
 
 def test_validate_sampling_context_accepts_matching_context():
     ctx = SamplingContext(num_samples=4)
-    validate_sampling_context(
-        ctx,
+    ctx.validate_sampling_context(
         num_samples=4,
         num_features=1,
         num_channels=2,
@@ -530,8 +522,7 @@ def test_validate_sampling_context_rejects_feature_width_mismatch():
         mask=torch.ones((2, 2), dtype=torch.bool),
     )
     with pytest.raises(ShapeError, match="got 2, expected 1"):
-        validate_sampling_context(
-            ctx,
+        ctx.validate_sampling_context(
             num_samples=2,
             num_features=1,
         )
@@ -540,8 +531,7 @@ def test_validate_sampling_context_rejects_feature_width_mismatch():
 def test_validate_sampling_context_allows_missing_repetitions_for_single_repetition():
     ctx = SamplingContext(num_samples=2)
     ctx.repetition_index = None
-    validate_sampling_context(
-        ctx,
+    ctx.validate_sampling_context(
         num_samples=2,
         num_repetitions=1,
     )
@@ -551,8 +541,7 @@ def test_validate_sampling_context_rejects_missing_repetitions_for_multi_repetit
     ctx = SamplingContext(num_samples=2)
     ctx.repetition_index = None
     with pytest.raises(InvalidParameterError, match="must be provided"):
-        validate_sampling_context(
-            ctx,
+        ctx.validate_sampling_context(
             num_samples=2,
             num_repetitions=2,
         )
@@ -562,8 +551,7 @@ def test_validate_sampling_context_rejects_out_of_range_repetition_index():
     ctx = SamplingContext(num_samples=2)
     ctx.repetition_index = torch.tensor([0, 2], dtype=torch.long)
     with pytest.raises(InvalidParameterError, match="out-of-range indices"):
-        validate_sampling_context(
-            ctx,
+        ctx.validate_sampling_context(
             num_samples=2,
             num_repetitions=2,
         )

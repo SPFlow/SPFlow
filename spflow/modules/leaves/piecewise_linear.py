@@ -22,7 +22,7 @@ from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.cache import Cache
 from spflow.utils.domain import DataType, Domain
 from spflow.utils.histogram import get_bin_edges_torch
-from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 logger = logging.getLogger(__name__)
 
@@ -610,8 +610,7 @@ class PiecewiseLinear(LeafModule):
             )
 
         # Prepare data tensor
-        validate_sampling_context(
-            sampling_ctx,
+        sampling_ctx.validate_sampling_context(
             num_samples=data.shape[0],
             num_features=self.out_shape.features,
             num_channels=self.out_shape.channels,

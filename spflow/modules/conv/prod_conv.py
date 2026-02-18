@@ -18,7 +18,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.modules.conv.utils import upsample_sampling_context
-from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 
 class ProdConv(Module):
@@ -239,8 +239,7 @@ class ProdConv(Module):
         in_features = self.in_shape.features
         out_features = self.out_shape.features
 
-        validate_sampling_context(
-            sampling_ctx,
+        sampling_ctx.validate_sampling_context(
             num_samples=data.shape[0],
             num_features=self.out_shape.features,
             num_channels=self.out_shape.channels,

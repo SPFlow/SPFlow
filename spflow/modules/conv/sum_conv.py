@@ -17,7 +17,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import proj_convex_to_real
-from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 
 class SumConv(Module):
@@ -278,8 +278,7 @@ class SumConv(Module):
         if H % K != 0 or W % K != 0:
             raise ValueError(f"Spatial dims ({H}, {W}) must be divisible by kernel_size {K}")
 
-        validate_sampling_context(
-            sampling_ctx,
+        sampling_ctx.validate_sampling_context(
             num_samples=data.shape[0],
             num_features=self.out_shape.features,
             num_channels=self.out_shape.channels,

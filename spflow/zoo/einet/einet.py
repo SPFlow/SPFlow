@@ -431,17 +431,19 @@ class Einet(Module, Classifier):
         sampling_ctx: SamplingContext,
         cache: Cache,
     ) -> torch.Tensor:
+        sampling_ctx.validate_sampling_context(
+            num_samples=data.shape[0],
+            num_features=self.out_shape.features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.num_repetitions,
+            allowed_feature_widths=(1, self.out_shape.features),
+        )
+
         # Conditional sampling needs forward log-likelihoods in the cache.
         if self._has_partial_evidence(data):
             self.log_likelihood(data, cache=cache)
 
         batch_size = data.shape[0]
-        # Always initialize repetition_index (required by Factorize.sample())
-        if sampling_ctx.repetition_index is None:
-            if self.num_repetitions == 1:
-                # Single repetition: use index 0 for all samples
-                sampling_ctx.repetition_index = torch.zeros(batch_size, dtype=torch.long, device=data.device)
-            # For num_repetitions > 1, RepetitionMixingLayer will set this
 
         # Handle class sampling for multi-class models
         if self.num_classes > 1:

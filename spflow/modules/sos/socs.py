@@ -17,7 +17,7 @@ from spflow.modules.sums.signed_sum import SignedSum
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
 from spflow.utils.inner_product import inner_product_matrix, log_self_inner_product_scalar
-from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 
 def _is_signed_categorical(module: Module) -> bool:

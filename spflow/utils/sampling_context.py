@@ -558,6 +558,107 @@ class SamplingContext:
             offset = child_end
         return out
 
+    def validate_sampling_context(
+        self,
+        *,
+        num_samples: int | None = None,
+        num_features: int | None = None,
+        num_channels: int | None = None,
+        num_repetitions: int | None = None,
+        allowed_feature_widths: Sequence[int] | None = None,
+    ) -> None:
+        """Validate this sampling context for an internal `_sample(...)` call."""
+        _check_channel_index_tensor(self.channel_index, name="sampling_ctx.channel_index")
+        if self.channel_index.shape != self.mask.shape:
+            raise InvalidParameterError(
+                "sampling_ctx has mismatched channel_index/mask shapes: "
+                f"channel_index={self.channel_index.shape}, mask={self.mask.shape}."
+            )
+        _check_mask_bool(self.mask)
+        if self.channel_index.device != self.mask.device:
+            raise InvalidParameterError(
+                "sampling_ctx.channel_index and sampling_ctx.mask must be on the same device: "
+                f"got {self.channel_index.device} and {self.mask.device}."
+            )
+
+        if num_samples is not None and self.channel_index.shape[0] != num_samples:
+            raise InvalidParameterError(
+                "sampling_ctx batch size mismatch: "
+                f"got {self.channel_index.shape[0]}, "
+                f"expected {num_samples}."
+            )
+
+        if allowed_feature_widths is None:
+            expected_feature_widths: set[int] = set()
+            if num_features is not None:
+                expected_feature_widths.add(int(num_features))
+        else:
+            expected_feature_widths = {int(width) for width in allowed_feature_widths}
+
+        if expected_feature_widths:
+            got_features = int(self.channel_index.shape[1])
+            if got_features not in expected_feature_widths:
+                expected_str = " or ".join(str(width) for width in sorted(expected_feature_widths))
+                raise ShapeError(
+                    "Received incompatible sampling context feature width: "
+                    f"got {got_features}, expected {expected_str}."
+                )
+
+        if num_channels is not None:
+            if num_channels < 1:
+                raise InvalidParameterError(f"num_channels must be >= 1, got {num_channels}.")
+            active_channels = self.channel_index[self.mask]
+            if active_channels.numel() > 0:
+                invalid = (active_channels < 0) | (active_channels >= num_channels)
+                if invalid.any():
+                    invalid_values = active_channels[invalid]
+                    observed_min = int(invalid_values.min().item())
+                    observed_max = int(invalid_values.max().item())
+                    raise InvalidParameterError(
+                        "sampling_ctx.channel_index contains out-of-range channel ids on active positions: "
+                        f"valid range is [0, {num_channels - 1}], observed min={observed_min}, "
+                        f"max={observed_max}."
+                    )
+
+        if num_repetitions is not None:
+            if num_repetitions < 1:
+                raise InvalidParameterError(f"num_repetitions must be >= 1, got {num_repetitions}.")
+            if self.repetition_index is None:
+                if num_repetitions > 1:
+                    raise InvalidParameterError(
+                        "sampling_ctx.repetition_index must be provided when sampling from a module with "
+                        "num_repetitions > 1."
+                    )
+                return
+
+            repetition_index = self.repetition_index
+            _check_repetition_index_tensor(repetition_index, name="sampling_ctx.repetition_index")
+            if repetition_index.device != self.channel_index.device:
+                raise InvalidParameterError(
+                    "sampling_ctx.repetition_index and sampling_ctx.channel_index must be on the same device: "
+                    f"got {repetition_index.device} and {self.channel_index.device}."
+                )
+            if repetition_index.ndim != 1:
+                raise InvalidParameterError("sampling_ctx.repetition_index must have canonical shape (batch,).")
+
+            expected_batch = int(num_samples) if num_samples is not None else int(self.channel_index.shape[0])
+            if repetition_index.shape[0] != expected_batch:
+                raise InvalidParameterError(
+                    "sampling_ctx.repetition_index batch dimension must match the number of samples: "
+                    f"got {repetition_index.shape[0]}, expected {expected_batch}."
+                )
+
+            invalid = (repetition_index < 0) | (repetition_index >= num_repetitions)
+            if invalid.any():
+                invalid_values = repetition_index[invalid]
+                observed_min = int(invalid_values.min().item())
+                observed_max = int(invalid_values.max().item())
+                raise InvalidParameterError(
+                    "sampling_ctx.repetition_index contains out-of-range indices: "
+                    f"valid range is [0, {num_repetitions - 1}], observed min={observed_min}, "
+                    f"max={observed_max}."
+                )
+
     def __repr__(self) -> str:
         rep_shape = None if self.repetition_index is None else tuple(self.repetition_index.shape)
         return (
@@ -568,118 +669,6 @@ class SamplingContext:
             f"num_samples={self.channel_index.shape[0]}"
             ")"
         )
-
-
-def validate_sampling_context(
-    sampling_ctx: SamplingContext | None,
-    *,
-    num_samples: int | None = None,
-    num_features: int | None = None,
-    num_channels: int | None = None,
-    num_repetitions: int | None = None,
-    allowed_feature_widths: Sequence[int] | None = None,
-) -> None:
-    """Validate a sampling context for an internal `_sample(...)` call.
-
-    This helper is intentionally validation-only and never bootstraps a missing
-    context. Internal sampling calls must receive an explicit context from the
-    caller/parent.
-    """
-    if sampling_ctx is None:
-        raise InvalidParameterError("Sampling requires an explicit sampling_ctx for internal sampling.")
-
-    _check_channel_index_tensor(sampling_ctx.channel_index, name="sampling_ctx.channel_index")
-    if sampling_ctx.channel_index.shape != sampling_ctx.mask.shape:
-        raise InvalidParameterError(
-            "sampling_ctx has mismatched channel_index/mask shapes: "
-            f"channel_index={sampling_ctx.channel_index.shape}, mask={sampling_ctx.mask.shape}."
-        )
-    _check_mask_bool(sampling_ctx.mask)
-    if sampling_ctx.channel_index.device != sampling_ctx.mask.device:
-        raise InvalidParameterError(
-            "sampling_ctx.channel_index and sampling_ctx.mask must be on the same device: "
-            f"got {sampling_ctx.channel_index.device} and {sampling_ctx.mask.device}."
-        )
-
-    if num_samples is not None and sampling_ctx.channel_index.shape[0] != num_samples:
-        raise InvalidParameterError(
-            "sampling_ctx batch size mismatch: "
-            f"got {sampling_ctx.channel_index.shape[0]}, "
-            f"expected {num_samples}."
-        )
-
-    if allowed_feature_widths is None:
-        expected_feature_widths: set[int] = set()
-        if num_features is not None:
-            expected_feature_widths.add(int(num_features))
-    else:
-        expected_feature_widths = {int(width) for width in allowed_feature_widths}
-
-    if expected_feature_widths:
-        got_features = int(sampling_ctx.channel_index.shape[1])
-        if got_features not in expected_feature_widths:
-            expected_str = " or ".join(str(width) for width in sorted(expected_feature_widths))
-            raise ShapeError(
-                "Received incompatible sampling context feature width: "
-                f"got {got_features}, expected {expected_str}."
-            )
-
-    if num_channels is not None:
-        if num_channels < 1:
-            raise InvalidParameterError(f"num_channels must be >= 1, got {num_channels}.")
-        active_channels = sampling_ctx.channel_index[sampling_ctx.mask]
-        if active_channels.numel() > 0:
-            invalid = (active_channels < 0) | (active_channels >= num_channels)
-            if invalid.any():
-                invalid_values = active_channels[invalid]
-                observed_min = int(invalid_values.min().item())
-                observed_max = int(invalid_values.max().item())
-                raise InvalidParameterError(
-                    "sampling_ctx.channel_index contains out-of-range channel ids on active positions: "
-                    f"valid range is [0, {num_channels - 1}], observed min={observed_min}, "
-                    f"max={observed_max}."
-                )
-
-    if num_repetitions is not None:
-        if num_repetitions < 1:
-            raise InvalidParameterError(f"num_repetitions must be >= 1, got {num_repetitions}.")
-        if sampling_ctx.repetition_index is None:
-            if num_repetitions > 1:
-                raise InvalidParameterError(
-                    "sampling_ctx.repetition_index must be provided when sampling from a module with "
-                    "num_repetitions > 1."
-                )
-            return
-
-        repetition_index = sampling_ctx.repetition_index
-        _check_repetition_index_tensor(repetition_index, name="sampling_ctx.repetition_index")
-        if repetition_index.device != sampling_ctx.channel_index.device:
-            raise InvalidParameterError(
-                "sampling_ctx.repetition_index and sampling_ctx.channel_index must be on the same device: "
-                f"got {repetition_index.device} and {sampling_ctx.channel_index.device}."
-            )
-        if repetition_index.ndim != 1:
-            raise InvalidParameterError("sampling_ctx.repetition_index must have canonical shape (batch,).")
-
-        expected_batch = (
-            int(num_samples) if num_samples is not None else int(sampling_ctx.channel_index.shape[0])
-        )
-        if repetition_index.shape[0] != expected_batch:
-            raise InvalidParameterError(
-                "sampling_ctx.repetition_index batch dimension must match the number of samples: "
-                f"got {repetition_index.shape[0]}, expected {expected_batch}."
-            )
-
-        invalid = (repetition_index < 0) | (repetition_index >= num_repetitions)
-        if invalid.any():
-            invalid_values = repetition_index[invalid]
-            observed_min = int(invalid_values.min().item())
-            observed_max = int(invalid_values.max().item())
-            raise InvalidParameterError(
-                "sampling_ctx.repetition_index contains out-of-range indices: "
-                f"valid range is [0, {num_repetitions - 1}], observed min={observed_min}, "
-                f"max={observed_max}."
-            )
 
 
 def update_channel_index_strict(sampling_ctx: SamplingContext, new_channel_index: Tensor) -> None:

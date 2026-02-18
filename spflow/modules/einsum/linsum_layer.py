@@ -27,7 +27,7 @@ from spflow.modules.ops.split import Split, SplitMode
 from spflow.modules.ops.split_consecutive import SplitConsecutive
 from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import proj_convex_to_real
-from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 
 class LinsumLayer(Module):
@@ -309,8 +309,7 @@ class LinsumLayer(Module):
         """
         # Prepare data tensor
 
-        validate_sampling_context(
-            sampling_ctx,
+        sampling_ctx.validate_sampling_context(
             num_samples=data.shape[0],
             num_features=self.out_shape.features,
             num_channels=self.out_shape.channels,

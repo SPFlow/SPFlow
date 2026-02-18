@@ -27,7 +27,7 @@ from spflow.modules.products.elementwise_product import ElementwiseProduct
 from spflow.modules.sums import Sum
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 from spflow.zoo.apc.encoders.base import LatentStats
 from spflow.zoo.conv.conv_pc import compute_non_overlapping_kernel_and_padding
 
@@ -107,8 +107,7 @@ class _PairwiseLatentProduct(Module):
         sampling_ctx: SamplingContext,
         cache: Cache,
     ) -> Tensor:
-        validate_sampling_context(
-            sampling_ctx,
+        sampling_ctx.validate_sampling_context(
             num_samples=data.shape[0],
             num_features=self.out_shape.features,
             num_channels=self.out_shape.channels,
@@ -217,8 +216,7 @@ class _LatentFeaturePacking(Module):
         sampling_ctx: SamplingContext,
         cache: Cache,
     ) -> Tensor:
-        validate_sampling_context(
-            sampling_ctx,
+        sampling_ctx.validate_sampling_context(
             num_samples=data.shape[0],
             num_features=self.out_shape.features,
             num_channels=self.out_shape.channels,
@@ -363,8 +361,7 @@ class _LatentSelectionCapture(Module):
         sampling_ctx: SamplingContext,
         cache: Cache,
     ) -> Tensor:
-        validate_sampling_context(
-            sampling_ctx,
+        sampling_ctx.validate_sampling_context(
             num_samples=data.shape[0],
             num_features=self.out_shape.features,
             num_channels=self.out_shape.channels,
