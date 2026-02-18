@@ -193,11 +193,9 @@ class _DummyModule(Module):
         data: torch.Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> torch.Tensor:
         del sampling_ctx
         del cache
-        del is_mpe
         self.sample_calls += 1
         return data
 

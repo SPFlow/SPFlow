@@ -86,7 +86,6 @@ class Product(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Generate samples by delegating to input module.
 
@@ -109,7 +108,6 @@ class Product(Module):
         # Delegate to input module for actual sampling
         self.inputs._sample(
             data=data,
-            is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

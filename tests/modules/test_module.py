@@ -35,11 +35,9 @@ class _ChildRecorder(Module):
         data: torch.Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> torch.Tensor:
         del sampling_ctx
         del cache
-        del is_mpe
         out = data.clone()
         out[:] = torch.nan_to_num(out, nan=0.0)
         return out
@@ -87,11 +85,9 @@ class _ParentDispatch(Module):
         data: torch.Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> torch.Tensor:
         del sampling_ctx
         del cache
-        del is_mpe
         out = data.clone()
         out[:] = torch.nan_to_num(out, nan=0.0)
         return out
@@ -117,7 +113,7 @@ class _SuperPassProbe(Module):
         return torch.zeros((data.shape[0], 1, 1, 1), dtype=data.dtype, device=data.device)
 
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None):
-        Module.sample(self, num_samples=num_samples, data=data, is_mpe=is_mpe, cache=cache)
+        Module.sample(self, num_samples=num_samples, data=data, cache=cache)
         data = self._prepare_sample_data(num_samples, data)
         data[:] = torch.nan_to_num(data, nan=0.0)
         return data
@@ -127,11 +123,9 @@ class _SuperPassProbe(Module):
         data: torch.Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> torch.Tensor:
         del sampling_ctx
         del cache
-        del is_mpe
         out = data.clone()
         out[:] = torch.nan_to_num(out, nan=0.0)
         return out

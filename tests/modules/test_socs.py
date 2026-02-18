@@ -356,11 +356,9 @@ class _MargNoneModule(Module):
         data: torch.Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> torch.Tensor:
         del sampling_ctx
         del cache
-        del is_mpe
         return torch.zeros((data.shape[0], len(self.scope.query)), dtype=data.dtype, device=data.device)
 
     def expectation_maximization(self, data, bias_correction=True, cache=None) -> None:

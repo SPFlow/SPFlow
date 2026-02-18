@@ -218,9 +218,8 @@ class SOCS(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
-        if is_mpe:
+        if sampling_ctx.is_mpe:
             raise UnsupportedOperationError("SOCS.mpe() is not supported (use MAP on components if needed).")
 
         # Only unconditional sampling for now (all NaNs)

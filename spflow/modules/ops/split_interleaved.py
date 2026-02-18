@@ -118,7 +118,6 @@ class SplitInterleaved(Split):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         input_features = self.inputs.out_shape.features
         split_features = input_features // self.num_splits
@@ -156,7 +155,6 @@ class SplitInterleaved(Split):
 
         self.inputs._sample(
             data=data,
-            is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

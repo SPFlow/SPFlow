@@ -99,7 +99,6 @@ class RepetitionMixingLayer(Sum):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Generate samples by choosing mixture components.
 
@@ -132,7 +131,7 @@ class RepetitionMixingLayer(Sum):
             log_posterior = log_posterior.log_softmax(dim=3)
             logits = log_posterior
 
-        if is_mpe:
+        if sampling_ctx.is_mpe:
             # Take the argmax of the logits to obtain the most probable index
             repetition_idx = torch.argmax(logits.sum(-2), dim=-1).squeeze(-1)
         else:
@@ -145,7 +144,6 @@ class RepetitionMixingLayer(Sum):
         # Sample from input module
         self.inputs._sample(
             data=data,
-            is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

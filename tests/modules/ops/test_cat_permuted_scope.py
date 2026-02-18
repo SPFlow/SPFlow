@@ -66,11 +66,9 @@ class IndexLeaf(LeafModule):
         data: torch.Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> torch.Tensor:
         """Return deterministic values based on scope indices."""
         del cache
-        del is_mpe
 
         # Find which positions need sampling (NaN and in scope)
         out_of_scope = [x for x in range(data.shape[1]) if x not in self.scope.query]

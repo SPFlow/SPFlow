@@ -787,7 +787,6 @@ def test_constructor_rejects_feature_to_scope_mismatch_per_repetition():
             data: torch.Tensor,
             sampling_ctx: SamplingContext,
             cache: Cache,
-            is_mpe: bool = False,
         ) -> torch.Tensor:  # pragma: no cover
             raise NotImplementedError
 

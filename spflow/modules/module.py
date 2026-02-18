@@ -225,12 +225,11 @@ class Module(nn.Module, ABC):
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
             cache = Cache()
-        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device)
+        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device, is_mpe=is_mpe)
         return self._sample(
             data=data,
             sampling_ctx=sampling_ctx,
             cache=cache,
-            is_mpe=is_mpe,
         )
 
     @abstractmethod
@@ -239,7 +238,6 @@ class Module(nn.Module, ABC):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Internal sampling hook used for recursive sampling calls.
 

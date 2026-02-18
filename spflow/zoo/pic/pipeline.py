@@ -126,12 +126,10 @@ class PICSum(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:  # pragma: no cover
         del data
         del sampling_ctx
         del cache
-        del is_mpe
         raise NotImplementedError("PICSum is symbolic; materialize to QPC with pic2qpc().")
 
     def marginalize(
@@ -177,12 +175,10 @@ class PICProduct(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:  # pragma: no cover
         del data
         del sampling_ctx
         del cache
-        del is_mpe
         raise NotImplementedError("PICProduct is symbolic; materialize to QPC with pic2qpc().")
 
     def marginalize(

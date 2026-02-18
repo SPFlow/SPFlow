@@ -249,7 +249,6 @@ class Split(Module, ABC):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Generate samples by delegating to input module.
 
@@ -280,7 +279,6 @@ class Split(Module, ABC):
 
         self.inputs._sample(
             data=data,
-            is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

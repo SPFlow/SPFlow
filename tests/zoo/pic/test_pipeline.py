@@ -73,7 +73,7 @@ class NormalPICInput(Module):
     ) -> Tensor:  # pragma: no cover
         raise NotImplementedError
 
-    def _sample(self, data: Tensor, sampling_ctx, cache, is_mpe: bool = False) -> Tensor:  # pragma: no cover
+    def _sample(self, data: Tensor, sampling_ctx, cache) -> Tensor:  # pragma: no cover
         raise NotImplementedError
 
     def marginalize(self, marg_rvs, prune: bool = True, cache=None):  # pragma: no cover
@@ -109,7 +109,7 @@ class ConstantPICInput(Module):
     ) -> Tensor:  # pragma: no cover
         raise NotImplementedError
 
-    def _sample(self, data: Tensor, sampling_ctx, cache, is_mpe: bool = False) -> Tensor:  # pragma: no cover
+    def _sample(self, data: Tensor, sampling_ctx, cache) -> Tensor:  # pragma: no cover
         raise NotImplementedError
 
     def marginalize(self, marg_rvs, prune: bool = True, cache=None):  # pragma: no cover
@@ -140,7 +140,7 @@ class ConstantQPCModule(Module):
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None) -> Tensor:
         raise NotImplementedError
 
-    def _sample(self, data: Tensor, sampling_ctx, cache, is_mpe: bool = False) -> Tensor:
+    def _sample(self, data: Tensor, sampling_ctx, cache) -> Tensor:
         raise NotImplementedError
 
     def marginalize(self, marg_rvs, prune: bool = True, cache=None):
@@ -262,7 +262,7 @@ class _NoLatentLeaf(Module):
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None) -> Tensor:
         raise NotImplementedError
 
-    def _sample(self, data: Tensor, sampling_ctx, cache, is_mpe: bool = False) -> Tensor:
+    def _sample(self, data: Tensor, sampling_ctx, cache) -> Tensor:
         raise NotImplementedError
 
     def marginalize(self, marg_rvs, prune: bool = True, cache=None):
@@ -288,7 +288,7 @@ class _BareModule(Module):
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None) -> Tensor:
         raise NotImplementedError
 
-    def _sample(self, data: Tensor, sampling_ctx, cache, is_mpe: bool = False) -> Tensor:
+    def _sample(self, data: Tensor, sampling_ctx, cache) -> Tensor:
         raise NotImplementedError
 
     def marginalize(self, marg_rvs, prune: bool = True, cache=None):
@@ -318,7 +318,7 @@ class _VariableChannelPICInput(Module):
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None) -> Tensor:
         raise NotImplementedError
 
-    def _sample(self, data: Tensor, sampling_ctx, cache, is_mpe: bool = False) -> Tensor:
+    def _sample(self, data: Tensor, sampling_ctx, cache) -> Tensor:
         raise NotImplementedError
 
     def marginalize(self, marg_rvs, prune: bool = True, cache=None):

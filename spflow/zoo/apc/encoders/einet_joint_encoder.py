@@ -232,8 +232,8 @@ class EinetJointEncoder(nn.Module):
         del tau
         evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
         if return_sampling_ctx:
-            sampling_ctx = SamplingContext(num_samples=x_flat.shape[0], device=x_flat.device)
-            joint = self.pc._sample(data=evidence, is_mpe=mpe, cache=Cache(), sampling_ctx=sampling_ctx)
+            sampling_ctx = SamplingContext(num_samples=x_flat.shape[0], device=x_flat.device, is_mpe=mpe)
+            joint = self.pc._sample(data=evidence, cache=Cache(), sampling_ctx=sampling_ctx)
         else:
             sampling_ctx = None
             joint = self.pc.sample(data=evidence, is_mpe=mpe)
@@ -294,9 +294,9 @@ class EinetJointEncoder(nn.Module):
         evidence = self._build_evidence(x_flat=x_flat, z_flat=z_flat)
 
         if mpe:
-            joint = self.pc.sample(data=evidence, is_mpe=True)
+            joint = self.pc.sample(data=evidence)
         else:
-            joint = self.pc.sample(data=evidence, is_mpe=False)
+            joint = self.pc.sample(data=evidence)
 
         x_rec = joint[:, self._x_cols]
         if fill_evidence and x_flat is not None:
@@ -328,7 +328,6 @@ class EinetJointEncoder(nn.Module):
         )
         joint = self.pc.sample(
             data=evidence,
-            is_mpe=False,
         )
         z = joint[:, self._z_cols]
         return z

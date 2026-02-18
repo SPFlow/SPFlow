@@ -99,7 +99,7 @@ def test_sample_dim2_defaults_to_first_global_channel():
 
     data = torch.full((num_samples, 2), torch.nan)
 
-    samples = module.sample(data=data, is_mpe=True)
+    samples = module.sample(data=data)
     expected = torch.full((2,), 100.0, dtype=samples.dtype)
     for row_idx in range(num_samples):
         torch.testing.assert_close(
@@ -142,7 +142,7 @@ def test_sample_dim2_routes_unequal_child_channels_by_offsets_internal_context()
         mask=torch.ones((num_samples, 2), dtype=torch.bool),
     )
 
-    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache(), is_mpe=True)
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
     expected = torch.tensor([100.0, 0.0, 10.0, 20.0], dtype=samples.dtype)
     for row_idx, value in enumerate(expected):
@@ -182,7 +182,7 @@ def test_sample_dim2_rejects_out_of_range_global_channel_id_internal_context():
         mask=torch.ones((2, 2), dtype=torch.bool),
     )
     with pytest.raises(InvalidParameterError, match="out-of-range channel ids"):
-        module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache(), is_mpe=True)
+        module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
 
 @pytest.mark.parametrize("out_channels,out_features, num_reps, dim", params)

@@ -417,7 +417,7 @@ class TestEinetAdditionalCoverage:
                 super().__init__()
                 self.num_features = num_features
 
-            def _sample(self, data, sampling_ctx, is_mpe, cache):
+            def _sample(self, data, sampling_ctx, cache):
                 del sampling_ctx
                 return torch.zeros((data.shape[0], self.num_features))
 

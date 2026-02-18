@@ -318,7 +318,6 @@ class EinsumLayer(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Sample from the EinsumLayer.
 
@@ -435,7 +434,7 @@ class EinsumLayer(Module):
             logits_flat = log_posterior
 
         # Sample or MPE
-        if is_mpe:
+        if sampling_ctx.is_mpe:
             indices = logits_flat.argmax(dim=-1)  # (B, D)
         else:
             dist = torch.distributions.Categorical(logits=logits_flat)
@@ -451,12 +450,12 @@ class EinsumLayer(Module):
             # Left child
             left_ctx = sampling_ctx.copy()
             left_ctx.channel_index = left_indices
-            self.inputs[0]._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=left_ctx)
+            self.inputs[0]._sample(data=data, cache=cache, sampling_ctx=left_ctx)
 
             # Right child
             right_ctx = sampling_ctx.copy()
             right_ctx.channel_index = right_indices
-            self.inputs[1]._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=right_ctx)
+            self.inputs[1]._sample(data=data, cache=cache, sampling_ctx=right_ctx)
         else:
             # Single input with Split module - use generic merge_split_indices
             full_indices = self.inputs.merge_split_indices(left_indices, right_indices)
@@ -464,7 +463,7 @@ class EinsumLayer(Module):
 
             child_ctx = sampling_ctx.copy()
             child_ctx.update(channel_index=full_indices, mask=full_mask)
-            self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=child_ctx)
+            self.inputs._sample(data=data, cache=cache, sampling_ctx=child_ctx)
 
         return data
 

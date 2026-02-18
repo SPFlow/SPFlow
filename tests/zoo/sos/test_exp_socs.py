@@ -134,11 +134,9 @@ class _DummyScalarModule(Module):
         data: torch.Tensor,
         sampling_ctx,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> torch.Tensor:
         del sampling_ctx
         del cache
-        del is_mpe
         return data
 
     def marginalize(self, marg_rvs: list[int], prune: bool = True, cache: Cache | None = None):

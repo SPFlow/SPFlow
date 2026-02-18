@@ -302,12 +302,11 @@ class ConvPc(Module):
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
             cache = Cache()
-        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device)
+        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device, is_mpe=is_mpe)
         return self._sample(
             data=data,
             sampling_ctx=sampling_ctx,
             cache=cache,
-            is_mpe=is_mpe,
         )
 
     def _sample(
@@ -315,7 +314,6 @@ class ConvPc(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         # Conditional sampling needs forward log-likelihoods in the cache.
         if self._has_partial_evidence(data):
@@ -325,7 +323,6 @@ class ConvPc(Module):
         # which handles channel/repetition sampling internally
         self.inputs._sample(
             data=data,
-            is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

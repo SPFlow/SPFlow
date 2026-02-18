@@ -102,11 +102,9 @@ class Wrapper(Module, ABC):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         return self.module._sample(
             data=data,
             sampling_ctx=sampling_ctx,
             cache=cache,
-            is_mpe=is_mpe,
         )

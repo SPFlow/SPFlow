@@ -56,10 +56,9 @@ class DummyModule(Module):
             data = torch.zeros((num_samples, 1))
         return data
 
-    def _sample(self, data, sampling_ctx, cache, is_mpe: bool = False):
+    def _sample(self, data, sampling_ctx, cache):
         del sampling_ctx
         del cache
-        del is_mpe
         return data
 
     def marginalize(self, marg_rvs, prune=True, cache=None):

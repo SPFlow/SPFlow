@@ -66,17 +66,16 @@ class JointLogLikelihood(Wrapper):
                     context_device = next(self.module.buffers()).device
                 except StopIteration:
                     context_device = None
-        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=context_device)
-        return self.module._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=context_device, is_mpe=is_mpe)
+        return self.module._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
 
     def _sample(
         self,
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
-        return self.module._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        return self.module._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
 
     def marginalize(self, marg_rvs: list[int], prune: bool = True, cache: Cache | None = None):
         child = self.module.marginalize(marg_rvs=marg_rvs, prune=prune, cache=cache)

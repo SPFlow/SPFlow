@@ -58,10 +58,8 @@ class _SignedInput(Module):
         data: torch.Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> torch.Tensor:
         del cache
-        del is_mpe
         self.last_sampling_ctx = sampling_ctx
         data[:, self.scope.query] = 0.0
         return data
@@ -222,7 +220,7 @@ def test_signed_sum_sample_success_paths(is_mpe: bool):
         inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[0.9]], [[0.1]]]])
     )
 
-    samples = node.sample(num_samples=5, is_mpe=is_mpe)
+    samples = node.sample(num_samples=5)
 
     assert samples.shape == (5, 1)
     assert torch.isfinite(samples).all()

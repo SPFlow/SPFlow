@@ -281,7 +281,7 @@ class RatSPN(Module, Classifier):
         if cache is None:
             cache = Cache()
         batch_size = data.shape[0]
-        sampling_ctx = SamplingContext(num_samples=batch_size, device=data.device)
+        sampling_ctx = SamplingContext(num_samples=batch_size, device=data.device, is_mpe=is_mpe)
 
         # Draw root routing for public sampling entrypoint.
         if self.n_root_nodes > 1:
@@ -295,7 +295,7 @@ class RatSPN(Module, Classifier):
             logits = rearrange(logits, "1 co 1 -> 1 1 co")
             logits = repeat(logits, "1 1 co -> b 1 co", b=batch_size)  # shape [b, 1, n_root_nodes]
 
-            if is_mpe:
+            if sampling_ctx.is_mpe:
                 sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
             else:
                 sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
@@ -304,7 +304,6 @@ class RatSPN(Module, Classifier):
             data=data,
             sampling_ctx=sampling_ctx,
             cache=cache,
-            is_mpe=is_mpe,
         )
 
     def _sample(
@@ -312,7 +311,6 @@ class RatSPN(Module, Classifier):
         data: torch.Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> torch.Tensor:
 
         # if the model only has one root node, we can directly sample from the mixing layer
@@ -323,7 +321,6 @@ class RatSPN(Module, Classifier):
 
         return sample_root._sample(
             data=data,
-            is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

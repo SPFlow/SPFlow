@@ -173,7 +173,6 @@ class SignedSum(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Sample from the unnormalized non-negative subset of SignedSum.
 
@@ -218,11 +217,11 @@ class SignedSum(Module):
 
         # Normalize over input channels
         probs = w_sel / w_sel.sum(dim=2, keepdim=True).clamp_min(1e-12)
-        if is_mpe:
+        if sampling_ctx.is_mpe:
             new_channel_index = torch.argmax(probs, dim=-1)
         else:
             new_channel_index = torch.distributions.Categorical(probs=probs).sample()
 
         update_channel_index_strict(sampling_ctx, new_channel_index)
-        self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        self.inputs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
         return data

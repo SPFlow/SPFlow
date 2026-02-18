@@ -584,7 +584,6 @@ class LeafModule(Module, ABC):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Sample from leaf distribution given potential evidence.
 
@@ -645,7 +644,7 @@ class LeafModule(Module, ABC):
                 )
             sampling_ctx.repetition_idx = repetition_idx.to(dtype=torch.long, device=data.device)
 
-        if is_mpe:
+        if sampling_ctx.is_mpe:
             if self.is_conditional:
                 evidence = data[instance_mask][:, self.scope.evidence]
                 dist = self.conditional_distribution(evidence)

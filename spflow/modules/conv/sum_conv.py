@@ -246,7 +246,6 @@ class SumConv(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Generate samples from sum conv module.
 
@@ -388,7 +387,7 @@ class SumConv(Module):
 
         # Sample for each position
         log_posterior_flat = rearrange(log_posterior, "b h w ci -> (b h w) ci")
-        if is_mpe:
+        if sampling_ctx.is_mpe:
             sampled_channels_flat = torch.argmax(log_posterior_flat, dim=-1)
         else:
             sampled_channels_flat = torch.distributions.Categorical(logits=log_posterior_flat).sample()
@@ -401,7 +400,6 @@ class SumConv(Module):
         # Sample from input
         self.inputs._sample(
             data=data,
-            is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

@@ -217,7 +217,6 @@ class ProdConv(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Generate samples by delegating to input.
 
@@ -309,7 +308,6 @@ class ProdConv(Module):
         # Sample from input
         self.inputs._sample(
             data=data,
-            is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

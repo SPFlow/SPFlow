@@ -47,11 +47,10 @@ class _DummyModule(Module):
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None):
         return torch.zeros(1)
 
-    def _sample(self, data, sampling_ctx, cache, is_mpe: bool = False):
+    def _sample(self, data, sampling_ctx, cache):
         del data
         del sampling_ctx
         del cache
-        del is_mpe
         return torch.zeros(1)
 
     def marginalize(self, scope):

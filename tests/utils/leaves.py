@@ -70,10 +70,9 @@ class CachingDummyInput(Module):
         data[:, self.scope.query] = 0.0
         return data
 
-    def _sample(self, data: Tensor, sampling_ctx, cache: Cache, is_mpe: bool = False):
+    def _sample(self, data: Tensor, sampling_ctx, cache: Cache):
         del sampling_ctx
         del cache
-        del is_mpe
         data[:, self.scope.query] = 0.0
         return data
 
@@ -112,7 +111,7 @@ def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):
 
 
 def evaluate_samples(node: LeafModule, data: torch.Tensor, is_mpe: bool, sampling_ctx):
-    samples = node.sample(data=data, is_mpe=is_mpe)
+    samples = node.sample(data=data)
     assert samples.shape == data.shape
     s_query = samples[:, node.scope.query]
     assert s_query.shape == (data.shape[0], len(node.scope.query))

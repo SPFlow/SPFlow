@@ -417,13 +417,12 @@ class Einet(Module, Classifier):
             cache = Cache()
         batch_size = data.shape[0]
 
-        sampling_ctx = SamplingContext(num_samples=batch_size, device=data.device)
+        sampling_ctx = SamplingContext(num_samples=batch_size, device=data.device, is_mpe=is_mpe)
 
         return self._sample(
             data=data,
             sampling_ctx=sampling_ctx,
             cache=cache,
-            is_mpe=is_mpe,
         )
 
     def _sample(
@@ -431,7 +430,6 @@ class Einet(Module, Classifier):
         data: torch.Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> torch.Tensor:
         # Conditional sampling needs forward log-likelihoods in the cache.
         if self._has_partial_evidence(data):
@@ -457,7 +455,7 @@ class Einet(Module, Classifier):
             logits = rearrange(logits, "1 co 1 -> 1 1 co")
             logits = repeat(logits, "1 1 co -> b 1 co", b=batch_size)
 
-            if is_mpe:
+            if sampling_ctx.is_mpe:
                 sampling_ctx.channel_index = torch.argmax(logits, dim=-1)
             else:
                 sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
@@ -470,7 +468,6 @@ class Einet(Module, Classifier):
 
         return sample_root._sample(
             data=data,
-            is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

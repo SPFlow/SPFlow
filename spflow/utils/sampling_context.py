@@ -61,6 +61,7 @@ class SamplingContext:
         channel_index: Tensor | None = None,
         mask: Tensor | None = None,
         repetition_index: Tensor | None = None,
+        is_mpe: bool = False,
     ) -> None:
         """Initialize SamplingContext for managing sampling operations.
 
@@ -86,12 +87,15 @@ class SamplingContext:
             repetition_index (Tensor | None, optional): Indices for repetition-based
                 sampling structures. Used by circuits with repeated computations.
                 Defaults to None.
+            is_mpe (bool, optional): If True, sampling uses MPE decisions instead of
+                stochastic sampling. Defaults to False.
 
         Raises:
             InvalidParameterError: If tensor shapes are incompatible, mask has wrong dtype,
                 or num_samples conflicts with tensor dimensions.
         """
         device_was_provided = device is not None
+        self.is_mpe = is_mpe
         if device is None:
             device = torch.get_default_device()
 
@@ -208,6 +212,7 @@ class SamplingContext:
             channel_index=self.channel_index.clone(),
             mask=self.mask.clone(),
             repetition_index=self.repetition_idx.clone(),
+            is_mpe=self.is_mpe,
         )
 
     def require_feature_width(self, expected_features: int) -> None:

@@ -267,14 +267,13 @@ class ImageWrapper(Wrapper):
         if cache is None:
             cache = Cache()
 
-        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device)
+        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device, is_mpe=is_mpe)
 
         # Flatten data to 2D for processing
         flat_data = self.flatten(data)
 
         self.module._sample(
             data=flat_data,
-            is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )
@@ -285,12 +284,10 @@ class ImageWrapper(Wrapper):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         flat_data = self.flatten(data)
         self.module._sample(
             data=flat_data,
-            is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

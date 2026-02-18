@@ -106,7 +106,6 @@ class _PairwiseLatentProduct(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         validate_sampling_context(
             sampling_ctx,
@@ -119,7 +118,7 @@ class _PairwiseLatentProduct(Module):
 
         ctx_features = sampling_ctx.channel_index.shape[1]
         if ctx_features == self.in_shape.features:
-            return self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+            return self.inputs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
         if ctx_features == 1:
             num_parent_features = self.out_shape.features
             parent_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_parent_features)
@@ -136,7 +135,7 @@ class _PairwiseLatentProduct(Module):
         child_idx = repeat(parent_idx, "b f -> b (f two)", two=2)
         child_mask = repeat(parent_mask, "b f -> b (f two)", two=2)
         sampling_ctx.update(child_idx, child_mask)
-        return self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        return self.inputs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
 
     def marginalize(
         self,
@@ -216,7 +215,6 @@ class _LatentFeaturePacking(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         validate_sampling_context(
             sampling_ctx,
@@ -229,7 +227,7 @@ class _LatentFeaturePacking(Module):
 
         ctx_features = sampling_ctx.channel_index.shape[1]
         if ctx_features == self.in_shape.features:
-            return self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+            return self.inputs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
         if ctx_features == 1:
             num_target_features = self.target_features
             parent_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_target_features)
@@ -251,7 +249,7 @@ class _LatentFeaturePacking(Module):
         child_idx = parent_idx[:, : self.in_shape.features]
         child_mask = parent_mask[:, : self.in_shape.features]
         sampling_ctx.update(child_idx, child_mask)
-        return self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        return self.inputs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
 
     def marginalize(
         self,
@@ -362,7 +360,6 @@ class _LatentSelectionCapture(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         validate_sampling_context(
             sampling_ctx,
@@ -373,7 +370,7 @@ class _LatentSelectionCapture(Module):
             allowed_feature_widths=(1, self.out_shape.features, data.shape[1]),
         )
         self._capture(sampling_ctx, data.shape[1])
-        return self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        return self.inputs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
 
     def marginalize(
         self,
@@ -944,8 +941,8 @@ class ConvPcJointEncoder(nn.Module):
         self._reset_latent_leaf_selection()
         evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
         if return_sampling_ctx:
-            sampling_ctx = SamplingContext(num_samples=x_flat.shape[0], device=x_flat.device)
-            joint = self.pc._sample(data=evidence, is_mpe=mpe, cache=Cache(), sampling_ctx=sampling_ctx)
+            sampling_ctx = SamplingContext(num_samples=x_flat.shape[0], device=x_flat.device, is_mpe=mpe)
+            joint = self.pc._sample(data=evidence, cache=Cache(), sampling_ctx=sampling_ctx)
         else:
             sampling_ctx = None
             joint = self.pc.sample(data=evidence, is_mpe=mpe)

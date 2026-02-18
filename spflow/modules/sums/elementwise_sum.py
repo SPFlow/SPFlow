@@ -267,7 +267,6 @@ class ElementwiseSum(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Generate samples by choosing mixture components.
 
@@ -394,7 +393,7 @@ class ElementwiseSum(Module):
             logits = log_posterior
 
         # Sample/MPE from categorical distribution defined by weights to obtain indices into the Stack dimension
-        if is_mpe:
+        if sampling_ctx.is_mpe:
             cids_stack = torch.argmax(logits, dim=-1)
         else:
             cids_stack = torch.distributions.Categorical(logits=logits).sample()
@@ -412,7 +411,6 @@ class ElementwiseSum(Module):
             # Sample from input module
             inp._sample(
                 data=data,
-                is_mpe=is_mpe,
                 cache=cache,
                 sampling_ctx=sampling_ctx_cpy,
             )

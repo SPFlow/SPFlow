@@ -69,10 +69,8 @@ class DummyInput(Module):
         data: torch.Tensor,
         sampling_ctx: SamplingContext,
         cache,
-        is_mpe: bool = False,
     ) -> torch.Tensor:
         del cache
-        del is_mpe
         self.sample_calls.append(sampling_ctx)
         return data
 
@@ -354,7 +352,7 @@ class TestWeightedSumSamplingAndMarginalize:
         sampling_ctx._mask = torch.ones((2, 1), dtype=torch.bool)  # type: ignore[attr-defined]
         with pytest.raises(ShapeError, match="incompatible feature width"):
             ws._sample(
-                data=torch.full((2, 2), float("nan")), is_mpe=True, sampling_ctx=sampling_ctx, cache=Cache()
+                data=torch.full((2, 2), float("nan")), sampling_ctx=sampling_ctx, cache=Cache()
             )
 
     def test_sample_creates_data_when_none(self):

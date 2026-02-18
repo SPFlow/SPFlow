@@ -491,7 +491,6 @@ class CLTree(LeafModule):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         del cache
 
@@ -574,7 +573,7 @@ class CLTree(LeafModule):
                     msg = score[xi]  # (K,)
                     backptr[i] = xi
                 else:
-                    if is_mpe:
+                    if sampling_ctx.is_mpe:
                         best_x = torch.argmax(score, dim=0)  # (K,)
                         backptr[i] = best_x
                         msg = score.gather(dim=0, index=best_x.unsqueeze(0)).squeeze(0)  # (K,)
@@ -588,7 +587,7 @@ class CLTree(LeafModule):
             if bool(is_obs[root].item()):
                 xr = int(obs_val[root].item())
             else:
-                if is_mpe:
+                if sampling_ctx.is_mpe:
                     xr = int(torch.argmax(root_score).item())
                 else:
                     xr = int(torch.distributions.Categorical(logits=root_score).sample().item())
@@ -604,7 +603,7 @@ class CLTree(LeafModule):
                 if bool(is_obs[i].item()):
                     assignment[i] = int(obs_val[i].item())
                     continue
-                if is_mpe:
+                if sampling_ctx.is_mpe:
                     assignment[i] = int(backptr[i, xp].item())
                 else:
                     logits = self.log_cpt[i, c, r, :, xp] + child_sum[i]

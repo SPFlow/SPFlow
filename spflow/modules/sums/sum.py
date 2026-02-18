@@ -281,7 +281,6 @@ class Sum(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Generate samples from sum module.
 
@@ -377,7 +376,7 @@ class Sum(Module):
             logits = log_posterior
 
         # Sample from categorical distribution defined by weights to obtain indices into input channels
-        if is_mpe:
+        if sampling_ctx.is_mpe:
             # Take the argmax of the logits to obtain the most probable index
             new_channel_index = torch.argmax(logits, dim=-1)
         else:
@@ -389,7 +388,6 @@ class Sum(Module):
         # Sample from input module
         self.inputs._sample(
             data=data,
-            is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

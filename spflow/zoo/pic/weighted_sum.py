@@ -192,7 +192,6 @@ class WeightedSum(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Generate samples from WeightedSum module.
 
@@ -240,7 +239,7 @@ class WeightedSum(Module):
         weights = rearrange(weights, "b f ci 1 -> b f ci")
 
         # Sample from categorical distribution
-        if is_mpe:
+        if sampling_ctx.is_mpe:
             new_channel_index = torch.argmax(weights, dim=-1)
         else:
             # Normalize for sampling (temporary normalization for distribution)
@@ -260,7 +259,6 @@ class WeightedSum(Module):
         # Sample from input module
         self.inputs._sample(
             data=data,
-            is_mpe=is_mpe,
             cache=cache,
             sampling_ctx=sampling_ctx,
         )

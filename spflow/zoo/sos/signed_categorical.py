@@ -182,12 +182,10 @@ class SignedCategorical(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         del data
         del sampling_ctx
         del cache
-        del is_mpe
         raise UnsupportedOperationError(
             "SignedCategorical.sample() is not supported. "
             "Convert to a monotone proposal first (e.g., via build_abs_weight_proposal)."

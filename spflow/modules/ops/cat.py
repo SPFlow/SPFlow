@@ -110,7 +110,6 @@ class Cat(Module):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Generate samples by delegating to concatenated inputs.
 
@@ -164,7 +163,6 @@ class Cat(Module):
             sampling_ctx_copy.update(channel_index=channel_index_per_module[i], mask=mask_per_module[i])
             input_module._sample(
                 data=data,
-                is_mpe=is_mpe,
                 cache=cache,
                 sampling_ctx=sampling_ctx_copy,
             )

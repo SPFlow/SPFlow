@@ -24,6 +24,7 @@ def test_sampling_context_init_defaults():
     assert ctx.mask.dtype == torch.bool
     assert ctx.channel_index.dtype == torch.long
     assert ctx.repetition_idx.dtype == torch.long
+    assert ctx.is_mpe is False
     assert ctx.samples_mask.tolist() == [True, True, True]
 
 
@@ -190,9 +191,15 @@ def test_sampling_context_copy_is_deep():
     copied.channel_index[0, 0] = 5
     copied.mask[1, 0] = True
     assert copied.repetition_idx is not ctx.repetition_idx
+    assert copied.is_mpe is ctx.is_mpe
     assert torch.equal(ctx.channel_index, channel_index)
     assert torch.equal(ctx.mask, mask)
     assert torch.equal(ctx.repetition_idx, repetition_index)
+
+
+def test_sampling_context_accepts_is_mpe_constructor_flag():
+    ctx = SamplingContext(num_samples=2, is_mpe=True)
+    assert ctx.is_mpe is True
 
 
 def test_require_feature_width_accepts_matching_width():

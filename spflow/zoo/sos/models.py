@@ -489,17 +489,16 @@ class SOSModel(Module):
             data = torch.full((num_samples, len(self.scope.query)), float("nan"), device=self.device)
         if cache is None:
             cache = Cache()
-        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device)
-        return self.socs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device, is_mpe=is_mpe)
+        return self.socs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
 
     def _sample(
         self,
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
-        return self.socs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        return self.socs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
 
 
 class ExpSOSModel(Module):
@@ -641,14 +640,13 @@ class ExpSOSModel(Module):
             data = torch.full((num_samples, len(self.scope.query)), float("nan"), device=self.device)
         if cache is None:
             cache = Cache()
-        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device)
-        return self.exp_socs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device, is_mpe=is_mpe)
+        return self.exp_socs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
 
     def _sample(
         self,
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
-        return self.exp_socs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
+        return self.exp_socs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)

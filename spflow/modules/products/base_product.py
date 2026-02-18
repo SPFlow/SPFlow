@@ -116,7 +116,6 @@ class BaseProduct(Module, ABC):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Generate samples from product module.
 
@@ -167,7 +166,6 @@ class BaseProduct(Module, ABC):
             sampling_ctx.update(channel_index=cid, mask=mask)
             inp._sample(
                 data=data,
-                is_mpe=is_mpe,
                 cache=cache,
                 sampling_ctx=sampling_ctx,
             )

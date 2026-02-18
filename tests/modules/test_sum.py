@@ -107,11 +107,9 @@ class _ToyInput(Module):
         data: torch.Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> torch.Tensor:
         del sampling_ctx
         del cache
-        del is_mpe
         data[:, self.scope.query] = 0.0
         return data
 

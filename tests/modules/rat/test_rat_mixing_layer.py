@@ -46,10 +46,9 @@ class DummyInput(Module):
         data[:, self.scope.query] = 0.0
         return data
 
-    def _sample(self, data: torch.Tensor, sampling_ctx, cache, is_mpe: bool = False):
+    def _sample(self, data: torch.Tensor, sampling_ctx, cache):
         del sampling_ctx
         del cache
-        del is_mpe
         data[:, self.scope.query] = 0.0
         return data
 

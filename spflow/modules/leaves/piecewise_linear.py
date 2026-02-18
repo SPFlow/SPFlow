@@ -591,7 +591,6 @@ class PiecewiseLinear(LeafModule):
         data: Tensor,
         sampling_ctx: SamplingContext,
         cache: Cache,
-        is_mpe: bool = False,
     ) -> Tensor:
         """Sample from the piecewise linear distribution.
 
@@ -649,7 +648,7 @@ class PiecewiseLinear(LeafModule):
         dist = self.distribution
         n_samples_int = int(n_samples.item())
 
-        if is_mpe:
+        if sampling_ctx.is_mpe:
             samples = rearrange(dist.mode, "c f l r -> 1 c f l r")
             samples = repeat(samples, "1 c f l r -> n c f l r", n=n_samples_int).detach()
         else:
