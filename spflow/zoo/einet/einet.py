@@ -389,7 +389,6 @@ class Einet(Module, Classifier):
         data: torch.Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> torch.Tensor:
         """Generate samples from the Einet.
 
@@ -398,7 +397,6 @@ class Einet(Module, Classifier):
             data: Optional data tensor with NaN values to impute.
             is_mpe: Whether to perform MPE (most probable explanation).
             cache: Optional cache for intermediate results.
-            sampling_ctx: Optional sampling context.
 
         Returns:
             Sampled tensor.
@@ -414,18 +412,9 @@ class Einet(Module, Classifier):
                 "works for both structures."
             )
 
-        # Handle num_samples case
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, self.num_features), torch.nan, device=self.device)
+        data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
             cache = Cache()
-
-        # Conditional sampling needs forward log-likelihoods in the cache.
-        if self._has_partial_evidence(data):
-            self.log_likelihood(data, cache=cache)
-
         batch_size = data.shape[0]
 
         root_num_features = 1
@@ -433,15 +422,33 @@ class Einet(Module, Classifier):
         if root_out_shape is not None and hasattr(root_out_shape, "features"):
             root_num_features = int(root_out_shape.features)
 
-        # Initialize sampling context at root
         sampling_ctx = build_root_sampling_context(
-            sampling_ctx,
+            None,
             module_name=self.__class__.__name__,
             num_samples=batch_size,
             num_features=root_num_features,
             device=data.device,
         )
 
+        return self._sample(
+            data=data,
+            sampling_ctx=sampling_ctx,
+            cache=cache,
+            is_mpe=is_mpe,
+        )
+
+    def _sample(
+        self,
+        data: torch.Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> torch.Tensor:
+        # Conditional sampling needs forward log-likelihoods in the cache.
+        if self._has_partial_evidence(data):
+            self.log_likelihood(data, cache=cache)
+
+        batch_size = data.shape[0]
         # Always initialize repetition_idx (required by Factorize.sample())
         if sampling_ctx.repetition_idx is None:
             if self.num_repetitions == 1:
@@ -452,6 +459,8 @@ class Einet(Module, Classifier):
         # Handle class sampling for multi-class models
         if self.num_classes > 1:
             logits = self.root_node.logits
+            if logits.ndim == 4 and logits.shape[-1] == 1:
+                logits = logits.squeeze(-1)
             if logits.shape != (1, self.num_classes, 1):
                 raise InvalidParameterError(
                     f"Expected logits shape (1, {self.num_classes}, 1), got {logits.shape}"
@@ -470,22 +479,7 @@ class Einet(Module, Classifier):
         else:
             sample_root = self.root_node
 
-        return sample_root.sample(
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-        )
-
-    def _sample(
-        self,
-        data: torch.Tensor,
-        sampling_ctx: SamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> torch.Tensor:
-        return self.sample(
-            num_samples=None,
+        return sample_root._sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,

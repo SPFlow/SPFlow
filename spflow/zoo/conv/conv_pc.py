@@ -283,7 +283,6 @@ class ConvPc(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> Tensor:
         """Generate samples by sampling top-down through layers.
 
@@ -296,30 +295,37 @@ class ConvPc(Module):
             data: Data tensor with NaN values to fill with samples.
             is_mpe: Whether to perform maximum a posteriori estimation.
             cache: Optional cache dictionary.
-            sampling_ctx: Optional sampling context.
 
         Returns:
             Tensor: Sampled values of shape (num_samples, num_pixels).
         """
-        # Handle num_samples case
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, len(self.scope.query)), float("nan")).to(self.device)
+        data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
             cache = Cache()
-
-        # Conditional sampling needs forward log-likelihoods in the cache.
-        if self._has_partial_evidence(data):
-            self.log_likelihood(data, cache=cache)
-
         sampling_ctx = build_root_sampling_context(
-            sampling_ctx,
+            None,
             module_name=self.__class__.__name__,
             num_samples=data.shape[0],
             num_features=self.inputs.out_shape.features,
             device=data.device,
         )
+        return self._sample(
+            data=data,
+            sampling_ctx=sampling_ctx,
+            cache=cache,
+            is_mpe=is_mpe,
+        )
+
+    def _sample(
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
+        is_mpe: bool = False,
+    ) -> Tensor:
+        # Conditional sampling needs forward log-likelihoods in the cache.
+        if self._has_partial_evidence(data):
+            self.log_likelihood(data, cache=cache)
 
         # Delegate to root (RepetitionMixingLayer or Sum)
         # which handles channel/repetition sampling internally
@@ -331,21 +337,6 @@ class ConvPc(Module):
         )
 
         return data
-
-    def _sample(
-        self,
-        data: Tensor,
-        sampling_ctx: SamplingContext,
-        cache: Cache,
-        is_mpe: bool = False,
-    ) -> Tensor:
-        return self.sample(
-            num_samples=None,
-            data=data,
-            is_mpe=is_mpe,
-            cache=cache,
-            sampling_ctx=sampling_ctx,
-        )
 
 
     def _expectation_maximization_step(

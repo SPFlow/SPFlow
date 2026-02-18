@@ -265,7 +265,6 @@ class RatSPN(Module, Classifier):
         data: torch.Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-        sampling_ctx: SamplingContext | None = None,
     ) -> torch.Tensor:
         """Generate samples from the RAT-SPN.
 
@@ -274,40 +273,32 @@ class RatSPN(Module, Classifier):
             data: Data tensor with NaN values to fill with samples.
             is_mpe: Whether to perform maximum a posteriori estimation.
             cache: Optional cache dictionary.
-            sampling_ctx: Optional sampling context.
 
         Returns:
             Sampled values.
         """
-
-        # Handle num_samples case (create empty data tensor)
-        if data is None:
-            if num_samples is None:
-                num_samples = 1
-            data = torch.full((num_samples, len(self.scope.query)), torch.nan, device=self.device)
+        data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
             cache = Cache()
-
-        # Initialize sampling context at root.
-        sampling_ctx_was_none = sampling_ctx is None
+        batch_size = data.shape[0]
         sampling_ctx = build_root_sampling_context(
-            sampling_ctx,
+            None,
             module_name=self.__class__.__name__,
-            num_samples=data.shape[0],
+            num_samples=batch_size,
             num_features=self.root_node.out_shape.features,
             device=data.device,
         )
 
-        # Preserve explicit caller-provided root routing; only draw root routing
-        # when bootstrapping context at the root entrypoint.
-        if self.n_root_nodes > 1 and sampling_ctx_was_none:
+        # Draw root routing for public sampling entrypoint.
+        if self.n_root_nodes > 1:
             logits = self.root_node.logits
+            if logits.ndim == 4 and logits.shape[-1] == 1:
+                logits = logits.squeeze(-1)
             if logits.shape != (1, self.n_root_nodes, 1):
                 raise InvalidParameterError(
                     f"Expected logits shape (1, {self.n_root_nodes}, 1), but got {logits.shape}"
                 )
             logits = rearrange(logits, "1 co 1 -> 1 1 co")
-            batch_size = data.shape[0]
             logits = repeat(logits, "1 1 co -> b 1 co", b=batch_size)  # shape [b, 1, n_root_nodes]
 
             if is_mpe:
@@ -315,17 +306,11 @@ class RatSPN(Module, Classifier):
             else:
                 sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
 
-        # if the model only has one root node, we can directly sample from the mixing layer
-        if self.n_root_nodes > 1:
-            sample_root = self.root_node.inputs
-        else:
-            sample_root = self.root_node
-
-        return sample_root.sample(
+        return self._sample(
             data=data,
-            is_mpe=is_mpe,
-            cache=cache,
             sampling_ctx=sampling_ctx,
+            cache=cache,
+            is_mpe=is_mpe,
         )
 
     def _sample(
@@ -335,8 +320,14 @@ class RatSPN(Module, Classifier):
         cache: Cache,
         is_mpe: bool = False,
     ) -> torch.Tensor:
-        return self.sample(
-            num_samples=None,
+
+        # if the model only has one root node, we can directly sample from the mixing layer
+        if self.n_root_nodes > 1:
+            sample_root = self.root_node.inputs
+        else:
+            sample_root = self.root_node
+
+        return sample_root._sample(
             data=data,
             is_mpe=is_mpe,
             cache=cache,
