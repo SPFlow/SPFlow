@@ -17,7 +17,7 @@ from spflow.modules.ops.split import Split
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import (
     SamplingContext,
-    require_sampling_context,
+    validate_sampling_context,
 )
 
 
@@ -120,15 +120,21 @@ class SplitInterleaved(Split):
         cache: Cache,
         is_mpe: bool = False,
     ) -> Tensor:
-        sampling_ctx = require_sampling_context(
+        input_features = self.inputs.out_shape.features
+        split_features = input_features // self.num_splits
+        validate_sampling_context(
             sampling_ctx,
             num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
+            num_features=input_features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.out_shape.repetitions,
+            allowed_feature_widths=(1, input_features, split_features),
         )
 
-        input_features = self.inputs.out_shape.features
         before_features = int(sampling_ctx.channel_index.shape[1])
+        if before_features == 1 and input_features > 1:
+            sampling_ctx.broadcast_feature_width(target_features=input_features, allow_from_one=True)
+            before_features = input_features
         sampling_ctx.repeat_split_feature_width(
             num_splits=self.num_splits,
             target_features=input_features,

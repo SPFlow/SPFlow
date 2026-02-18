@@ -30,7 +30,7 @@ from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
 from spflow.utils.inference import log_posterior
-from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 
 class Einet(Module, Classifier):
@@ -417,16 +417,7 @@ class Einet(Module, Classifier):
             cache = Cache()
         batch_size = data.shape[0]
 
-        root_num_features = 1
-        root_out_shape = getattr(self.root_node, "out_shape", None)
-        if root_out_shape is not None and hasattr(root_out_shape, "features"):
-            root_num_features = int(root_out_shape.features)
-
-        sampling_ctx = build_root_sampling_context(
-            num_samples=batch_size,
-            num_features=root_num_features,
-            device=data.device,
-        )
+        sampling_ctx = SamplingContext(num_samples=batch_size, device=data.device)
 
         return self._sample(
             data=data,

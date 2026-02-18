@@ -30,7 +30,7 @@ from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
 from spflow.utils.inference import log_posterior
-from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 
 class RatSPN(Module, Classifier):
@@ -281,11 +281,7 @@ class RatSPN(Module, Classifier):
         if cache is None:
             cache = Cache()
         batch_size = data.shape[0]
-        sampling_ctx = build_root_sampling_context(
-            num_samples=batch_size,
-            num_features=self.root_node.out_shape.features,
-            device=data.device,
-        )
+        sampling_ctx = SamplingContext(num_samples=batch_size, device=data.device)
 
         # Draw root routing for public sampling entrypoint.
         if self.n_root_nodes > 1:

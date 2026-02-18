@@ -17,7 +17,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import proj_convex_to_real
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
 
 
 class SumConv(Module):
@@ -279,7 +279,15 @@ class SumConv(Module):
         if H % K != 0 or W % K != 0:
             raise ValueError(f"Spatial dims ({H}, {W}) must be divisible by kernel_size {K}")
 
-        sampling_ctx.require_feature_width(expected_features=num_features)
+        validate_sampling_context(
+            sampling_ctx,
+            num_samples=data.shape[0],
+            num_features=self.out_shape.features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.out_shape.repetitions,
+            allowed_feature_widths=(1, num_features),
+        )
+        sampling_ctx.broadcast_feature_width(target_features=num_features, allow_from_one=True)
 
         channel_idx = sampling_ctx.channel_index  # (batch, H*W)
 
@@ -310,10 +318,7 @@ class SumConv(Module):
 
         # Check for cached likelihoods (conditional sampling)
         input_lls = None
-        if (
-             "log_likelihood" in cache
-            and cache["log_likelihood"].get(self.inputs) is not None
-        ):
+        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
             input_lls = cache["log_likelihood"][self.inputs]  # (batch, features, in_c, reps)
 
             # Select repetition

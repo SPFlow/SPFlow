@@ -27,7 +27,7 @@ from spflow.modules.products.elementwise_product import ElementwiseProduct
 from spflow.modules.sums import Sum
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
 from spflow.zoo.apc.encoders.base import LatentStats
 from spflow.zoo.conv.conv_pc import compute_non_overlapping_kernel_and_padding
 
@@ -108,11 +108,13 @@ class _PairwiseLatentProduct(Module):
         cache: Cache,
         is_mpe: bool = False,
     ) -> Tensor:
-        sampling_ctx = require_sampling_context(
+        validate_sampling_context(
             sampling_ctx,
             num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
+            num_features=self.out_shape.features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.out_shape.repetitions,
+            allowed_feature_widths=(1, self.out_shape.features, self.in_shape.features),
         )
 
         ctx_features = sampling_ctx.channel_index.shape[1]
@@ -135,7 +137,6 @@ class _PairwiseLatentProduct(Module):
         child_mask = repeat(parent_mask, "b f -> b (f two)", two=2)
         sampling_ctx.update(child_idx, child_mask)
         return self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
-
 
     def marginalize(
         self,
@@ -217,11 +218,13 @@ class _LatentFeaturePacking(Module):
         cache: Cache,
         is_mpe: bool = False,
     ) -> Tensor:
-        sampling_ctx = require_sampling_context(
+        validate_sampling_context(
             sampling_ctx,
             num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
+            num_features=self.out_shape.features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.out_shape.repetitions,
+            allowed_feature_widths=(1, self.target_features, self.in_shape.features),
         )
 
         ctx_features = sampling_ctx.channel_index.shape[1]
@@ -249,7 +252,6 @@ class _LatentFeaturePacking(Module):
         child_mask = parent_mask[:, : self.in_shape.features]
         sampling_ctx.update(child_idx, child_mask)
         return self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
-
 
     def marginalize(
         self,
@@ -362,15 +364,16 @@ class _LatentSelectionCapture(Module):
         cache: Cache,
         is_mpe: bool = False,
     ) -> Tensor:
-        sampling_ctx = require_sampling_context(
+        validate_sampling_context(
             sampling_ctx,
             num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
+            num_features=self.out_shape.features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.out_shape.repetitions,
+            allowed_feature_widths=(1, self.out_shape.features, data.shape[1]),
         )
         self._capture(sampling_ctx, data.shape[1])
         return self.inputs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
-
 
     def marginalize(
         self,
@@ -1046,9 +1049,7 @@ class ConvPcJointEncoder(nn.Module):
     def _latent_stats_from_leaf_params(self, sampling_ctx: SamplingContext, batch_size: int) -> LatentStats:
         """Extract posterior ``mu/logvar`` from selected latent leaf parameters."""
         del sampling_ctx, batch_size
-        raise UnsupportedOperationError(
-            "APC latent stats are not available after sample rollback."
-        )
+        raise UnsupportedOperationError("APC latent stats are not available after sample rollback.")
 
     def _latent_stats_mc_fallback(
         self,
@@ -1143,6 +1144,4 @@ class ConvPcJointEncoder(nn.Module):
     def latent_stats(self, x: Tensor, *, tau: float = 1.0) -> LatentStats:
         """Return latent posterior stats for ``x``."""
         del x, tau
-        raise UnsupportedOperationError(
-            "APC latent stats are not available after sample rollback."
-        )
+        raise UnsupportedOperationError("APC latent stats are not available after sample rollback.")

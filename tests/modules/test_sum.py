@@ -6,6 +6,7 @@ import torch
 
 from spflow.exceptions import (
     InvalidParameterCombinationError,
+    InvalidParameterError,
     InvalidWeightsError,
     MissingCacheError,
     ShapeError,
@@ -487,7 +488,7 @@ def test_sample_raises_on_incompatible_mask_width():
                 )
 
     sampling_ctx = _LooseSamplingCtx()
-    with pytest.raises(ShapeError, match="incompatible sampling context feature width"):
+    with pytest.raises(InvalidParameterError, match="mismatched channel_index/mask shapes"):
         module._sample(data=torch.full((5, 3), torch.nan), sampling_ctx=sampling_ctx, cache=Cache())
 
 

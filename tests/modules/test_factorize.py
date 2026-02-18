@@ -8,7 +8,6 @@ from spflow.learn import expectation_maximization
 from spflow.meta.data.scope import Scope
 from spflow.modules.rat import Factorize
 from spflow.utils.sampling_context import SamplingContext
-from spflow.utils.sampling_context import init_default_sampling_context
 from tests.utils.leaves import DummyLeaf, make_data, make_leaf, make_normal_data, make_normal_leaf
 
 # Constants
@@ -211,10 +210,6 @@ def test_multidistribution_input():
     lls = module.log_likelihood(data)
 
     assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps)
-
-    repetition_idx = torch.zeros((1,), dtype=torch.long)
-    sampling_ctx = init_default_sampling_context(sampling_ctx=None, num_samples=1)
-    sampling_ctx.repetition_idx = repetition_idx
 
     # Create data tensor to populate with samples
     data_to_sample = torch.full((1, out_features_1 + out_features_2), torch.nan)

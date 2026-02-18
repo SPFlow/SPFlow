@@ -12,7 +12,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import (
     SamplingContext,
-    require_sampling_context,
+    validate_sampling_context,
 )
 
 
@@ -126,15 +126,17 @@ class Cat(Module):
         """
         # Prepare data tensor
 
-        sampling_ctx = require_sampling_context(
+        validate_sampling_context(
             sampling_ctx,
             num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
+            num_features=self.out_shape.features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.out_shape.repetitions,
+            allowed_feature_widths=(1, self.out_shape.features),
         )
+        sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
 
         if self.dim == 1:
-            sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
             ranges: list[tuple[int, int]] = []
             feature_offset = 0
             for module in self.inputs:
@@ -146,7 +148,6 @@ class Cat(Module):
             mask_per_module = [pair[1] for pair in per_module]
 
         elif self.dim == 2:
-            sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
             per_module = sampling_ctx.route_channel_offsets(
                 child_channel_counts=[int(module.out_shape.channels) for module in self.inputs],
             )

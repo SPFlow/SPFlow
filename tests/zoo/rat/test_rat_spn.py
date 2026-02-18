@@ -12,7 +12,6 @@ from spflow.modules.ops import SplitMode
 from spflow.utils.cache import Cache
 from spflow.zoo.rat import RatSPN
 from spflow.utils.sampling_context import SamplingContext
-from spflow.utils.sampling_context import init_default_sampling_context
 from tests.utils.leaves import make_leaf, make_data
 
 depth = [1, 3]
@@ -183,9 +182,6 @@ def test_multidistribution_input(region_nodes, leaves, num_reps, root_nodes, out
         1,
     )  # num_reps is 1 after RAT SPN
 
-    repetition_idx = torch.zeros((1,), dtype=torch.long)
-    sampling_ctx = init_default_sampling_context(sampling_ctx=None, num_samples=1)
-    sampling_ctx.repetition_idx = repetition_idx
     samples = model.sample()
 
     assert samples.shape == (1, out_features_1 + out_features_2)

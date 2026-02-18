@@ -15,7 +15,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.leaves import apply_nan_strategy, parse_leaf_args
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
 
 
 class LeafModule(Module, ABC):
@@ -354,7 +354,9 @@ class LeafModule(Module, ABC):
             # get cached log-likelihood gradients w.r.t. module log-likelihoods
             module_lls = cache["log_likelihood"].get(self)
             if module_lls is None:
-                raise MissingCacheError("Module log-likelihoods not found in cache. Call log_likelihood first.")
+                raise MissingCacheError(
+                    "Module log-likelihoods not found in cache. Call log_likelihood first."
+                )
 
             expectations = module_lls.grad
             if expectations is None:
@@ -598,11 +600,13 @@ class LeafModule(Module, ABC):
         """
         # Prepare data tensor
 
-        sampling_ctx = require_sampling_context(
+        validate_sampling_context(
             sampling_ctx,
             num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
+            num_features=self.out_shape.features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.out_shape.repetitions,
+            allowed_feature_widths=(1, self.out_shape.features, data.shape[1]),
         )
 
         scope_cols = self._resolve_scope_columns(num_features=data.shape[1])
@@ -775,7 +779,6 @@ class LeafModule(Module, ABC):
 
         return data
 
-
     def _resolve_scope_columns(self, num_features: int) -> list[int]:
         """Resolve the column indices in `data` that correspond to this leaf's scope.
 
@@ -825,6 +828,12 @@ class LeafModule(Module, ABC):
 
         if ctx_features == scope_size:
             return sampling_ctx.channel_index, sampling_ctx.mask
+
+        if ctx_features == 1:
+            return (
+                repeat(sampling_ctx.channel_index, "b 1 -> b f", f=scope_size),
+                repeat(sampling_ctx.mask, "b 1 -> b f", f=scope_size),
+            )
 
         if ctx_features == num_features:
             return sampling_ctx.channel_index[:, scope_cols], sampling_ctx.mask[:, scope_cols]

@@ -16,10 +16,7 @@ from torch import Tensor, nn
 
 from spflow.meta.data.scope import Scope
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import (
-    SamplingContext,
-    build_root_sampling_context,
-)
+from spflow.utils.sampling_context import SamplingContext
 from spflow.modules.module_shape import ModuleShape
 
 
@@ -228,13 +225,7 @@ class Module(nn.Module, ABC):
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
             cache = Cache()
-        sampling_ctx = build_root_sampling_context(
-            num_samples=data.shape[0],
-            num_features=self.out_shape.features,
-            device=data.device,
-        )
-        if sampling_ctx.repetition_idx is None:
-            sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
+        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device)
         return self._sample(
             data=data,
             sampling_ctx=sampling_ctx,

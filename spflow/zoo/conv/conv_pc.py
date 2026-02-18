@@ -20,7 +20,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.sums import Sum
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 
 def compute_non_overlapping_kernel_and_padding(
@@ -302,11 +302,7 @@ class ConvPc(Module):
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
             cache = Cache()
-        sampling_ctx = build_root_sampling_context(
-            num_samples=data.shape[0],
-            num_features=self.inputs.out_shape.features,
-            device=data.device,
-        )
+        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device)
         return self._sample(
             data=data,
             sampling_ctx=sampling_ctx,

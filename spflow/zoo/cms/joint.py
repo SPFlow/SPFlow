@@ -24,7 +24,7 @@ from spflow.meta.data.scope import Scope
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.wrapper.base import Wrapper
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 
 
 class JointLogLikelihood(Wrapper):
@@ -66,11 +66,7 @@ class JointLogLikelihood(Wrapper):
                     context_device = next(self.module.buffers()).device
                 except StopIteration:
                     context_device = None
-        sampling_ctx = build_root_sampling_context(
-            num_samples=data.shape[0],
-            num_features=self.module.out_shape.features,
-            device=context_device,
-        )
+        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=context_device)
         return self.module._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
     def _sample(

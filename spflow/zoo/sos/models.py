@@ -16,7 +16,7 @@ from spflow.modules.module import Module
 from spflow.modules.products.product import Product
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext, build_root_sampling_context
+from spflow.utils.sampling_context import SamplingContext
 from spflow.zoo.sos.exp_socs import ExpSOCS
 from spflow.zoo.sos.signed_categorical import SignedCategorical
 from spflow.modules.sums.signed_sum import SignedSum
@@ -489,11 +489,7 @@ class SOSModel(Module):
             data = torch.full((num_samples, len(self.scope.query)), float("nan"), device=self.device)
         if cache is None:
             cache = Cache()
-        sampling_ctx = build_root_sampling_context(
-            num_samples=data.shape[0],
-            num_features=self.socs.out_shape.features,
-            device=data.device,
-        )
+        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device)
         return self.socs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
     def _sample(
@@ -645,11 +641,7 @@ class ExpSOSModel(Module):
             data = torch.full((num_samples, len(self.scope.query)), float("nan"), device=self.device)
         if cache is None:
             cache = Cache()
-        sampling_ctx = build_root_sampling_context(
-            num_samples=data.shape[0],
-            num_features=self.exp_socs.out_shape.features,
-            device=data.device,
-        )
+        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device)
         return self.exp_socs._sample(data=data, is_mpe=is_mpe, cache=cache, sampling_ctx=sampling_ctx)
 
     def _sample(

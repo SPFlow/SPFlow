@@ -11,8 +11,8 @@ from spflow.meta import Scope
 from spflow.modules.leaves import Binomial, Categorical, Normal
 from spflow.modules.ops import Cat
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
+from tests.utils.sampling_context_helpers import make_sampling_context
 
 out_channels_values = [1, 5]
 out_features_values = [1, 6]
@@ -133,7 +133,11 @@ def test_sample_dim2_routes_unequal_child_channels_by_offsets_internal_context()
 
     data = torch.full((num_samples, 2), torch.nan)
     channel_index = torch.tensor([[0, 0], [1, 1], [2, 2], [3, 3]], dtype=torch.long)
-    sampling_ctx = SamplingContext(
+    sampling_ctx = make_sampling_context(
+        num_samples=num_samples,
+        num_features=2,
+        num_channels=4,
+        num_repetitions=1,
         channel_index=channel_index,
         mask=torch.ones((num_samples, 2), dtype=torch.bool),
     )
@@ -169,7 +173,11 @@ def test_sample_dim2_rejects_out_of_range_global_channel_id_internal_context():
     module = Cat(inputs=[child_a, child_b], dim=2)
     data = torch.full((2, 2), torch.nan)
 
-    sampling_ctx = SamplingContext(
+    sampling_ctx = make_sampling_context(
+        num_samples=2,
+        num_features=2,
+        num_channels=5,
+        num_repetitions=1,
         channel_index=torch.tensor([[0, 0], [4, 4]], dtype=torch.long),
         mask=torch.ones((2, 2), dtype=torch.bool),
     )

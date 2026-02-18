@@ -21,6 +21,7 @@ from spflow.utils.projections import (
 from spflow.utils.sampling_context import (
     SamplingContext,
     update_channel_index_strict,
+    validate_sampling_context,
 )
 
 
@@ -294,7 +295,15 @@ class Sum(Module):
         Returns:
             Tensor: Sampled values.
         """
-        sampling_ctx.require_feature_width(expected_features=self.out_shape.features)
+        validate_sampling_context(
+            sampling_ctx,
+            num_samples=data.shape[0],
+            num_features=self.out_shape.features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.out_shape.repetitions,
+            allowed_feature_widths=(1, self.out_shape.features),
+        )
+        sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
 
         # Index into the correct weight channels given by parent module
         if sampling_ctx.repetition_idx is not None:
@@ -340,10 +349,7 @@ class Sum(Module):
         logits = rearrange(logits, "b f ci 1 -> b f ci")
 
         # Check if evidence is given (cached log-likelihoods)
-        if (
-             "log_likelihood" in cache
-            and cache["log_likelihood"].get(self.inputs) is not None
-        ):
+        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
             # Get the log likelihoods from the cache
             input_lls = cache["log_likelihood"][self.inputs]
 
@@ -389,7 +395,6 @@ class Sum(Module):
         )
 
         return data
-
 
     def _expectation_maximization_step(
         self,

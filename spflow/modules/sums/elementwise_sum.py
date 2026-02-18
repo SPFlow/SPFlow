@@ -21,7 +21,7 @@ from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
-from spflow.utils.sampling_context import SamplingContext, require_sampling_context
+from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
 
 
 class ElementwiseSum(Module):
@@ -284,12 +284,15 @@ class ElementwiseSum(Module):
         # Prepare data tensor
 
         # initialize contexts
-        sampling_ctx = require_sampling_context(
+        validate_sampling_context(
             sampling_ctx,
             num_samples=data.shape[0],
-            module_out_shape=self.out_shape,
-            device=data.device,
+            num_features=self.out_shape.features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.out_shape.repetitions,
+            allowed_feature_widths=(1, self.out_shape.features),
         )
+        sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
 
         # Index into the correct weight channels given by parent module
         # (stay in logits space since Categorical distribution accepts logits directly)

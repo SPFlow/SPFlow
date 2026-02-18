@@ -17,8 +17,8 @@ from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
 from spflow.modules.conv.utils import upsample_sampling_context
+from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
 
 
 class ProdConv(Module):
@@ -240,7 +240,19 @@ class ProdConv(Module):
         in_features = self.in_shape.features
         out_features = self.out_shape.features
 
+        validate_sampling_context(
+            sampling_ctx,
+            num_samples=data.shape[0],
+            num_features=self.out_shape.features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.out_shape.repetitions,
+            allowed_feature_widths=(1, out_features, in_features),
+        )
+
         current_features = sampling_ctx.channel_index.shape[1]
+        if current_features == 1:
+            sampling_ctx.broadcast_feature_width(target_features=out_features, allow_from_one=True)
+            current_features = out_features
 
         if current_features == in_features:
             pass
@@ -265,8 +277,8 @@ class ProdConv(Module):
 
             # Handle explicit padding case: trim padded spatial positions to input size.
             if upsampled_features > in_features:
-                expected_padded_features = (
-                    (self._input_h + 2 * self.padding_h) * (self._input_w + 2 * self.padding_w)
+                expected_padded_features = (self._input_h + 2 * self.padding_h) * (
+                    self._input_w + 2 * self.padding_w
                 )
                 if self.padding_h == 0 and self.padding_w == 0:
                     raise ShapeError(
