@@ -81,3 +81,19 @@ git commit -m "docs: update RAT-SPN examples in README"
 * Keep comments concise, specific, and close to the code they describe.
 * Update or remove comments whenever code changes so comments never become stale.
 * Use `TODO(username): short reason` for actionable follow-ups; avoid vague TODOs.
+
+## Tensor/Module Debug Tracing
+* Use trace helpers from `spflow.utils.debug` when debugging runtime tensor/module behavior without an interactive interpreter.
+* Enable tracing explicitly in code with:
+  * `configure_trace(enabled=True, prefix="SPFLOW", max_events=400, max_values=6)`
+  * or environment variable `SPFLOW_TRACE=1` (legacy `APC_TRACE=1` also works).
+* Core helpers:
+  * `trace_tensor(name, tensor)` for shape/dtype/device/finite stats + value preview.
+  * `trace_tensor_delta(name, before, after)` for before/after numerical drift summaries.
+  * `trace_tensor_tree(name, payload)` for nested dict/list/tuple tensor payloads.
+  * `trace_module_state(name, module)` for parameters, gradients, and buffers.
+  * `attach_module_trace_hooks(module, name, recurse=...)` + `remove_trace_hooks(handles)` to trace forward inputs/outputs across module calls.
+* Keep tracing lightweight:
+  * Set bounded `max_events` and `max_values`.
+  * Attach hooks in a `try/finally` block and always remove handles.
+  * Prefer targeted traces around suspicious modules/tensors instead of whole-model tracing by default.
