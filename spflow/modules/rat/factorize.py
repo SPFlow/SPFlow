@@ -188,28 +188,12 @@ class Factorize(BaseProduct):
         )
         sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
 
-        if sampling_ctx.repetition_idx is None:
-            raise InvalidParameterError(
-                "sampling_ctx.repetition_idx must be provided when sampling from Factorize."
-            )
-
-        repetition_idx = sampling_ctx.repetition_idx
-        if repetition_idx.ndim == 2 and repetition_idx.shape[1] == 1:
-            repetition_idx = rearrange(repetition_idx, "b 1 -> b")
-        elif repetition_idx.ndim != 1:
-            raise InvalidParameterError("sampling_ctx.repetition_idx must have shape (batch,) or (batch, 1).")
-        if repetition_idx.shape[0] != data.shape[0]:
-            raise InvalidParameterError(
-                "sampling_ctx.repetition_idx batch dimension must match the number of samples."
-            )
-        sampling_ctx.repetition_idx = repetition_idx.to(dtype=torch.long, device=self.device)
-
         # gather indices for specific repetitions
         num_input_features = self.indices.shape[0]
         num_output_features = self.indices.shape[1]
         batch_size = data.shape[0]
         rep_indices = repeat(
-            rearrange(sampling_ctx.repetition_idx, "b -> b 1 1 1"),
+            rearrange(sampling_ctx.repetition_index, "b -> b 1 1 1"),
             "b 1 1 1 -> b i o 1",
             i=num_input_features,
             o=num_output_features,
@@ -223,7 +207,8 @@ class Factorize(BaseProduct):
         channel_index = torch.sum(rearrange(sampling_ctx.channel_index, "b o -> b 1 o") * indices, dim=-1)
         mask = torch.sum(rearrange(sampling_ctx.mask, "b o -> b 1 o") * indices, dim=-1).bool()
 
-        sampling_ctx.update(channel_index=channel_index, mask=mask)
+        sampling_ctx.channel_index = channel_index
+        sampling_ctx.mask = mask
 
         self.inputs[0]._sample(
             data=data,

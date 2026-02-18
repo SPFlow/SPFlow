@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import torch
 
-from spflow.exceptions import ShapeError, UnsupportedOperationError
+from spflow.exceptions import InvalidParameterError, ShapeError, UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.normal import Normal
 from spflow.modules.module import Module
@@ -272,6 +272,25 @@ def test_signed_sum_sample_rejects_non_unit_repetitions():
 
     with pytest.raises(UnsupportedOperationError):
         node.sample(num_samples=3)
+
+
+def test_signed_sum_sample_rejects_mismatched_mask_width_internal_context():
+    child = _SignedInput()
+    node = SignedSum(
+        inputs=child, out_channels=1, num_repetitions=1, weights=torch.tensor([[[[0.9]], [[0.1]]]])
+    )
+    sampling_ctx = SamplingContext(
+        channel_index=torch.zeros((2, 1), dtype=torch.long),
+        mask=torch.ones((2, 1), dtype=torch.bool),
+        repetition_index=torch.zeros((2,), dtype=torch.long),
+    )
+    sampling_ctx._mask = torch.ones((2, 2), dtype=torch.bool)  # type: ignore[attr-defined]
+    with pytest.raises(InvalidParameterError, match="mismatched channel_index/mask shapes"):
+        node._sample(
+            data=torch.full((2, 1), float("nan")),
+            sampling_ctx=sampling_ctx,
+            cache=Cache(),
+        )
 
 
 def test_signed_sum_sample_rejects_bad_weight_dim_and_repetitions():

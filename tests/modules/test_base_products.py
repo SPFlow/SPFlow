@@ -8,6 +8,7 @@ from spflow.learn import expectation_maximization
 from spflow.meta import Scope
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.products.outer_product import OuterProduct
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_data, make_leaf, DummyLeaf
 
@@ -195,6 +196,38 @@ def test_invalid_non_disjoint_scopes(cls, in_channels: int, out_features: int, n
             scopes=(Scope(range(out_features)), Scope(range(out_features)), Scope(range(out_features))),
             num_repetitions=num_reps,
         )
+
+
+def test_sample_does_not_mutate_parent_sampling_context():
+    module = make_module(
+        cls=ElementwiseProduct,
+        out_features=2,
+        in_channels=3,
+        num_repetitions=1,
+    )
+    n_samples = 5
+    data = torch.full((n_samples, 2 * len(module.inputs)), torch.nan)
+    channel_index = torch.randint(
+        low=0,
+        high=module.out_shape.channels,
+        size=(n_samples, module.out_shape.features),
+    )
+    mask = torch.tensor(
+        [[True, True], [True, False], [False, True], [True, True], [True, True]],
+        dtype=torch.bool,
+    )
+    sampling_ctx = SamplingContext(
+        channel_index=channel_index.clone(),
+        mask=mask.clone(),
+        repetition_index=torch.zeros((n_samples,), dtype=torch.long),
+    )
+    channel_before = sampling_ctx.channel_index.clone()
+    mask_before = sampling_ctx.mask.clone()
+
+    module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+
+    assert torch.equal(sampling_ctx.channel_index, channel_before)
+    assert torch.equal(sampling_ctx.mask, mask_before)
 
 
 # @pytest.mark.parametrize("cls", cls_values)

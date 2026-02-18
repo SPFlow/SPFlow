@@ -34,6 +34,88 @@ def _check_mask_bool(mask: Tensor) -> None:
         raise InvalidParameterError("Mask must be of type torch.bool.")
 
 
+def _check_integral_dtype(tensor: Tensor, *, name: str) -> None:
+    """Check that a tensor has a non-boolean integral dtype."""
+    if tensor.dtype == torch.bool or tensor.is_floating_point() or tensor.is_complex():
+        raise InvalidParameterError(f"{name} must have an integral dtype.")
+
+
+def _check_channel_index_tensor(channel_index: Tensor, *, name: str = "channel_index") -> None:
+    """Validate routing index tensor rank and dtype."""
+    if channel_index.ndim != 2:
+        raise InvalidParameterError(
+            f"{name} must have shape (batch, features), got rank {channel_index.ndim}."
+        )
+    _check_integral_dtype(channel_index, name=name)
+
+
+def _check_repetition_index_tensor(repetition_index: Tensor, *, name: str = "repetition_index") -> None:
+    """Validate repetition-index tensor rank and dtype."""
+    if repetition_index.ndim not in (1, 2):
+        raise InvalidParameterError(
+            f"{name} must have shape (batch,) or (batch, K), got rank {repetition_index.ndim}."
+        )
+    _check_integral_dtype(repetition_index, name=name)
+
+
+def _normalize_repetition_index(
+    repetition_index: Tensor,
+    *,
+    batch_size: int,
+    device: torch.device,
+    name: str,
+) -> Tensor:
+    """Normalize repetition indices to canonical `(batch,)` long tensor."""
+    _check_repetition_index_tensor(repetition_index, name=name)
+    if repetition_index.ndim == 2:
+        if repetition_index.shape[1] != 1:
+            raise InvalidParameterError(f"{name} must have shape (batch,) or (batch, 1).")
+        repetition_index = repetition_index[:, 0]
+    if repetition_index.shape[0] != batch_size:
+        raise InvalidParameterError(
+            f"{name} batch dimension must match channel_index: "
+            f"got {repetition_index.shape[0]}, expected {batch_size}."
+        )
+    if repetition_index.device != device:
+        raise InvalidParameterError(
+            f"{name} must be on the same device as channel_index: "
+            f"got {repetition_index.device} and {device}."
+        )
+    if repetition_index.dtype != torch.long:
+        repetition_index = repetition_index.to(dtype=torch.long)
+    return repetition_index
+
+
+def _normalize_routing_state(
+    *,
+    channel_index: Tensor,
+    mask: Tensor,
+    repetition_index: Tensor | None,
+) -> tuple[Tensor, Tensor, Tensor | None]:
+    """Validate and normalize routing tensors for consistent context state."""
+    _check_channel_index_tensor(channel_index, name="channel_index")
+    if channel_index.dtype != torch.long:
+        channel_index = channel_index.to(dtype=torch.long)
+
+    _check_mask_bool(mask)
+    if channel_index.shape != mask.shape:
+        raise InvalidParameterError("channel_index and mask must have the same shape.")
+    if channel_index.device != mask.device:
+        raise InvalidParameterError(
+            "channel_index and mask must be on the same device: "
+            f"got {channel_index.device} and {mask.device}."
+        )
+
+    if repetition_index is not None:
+        repetition_index = _normalize_repetition_index(
+            repetition_index,
+            batch_size=channel_index.shape[0],
+            device=channel_index.device,
+            name="repetition_index",
+        )
+    return channel_index, mask, repetition_index
+
+
 class SamplingContext:
     """Context information manager for sampling operations in probabilistic circuits.
 
@@ -96,6 +178,9 @@ class SamplingContext:
         """
         device_was_provided = device is not None
         self.is_mpe = is_mpe
+        self._channel_index: Tensor
+        self._mask: Tensor
+        self._repetition_index: Tensor | None
         if device is None:
             device = torch.get_default_device()
 
@@ -106,10 +191,11 @@ class SamplingContext:
                     "SamplingContext accepts either `num_samples` or (`channel_index`, `repetition_index`, "
                     "optional `mask`)."
                 )
-            self._mask = torch.full((num_samples, 1), True, dtype=torch.bool, device=device)
-            self._channel_index = torch.zeros((num_samples, 1), dtype=torch.long, device=device)
-            self.device = self.mask.device
-            self.repetition_idx = torch.zeros((num_samples,), dtype=torch.long, device=self.device)
+            self._assign_state(
+                channel_index=torch.zeros((num_samples, 1), dtype=torch.long, device=device),
+                mask=torch.full((num_samples, 1), True, dtype=torch.bool, device=device),
+                repetition_index=torch.zeros((num_samples,), dtype=torch.long, device=device),
+            )
             return
 
         # Allowed options 2/3: (channel_index[, repetition_index][, mask])
@@ -126,80 +212,110 @@ class SamplingContext:
                 dtype=torch.long,
                 device=channel_index.device,
             )
-
-        if channel_index.shape != mask.shape:
-            raise InvalidParameterError("channel_index and mask must have the same shape.")
-        _check_mask_bool(mask)
-
-        if repetition_index.shape[0] != channel_index.shape[0]:
-            raise InvalidParameterError(
-                "repetition_index batch dimension must match channel_index: "
-                f"got {repetition_index.shape[0]}, expected {channel_index.shape[0]}."
-            )
-
-        if channel_index.device != repetition_index.device:
-            raise InvalidParameterError(
-                "channel_index and repetition_index must be on the same device: "
-                f"got {channel_index.device} and {repetition_index.device}."
-            )
-        if mask.device != channel_index.device:
-            raise InvalidParameterError(
-                "mask and channel_index must be on the same device: "
-                f"got {mask.device} and {channel_index.device}."
-            )
+        channel_index, mask, repetition_index = _normalize_routing_state(
+            channel_index=channel_index,
+            mask=mask,
+            repetition_index=repetition_index,
+        )
         if device_was_provided and device != channel_index.device:
             raise InvalidParameterError(
                 "If `device` is provided, it must match channel_index/repetition_index/mask device: "
                 f"got {device}, expected {channel_index.device}."
             )
+        self._assign_state(
+            channel_index=channel_index,
+            mask=mask,
+            repetition_index=repetition_index,
+        )
 
-        self._mask = mask
-        self._channel_index = channel_index
-        self.device = self._channel_index.device
-        self.repetition_idx = repetition_index
-
-    def update(self, channel_index: Tensor, mask: Tensor):
-        """Updates the sampling context with new channel index and mask.
-
-        Args:
-            channel_index: Tensor containing the channel indices to sample from.
-            mask: Boolean tensor containing the mask to apply to the samples.
-        """
-        if not channel_index.shape == mask.shape:
-            raise InvalidParameterError("channel_index and mask must have the same shape.")
-
-        _check_mask_bool(mask)
-
+    def _assign_state(
+        self,
+        *,
+        channel_index: Tensor,
+        mask: Tensor,
+        repetition_index: Tensor | None,
+    ) -> None:
+        """Commit a fully validated routing state."""
         self._channel_index = channel_index
         self._mask = mask
+        self._repetition_index = repetition_index
+        self.device = channel_index.device
 
     @property
-    def channel_index(self):
+    def channel_index(self) -> Tensor:
         return self._channel_index
 
     @channel_index.setter
-    def channel_index(self, channel_index):
-        if channel_index.shape != self._mask.shape:
-            raise InvalidParameterError("New channel_index and previous mask must have the same shape.")
+    def channel_index(self, channel_index: Tensor) -> None:
+        _check_channel_index_tensor(channel_index, name="channel_index")
+        if channel_index.dtype != torch.long:
+            channel_index = channel_index.to(dtype=torch.long)
+        if channel_index.device != self._mask.device:
+            raise InvalidParameterError(
+                "channel_index and mask must be on the same device: "
+                f"got {channel_index.device} and {self._mask.device}."
+            )
+        if channel_index.shape[0] != self._mask.shape[0]:
+            raise InvalidParameterError(
+                "channel_index and mask must share the same batch size: "
+                f"got {channel_index.shape[0]} and {self._mask.shape[0]}."
+            )
+        if self._repetition_index is not None:
+            if channel_index.shape[0] != self._repetition_index.shape[0]:
+                raise InvalidParameterError(
+                    "channel_index batch dimension must match repetition_index: "
+                    f"got {channel_index.shape[0]}, expected {self._repetition_index.shape[0]}."
+                )
+            if channel_index.device != self._repetition_index.device:
+                raise InvalidParameterError(
+                    "channel_index and repetition_index must be on the same device: "
+                    f"got {channel_index.device} and {self._repetition_index.device}."
+                )
         self._channel_index = channel_index
+        self.device = channel_index.device
 
     @property
-    def mask(self):
+    def mask(self) -> Tensor:
         return self._mask
 
     @mask.setter
-    def mask(self, mask):
-        if mask.shape != self._channel_index.shape:
-            raise InvalidParameterError("New mask and previous channel_index must have the same shape.")
+    def mask(self, mask: Tensor) -> None:
         _check_mask_bool(mask)
+        if mask.device != self._channel_index.device:
+            raise InvalidParameterError(
+                "mask and channel_index must be on the same device: "
+                f"got {mask.device} and {self._channel_index.device}."
+            )
+        if mask.shape[0] != self._channel_index.shape[0]:
+            raise InvalidParameterError(
+                "mask and channel_index must share the same batch size: "
+                f"got {mask.shape[0]} and {self._channel_index.shape[0]}."
+            )
         self._mask = mask
+        self.device = mask.device
 
     @property
-    def samples_mask(self):
+    def repetition_index(self) -> Tensor | None:
+        return self._repetition_index
+
+    @repetition_index.setter
+    def repetition_index(self, repetition_index: Tensor | None) -> None:
+        if repetition_index is None:
+            self._repetition_index = None
+            return
+        self._repetition_index = _normalize_repetition_index(
+            repetition_index,
+            batch_size=self._channel_index.shape[0],
+            device=self._channel_index.device,
+            name="repetition_index",
+        )
+
+    @property
+    def samples_mask(self) -> Tensor:
         return self.mask.sum(1) > 0
 
     @property
-    def channel_index_masked(self):
+    def channel_index_masked(self) -> Tensor:
         return self.channel_index[self.samples_mask]
 
     def copy(self) -> SamplingContext:
@@ -208,10 +324,34 @@ class SamplingContext:
         Returns:
             SamplingContext: A new SamplingContext instance with copied tensors.
         """
+        return self.with_routing(
+            channel_index=self.channel_index,
+            mask=self.mask,
+            clone_routing=True,
+            clone_repetition=True,
+        )
+
+    def with_routing(
+        self,
+        *,
+        channel_index: Tensor,
+        mask: Tensor,
+        clone_routing: bool = True,
+        clone_repetition: bool = True,
+    ) -> SamplingContext:
+        """Build a child context with routing tensors and inherited sampling flags."""
+        if clone_routing:
+            channel_index = channel_index.clone()
+            mask = mask.clone()
+
+        repetition_index = self.repetition_index
+        if repetition_index is not None and clone_repetition:
+            repetition_index = repetition_index.clone()
+
         return SamplingContext(
-            channel_index=self.channel_index.clone(),
-            mask=self.mask.clone(),
-            repetition_index=self.repetition_idx.clone(),
+            channel_index=channel_index,
+            mask=mask,
+            repetition_index=repetition_index,
             is_mpe=self.is_mpe,
         )
 
@@ -250,10 +390,8 @@ class SamplingContext:
 
         if allow_from_one and current_features == 1:
             # Repeat along feature axis while preserving per-row batch semantics.
-            self.update(
-                channel_index=self.channel_index.repeat(1, target_features),
-                mask=self.mask.repeat(1, target_features),
-            )
+            self.channel_index = self.channel_index.repeat(1, target_features)
+            self.mask = self.mask.repeat(1, target_features)
             return
 
         if allow_from_one:
@@ -296,10 +434,8 @@ class SamplingContext:
                 f"got {current_features}, expected {target_features} or split width {split_features}."
             )
 
-        self.update(
-            channel_index=self.channel_index.repeat(1, num_splits),
-            mask=self.mask.repeat(1, num_splits),
-        )
+        self.channel_index = self.channel_index.repeat(1, num_splits)
+        self.mask = self.mask.repeat(1, num_splits)
 
     def scatter_split_groups_to_input_width(
         self,
@@ -341,7 +477,8 @@ class SamplingContext:
             dest = torch.as_tensor(group, dtype=torch.long, device=self.channel_index.device)
             channel_index[:, dest] = self.channel_index
             mask[:, dest] = self.mask
-        self.update(channel_index=channel_index, mask=mask)
+        self.channel_index = channel_index
+        self.mask = mask
 
     def slice_feature_ranges(self, ranges: Sequence[tuple[int, int]]) -> list[tuple[Tensor, Tensor]]:
         """Slice per-child contiguous feature ranges from a full-width context.
@@ -422,7 +559,15 @@ class SamplingContext:
         return out
 
     def __repr__(self) -> str:
-        return f"SamplingContext(channel_index.shape={self.channel_index.shape}), mask.shape={self.mask.shape}), num_samples={self.channel_index.shape[0]})"
+        rep_shape = None if self.repetition_index is None else tuple(self.repetition_index.shape)
+        return (
+            "SamplingContext("
+            f"channel_index.shape={tuple(self.channel_index.shape)}, "
+            f"mask.shape={tuple(self.mask.shape)}, "
+            f"repetition_index.shape={rep_shape}, "
+            f"num_samples={self.channel_index.shape[0]}"
+            ")"
+        )
 
 
 def validate_sampling_context(
@@ -443,12 +588,18 @@ def validate_sampling_context(
     if sampling_ctx is None:
         raise InvalidParameterError("Sampling requires an explicit sampling_ctx for internal sampling.")
 
+    _check_channel_index_tensor(sampling_ctx.channel_index, name="sampling_ctx.channel_index")
     if sampling_ctx.channel_index.shape != sampling_ctx.mask.shape:
         raise InvalidParameterError(
             "sampling_ctx has mismatched channel_index/mask shapes: "
             f"channel_index={sampling_ctx.channel_index.shape}, mask={sampling_ctx.mask.shape}."
         )
     _check_mask_bool(sampling_ctx.mask)
+    if sampling_ctx.channel_index.device != sampling_ctx.mask.device:
+        raise InvalidParameterError(
+            "sampling_ctx.channel_index and sampling_ctx.mask must be on the same device: "
+            f"got {sampling_ctx.channel_index.device} and {sampling_ctx.mask.device}."
+        )
 
     if num_samples is not None and sampling_ctx.channel_index.shape[0] != num_samples:
         raise InvalidParameterError(
@@ -492,34 +643,40 @@ def validate_sampling_context(
     if num_repetitions is not None:
         if num_repetitions < 1:
             raise InvalidParameterError(f"num_repetitions must be >= 1, got {num_repetitions}.")
-        if sampling_ctx.repetition_idx is None:
+        if sampling_ctx.repetition_index is None:
+            if num_repetitions > 1:
+                raise InvalidParameterError(
+                    "sampling_ctx.repetition_index must be provided when sampling from a module with "
+                    "num_repetitions > 1."
+                )
+            return
+
+        repetition_index = sampling_ctx.repetition_index
+        _check_repetition_index_tensor(repetition_index, name="sampling_ctx.repetition_index")
+        if repetition_index.device != sampling_ctx.channel_index.device:
             raise InvalidParameterError(
-                "sampling_ctx.repetition_idx must be provided when sampling from a module with "
-                "num_repetitions > 1."
+                "sampling_ctx.repetition_index and sampling_ctx.channel_index must be on the same device: "
+                f"got {repetition_index.device} and {sampling_ctx.channel_index.device}."
+            )
+        if repetition_index.ndim != 1:
+            raise InvalidParameterError("sampling_ctx.repetition_index must have canonical shape (batch,).")
+
+        expected_batch = (
+            int(num_samples) if num_samples is not None else int(sampling_ctx.channel_index.shape[0])
+        )
+        if repetition_index.shape[0] != expected_batch:
+            raise InvalidParameterError(
+                "sampling_ctx.repetition_index batch dimension must match the number of samples: "
+                f"got {repetition_index.shape[0]}, expected {expected_batch}."
             )
 
-        repetition_idx = sampling_ctx.repetition_idx
-        if repetition_idx.ndim == 2 and repetition_idx.shape[1] == 1:
-            repetition_idx_flat = repetition_idx[:, 0]
-        elif repetition_idx.ndim == 1:
-            repetition_idx_flat = repetition_idx
-        else:
-            raise InvalidParameterError("sampling_ctx.repetition_idx must have shape (batch,) or (batch, 1).")
-
-        expected_batch = int(num_samples) if num_samples is not None else int(sampling_ctx.channel_index.shape[0])
-        if repetition_idx_flat.shape[0] != expected_batch:
-            raise InvalidParameterError(
-                "sampling_ctx.repetition_idx batch dimension must match the number of samples: "
-                f"got {repetition_idx_flat.shape[0]}, expected {expected_batch}."
-            )
-
-        invalid = (repetition_idx_flat < 0) | (repetition_idx_flat >= num_repetitions)
+        invalid = (repetition_index < 0) | (repetition_index >= num_repetitions)
         if invalid.any():
-            invalid_values = repetition_idx_flat[invalid]
+            invalid_values = repetition_index[invalid]
             observed_min = int(invalid_values.min().item())
             observed_max = int(invalid_values.max().item())
             raise InvalidParameterError(
-                "sampling_ctx.repetition_idx contains out-of-range indices: "
+                "sampling_ctx.repetition_index contains out-of-range indices: "
                 f"valid range is [0, {num_repetitions - 1}], observed min={observed_min}, "
                 f"max={observed_max}."
             )
@@ -539,6 +696,12 @@ def update_channel_index_strict(sampling_ctx: SamplingContext, new_channel_index
         ShapeError: If batch size or feature width differs from the existing
             context mask.
     """
+    _check_channel_index_tensor(new_channel_index, name="new_channel_index")
+    if new_channel_index.device != sampling_ctx.mask.device:
+        raise InvalidParameterError(
+            "new_channel_index and sampling_ctx.mask must be on the same device: "
+            f"got {new_channel_index.device} and {sampling_ctx.mask.device}."
+        )
     if new_channel_index.shape[0] != sampling_ctx.mask.shape[0]:
         raise ShapeError(
             "sampling_ctx.channel_index batch mismatch for update: "

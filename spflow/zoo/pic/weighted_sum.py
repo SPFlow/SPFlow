@@ -223,14 +223,14 @@ class WeightedSum(Module):
         weights = self._weights
 
         # Index into the correct weight channels given by parent module
-        if sampling_ctx.repetition_idx is not None:
+        if sampling_ctx.repetition_index is not None:
             batch_size = int(sampling_ctx.channel_index.shape[0])
             weights = repeat(weights, "f ci co r -> b f ci co r", b=batch_size)
             num_features = int(weights.shape[1])
             num_input_channels = int(weights.shape[2])
             num_output_channels = int(weights.shape[3])
             indices = repeat(
-                rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                rearrange(sampling_ctx.repetition_index, "... -> (...)"),
                 "b -> b f ci co 1",
                 f=num_features,
                 ci=num_input_channels,
@@ -241,7 +241,7 @@ class WeightedSum(Module):
         else:
             if self.out_shape.repetitions > 1:
                 raise ValueError(
-                    "sampling_ctx.repetition_idx must be provided when sampling from a module with "
+                    "sampling_ctx.repetition_index must be provided when sampling from a module with "
                     "num_repetitions > 1."
                 )
             batch_size = int(sampling_ctx.channel_index.shape[0])

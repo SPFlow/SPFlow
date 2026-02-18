@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import torch
 
-from spflow.exceptions import ShapeError
+from spflow.exceptions import InvalidParameterError, ShapeError
 from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -318,7 +318,7 @@ class TestWeightedSumSamplingAndMarginalize:
         assert inp.sample_calls[-1].channel_index.shape == (3, 1)
 
     def test_sample_defaults_repetition_index_when_repetitions_gt_1_internal_context(self):
-        """Internal _sample uses default repetition_idx from SamplingContext when absent."""
+        """Internal _sample uses default repetition_index from SamplingContext when absent."""
         f2s = np.array([[Scope([0]), Scope([0])]], dtype=object)
         inp = DummyInput(feature_to_scope=f2s, channels=2, repetitions=2)
         ws = WeightedSum(inputs=inp, weights=torch.ones(1, 2, 2, 2))
@@ -329,7 +329,7 @@ class TestWeightedSumSamplingAndMarginalize:
         )
         out = ws._sample(data=torch.full((2, 1), float("nan")), sampling_ctx=sampling_ctx, cache=Cache())
         assert out.shape == (2, 1)
-        assert inp.sample_calls[-1].repetition_idx is not None
+        assert inp.sample_calls[-1].repetition_index is not None
 
     def test_sample_raises_for_zero_rows(self):
         """Test stochastic sample branch rejects zero-sum weight rows."""
@@ -350,10 +350,8 @@ class TestWeightedSumSamplingAndMarginalize:
             repetition_index=torch.zeros(2, dtype=torch.long),
         )
         sampling_ctx._mask = torch.ones((2, 1), dtype=torch.bool)  # type: ignore[attr-defined]
-        with pytest.raises(ShapeError, match="incompatible feature width"):
-            ws._sample(
-                data=torch.full((2, 2), float("nan")), sampling_ctx=sampling_ctx, cache=Cache()
-            )
+        with pytest.raises(InvalidParameterError, match="mismatched channel_index/mask shapes"):
+            ws._sample(data=torch.full((2, 2), float("nan")), sampling_ctx=sampling_ctx, cache=Cache())
 
     def test_sample_creates_data_when_none(self):
         """Test num_samples/data default creation branch."""

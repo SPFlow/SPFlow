@@ -185,6 +185,41 @@ def test_sample_dim2_rejects_out_of_range_global_channel_id_internal_context():
         module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
 
+def test_sample_does_not_mutate_parent_sampling_context():
+    scope = Scope([0, 1])
+    child_a = Normal(
+        scope=scope,
+        out_channels=1,
+        num_repetitions=1,
+        loc=torch.full((2, 1, 1), 100.0),
+        scale=torch.full((2, 1, 1), 1e-6),
+    )
+    child_b = Normal(
+        scope=scope,
+        out_channels=2,
+        num_repetitions=1,
+        loc=torch.tensor([0.0, 10.0], dtype=torch.get_default_dtype()).view(1, 2, 1).repeat(2, 1, 1),
+        scale=torch.full((2, 2, 1), 1e-6),
+    )
+    module = Cat(inputs=[child_a, child_b], dim=2)
+    data = torch.full((3, 2), torch.nan)
+    sampling_ctx = make_sampling_context(
+        num_samples=3,
+        num_features=2,
+        num_channels=3,
+        num_repetitions=1,
+        channel_index=torch.tensor([[0, 0], [1, 1], [2, 2]], dtype=torch.long),
+        mask=torch.tensor([[True, True], [True, False], [False, True]], dtype=torch.bool),
+    )
+    channel_before = sampling_ctx.channel_index.clone()
+    mask_before = sampling_ctx.mask.clone()
+
+    module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+
+    assert torch.equal(sampling_ctx.channel_index, channel_before)
+    assert torch.equal(sampling_ctx.mask, mask_before)
+
+
 @pytest.mark.parametrize("out_channels,out_features, num_reps, dim", params)
 def test_expectation_maximization(out_channels: int, out_features: int, num_reps, dim: int):
     module = make_cat(

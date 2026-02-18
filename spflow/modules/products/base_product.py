@@ -163,15 +163,14 @@ class BaseProduct(Module, ABC):
                 cid = cid.unsqueeze(1)
             if mask.ndim == 1:
                 mask = mask.unsqueeze(1)
-            sampling_ctx.update(channel_index=cid, mask=mask)
+            child_ctx = sampling_ctx.with_routing(channel_index=cid, mask=mask)
             inp._sample(
                 data=data,
                 cache=cache,
-                sampling_ctx=sampling_ctx,
+                sampling_ctx=child_ctx,
             )
 
         return data
-
 
     def marginalize(
         self,

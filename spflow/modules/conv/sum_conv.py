@@ -294,12 +294,12 @@ class SumConv(Module):
         logits = self.logits
 
         # Select repetition
-        if sampling_ctx.repetition_idx is not None:
+        if sampling_ctx.repetition_index is not None:
             # logits: (out_c, in_c, k, k, reps) -> select reps
             out_channels = int(logits.shape[0])
             in_channels = int(logits.shape[1])
             rep_idx = repeat(
-                rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                rearrange(sampling_ctx.repetition_index, "... -> (...)"),
                 "b -> b co ci kh kw 1",
                 co=out_channels,
                 ci=in_channels,
@@ -321,11 +321,11 @@ class SumConv(Module):
             input_lls = cache["log_likelihood"][self.inputs]  # (batch, features, in_c, reps)
 
             # Select repetition
-            if sampling_ctx.repetition_idx is not None:
+            if sampling_ctx.repetition_index is not None:
                 num_features = int(input_lls.shape[1])
                 num_input_channels = int(input_lls.shape[2])
                 rep_idx = repeat(
-                    rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
                     "b -> b f ci 1",
                     f=num_features,
                     ci=num_input_channels,

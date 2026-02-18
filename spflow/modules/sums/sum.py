@@ -305,12 +305,12 @@ class Sum(Module):
         sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
 
         # Index into the correct weight channels given by parent module
-        if sampling_ctx.repetition_idx is not None:
+        if sampling_ctx.repetition_index is not None:
             batch_size = int(sampling_ctx.channel_index.shape[0])
             logits = repeat(self.logits, "f ci co r -> b f ci co r", b=batch_size)
             # shape [b, n_features, in_c, out_c, r]
 
-            indices = sampling_ctx.repetition_idx
+            indices = sampling_ctx.repetition_index
 
             # Use gather to select the correct repetition
             # Repeat indices to match the target dimension for gathering
@@ -331,7 +331,7 @@ class Sum(Module):
         else:
             if self.out_shape.repetitions > 1:
                 raise ValueError(
-                    "sampling_ctx.repetition_idx must be provided when sampling from a module with "
+                    "sampling_ctx.repetition_index must be provided when sampling from a module with "
                     "num_repetitions > 1."
                 )
             logits = self.logits[..., 0]  # Select the 0th repetition
@@ -352,11 +352,11 @@ class Sum(Module):
             # Get the log likelihoods from the cache
             input_lls = cache["log_likelihood"][self.inputs]
 
-            if sampling_ctx.repetition_idx is not None:
+            if sampling_ctx.repetition_index is not None:
                 num_features = int(input_lls.shape[1])
                 in_channels_total = int(input_lls.shape[2])
                 indices = repeat(
-                    rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
                     "n -> n f ci 1",
                     f=num_features,
                     ci=in_channels_total,
@@ -366,7 +366,7 @@ class Sum(Module):
                 input_lls = torch.gather(input_lls, dim=-1, index=indices)
                 input_lls = rearrange(input_lls, "b f ci 1 -> b f ci")
             else:
-                # When no repetition_idx, squeeze the repetitions dimension of input_lls
+                # When no repetition_index, squeeze the repetitions dimension of input_lls
                 if input_lls.dim() == 4 and input_lls.shape[-1] == 1:
                     input_lls = rearrange(input_lls, "b f ci 1 -> b f ci")
 

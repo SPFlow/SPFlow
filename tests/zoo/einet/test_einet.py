@@ -461,8 +461,8 @@ class TestEinetAdditionalCoverage:
         samples = model._sample(data=data, sampling_ctx=sampling_ctx, cache=cache)
 
         assert samples.shape == (4, 4)
-        assert sampling_ctx.repetition_idx is not None
-        assert torch.equal(sampling_ctx.repetition_idx, torch.zeros(4, dtype=torch.long))
+        assert sampling_ctx.repetition_index is not None
+        assert torch.equal(sampling_ctx.repetition_index, torch.zeros(4, dtype=torch.long))
 
     def test_delegating_methods(self, monkeypatch: pytest.MonkeyPatch):
         leaf_modules = make_leaf_modules(4, 3, 1)

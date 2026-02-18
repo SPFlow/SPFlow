@@ -467,11 +467,7 @@ def test_sample_raises_on_incompatible_mask_width():
         def __init__(self):
             self.channel_index = torch.zeros((5, 3), dtype=torch.long)
             self.mask = torch.ones((5, 1), dtype=torch.bool)
-            self.repetition_idx = None
-
-        def update(self, channel_index, mask):
-            self.channel_index = channel_index
-            self.mask = mask
+            self.repetition_index = None
 
         def require_feature_width(self, expected_features):
             if self.channel_index.shape[1] != expected_features:

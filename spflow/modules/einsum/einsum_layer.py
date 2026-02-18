@@ -372,10 +372,10 @@ class EinsumLayer(Module):
         # logits shape: (B, D, R, I, J)
 
         # Select repetition if specified
-        if sampling_ctx.repetition_idx is not None:
+        if sampling_ctx.repetition_index is not None:
             num_features = self.out_shape.features
             rep_idx = repeat(
-                rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                rearrange(sampling_ctx.repetition_index, "... -> (...)"),
                 "b -> b f 1 i j",
                 f=num_features,
                 i=num_left_channels,
@@ -386,7 +386,7 @@ class EinsumLayer(Module):
             # logits shape: (B, D, I, J)
         else:
             if self.out_shape.repetitions > 1:
-                raise ValueError("repetition_idx must be provided when sampling with num_repetitions > 1")
+                raise ValueError("repetition_index must be provided when sampling with num_repetitions > 1")
             logits = logits[:, :, 0, :, :]
 
         # Flatten (I, J) for categorical sampling
@@ -406,11 +406,11 @@ class EinsumLayer(Module):
 
         if left_ll is not None and right_ll is not None:
             # Select repetition
-            if sampling_ctx.repetition_idx is not None:
+            if sampling_ctx.repetition_index is not None:
                 num_features = int(left_ll.shape[1])
                 num_left_channels = int(left_ll.shape[2])
                 rep_idx_l = repeat(
-                    rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
                     "b -> b f i 1",
                     f=num_features,
                     i=num_left_channels,
@@ -448,21 +448,18 @@ class EinsumLayer(Module):
         # Sample from left and right children
         if self._two_inputs:
             # Left child
-            left_ctx = sampling_ctx.copy()
-            left_ctx.channel_index = left_indices
+            left_ctx = sampling_ctx.with_routing(channel_index=left_indices, mask=sampling_ctx.mask)
             self.inputs[0]._sample(data=data, cache=cache, sampling_ctx=left_ctx)
 
             # Right child
-            right_ctx = sampling_ctx.copy()
-            right_ctx.channel_index = right_indices
+            right_ctx = sampling_ctx.with_routing(channel_index=right_indices, mask=sampling_ctx.mask)
             self.inputs[1]._sample(data=data, cache=cache, sampling_ctx=right_ctx)
         else:
             # Single input with Split module - use generic merge_split_indices
             full_indices = self.inputs.merge_split_indices(left_indices, right_indices)
             full_mask = repeat(sampling_ctx.mask, "b f -> b (f two)", two=2)
 
-            child_ctx = sampling_ctx.copy()
-            child_ctx.update(channel_index=full_indices, mask=full_mask)
+            child_ctx = sampling_ctx.with_routing(channel_index=full_indices, mask=full_mask)
             self.inputs._sample(data=data, cache=cache, sampling_ctx=child_ctx)
 
         return data
@@ -526,7 +523,9 @@ class EinsumLayer(Module):
             self.inputs[0]._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
             self.inputs[1]._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
         else:
-            self.inputs.inputs._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
+            self.inputs.inputs._expectation_maximization_step(
+                data, bias_correction=bias_correction, cache=cache
+            )
 
     def marginalize(
         self,

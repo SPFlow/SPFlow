@@ -52,4 +52,5 @@ def upsample_sampling_context(
     channel_idx = channel_idx.view(batch_size, new_features)
     mask = mask.view(batch_size, new_features)
 
-    sampling_ctx.update(channel_index=channel_idx, mask=mask)
+    sampling_ctx.channel_index = channel_idx
+    sampling_ctx.mask = mask

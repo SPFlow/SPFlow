@@ -624,26 +624,6 @@ class LeafModule(Module, ABC):
         instance_mask = samples_mask.sum(1) > 0
         n_samples = instance_mask.sum()  # count number of rows which have at least one true value
 
-        if sampling_ctx.repetition_idx is None:
-            if self.out_shape.repetitions > 1:
-                raise ValueError(
-                    "Repetition index must be provided in sampling context for leaves with multiple repetitions."
-                )
-            else:
-                sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
-        else:
-            repetition_idx = sampling_ctx.repetition_idx
-            if repetition_idx.ndim == 2 and repetition_idx.shape[1] == 1:
-                repetition_idx = rearrange(repetition_idx, "b 1 -> b")
-            elif repetition_idx.ndim != 1:
-                raise ValueError("sampling_ctx.repetition_idx must have shape (batch,) or (batch, 1).")
-
-            if repetition_idx.shape[0] != data.shape[0]:
-                raise ValueError(
-                    "sampling_ctx.repetition_idx batch dimension must match the number of samples."
-                )
-            sampling_ctx.repetition_idx = repetition_idx.to(dtype=torch.long, device=data.device)
-
         if sampling_ctx.is_mpe:
             if self.is_conditional:
                 evidence = data[instance_mask][:, self.scope.evidence]
@@ -663,16 +643,16 @@ class LeafModule(Module, ABC):
                 # Get mode of distribution as MPE
                 samples = rearrange(self.mode, "f ci r -> 1 f ci r")
 
-            if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
+            if sampling_ctx.repetition_index is not None and samples.ndim == 4:
                 if not self.is_conditional:
                     samples = repeat(samples, "1 f ci r -> n f ci r", n=int(n_samples.item())).detach()
-                # repetition_idx shape: (n_samples,)
-                repetition_idx = sampling_ctx.repetition_idx[instance_mask]
+                # repetition_index shape: (n_samples,)
+                repetition_index = sampling_ctx.repetition_index[instance_mask]
 
                 num_features = samples.shape[1]
                 num_channels = samples.shape[2]
                 r_idxs = repeat(
-                    rearrange(repetition_idx, "b -> b 1 1 1"),
+                    rearrange(repetition_index, "b -> b 1 1 1"),
                     "b 1 1 1 -> b f c 1",
                     f=num_features,
                     c=num_channels,
@@ -682,9 +662,9 @@ class LeafModule(Module, ABC):
                 samples = rearrange(torch.gather(samples, dim=-1, index=r_idxs), "b f ci 1 -> b f ci")
 
             elif (
-                sampling_ctx.repetition_idx is not None
+                sampling_ctx.repetition_index is not None
                 and samples.ndim != 4
-                or sampling_ctx.repetition_idx is None
+                or sampling_ctx.repetition_index is None
                 and samples.ndim == 4
             ):
                 raise ValueError(
@@ -706,14 +686,14 @@ class LeafModule(Module, ABC):
                 # Sample n_samples from distribution
                 samples = dist.sample((n_samples,))
 
-            if sampling_ctx.repetition_idx is not None and samples.ndim == 4:
-                # repetition_idx shape: (n_samples,)
-                repetition_idx = sampling_ctx.repetition_idx[instance_mask]
+            if sampling_ctx.repetition_index is not None and samples.ndim == 4:
+                # repetition_index shape: (n_samples,)
+                repetition_index = sampling_ctx.repetition_index[instance_mask]
 
                 num_features = samples.shape[1]
                 num_channels = samples.shape[2]
                 r_idxs = repeat(
-                    rearrange(repetition_idx, "b -> b 1 1 1"),
+                    rearrange(repetition_index, "b -> b 1 1 1"),
                     "b 1 1 1 -> b f c 1",
                     f=num_features,
                     c=num_channels,
@@ -723,9 +703,9 @@ class LeafModule(Module, ABC):
                 samples = rearrange(torch.gather(samples, dim=-1, index=r_idxs), "b f ci 1 -> b f ci")
 
             elif (
-                sampling_ctx.repetition_idx is not None
+                sampling_ctx.repetition_index is not None
                 and samples.ndim != 4
-                or sampling_ctx.repetition_idx is None
+                or sampling_ctx.repetition_index is None
                 and samples.ndim == 4
             ):
                 raise ValueError(

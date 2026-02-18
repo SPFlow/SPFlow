@@ -637,14 +637,6 @@ class PiecewiseLinear(LeafModule):
         instance_mask = samples_mask.sum(1) > 0
         n_samples = instance_mask.sum()
 
-        if sampling_ctx.repetition_idx is None:
-            if self.out_shape.repetitions > 1:
-                raise ValueError(
-                    "Repetition index must be provided in sampling context for leaves with multiple repetitions."
-                )
-            else:
-                sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
-
         dist = self.distribution
         n_samples_int = int(n_samples.item())
 
@@ -656,12 +648,12 @@ class PiecewiseLinear(LeafModule):
 
         # Handle repetition index
         if samples.ndim == 5:
-            repetition_idx = sampling_ctx.repetition_idx[instance_mask]
+            repetition_index = sampling_ctx.repetition_index[instance_mask]
             num_channels = samples.shape[1]
             num_features = samples.shape[2]
             num_leaves = samples.shape[3]
             r_idxs = repeat(
-                rearrange(repetition_idx, "n -> n 1 1 1 1"),
+                rearrange(repetition_index, "n -> n 1 1 1 1"),
                 "n 1 1 1 1 -> n c f l 1",
                 c=num_channels,
                 f=num_features,

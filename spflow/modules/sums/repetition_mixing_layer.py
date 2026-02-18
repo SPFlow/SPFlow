@@ -138,13 +138,13 @@ class RepetitionMixingLayer(Sum):
 
         if sampling_ctx.is_mpe:
             # Take the argmax of the logits to obtain the most probable index
-            repetition_idx = torch.argmax(logits.sum(-2), dim=-1).squeeze(-1)
+            repetition_index = torch.argmax(logits.sum(-2), dim=-1).squeeze(-1)
         else:
             # Sample from categorical distribution defined by weights to obtain indices for repetitions
             # sum up the input channel for distribution
-            repetition_idx = torch.distributions.Categorical(logits=logits.sum(-2)).sample()
+            repetition_index = torch.distributions.Categorical(logits=logits.sum(-2)).sample()
 
-        sampling_ctx.repetition_idx = repetition_idx
+        sampling_ctx.repetition_index = repetition_index
 
         # Sample from input module
         self.inputs._sample(

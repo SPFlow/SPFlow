@@ -20,17 +20,17 @@ def test_sampling_context_init_defaults():
 
     assert ctx.mask.shape == (3, 1)
     assert ctx.channel_index.shape == (3, 1)
-    assert ctx.repetition_idx.shape == (3,)
+    assert ctx.repetition_index.shape == (3,)
     assert ctx.mask.dtype == torch.bool
     assert ctx.channel_index.dtype == torch.long
-    assert ctx.repetition_idx.dtype == torch.long
+    assert ctx.repetition_index.dtype == torch.long
     assert ctx.is_mpe is False
     assert ctx.samples_mask.tolist() == [True, True, True]
 
 
 def test_sampling_context_requires_num_samples_when_no_tensors_provided():
     """SamplingContext requires num_samples if channel_index/mask are not provided."""
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidParameterError):
         SamplingContext()
 
 
@@ -50,7 +50,7 @@ def test_sampling_context_init_with_tensors():
 
     assert ctx.channel_index is channel_index
     assert ctx.mask is mask
-    assert ctx.repetition_idx is repetition_index
+    assert ctx.repetition_index is repetition_index
     assert ctx.samples_mask.tolist() == [True, True]
     assert torch.equal(ctx.channel_index_masked, channel_index[[0, 1]])
 
@@ -64,8 +64,8 @@ def test_sampling_context_defaults_repetition_for_explicit_tensors():
         channel_index=channel_index,
         mask=mask,
     )
-    assert torch.equal(ctx.repetition_idx, torch.zeros((2,), dtype=torch.long))
-    assert ctx.repetition_idx.device == channel_index.device
+    assert torch.equal(ctx.repetition_index, torch.zeros((2,), dtype=torch.long))
+    assert ctx.repetition_index.device == channel_index.device
 
 
 def test_sampling_context_explicit_tensors_require_device_match_when_provided():
@@ -102,7 +102,7 @@ def test_sampling_context_init_shape_mismatch():
     mask = torch.zeros((2, 1), dtype=torch.bool)
     repetition_index = torch.zeros((2,), dtype=torch.long)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidParameterError):
         SamplingContext(channel_index=channel_index, repetition_index=repetition_index, mask=mask)
 
 
@@ -112,7 +112,7 @@ def test_sampling_context_init_accepts_channel_index_without_repetition_or_mask(
 
     ctx = SamplingContext(channel_index=channel_index)
     assert torch.equal(ctx.mask, torch.ones_like(channel_index, dtype=torch.bool))
-    assert torch.equal(ctx.repetition_idx, torch.zeros((1,), dtype=torch.long))
+    assert torch.equal(ctx.repetition_index, torch.zeros((1,), dtype=torch.long))
 
 
 def test_sampling_context_init_rejects_non_bool_mask():
@@ -121,51 +121,82 @@ def test_sampling_context_init_rejects_non_bool_mask():
     mask = torch.ones((1, 1), dtype=torch.float32)
     repetition_index = torch.zeros((1,), dtype=torch.long)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidParameterError):
         SamplingContext(channel_index=channel_index, repetition_index=repetition_index, mask=mask)
 
 
-def test_sampling_context_update_validation():
-    """update enforces matching shapes and boolean mask."""
+def test_sampling_context_init_rejects_non_integral_channel_index():
+    channel_index = torch.ones((1, 1), dtype=torch.float32)
+    with pytest.raises(InvalidParameterError, match="integral"):
+        SamplingContext(channel_index=channel_index)
+
+
+def test_sampling_context_init_rejects_non_integral_repetition_index():
+    channel_index = torch.zeros((1, 1), dtype=torch.long)
+    repetition_index = torch.ones((1,), dtype=torch.float32)
+    with pytest.raises(InvalidParameterError, match="integral"):
+        SamplingContext(channel_index=channel_index, repetition_index=repetition_index)
+
+
+def test_sampling_context_assignment_validation():
+    """Setters enforce routing dtype and batch-size constraints."""
     channel_index = torch.zeros((2, 1), dtype=torch.long)
     mask = torch.ones((2, 1), dtype=torch.bool)
     ctx = SamplingContext(channel_index=channel_index, repetition_index=_rep_idx(channel_index), mask=mask)
 
     new_channel_index = torch.ones((2, 1), dtype=torch.long)
     new_mask = torch.tensor([[True], [False]], dtype=torch.bool)
-    ctx.update(channel_index=new_channel_index, mask=new_mask)
+    ctx.channel_index = new_channel_index
+    ctx.mask = new_mask
 
     assert torch.equal(ctx.channel_index, new_channel_index)
     assert torch.equal(ctx.mask, new_mask)
 
-    with pytest.raises(ValueError):
-        ctx.update(channel_index=torch.zeros((1, 1), dtype=torch.long), mask=new_mask)
+    with pytest.raises(InvalidParameterError):
+        ctx.channel_index = torch.zeros((1, 1), dtype=torch.long)
 
-    with pytest.raises(ValueError):
-        ctx.update(channel_index=new_channel_index, mask=torch.ones((2, 1), dtype=torch.int64))
+    with pytest.raises(InvalidParameterError):
+        ctx.mask = torch.ones((2, 1), dtype=torch.int64)
+
+    with pytest.raises(InvalidParameterError, match="integral"):
+        ctx.channel_index = torch.ones((2, 1), dtype=torch.float32)
 
 
-def test_sampling_context_property_setters():
-    """channel_index and mask setters validate shapes and dtypes."""
+def test_sampling_context_properties_are_writable():
+    """Routing properties are writable via direct assignments."""
     channel_index = torch.zeros((2, 2), dtype=torch.long)
     mask = torch.ones((2, 2), dtype=torch.bool)
     ctx = SamplingContext(channel_index=channel_index, repetition_index=_rep_idx(channel_index), mask=mask)
 
-    with pytest.raises(ValueError):
-        ctx.channel_index = torch.zeros((1, 2), dtype=torch.long)
-
-    with pytest.raises(ValueError):
-        ctx.mask = torch.ones((1, 2), dtype=torch.bool)
-
-    with pytest.raises(ValueError):
-        ctx.mask = torch.ones((2, 3), dtype=torch.bool)
-
-    with pytest.raises(ValueError):
-        ctx.mask = torch.ones((2, 2), dtype=torch.int64)
-
-    updated_mask = torch.tensor([[True, False], [True, True]], dtype=torch.bool)
+    updated_channels = torch.zeros((2, 3), dtype=torch.long)
+    updated_mask = torch.ones((2, 3), dtype=torch.bool)
+    updated_repetitions = torch.tensor([1, 0], dtype=torch.long)
+    ctx.channel_index = updated_channels
     ctx.mask = updated_mask
+    ctx.repetition_index = updated_repetitions
+
+    assert torch.equal(ctx.channel_index, updated_channels)
     assert torch.equal(ctx.mask, updated_mask)
+    assert torch.equal(ctx.repetition_index, updated_repetitions)
+
+
+def test_sampling_context_assignment_normalizes_column_vector_repetitions():
+    ctx = SamplingContext(channel_index=torch.zeros((2, 1), dtype=torch.long))
+    ctx.repetition_index = torch.tensor([[1], [0]], dtype=torch.long)
+    assert ctx.repetition_index.shape == (2,)
+    assert torch.equal(ctx.repetition_index, torch.tensor([1, 0], dtype=torch.long))
+
+
+def test_sampling_context_assignment_rejects_non_column_rank2_repetitions():
+    ctx = SamplingContext(channel_index=torch.zeros((2, 1), dtype=torch.long))
+    with pytest.raises(InvalidParameterError, match="shape \\(batch,\\) or \\(batch, 1\\)"):
+        ctx.repetition_index = torch.tensor([[0, 1], [1, 0]], dtype=torch.long)
+
+
+def test_sampling_context_assignment_allows_clearing_repetitions():
+    ctx = SamplingContext(channel_index=torch.zeros((2, 1), dtype=torch.long))
+    ctx.repetition_index = None
+    assert ctx.repetition_index is None
 
 
 def test_sampling_context_samples_and_channels_masking():
@@ -190,11 +221,38 @@ def test_sampling_context_copy_is_deep():
 
     copied.channel_index[0, 0] = 5
     copied.mask[1, 0] = True
-    assert copied.repetition_idx is not ctx.repetition_idx
+    assert copied.repetition_index is not ctx.repetition_index
     assert copied.is_mpe is ctx.is_mpe
     assert torch.equal(ctx.channel_index, channel_index)
     assert torch.equal(ctx.mask, mask)
-    assert torch.equal(ctx.repetition_idx, repetition_index)
+    assert torch.equal(ctx.repetition_index, repetition_index)
+
+
+def test_sampling_context_with_routing_does_not_alias_parent():
+    channel_index = torch.tensor([[0, 1], [2, 3]], dtype=torch.long)
+    mask = torch.tensor([[True, False], [True, True]], dtype=torch.bool)
+    repetition_index = torch.tensor([0, 0], dtype=torch.long)
+    parent = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+
+    child = parent.with_routing(
+        channel_index=channel_index[:, :1],
+        mask=mask[:, :1],
+    )
+    child.channel_index.zero_()
+    child.mask.zero_()
+    child.repetition_index[0] = 3
+
+    assert torch.equal(parent.channel_index, channel_index)
+    assert torch.equal(parent.mask, mask)
+    assert torch.equal(parent.repetition_index, repetition_index)
+
+
+def test_sampling_context_repr_contains_shapes():
+    ctx = SamplingContext(num_samples=2)
+    repr_str = repr(ctx)
+    assert "channel_index.shape=(2, 1)" in repr_str
+    assert "mask.shape=(2, 1)" in repr_str
+    assert "repetition_index.shape=(2,)" in repr_str
 
 
 def test_sampling_context_accepts_is_mpe_constructor_flag():
@@ -479,9 +537,30 @@ def test_validate_sampling_context_rejects_feature_width_mismatch():
         )
 
 
+def test_validate_sampling_context_allows_missing_repetitions_for_single_repetition():
+    ctx = SamplingContext(num_samples=2)
+    ctx.repetition_index = None
+    validate_sampling_context(
+        ctx,
+        num_samples=2,
+        num_repetitions=1,
+    )
+
+
+def test_validate_sampling_context_rejects_missing_repetitions_for_multi_repetition():
+    ctx = SamplingContext(num_samples=2)
+    ctx.repetition_index = None
+    with pytest.raises(InvalidParameterError, match="must be provided"):
+        validate_sampling_context(
+            ctx,
+            num_samples=2,
+            num_repetitions=2,
+        )
+
+
 def test_validate_sampling_context_rejects_out_of_range_repetition_index():
     ctx = SamplingContext(num_samples=2)
-    ctx.repetition_idx = torch.tensor([0, 2], dtype=torch.long)
+    ctx.repetition_index = torch.tensor([0, 2], dtype=torch.long)
     with pytest.raises(InvalidParameterError, match="out-of-range indices"):
         validate_sampling_context(
             ctx,

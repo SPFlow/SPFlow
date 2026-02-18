@@ -295,11 +295,11 @@ class ElementwiseSum(Module):
 
         # Index into the correct weight channels given by parent module
         # (stay in logits space since Categorical distribution accepts logits directly)
-        if sampling_ctx.repetition_idx is not None:
+        if sampling_ctx.repetition_index is not None:
             batch_size = int(sampling_ctx.channel_index.shape[0])
             logits = repeat(self.logits, "f ci co i r -> b f ci co i r", b=batch_size)
 
-            indices = sampling_ctx.repetition_idx  # Shape (30000, 1, 1)
+            indices = sampling_ctx.repetition_index  # Shape (30000, 1, 1)
 
             # Use gather to select the correct repetition
             # Repeat indices to match the target dimension for gathering
@@ -320,7 +320,7 @@ class ElementwiseSum(Module):
         else:
             if self.out_shape.repetitions > 1:
                 raise ValueError(
-                    "sampling_ctx.repetition_idx must be provided when sampling from a module with "
+                    "sampling_ctx.repetition_index must be provided when sampling from a module with "
                     "num_repetitions > 1."
                 )
             logits = self.logits[..., 0]  # Select the 0th repetition
@@ -357,18 +357,15 @@ class ElementwiseSum(Module):
         )
         logits = rearrange(logits, "b f 1 i -> b f i")
 
-        if (
-             "log_likelihood" in cache
-            and all(cache["log_likelihood"][inp] is not None for inp in self.inputs)
-        ):
+        if "log_likelihood" in cache and all(cache["log_likelihood"][inp] is not None for inp in self.inputs):
             input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
             input_lls = torch.stack(input_lls, dim=self.sum_dim)  # torch.stack(input_lls, dim=-1)
-            if sampling_ctx.repetition_idx is not None:
+            if sampling_ctx.repetition_index is not None:
                 num_features = int(input_lls.shape[1])
                 num_input_channels = int(input_lls.shape[2])
                 num_inputs = int(input_lls.shape[3])
                 indices = repeat(
-                    rearrange(sampling_ctx.repetition_idx, "... -> (...)"),
+                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
                     "n -> n f ci i 1",
                     f=num_features,
                     ci=num_input_channels,
@@ -398,15 +395,12 @@ class ElementwiseSum(Module):
         else:
             cids_stack = torch.distributions.Categorical(logits=logits).sample()
 
-        # Sample from input module
-        sampling_ctx.channel_index = cids_in_channels_per_input
-
         for i, inp in enumerate(self.inputs):
-            # Update feature_mask
-            mask = sampling_ctx.mask & (cids_stack == i)
-
-            sampling_ctx_cpy = sampling_ctx.copy()
-            sampling_ctx_cpy.mask = mask
+            child_mask = sampling_ctx.mask & (cids_stack == i)
+            sampling_ctx_cpy = sampling_ctx.with_routing(
+                channel_index=cids_in_channels_per_input,
+                mask=child_mask,
+            )
 
             # Sample from input module
             inp._sample(

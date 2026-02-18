@@ -436,11 +436,11 @@ class Einet(Module, Classifier):
             self.log_likelihood(data, cache=cache)
 
         batch_size = data.shape[0]
-        # Always initialize repetition_idx (required by Factorize.sample())
-        if sampling_ctx.repetition_idx is None:
+        # Always initialize repetition_index (required by Factorize.sample())
+        if sampling_ctx.repetition_index is None:
             if self.num_repetitions == 1:
                 # Single repetition: use index 0 for all samples
-                sampling_ctx.repetition_idx = torch.zeros(batch_size, dtype=torch.long, device=data.device)
+                sampling_ctx.repetition_index = torch.zeros(batch_size, dtype=torch.long, device=data.device)
             # For num_repetitions > 1, RepetitionMixingLayer will set this
 
         # Handle class sampling for multi-class models

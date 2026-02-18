@@ -523,13 +523,6 @@ class CLTree(LeafModule):
         if not instance_mask.any():
             return data
 
-        if sampling_ctx.repetition_idx is None:
-            if self.out_shape.repetitions > 1:
-                raise InvalidParameterError(
-                    "Repetition index must be provided in sampling context for CLTree with multiple repetitions."
-                )
-            sampling_ctx.repetition_idx = torch.zeros(data.shape[0], dtype=torch.long, device=data.device)
-
         parents = self.parents.tolist()
         pre_order = self.pre_order.tolist()
         post_order = self.post_order.tolist()
@@ -543,7 +536,7 @@ class CLTree(LeafModule):
                 "CLTree requires a consistent channel_index across its scope per sample."
             )
         chan = chosen_channels[:, 0].to(torch.long)
-        rep = sampling_ctx.repetition_idx[instance_mask].to(torch.long)
+        rep = sampling_ctx.repetition_index[instance_mask].to(torch.long)
 
         scoped_vals = scoped[instance_mask].to(device=self.log_cpt.device, dtype=self.log_cpt.dtype)
         _validate_discrete_values(scoped_vals, K=K)

@@ -159,8 +159,10 @@ class Cat(Module):
         # Iterate over inputs
         for i in range(len(self.inputs)):
             input_module = self.inputs[i]
-            sampling_ctx_copy = sampling_ctx.copy()
-            sampling_ctx_copy.update(channel_index=channel_index_per_module[i], mask=mask_per_module[i])
+            sampling_ctx_copy = sampling_ctx.with_routing(
+                channel_index=channel_index_per_module[i],
+                mask=mask_per_module[i],
+            )
             input_module._sample(
                 data=data,
                 cache=cache,

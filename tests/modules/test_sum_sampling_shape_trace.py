@@ -22,7 +22,7 @@ def _trace_sum_sample_shapes(module: Sum, sampling_ctx: SamplingContext, cache: 
     print(f"TRACE sampling_ctx.channel_index: {tuple(sampling_ctx.channel_index.shape)}")
     print(f"TRACE sampling_ctx.mask:          {tuple(sampling_ctx.mask.shape)}")
 
-    if sampling_ctx.repetition_idx is not None:
+    if sampling_ctx.repetition_index is not None:
         logits = module.logits.unsqueeze(0).expand(
             sampling_ctx.channel_index.shape[0], -1, -1, -1, -1
         )
@@ -30,7 +30,7 @@ def _trace_sum_sample_shapes(module: Sum, sampling_ctx: SamplingContext, cache: 
         print(f"TRACE logits_expand_repetition:  {shapes['logits_expand_repetition']}")
 
         in_channels_total = logits.shape[2]
-        indices = sampling_ctx.repetition_idx.view(-1, 1, 1, 1, 1).expand(
+        indices = sampling_ctx.repetition_index.view(-1, 1, 1, 1, 1).expand(
             -1, logits.shape[1], in_channels_total, logits.shape[3], -1
         )
         shapes["repetition_indices"] = tuple(indices.shape)

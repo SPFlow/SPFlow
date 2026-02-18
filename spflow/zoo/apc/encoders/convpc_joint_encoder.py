@@ -134,7 +134,8 @@ class _PairwiseLatentProduct(Module):
 
         child_idx = repeat(parent_idx, "b f -> b (f two)", two=2)
         child_mask = repeat(parent_mask, "b f -> b (f two)", two=2)
-        sampling_ctx.update(child_idx, child_mask)
+        sampling_ctx.channel_index = child_idx
+        sampling_ctx.mask = child_mask
         return self.inputs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
 
     def marginalize(
@@ -248,7 +249,8 @@ class _LatentFeaturePacking(Module):
 
         child_idx = parent_idx[:, : self.in_shape.features]
         child_mask = parent_mask[:, : self.in_shape.features]
-        sampling_ctx.update(child_idx, child_mask)
+        sampling_ctx.channel_index = child_idx
+        sampling_ctx.mask = child_mask
         return self.inputs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
 
     def marginalize(
@@ -339,8 +341,8 @@ class _LatentSelectionCapture(Module):
             scope_cols=scope_cols,
             kind="channel",
         )
-        repetition_idx = self._resolve_repetition_index(
-            sampling_ctx.repetition_idx,
+        repetition_index = self._resolve_repetition_index(
+            sampling_ctx.repetition_index,
             target_features=target_features,
             data_num_features=data_num_features,
             scope_cols=scope_cols,
@@ -348,7 +350,7 @@ class _LatentSelectionCapture(Module):
 
         self._capture_fn(
             channel_idx.detach().clone().to(dtype=torch.long),
-            None if repetition_idx is None else repetition_idx.detach().clone().to(dtype=torch.long),
+            None if repetition_index is None else repetition_index.detach().clone().to(dtype=torch.long),
         )
 
     @cached
@@ -528,11 +530,11 @@ class ConvPcJointEncoder(nn.Module):
     def _record_latent_leaf_selection(
         self,
         channel_index: Tensor,
-        repetition_idx: Tensor | None,
+        repetition_index: Tensor | None,
     ) -> None:
         """Capture leaf-level latent routing signals from the sampling path."""
         self._last_latent_leaf_channel_index = channel_index
-        self._last_latent_leaf_repetition_index = repetition_idx
+        self._last_latent_leaf_repetition_index = repetition_index
 
     def _reset_latent_leaf_selection(self) -> None:
         self._last_latent_leaf_channel_index = None
@@ -1004,44 +1006,44 @@ class ConvPcJointEncoder(nn.Module):
         """Resolve leaf-level latent repetition indices for posterior stats."""
         rep = self._last_latent_leaf_repetition_index
         if rep is not None:
-            repetition_idx = rep.to(device=loc.device, dtype=torch.long)
-            if repetition_idx.shape[0] != batch_size:
+            repetition_index = rep.to(device=loc.device, dtype=torch.long)
+            if repetition_index.shape[0] != batch_size:
                 raise ShapeError(
                     "Captured latent repetition index batch mismatch: "
-                    f"expected {batch_size}, got {repetition_idx.shape[0]}."
+                    f"expected {batch_size}, got {repetition_index.shape[0]}."
                 )
-            if repetition_idx.shape[1] == 1:
+            if repetition_index.shape[1] == 1:
                 num_latent_features = self.latent_dim
-                repetition_idx = repeat(repetition_idx, "b 1 -> b f", f=num_latent_features)
-            elif repetition_idx.shape[1] == self.latent_dim:
+                repetition_index = repeat(repetition_index, "b 1 -> b f", f=num_latent_features)
+            elif repetition_index.shape[1] == self.latent_dim:
                 pass
             else:
                 raise ShapeError(
                     "Captured latent repetition index feature mismatch: "
-                    f"expected 1 or {self.latent_dim}, got {repetition_idx.shape[1]}."
+                    f"expected 1 or {self.latent_dim}, got {repetition_index.shape[1]}."
                 )
-            return repetition_idx.clamp(min=0, max=loc.shape[2] - 1)
+            return repetition_index.clamp(min=0, max=loc.shape[2] - 1)
 
-        if sampling_ctx.repetition_idx is None:
+        if sampling_ctx.repetition_index is None:
             return torch.zeros((batch_size, self.latent_dim), dtype=torch.long, device=loc.device)
 
-        rep = sampling_ctx.repetition_idx
+        rep = sampling_ctx.repetition_index
         if rep.dim() == 1:
             num_latent_features = self.latent_dim
-            repetition_idx = repeat(rep, "b -> b f", f=num_latent_features)
+            repetition_index = repeat(rep, "b -> b f", f=num_latent_features)
         elif rep.shape[1] == 1:
             num_latent_features = self.latent_dim
-            repetition_idx = repeat(rep, "b 1 -> b f", f=num_latent_features)
+            repetition_index = repeat(rep, "b 1 -> b f", f=num_latent_features)
         elif rep.shape[1] == self.latent_dim:
-            repetition_idx = rep
+            repetition_index = rep
         elif rep.shape[1] == (self.num_x_features + self.latent_dim):
-            repetition_idx = rep[:, self._z_cols]
+            repetition_index = rep[:, self._z_cols]
         else:
             raise ShapeError(
                 "Latent repetition index feature mismatch: "
                 f"got {rep.shape[1]}, expected 1, {self.latent_dim}, or {self.num_x_features + self.latent_dim}."
             )
-        return repetition_idx.to(device=loc.device, dtype=torch.long).clamp(min=0, max=loc.shape[2] - 1)
+        return repetition_index.to(device=loc.device, dtype=torch.long).clamp(min=0, max=loc.shape[2] - 1)
 
     def _latent_stats_from_leaf_params(self, sampling_ctx: SamplingContext, batch_size: int) -> LatentStats:
         """Extract posterior ``mu/logvar`` from selected latent leaf parameters."""

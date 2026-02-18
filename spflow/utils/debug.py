@@ -319,4 +319,4 @@ def trace_sampling_context(name: str, ctx: Any) -> None:
         return
     trace_tensor(f"{name}.mask", getattr(ctx, "mask", None))
     trace_tensor(f"{name}.channel_index", getattr(ctx, "channel_index", None))
-    trace_tensor(f"{name}.repetition_idx", getattr(ctx, "repetition_idx", None))
+    trace_tensor(f"{name}.repetition_index", getattr(ctx, "repetition_index", None))

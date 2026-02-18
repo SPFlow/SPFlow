@@ -202,7 +202,7 @@ def test_mle_rejects_conditional_leaf():
 
 @pytest.mark.parametrize("is_mpe", [False, True])
 def test_sample_accepts_column_vector_repetition_index(is_mpe: bool):
-    """Sampling accepts repetition_idx with shape (batch, 1)."""
+    """Sampling accepts repetition_index with shape (batch, 1)."""
     leaf = TinyLeaf(scope=Scope([0]), out_channels=2, num_repetitions=2)
     data = torch.full((4, 1), float("nan"))
 
