@@ -12,7 +12,11 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext, update_channel_index_strict
+from spflow.utils.sampling_context import (
+    SamplingContext,
+    update_channel_index_strict,
+    validate_sampling_context,
+)
 from spflow.utils.signed_semiring import signed_logsumexp, sign_of
 
 
@@ -198,6 +202,15 @@ class SignedSum(Module):
                 "SignedSum.sample() currently supports num_repetitions == 1 only."
             )
 
+        validate_sampling_context(
+            sampling_ctx,
+            num_samples=data.shape[0],
+            num_features=self.out_shape.features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.out_shape.repetitions,
+            allowed_feature_widths=(1, self.out_shape.features),
+        )
+
         # Current output channel selection from parent
         batch_size = int(data.shape[0])
         num_weight_features = int(w.shape[0])
@@ -206,7 +219,9 @@ class SignedSum(Module):
         if context_features == num_weight_features:
             oidx = repeat(sampling_ctx.channel_index, "b f -> b f ci 1", ci=in_channels_total)
         elif context_features == 1:
-            oidx = repeat(sampling_ctx.channel_index, "b 1 -> b f ci 1", f=num_weight_features, ci=in_channels_total)
+            oidx = repeat(
+                sampling_ctx.channel_index, "b 1 -> b f ci 1", f=num_weight_features, ci=in_channels_total
+            )
         else:
             raise ShapeError(
                 f"Expected channel_index feature width 1 or {num_weight_features}, got {context_features}."

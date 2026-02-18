@@ -9,7 +9,7 @@ from spflow.exceptions import InvalidParameterCombinationError, MissingCacheErro
 from spflow.modules.module import Module
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
 
 
 class RepetitionMixingLayer(Sum):
@@ -112,15 +112,20 @@ class RepetitionMixingLayer(Sum):
         Returns:
             Tensor: Generated samples.
         """
+        validate_sampling_context(
+            sampling_ctx,
+            num_samples=data.shape[0],
+            num_features=self.out_shape.features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.out_shape.repetitions,
+            allowed_feature_widths=(1, self.out_shape.features),
+        )
 
         batch_size = int(sampling_ctx.channel_index.shape[0])
         logits = repeat(self.logits, "f co r -> b f co r", b=batch_size)
 
         # Check if we have cached input log-likelihoods to compute posterior
-        if (
-             "log_likelihood" in cache
-            and cache["log_likelihood"].get(self.inputs) is not None
-        ):
+        if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
             # Compute log posterior by reweighing logits with input lls
             input_lls = cache["log_likelihood"][self.inputs]
             log_prior = logits

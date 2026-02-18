@@ -9,7 +9,7 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.cat import Cat
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, validate_sampling_context
 
 
 class Product(Module):
@@ -99,6 +99,14 @@ class Product(Module):
         Returns:
             Tensor: Generated samples.
         """
+        validate_sampling_context(
+            sampling_ctx,
+            num_samples=data.shape[0],
+            num_features=self.out_shape.features,
+            num_channels=self.out_shape.channels,
+            num_repetitions=self.out_shape.repetitions,
+            allowed_feature_widths=(1, self.out_shape.features),
+        )
 
         sampling_ctx.broadcast_feature_width(
             target_features=self.inputs.out_shape.features,
@@ -112,7 +120,6 @@ class Product(Module):
             sampling_ctx=sampling_ctx,
         )
         return data
-
 
     def _expectation_maximization_step(
         self,
