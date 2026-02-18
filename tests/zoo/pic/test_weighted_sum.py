@@ -319,17 +319,19 @@ class TestWeightedSumSamplingAndMarginalize:
         assert out.shape == (3, 1)
         assert inp.sample_calls[-1].channel_index.shape == (3, 1)
 
-    def test_sample_requires_repetition_index_when_repetitions_gt_1_internal_context(self):
-        """Internal _sample must reject missing repetition_idx for multi-repetition modules."""
+    def test_sample_defaults_repetition_index_when_repetitions_gt_1_internal_context(self):
+        """Internal _sample uses default repetition_idx from SamplingContext when absent."""
         f2s = np.array([[Scope([0]), Scope([0])]], dtype=object)
         inp = DummyInput(feature_to_scope=f2s, channels=2, repetitions=2)
         ws = WeightedSum(inputs=inp, weights=torch.ones(1, 2, 2, 2))
         sampling_ctx = SamplingContext(
             channel_index=torch.zeros((2, 1), dtype=torch.long),
             mask=torch.ones((2, 1), dtype=torch.bool),
+            repetition_index=torch.zeros((2,), dtype=torch.long),
         )
-        with pytest.raises(ValueError, match="repetition_idx must be provided"):
-            ws._sample(data=torch.full((2, 1), float("nan")), sampling_ctx=sampling_ctx, cache=Cache())
+        out = ws._sample(data=torch.full((2, 1), float("nan")), sampling_ctx=sampling_ctx, cache=Cache())
+        assert out.shape == (2, 1)
+        assert inp.sample_calls[-1].repetition_idx is not None
 
     def test_sample_raises_for_zero_rows(self):
         """Test stochastic sample branch rejects zero-sum weight rows."""
@@ -351,7 +353,9 @@ class TestWeightedSumSamplingAndMarginalize:
         )
         sampling_ctx._mask = torch.ones((2, 1), dtype=torch.bool)  # type: ignore[attr-defined]
         with pytest.raises(ShapeError, match="incompatible feature width"):
-            ws._sample(data=torch.full((2, 2), float("nan")), is_mpe=True, sampling_ctx=sampling_ctx, cache=Cache())
+            ws._sample(
+                data=torch.full((2, 2), float("nan")), is_mpe=True, sampling_ctx=sampling_ctx, cache=Cache()
+            )
 
     def test_sample_creates_data_when_none(self):
         """Test num_samples/data default creation branch."""
