@@ -34,10 +34,10 @@ def _check_mask_bool(mask: Tensor) -> None:
         raise InvalidParameterError("Mask must be of type torch.bool.")
 
 
-def _check_integral_dtype(tensor: Tensor, *, name: str) -> None:
-    """Check that a tensor has a non-boolean integral dtype."""
+def _check_integer_dtype(tensor: Tensor, *, name: str) -> None:
+    """Check that a tensor has a non-boolean integer dtype."""
     if tensor.dtype == torch.bool or tensor.is_floating_point() or tensor.is_complex():
-        raise InvalidParameterError(f"{name} must have an integral dtype.")
+        raise InvalidParameterError(f"{name} must have an integer dtype.")
 
 
 def _check_channel_index_tensor(channel_index: Tensor, *, name: str = "channel_index") -> None:
@@ -46,7 +46,7 @@ def _check_channel_index_tensor(channel_index: Tensor, *, name: str = "channel_i
         raise InvalidParameterError(
             f"{name} must have shape (batch, features), got rank {channel_index.ndim}."
         )
-    _check_integral_dtype(channel_index, name=name)
+    _check_integer_dtype(channel_index, name=name)
 
 
 def _check_repetition_index_tensor(repetition_index: Tensor, *, name: str = "repetition_index") -> None:
@@ -55,7 +55,7 @@ def _check_repetition_index_tensor(repetition_index: Tensor, *, name: str = "rep
         raise InvalidParameterError(
             f"{name} must have shape (batch,) or (batch, K), got rank {repetition_index.ndim}."
         )
-    _check_integral_dtype(repetition_index, name=name)
+    _check_integer_dtype(repetition_index, name=name)
 
 
 def _normalize_repetition_index(
@@ -144,6 +144,7 @@ class SamplingContext:
         mask: Tensor | None = None,
         repetition_index: Tensor | None = None,
         is_mpe: bool = False,
+        is_differentiable: bool = False,
     ) -> None:
         """Initialize SamplingContext for managing sampling operations.
 
@@ -171,12 +172,15 @@ class SamplingContext:
                 Defaults to None.
             is_mpe (bool, optional): If True, sampling uses MPE decisions instead of
                 stochastic sampling. Defaults to False.
+            is_differentiable (bool, optional): If True, sampling operations will be
+                differentiable. Defaults to False.
 
         Raises:
             InvalidParameterError: If tensor shapes are incompatible, mask has wrong dtype,
                 or num_samples conflicts with tensor dimensions.
         """
         device_was_provided = device is not None
+        self.is_differentiable = is_differentiable
         self.is_mpe = is_mpe
         self._channel_index: Tensor
         self._mask: Tensor
