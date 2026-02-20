@@ -30,6 +30,8 @@ from spflow.utils.projections import proj_convex_to_real
 from spflow.utils.sampling_context import (
     SamplingContext,
     index_tensor,
+    repeat_channel_index,
+    repeat_repetition_index,
     sample_from_logits,
 )
 
@@ -336,15 +338,12 @@ class LinsumLayer(Module):
         # Gather the correct output channel
         num_repetitions = self.out_shape.repetitions
         num_input_channels = self._in_channels
-        if sampling_ctx.is_differentiable:
-            idx = repeat(
-                channel_idx,
-                "b f co -> b f co r ci",
-                r=num_repetitions,
-                ci=num_input_channels,
-            )
-        else:
-            idx = repeat(channel_idx, "b f -> b f 1 r ci", r=num_repetitions, ci=num_input_channels)
+        idx = repeat_channel_index(
+            channel_idx,
+            "b f co -> b f co r ci",
+            r=num_repetitions,
+            ci=num_input_channels,
+        )
         logits = index_tensor(
             logits,
             index=idx,
@@ -356,20 +355,12 @@ class LinsumLayer(Module):
         # Select repetition if specified
         if sampling_ctx.repetition_index is not None:
             num_features = self.out_shape.features
-            if sampling_ctx.is_differentiable:
-                rep_idx = repeat(
-                    sampling_ctx.repetition_index,
-                    "b r -> b f r ci",
-                    f=num_features,
-                    ci=num_input_channels,
-                )
-            else:
-                rep_idx = repeat(
-                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                    "b -> b f 1 ci",
-                    f=num_features,
-                    ci=num_input_channels,
-                )
+            rep_idx = repeat_repetition_index(
+                sampling_ctx.repetition_index,
+                "b r -> b f r ci",
+                f=num_features,
+                ci=num_input_channels,
+            )
             logits = index_tensor(
                 logits,
                 index=rep_idx,
@@ -399,20 +390,12 @@ class LinsumLayer(Module):
             if sampling_ctx.repetition_index is not None:
                 num_features = int(left_ll.shape[1])
                 num_input_channels = int(left_ll.shape[2])
-                if sampling_ctx.is_differentiable:
-                    rep_idx_l = repeat(
-                        sampling_ctx.repetition_index,
-                        "b r -> b f ci r",
-                        f=num_features,
-                        ci=num_input_channels,
-                    )
-                else:
-                    rep_idx_l = repeat(
-                        rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                        "b -> b f ci 1",
-                        f=num_features,
-                        ci=num_input_channels,
-                    )
+                rep_idx_l = repeat_repetition_index(
+                    sampling_ctx.repetition_index,
+                    "b r -> b f ci r",
+                    f=num_features,
+                    ci=num_input_channels,
+                )
                 left_ll = index_tensor(
                     left_ll,
                     index=rep_idx_l,

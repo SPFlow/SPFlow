@@ -17,6 +17,7 @@ from operator import xor
 from typing import Sequence
 
 import torch
+from einops import rearrange, repeat
 from torch import Tensor
 from torch.nn import functional as F
 
@@ -825,6 +826,53 @@ def update_channel_index_strict(sampling_ctx: SamplingContext, new_channel_index
             f"got {sampling_ctx.mask.shape[1]}, expected {new_channel_index.shape[1]}."
         )
     sampling_ctx.channel_index = new_channel_index
+
+
+def repeat_repetition_index(
+    repetition_index: Tensor,
+    pattern: str,
+    **axes_lengths: int,
+) -> Tensor:
+    """Repeat repetition index tensor independent of sampling mode.
+
+    Canonicalizes repetition index to shape ``(batch, rep_width)`` where
+    ``rep_width == 1`` for non-differentiable routing and ``rep_width == R`` for
+    differentiable routing. The resulting tensor is then expanded with an einops
+    repeat pattern for indexing.
+
+    Args:
+        repetition_index: Repetition index tensor from ``SamplingContext``.
+        pattern: Einops repeat pattern, e.g. ``"n r -> n f ci r"``.
+        **axes_lengths: Named axis lengths for the repeat pattern.
+
+    Returns:
+        Tensor repeated according to ``pattern`` with original dtype/device.
+    """
+    rep_2d = rearrange(repetition_index, "n ... -> n (...)")
+    return repeat(rep_2d, pattern, **axes_lengths)
+
+
+def repeat_channel_index(
+    channel_index: Tensor,
+    pattern: str,
+    **axes_lengths: int,
+) -> Tensor:
+    """Repeat channel index tensor independent of sampling mode.
+
+    Canonicalizes channel index to shape ``(batch, features, channel_width)``
+    where ``channel_width == 1`` for non-differentiable routing and
+    ``channel_width == C`` for differentiable routing.
+
+    Args:
+        channel_index: Channel index tensor from ``SamplingContext``.
+        pattern: Einops repeat pattern, e.g. ``"b f co -> b f ci co"``.
+        **axes_lengths: Named axis lengths for the repeat pattern.
+
+    Returns:
+        Tensor repeated according to ``pattern`` with original dtype/device.
+    """
+    ch_3d = rearrange(channel_index, "b f ... -> b f (...)")
+    return repeat(ch_3d, pattern, **axes_lengths)
 
 
 def sample_gumbel(shape, eps=1e-20, device="cpu"):

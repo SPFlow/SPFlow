@@ -30,6 +30,8 @@ from spflow.utils.projections import proj_convex_to_real
 from spflow.utils.sampling_context import (
     SamplingContext,
     index_tensor,
+    repeat_channel_index,
+    repeat_repetition_index,
     sample_from_logits,
 )
 
@@ -377,22 +379,13 @@ class EinsumLayer(Module):
         num_repetitions = self.out_shape.repetitions
         num_left_channels = self._left_channels
         num_right_channels = self._right_channels
-        if sampling_ctx.is_differentiable:
-            idx = repeat(
-                channel_idx,
-                "b f co -> b f co r i j",
-                r=num_repetitions,
-                i=num_left_channels,
-                j=num_right_channels,
-            )
-        else:
-            idx = repeat(
-                channel_idx,
-                "b f -> b f 1 r i j",
-                r=num_repetitions,
-                i=num_left_channels,
-                j=num_right_channels,
-            )
+        idx = repeat_channel_index(
+            channel_idx,
+            "b f co -> b f co r i j",
+            r=num_repetitions,
+            i=num_left_channels,
+            j=num_right_channels,
+        )
         logits = index_tensor(
             logits,
             index=idx,
@@ -404,22 +397,13 @@ class EinsumLayer(Module):
         # Select repetition if specified
         if sampling_ctx.repetition_index is not None:
             num_features = self.out_shape.features
-            if sampling_ctx.is_differentiable:
-                rep_idx = repeat(
-                    sampling_ctx.repetition_index,
-                    "b r -> b f r i j",
-                    f=num_features,
-                    i=num_left_channels,
-                    j=num_right_channels,
-                )
-            else:
-                rep_idx = repeat(
-                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                    "b -> b f 1 i j",
-                    f=num_features,
-                    i=num_left_channels,
-                    j=num_right_channels,
-                )
+            rep_idx = repeat_repetition_index(
+                sampling_ctx.repetition_index,
+                "b r -> b f r i j",
+                f=num_features,
+                i=num_left_channels,
+                j=num_right_channels,
+            )
             logits = index_tensor(
                 logits,
                 index=rep_idx,
@@ -453,32 +437,18 @@ class EinsumLayer(Module):
                 num_features = int(left_ll.shape[1])
                 num_left_channels = int(left_ll.shape[2])
                 num_right_channels = int(right_ll.shape[2])
-                if sampling_ctx.is_differentiable:
-                    rep_idx_l = repeat(
-                        sampling_ctx.repetition_index,
-                        "b r -> b f i r",
-                        f=num_features,
-                        i=num_left_channels,
-                    )
-                    rep_idx_r = repeat(
-                        sampling_ctx.repetition_index,
-                        "b r -> b f j r",
-                        f=num_features,
-                        j=num_right_channels,
-                    )
-                else:
-                    rep_idx_l = repeat(
-                        rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                        "b -> b f i 1",
-                        f=num_features,
-                        i=num_left_channels,
-                    )
-                    rep_idx_r = repeat(
-                        rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                        "b -> b f j 1",
-                        f=num_features,
-                        j=num_right_channels,
-                    )
+                rep_idx_l = repeat_repetition_index(
+                    sampling_ctx.repetition_index,
+                    "b r -> b f i r",
+                    f=num_features,
+                    i=num_left_channels,
+                )
+                rep_idx_r = repeat_repetition_index(
+                    sampling_ctx.repetition_index,
+                    "b r -> b f j r",
+                    f=num_features,
+                    j=num_right_channels,
+                )
                 left_ll = index_tensor(
                     left_ll,
                     index=rep_idx_l,

@@ -7,6 +7,8 @@ from spflow.exceptions import InvalidParameterError, ShapeError
 from spflow.utils.sampling_context import (
     SamplingContext,
     SIMPLE,
+    repeat_channel_index,
+    repeat_repetition_index,
     to_one_hot,
 )
 
@@ -614,6 +616,86 @@ def test_to_one_hot_allows_output_dtype_override():
     )
     actual = to_one_hot(index=index, dim=-1, dim_size=2, dtype=torch.float32)
     assert actual.dtype == torch.float32
+
+
+def test_repeat_repetition_index_non_diff_promotes_to_singleton_repetition_axis():
+    repetition_index = torch.tensor([1, 0], dtype=torch.long)
+    actual = repeat_repetition_index(
+        repetition_index,
+        "n r -> n f ci r",
+        f=3,
+        ci=4,
+    )
+    expected = repetition_index[:, None, None, None].expand(-1, 3, 4, 1)
+
+    assert actual.shape == (2, 3, 4, 1)
+    assert actual.dtype == torch.long
+    assert actual.device == repetition_index.device
+    assert torch.equal(actual, expected)
+
+
+def test_repeat_repetition_index_diff_preserves_repetition_width():
+    repetition_index = torch.tensor(
+        [
+            [0.0, 1.0],
+            [1.0, 0.0],
+        ],
+        dtype=torch.float32,
+    )
+    actual = repeat_repetition_index(
+        repetition_index,
+        "b r -> b f ci co r",
+        f=2,
+        ci=3,
+        co=4,
+    )
+
+    assert actual.shape == (2, 2, 3, 4, 2)
+    assert actual.dtype == torch.float32
+    assert actual.device == repetition_index.device
+    torch.testing.assert_close(actual[:, 0, 0, 0, :], repetition_index, rtol=0.0, atol=0.0)
+
+
+def test_repeat_channel_index_non_diff_promotes_to_singleton_channel_axis():
+    channel_index = torch.tensor(
+        [
+            [1, 0],
+            [0, 1],
+        ],
+        dtype=torch.long,
+    )
+    actual = repeat_channel_index(
+        channel_index,
+        "b f co -> b f ci co",
+        ci=3,
+    )
+    expected = channel_index[:, :, None, None].expand(-1, -1, 3, 1)
+
+    assert actual.shape == (2, 2, 3, 1)
+    assert actual.dtype == torch.long
+    assert actual.device == channel_index.device
+    assert torch.equal(actual, expected)
+
+
+def test_repeat_channel_index_diff_preserves_channel_width():
+    channel_index = torch.tensor(
+        [
+            [[0.0, 1.0, 0.0], [0.2, 0.3, 0.5]],
+            [[1.0, 0.0, 0.0], [0.1, 0.1, 0.8]],
+        ],
+        dtype=torch.float32,
+    )
+    actual = repeat_channel_index(
+        channel_index,
+        "b f co -> b f co r ci",
+        r=2,
+        ci=4,
+    )
+
+    assert actual.shape == (2, 2, 3, 2, 4)
+    assert actual.dtype == torch.float32
+    assert actual.device == channel_index.device
+    torch.testing.assert_close(actual[:, :, :, 0, 0], channel_index, rtol=0.0, atol=0.0)
 
 
 @pytest.mark.parametrize("hard", [True, False])

@@ -18,7 +18,13 @@ from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
-from spflow.utils.sampling_context import SamplingContext, update_channel_index_strict, index_tensor
+from spflow.utils.sampling_context import (
+    SamplingContext,
+    repeat_channel_index,
+    index_tensor,
+    repeat_repetition_index,
+    update_channel_index_strict,
+)
 from spflow.utils.sampling_context import sample_from_logits
 
 
@@ -305,21 +311,18 @@ class Sum(Module):
         logits = repeat(self.logits, "f ci co r -> b f ci co r", b=batch_size)
         # shape [b, n_features, in_c, out_c, r]
 
-        r_idxs = sampling_ctx.repetition_index
-
         # Use gather to select the correct repetition
         # Repeat indices to match the target dimension for gathering
         num_features = int(logits.shape[1])
         in_channels_total = logits.shape[2]
         out_channels = int(logits.shape[3])
-        if sampling_ctx.is_differentiable:
-            _R = self.out_shape.repetitions
-            repeat_str = "n r -> n f ci co r"
-        else:
-            _R = 1
-            repeat_str = "n -> n f ci co r"
-
-        r_idxs = repeat(r_idxs, repeat_str, f=num_features, ci=in_channels_total, co=out_channels, r=_R)
+        r_idxs = repeat_repetition_index(
+            sampling_ctx.repetition_index,
+            "n r -> n f ci co r",
+            f=num_features,
+            ci=in_channels_total,
+            co=out_channels,
+        )
 
         # Gather the logits based on the repetition indices
         logits = index_tensor(logits, index=r_idxs, dim=-1, is_differentiable=sampling_ctx.is_differentiable)
@@ -327,16 +330,11 @@ class Sum(Module):
         # Channels
         in_channels_total = logits.shape[2]
 
-        if sampling_ctx.is_differentiable:
-            c_idxs = repeat(
-                sampling_ctx.channel_index,
-                "b f co -> b f ci co",
-                f=num_features,
-                ci=in_channels_total,
-                co=out_channels,
-            )
-        else:
-            c_idxs = repeat(sampling_ctx.channel_index, "b f -> b f ci 1", ci=in_channels_total)
+        c_idxs = repeat_channel_index(
+            sampling_ctx.channel_index,
+            "b f co -> b f ci co",
+            ci=in_channels_total,
+        )
         logits = index_tensor(logits, index=c_idxs, dim=3, is_differentiable=sampling_ctx.is_differentiable)
 
         # Check if evidence is given (cached log-likelihoods)
@@ -346,20 +344,12 @@ class Sum(Module):
 
             num_features = int(input_lls.shape[1])
             in_channels_total = int(input_lls.shape[2])
-            if sampling_ctx.is_differentiable:
-                r_idxs = repeat(
-                    sampling_ctx.repetition_index,
-                    "n r -> n f ci r",
-                    f=num_features,
-                    ci=in_channels_total,
-                )
-            else:
-                r_idxs = repeat(
-                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                    "n -> n f ci 1",
-                    f=num_features,
-                    ci=in_channels_total,
-                )
+            r_idxs = repeat_repetition_index(
+                sampling_ctx.repetition_index,
+                "n r -> n f ci r",
+                f=num_features,
+                ci=in_channels_total,
+            )
 
             # Use gather to select the correct repetition.
             input_lls = index_tensor(
