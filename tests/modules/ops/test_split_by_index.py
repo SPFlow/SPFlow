@@ -159,8 +159,11 @@ class TestSplitByIndexSampling:
 
         n_samples = 20
         data = torch.full((n_samples, 6), torch.nan)
-
-        samples = split.sample(data=data)
+        channel_index = torch.randint(0, 3, size=(n_samples, 6))
+        mask = torch.ones((n_samples, 6), dtype=torch.bool)
+        rep_index = torch.randint(0, num_reps, size=(n_samples,))
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
+        samples = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
         assert samples.shape == (n_samples, 6)
         assert torch.isfinite(samples).all()
@@ -173,8 +176,11 @@ class TestSplitByIndexSampling:
 
         n_samples = 20
         data = torch.full((n_samples, 6), torch.nan)
-
-        samples = split.sample(data=data)
+        channel_index = torch.randint(0, 3, size=(n_samples, 6))
+        mask = torch.ones((n_samples, 6), dtype=torch.bool)
+        rep_index = torch.zeros(n_samples, dtype=torch.long)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
+        samples = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
         assert samples.shape == (n_samples, 6)
         assert torch.isfinite(samples).all()
@@ -350,9 +356,15 @@ class TestSplitByIndexSamplingContextExpansion:
 
         n = 6
         data = torch.full((n, 4), torch.nan)
-
-        out = split.sample(data=data)
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((n, 2), dtype=torch.long),
+            mask=torch.ones((n, 2), dtype=torch.bool),
+            repetition_index=torch.zeros(n, dtype=torch.long),
+        )
+        out = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
         assert out.shape == (n, 4)
+        assert sampling_ctx.channel_index.shape == (n, 4)
+        assert sampling_ctx.mask.shape == (n, 4)
 
     def test_sample_accepts_singleton_context_width_internal_context(self):
         scope = Scope(list(range(0, 4)))

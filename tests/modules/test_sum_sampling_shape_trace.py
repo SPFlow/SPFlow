@@ -114,7 +114,7 @@ def test_sum_sample_shape_trace_unconditional():
     shapes = _trace_sum_sample_shapes(module, sampling_ctx=sampling_ctx, cache=None, is_mpe=False)
     assert shapes["new_channel_index"] == (batch_size, out_features)
 
-    out = module.sample(data=data)
+    out = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert out.shape == (batch_size, out_features)
     assert sampling_ctx.channel_index.shape == (batch_size, out_features)
     assert sampling_ctx.mask.shape == (batch_size, out_features)
@@ -149,7 +149,7 @@ def test_sum_sample_shape_trace_conditional_expands_feature_axis():
     assert shapes["input_lls_squeezed"] == (batch_size, out_features, in_channels)
     assert shapes["new_channel_index"] == (batch_size, out_features)
 
-    out = module.sample(data=data, cache=cache)
+    out = module._sample(data=data, sampling_ctx=sampling_ctx, cache=cache)
     assert out.shape == (batch_size, out_features)
     assert sampling_ctx.channel_index.shape == (batch_size, out_features)
     assert sampling_ctx.mask.shape == (batch_size, out_features)

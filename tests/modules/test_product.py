@@ -5,6 +5,7 @@ import torch
 
 from spflow.learn import expectation_maximization
 from spflow.modules.products import Product
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
@@ -38,8 +39,8 @@ def test_sample(in_channels: int, out_features: int, num_reps):
     product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
     for i in range(product_layer.out_shape.channels):
         data = torch.full((n_samples, out_features), torch.nan)
-        channel_index = torch.full((n_samples, out_features), fill_value=i)
-        mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
+        channel_index = torch.full((n_samples, product_layer.out_shape.features), fill_value=i)
+        mask = torch.full((n_samples, product_layer.out_shape.features), True, dtype=torch.bool)
         if num_reps is not None:
             repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
         else:
@@ -47,7 +48,7 @@ def test_sample(in_channels: int, out_features: int, num_reps):
         sampling_ctx = SamplingContext(
             channel_index=channel_index, mask=mask, repetition_index=repetition_index
         )
-        samples = product_layer.sample(data=data)
+        samples = product_layer._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
         assert samples.shape == data.shape
         samples_query = samples[:, product_layer.scope.query]
         assert torch.isfinite(samples_query).all()
@@ -161,21 +162,21 @@ def test_multiple_inputs():
     n_samples = 10
 
     data_a = torch.full((n_samples, out_features), torch.nan)
-    channel_index = torch.randint(low=0, high=out_channels, size=(n_samples, out_features))
-    mask = torch.full((n_samples, out_features), True)
+    channel_index = torch.randint(low=0, high=out_channels, size=(n_samples, module_a.out_shape.features))
+    mask = torch.full((n_samples, module_a.out_shape.features), True)
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx_a = SamplingContext(
-        channel_index=channel_index, mask=mask, repetition_index=repetition_index
+        channel_index=channel_index, mask=mask, repetition_index=repetition_index, is_mpe=True
     )
 
     data_b = torch.full((n_samples, out_features), torch.nan)
 
     sampling_ctx_b = SamplingContext(
-        channel_index=channel_index, mask=mask, repetition_index=repetition_index
+        channel_index=channel_index, mask=mask, repetition_index=repetition_index, is_mpe=True
     )
 
-    samples_a = module_a.sample(data=data_a, is_mpe=True)
-    samples_b = module_b.sample(data=data_b, is_mpe=True)
+    samples_a = module_a._sample(data=data_a, sampling_ctx=sampling_ctx_a, cache=Cache())
+    samples_b = module_b._sample(data=data_b, sampling_ctx=sampling_ctx_b, cache=Cache())
 
     torch.testing.assert_close(samples_a, samples_b, rtol=0.0, atol=0.0)
 

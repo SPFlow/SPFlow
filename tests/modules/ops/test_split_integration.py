@@ -9,6 +9,7 @@ import torch
 from spflow.meta import Scope
 from spflow.modules.ops import SplitInterleaved, SplitConsecutive
 from spflow.modules.products import ElementwiseProduct, OuterProduct
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
@@ -59,8 +60,8 @@ def test_split_operations_sampling():
     channel_index = torch.randint(0, 3, size=(n_samples, num_features))
     mask = torch.ones((n_samples, num_features), dtype=torch.bool)
     rep_index = torch.randint(0, 2, size=(n_samples,))
-
-    samples = split.sample(data=data)
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
+    samples = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
     # Verify samples
     assert samples.shape == (n_samples, num_features)
@@ -205,9 +206,18 @@ def test_split_sampling_mpe_mode(split_type):
 
     n_samples = 20
     data = torch.full((n_samples, num_features), torch.nan)
+    channel_index = torch.randint(0, 3, size=(n_samples, num_features))
+    mask = torch.ones((n_samples, num_features), dtype=torch.bool)
+    rep_index = torch.randint(0, 2, size=(n_samples,))
+    sampling_ctx = SamplingContext(
+        channel_index=channel_index,
+        mask=mask,
+        repetition_index=rep_index,
+        is_mpe=True,
+    )
 
     # Sample in MPE mode
-    samples = split.sample(data=data, is_mpe=True)
+    samples = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
     assert samples.shape == (n_samples, num_features)
     assert torch.isfinite(samples).all()
@@ -267,8 +277,8 @@ def test_split_scope_inheritance():
     assert len(lls) >= 1
 
 
-def test_split_samples_all_features_with_default_root_context():
-    """Public sampling initializes a full mask at the root and fills all features."""
+def test_split_with_partial_mask_sampling():
+    """Test sampling with partial masking."""
     num_features = 6
     scope = Scope(list(range(0, num_features)))
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
@@ -276,7 +286,11 @@ def test_split_samples_all_features_with_default_root_context():
 
     n_samples = 10
     data = torch.full((n_samples, num_features), torch.nan)
-
-
-    samples = split.sample(data=data)
-    assert torch.isfinite(samples[:, split.scope.query]).all()
+    channel_index = torch.randint(0, 3, size=(n_samples, num_features))
+    mask = torch.ones((n_samples, num_features), dtype=torch.bool)
+    mask[:, ::2] = False
+    rep_index = torch.zeros(n_samples, dtype=torch.long)
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
+    samples = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+    assert torch.isnan(samples[:, ::2]).any()
+    assert torch.isfinite(samples[:, 1::2]).all()

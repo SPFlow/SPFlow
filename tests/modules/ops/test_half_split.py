@@ -7,6 +7,7 @@ import torch
 from spflow.meta import Scope
 from spflow.modules.ops import SplitConsecutive
 from spflow.modules.products import ElementwiseProduct, OuterProduct
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
@@ -51,9 +52,19 @@ def test_split_result(cls, out_channels: int, out_features: int, num_repetitions
 
     data1 = torch.full((n_samples, spn1.out_shape.features * num_inputs), torch.nan)
     data2 = torch.full((n_samples, spn1.out_shape.features * num_inputs), torch.nan)
-
-    s1 = spn1.sample(data=data1, is_mpe=True)
-    s2 = spn2.sample(data=data2, is_mpe=True)
+    mask = torch.full((n_samples, spn1.out_shape.features), True, dtype=torch.bool)
+    channel_index = torch.randint(
+        low=0, high=spn1.out_shape.channels, size=(n_samples, spn1.out_shape.features)
+    )
+    rep_index = torch.randint(low=0, high=num_repetitions, size=(n_samples,))
+    sampling_ctx = SamplingContext(
+        channel_index=channel_index, repetition_index=rep_index, mask=mask, is_mpe=True
+    )
+    sampling_ctx2 = SamplingContext(
+        channel_index=channel_index, repetition_index=rep_index, mask=mask, is_mpe=True
+    )
+    s1 = spn1._sample(data=data1, sampling_ctx=sampling_ctx, cache=Cache())
+    s2 = spn2._sample(data=data2, sampling_ctx=sampling_ctx2, cache=Cache())
 
     torch.testing.assert_close(s1, s2, rtol=0.0, atol=0.0)
 
@@ -165,9 +176,11 @@ def test_split_mode_sampling_consistency():
 
     n_samples = 20
     data = torch.full((n_samples, 6), torch.nan)
-
-
-    samples = split.sample(data=data)
+    channel_index = torch.randint(0, 3, size=(n_samples, 6))
+    mask = torch.ones((n_samples, 6), dtype=torch.bool)
+    rep_index = torch.randint(0, 2, size=(n_samples,))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
+    samples = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
     assert samples.shape == (n_samples, 6)
     assert torch.isfinite(samples).all()

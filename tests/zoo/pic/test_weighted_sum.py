@@ -311,8 +311,13 @@ class TestWeightedSumSamplingAndMarginalize:
         inp = DummyInput(feature_to_scope=f2s, channels=2, repetitions=2)
         weights = torch.tensor([[[[1.0, 3.0], [5.0, 2.0]], [[2.0, 1.0], [4.0, 7.0]]]])
         ws = WeightedSum(inputs=inp, weights=weights)
-
-        out = ws.sample(data=torch.full((3, 1), float("nan")), is_mpe=True)
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((3, 1), dtype=torch.long),
+            mask=torch.ones((3, 1), dtype=torch.bool),
+            repetition_index=torch.tensor([1, 0, 1], dtype=torch.long),
+            is_mpe=True,
+        )
+        out = ws._sample(data=torch.full((3, 1), float("nan")), sampling_ctx=sampling_ctx, cache=Cache())
 
         assert out.shape == (3, 1)
         assert inp.sample_calls[-1].channel_index.shape == (3, 1)
@@ -336,8 +341,12 @@ class TestWeightedSumSamplingAndMarginalize:
         f2s = np.array([[Scope([0])]], dtype=object)
         inp = DummyInput(feature_to_scope=f2s, channels=2, repetitions=1)
         ws = WeightedSum(inputs=inp, weights=torch.zeros(1, 2, 2, 1))
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((2, 1), dtype=torch.long),
+            mask=torch.ones((2, 1), dtype=torch.bool),
+        )
         with pytest.raises(ShapeError, match="zero-sum routing weights"):
-            ws.sample(data=torch.full((2, 1), float("nan")))
+            ws._sample(data=torch.full((2, 1), float("nan")), sampling_ctx=sampling_ctx, cache=Cache())
 
     def test_sample_raises_on_incompatible_mask_width_internal_context(self):
         """Internal _sample should fail fast if mask width diverges from channel width."""

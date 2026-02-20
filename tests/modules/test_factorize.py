@@ -7,6 +7,7 @@ from spflow.exceptions import StructureError
 from spflow.learn import expectation_maximization
 from spflow.meta.data.scope import Scope
 from spflow.modules.rat import Factorize
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import DummyLeaf, make_data, make_leaf, make_normal_data, make_normal_leaf
 
@@ -67,7 +68,7 @@ def test_sample(in_channels: int, out_features: int, num_reps, depth):
     else:
         repetition_index = None
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = factorization_layer.sample(data=data)
+    samples = factorization_layer._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == data.shape
     samples_query = samples[:, factorization_layer.scope.query]
     assert torch.isfinite(samples_query).all()
@@ -89,7 +90,7 @@ def test_sample_accepts_column_vector_repetition_idx():
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples, 1))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
 
-    samples = factorization_layer.sample(data=data)
+    samples = factorization_layer._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == data.shape
     assert torch.isfinite(samples[:, factorization_layer.scope.query]).all()
 
@@ -213,7 +214,13 @@ def test_multidistribution_input():
 
     # Create data tensor to populate with samples
     data_to_sample = torch.full((1, out_features_1 + out_features_2), torch.nan)
-    samples = module.sample(data=data_to_sample)
+    channel_index = torch.randint(
+        low=0, high=module.out_shape.channels, size=(1, module.out_shape.features)
+    )
+    mask = torch.full((1, module.out_shape.features), True, dtype=torch.bool)
+    repetition_index = torch.randint(low=0, high=num_reps, size=(1,))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    samples = module._sample(data=data_to_sample, sampling_ctx=sampling_ctx, cache=Cache())
 
     assert samples.shape == (1, out_features_1 + out_features_2)
 

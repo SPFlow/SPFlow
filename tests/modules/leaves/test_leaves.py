@@ -8,6 +8,7 @@ from spflow.learn import train_gradient_descent
 from spflow.learn.expectation_maximization import expectation_maximization
 from spflow.meta import Scope
 from spflow.modules import leaves
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import evaluate_log_likelihood
 from tests.utils.leaves import make_leaf, make_data, create_conditional_parameter_fn, make_leaf_args
@@ -68,9 +69,18 @@ def test_sample(leaf_cls, out_features: int, out_channels: int, num_reps, is_mpe
     # Setup sampling context
     n_samples = 10
     data = torch.full((n_samples, out_features), torch.nan)
+    channel_index = torch.randint(low=0, high=out_channels, size=(n_samples, out_features))
+    mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(
+        channel_index=channel_index,
+        mask=mask,
+        repetition_index=repetition_index,
+        is_mpe=is_mpe,
+    )
 
     # Sample
-    samples = module.sample(data=data, is_mpe=is_mpe)
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
     assert samples.shape == (n_samples, out_features)
 

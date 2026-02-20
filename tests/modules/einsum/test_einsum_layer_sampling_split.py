@@ -8,6 +8,7 @@ import torch
 from spflow.modules.einsum import EinsumLayer
 from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_consecutive import SplitConsecutive
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from tests.modules.einsum.layer_test_utils import make_einsum_single_input, make_einsum_two_inputs
 from tests.utils.leaves import make_normal_data, make_normal_leaf
@@ -38,9 +39,10 @@ class TestEinsumLayerSampling:
         channel_index = torch.randint(low=0, high=out_channels, size=(num_samples, module.out_shape.features))
         mask = torch.ones((num_samples, module.out_shape.features), dtype=torch.bool)
         repetition_index = torch.randint(low=0, high=num_reps, size=(num_samples,))
-
-
-        samples = module.sample(data=data)
+        sampling_ctx = SamplingContext(
+            channel_index=channel_index, mask=mask, repetition_index=repetition_index
+        )
+        samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
         assert samples.shape == (num_samples, total_features)
         assert torch.isfinite(samples[:, module.scope.query]).all()
@@ -52,8 +54,8 @@ class TestEinsumLayerSampling:
         data = torch.full((num_samples, 4), torch.nan)
         channel_index = torch.zeros((num_samples, 2), dtype=torch.long)
         mask = torch.ones((num_samples, 2), dtype=torch.bool)
-
-        samples = module.sample(data=data, is_mpe=True)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, is_mpe=True)
+        samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()
@@ -96,8 +98,8 @@ class TestEinsumLayerSplitOptimization:
         data = torch.full((num_samples, 4), torch.nan)
         channel_index = torch.zeros((num_samples, 2), dtype=torch.long)
         mask = torch.ones((num_samples, 2), dtype=torch.bool)
-
-        samples = einsum.sample(data=data)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
+        samples = einsum._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()
@@ -120,7 +122,7 @@ class TestEinsumLayerSplitOptimization:
         sample_data = torch.full((num_samples, 4), torch.nan)
         channel_index = torch.zeros((num_samples, 2), dtype=torch.long)
         mask = torch.ones((num_samples, 2), dtype=torch.bool)
-
-        samples = einsum.sample(data=sample_data)
+        sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
+        samples = einsum._sample(data=sample_data, sampling_ctx=sampling_ctx, cache=Cache())
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()

@@ -134,7 +134,13 @@ def test_sample(leaf_cls, d, region_nodes, leaves, num_reps, root_nodes, outer_p
         split_mode=split_mode,
     )
     data = torch.full((n_samples, num_features), torch.nan)
-    samples = module.sample(data=data)
+    channel_index = torch.randint(
+        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
+    )
+    mask = torch.full((n_samples, module.out_shape.features), True)
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()

@@ -4,6 +4,7 @@ import pytest
 import torch
 
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
@@ -68,7 +69,8 @@ def test_sample(out_channels: int, out_features: int, num_reps):
     )
     mask = torch.full((n_samples, module.out_shape.features), True)
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-    samples = module.sample(data=data)
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()

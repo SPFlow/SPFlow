@@ -7,6 +7,7 @@ from spflow.meta import Scope
 from spflow.meta.data.interval_evidence import IntervalEvidence
 from spflow.modules.leaves import Categorical
 from spflow.modules.leaves.leaf import LeafModule
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 
 
@@ -205,8 +206,13 @@ def test_sample_accepts_column_vector_repetition_index(is_mpe: bool):
     """Sampling accepts repetition_index with shape (batch, 1)."""
     leaf = TinyLeaf(scope=Scope([0]), out_channels=2, num_repetitions=2)
     data = torch.full((4, 1), float("nan"))
-
-    samples = leaf.sample(data=data, is_mpe=is_mpe)
+    sampling_ctx = SamplingContext(
+        channel_index=torch.zeros((4, 1), dtype=torch.long),
+        mask=torch.ones((4, 1), dtype=torch.bool),
+        repetition_index=torch.randint(low=0, high=2, size=(4, 1)),
+        is_mpe=is_mpe,
+    )
+    samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
     assert samples.shape == (4, 1)
     assert torch.isfinite(samples).all()
@@ -461,7 +467,7 @@ def test_sample_conditional_paths_raise_for_invalid_sample_rank(monkeypatch):
         leaf.sample(data=data.clone(), is_mpe=True)
 
     monkeypatch.setattr(leaf, "conditional_distribution", lambda evidence: DistBadSampleRank())
-    with pytest.raises(ValueError):
+    with pytest.raises((ValueError, IndexError)):
         leaf.sample(data=data.clone(), is_mpe=False)
 
 

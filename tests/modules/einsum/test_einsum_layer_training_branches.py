@@ -211,6 +211,15 @@ class TestEinsumLayerCoverageBranches:
         module = make_einsum_two_inputs(2, 3, 4, 2)
         batch_size = 8
         data = torch.full((batch_size, 8), torch.nan)
+        channel_index = torch.randint(0, module.out_shape.channels, (batch_size, module.out_shape.features))
+        mask = torch.ones((batch_size, module.out_shape.features), dtype=torch.bool)
+        repetition_index = torch.randint(0, module.out_shape.repetitions, (batch_size,))
+        sampling_ctx = SamplingContext(
+            channel_index=channel_index,
+            mask=mask,
+            repetition_index=repetition_index,
+            is_mpe=True,
+        )
 
         left_ll = torch.randn(
             batch_size, module.out_shape.features, module._left_channels, module.out_shape.repetitions
@@ -222,7 +231,7 @@ class TestEinsumLayerCoverageBranches:
         cache["log_likelihood"][module.inputs[0]] = left_ll
         cache["log_likelihood"][module.inputs[1]] = right_ll
 
-        samples = module.sample(data=data, cache=cache, is_mpe=True)
+        samples = module._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
         assert samples.shape == data.shape
         assert torch.isfinite(samples[:, module.scope.query]).all()
 

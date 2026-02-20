@@ -28,6 +28,7 @@ from torch import Tensor
 
 from spflow.meta.data import Scope
 from spflow.modules.leaves.leaf import LeafModule
+from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext
 
 
@@ -160,6 +161,29 @@ class IndexLeaf(LeafModule):
         raise NotImplementedError("MLE not supported for IndexLeaf")
 
 
+def create_sampling_context(
+    num_samples: int,
+    num_features: int,
+    out_channels: int = 1,
+    num_repetitions: int = 1,
+    channel: int = 0,
+    repetition: int = 0,
+    is_mpe: bool = False,
+) -> SamplingContext:
+    """Create a sampling context for testing."""
+    del out_channels
+    del num_repetitions
+    channel_index = torch.full((num_samples, num_features), channel, dtype=torch.long)
+    mask = torch.ones(num_samples, num_features, dtype=torch.bool)
+    repetition_index = torch.full((num_samples,), repetition, dtype=torch.long)
+    return SamplingContext(
+        channel_index=channel_index,
+        mask=mask,
+        repetition_index=repetition_index,
+        is_mpe=is_mpe,
+    )
+
+
 
 
 class TestScopeOrderInvariance:
@@ -213,9 +237,14 @@ class TestScopeOrderInvariance:
 
         # Create data tensor with NaN for all positions
         data = torch.full((num_samples, num_total_features), float("nan"))
-
+        sampling_ctx = create_sampling_context(
+            num_samples=num_samples,
+            num_features=num_total_features,
+            out_channels=out_channels,
+            num_repetitions=num_repetitions,
+        )
         # Sample from the leaf
-        samples = leaf.sample(data=data)
+        samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
         # The expected behavior: data[idx] should equal idx for all idx in scope
         # This is because:
@@ -264,8 +293,13 @@ class TestScopeOrderInvariance:
             )
 
             data = torch.full((num_samples, num_total_features), float("nan"))
-
-            samples = leaf.sample(data=data)
+            sampling_ctx = create_sampling_context(
+                num_samples=num_samples,
+                num_features=num_total_features,
+                out_channels=out_channels,
+                num_repetitions=num_repetitions,
+            )
+            samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
                 f"For permutation {list(perm)}, expected {expected[0].tolist()}, "
@@ -290,8 +324,14 @@ class TestScopeOrderInvariance:
             )
 
             data = torch.full((num_samples, num_total_features), float("nan"))
-
-            samples = leaf.sample(data=data)
+            sampling_ctx = create_sampling_context(
+                num_samples=num_samples,
+                num_features=num_total_features,
+                out_channels=out_channels,
+                num_repetitions=num_repetitions,
+                channel=1,
+            )
+            samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
                 f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
@@ -315,8 +355,14 @@ class TestScopeOrderInvariance:
             )
 
             data = torch.full((num_samples, num_total_features), float("nan"))
-
-            samples = leaf.sample(data=data)
+            sampling_ctx = create_sampling_context(
+                num_samples=num_samples,
+                num_features=num_total_features,
+                out_channels=out_channels,
+                num_repetitions=num_repetitions,
+                repetition=1,
+            )
+            samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
                 f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
@@ -357,8 +403,13 @@ class TestScopeOrderInvariance:
             )
 
             data = torch.full((num_samples, num_total_features), float("nan"))
-
-            samples = leaf.sample(data=data)
+            sampling_ctx = create_sampling_context(
+                num_samples=num_samples,
+                num_features=num_total_features,
+                out_channels=out_channels,
+                num_repetitions=num_repetitions,
+            )
+            samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
                 f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
@@ -382,8 +433,14 @@ class TestScopeOrderInvariance:
             )
 
             data = torch.full((num_samples, num_total_features), float("nan"))
-
-            samples = leaf.sample(data=data, is_mpe=True)
+            sampling_ctx = create_sampling_context(
+                num_samples=num_samples,
+                num_features=num_total_features,
+                out_channels=out_channels,
+                num_repetitions=num_repetitions,
+                is_mpe=True,
+            )
+            samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
                 f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
@@ -406,8 +463,13 @@ class TestScopeOrderInvariance:
 
         num_total_features = max(scope_query) + 1  # includes out-of-scope feature positions
         data = torch.full((num_samples, num_total_features), float("nan"))
-
-        samples = leaf.sample(data=data)
+        sampling_ctx = create_sampling_context(
+            num_samples=num_samples,
+            num_features=num_total_features,
+            out_channels=out_channels,
+            num_repetitions=num_repetitions,
+        )
+        samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
         for scope_idx in scope_query:
             torch.testing.assert_close(
@@ -438,8 +500,15 @@ class TestScopeOrderInvariance:
             )
 
             data = torch.full((num_samples, num_total_features), float("nan"))
-
-            samples = leaf.sample(data=data)
+            channel_index = torch.zeros(num_samples, num_total_features, dtype=torch.long)
+            mask = torch.ones(num_samples, num_total_features, dtype=torch.bool)
+            repetition_index = torch.zeros(num_samples, dtype=torch.long)
+            sampling_ctx = SamplingContext(
+                channel_index=channel_index,
+                mask=mask,
+                repetition_index=repetition_index,
+            )
+            samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
                 f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"

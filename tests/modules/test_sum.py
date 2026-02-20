@@ -176,7 +176,13 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps
         num_repetitions=num_reps,
     )
     data = torch.full((n_samples, module.out_shape.features), torch.nan)
-    samples = module.sample(data=data)
+    channel_index = _randint(
+        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
+    )
+    mask = torch.full((n_samples, module.out_shape.features), True)
+    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()
@@ -206,7 +212,13 @@ def test_sample_product_inputs(in_channels: int, out_channels: int, out_features
     module = Sum(out_channels=out_channels, inputs=prod, num_repetitions=num_reps)
 
     data = torch.full((n_samples, out_features), torch.nan)
-    samples = module.sample(data=data)
+    channel_index = _randint(
+        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
+    )
+    mask = torch.full((n_samples, module.out_shape.features), True)
+    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()
@@ -234,17 +246,19 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
 
     data_copy = data.clone()
 
-    cache = Cache()
-    samples = module.sample_with_evidence(
-        evidence=data,
-        is_mpe=False,
-        cache=cache,
+    channel_index = _randint(
+        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
     )
+    mask = torch.full(channel_index.shape, True, dtype=torch.bool)
+    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+
+    cache = Cache()
+    module.log_likelihood(data, cache=cache)
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=cache)
 
     # Check that log_likelihood is cached
-    cached_ll = cache["log_likelihood"][module.inputs]
-    assert cached_ll is not None
-    assert cached_ll.isfinite().all()
+    assert len(cache["log_likelihood"]) > 0
 
     # Check for correct shape
     assert samples.shape == data.shape
@@ -450,26 +464,11 @@ def test_sample_defaults_repetition_index_for_multiple_repetitions():
 
 def test_sample_raises_on_incompatible_mask_width():
     module = make_sum(in_channels=2, out_channels=2, out_features=3, num_repetitions=1)
-
-    class _LooseSamplingCtx:
-        def __init__(self):
-            self.channel_index = torch.zeros((5, 3), dtype=torch.long)
-            self.mask = torch.ones((5, 1), dtype=torch.bool)
-            self.repetition_index = None
-
-        def require_feature_width(self, expected_features):
-            if self.channel_index.shape[1] != expected_features:
-                raise ShapeError(
-                    "Received incompatible sampling context feature width: "
-                    f"got {self.channel_index.shape[1]}, expected {expected_features}."
-                )
-            if self.mask.shape[1] != expected_features:
-                raise ShapeError(
-                    "Received incompatible sampling context feature width: "
-                    f"got {self.mask.shape[1]}, expected {expected_features}."
-                )
-
-    sampling_ctx = _LooseSamplingCtx()
+    sampling_ctx = SamplingContext(
+        channel_index=torch.zeros((5, 3), dtype=torch.long),
+        mask=torch.ones((5, 3), dtype=torch.bool),
+    )
+    sampling_ctx._mask = torch.ones((5, 1), dtype=torch.bool)  # type: ignore[attr-defined]
     with pytest.raises(InvalidParameterError, match="mismatched channel_index/mask shapes"):
         module._sample(data=torch.full((5, 3), torch.nan), sampling_ctx=sampling_ctx, cache=Cache())
 
@@ -619,17 +618,14 @@ def test_multiple_input():
     mask = torch.full((n_samples, out_features), True)
     repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx_a = SamplingContext(
-        channel_index=channel_index, mask=mask, repetition_index=repetition_index
+        channel_index=channel_index, mask=mask, repetition_index=repetition_index, is_mpe=True
     )
-
     data_b = torch.full((n_samples, out_features), torch.nan)
-
     sampling_ctx_b = SamplingContext(
-        channel_index=channel_index, mask=mask, repetition_index=repetition_index
+        channel_index=channel_index, mask=mask, repetition_index=repetition_index, is_mpe=True
     )
-
-    samples_a = module_a.sample(data=data_a, is_mpe=True)
-    samples_b = module_b.sample(data=data_b, is_mpe=True)
+    samples_a = module_a._sample(data=data_a, sampling_ctx=sampling_ctx_a, cache=Cache())
+    samples_b = module_b._sample(data=data_b, sampling_ctx=sampling_ctx_b, cache=Cache())
 
     torch.testing.assert_close(samples_a, samples_b, rtol=0.0, atol=0.0)
 

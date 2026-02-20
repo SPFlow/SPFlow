@@ -8,7 +8,6 @@ from spflow.utils.sampling_context import (
     SamplingContext,
     SIMPLE,
     to_one_hot,
-    to_one_hot_along_dim,
 )
 
 
@@ -585,13 +584,6 @@ def test_to_one_hot_supports_non_last_dimension():
     actual = to_one_hot(index=index, dim=1, dim_size=3)
     assert actual.shape == (2, 3, 3)
     assert torch.equal(actual.sum(dim=1), torch.ones((2, 3), dtype=torch.long))
-
-
-def test_to_one_hot_along_dim_alias_matches_to_one_hot():
-    index = torch.tensor([1, 0], dtype=torch.long)
-    actual = to_one_hot_along_dim(index, dim=1, dim_size=3)
-    expected = to_one_hot(index=index, dim=1, dim_size=3)
-    assert torch.equal(actual, expected)
 
 
 def test_to_one_hot_rejects_invalid_dim():

@@ -190,7 +190,18 @@ class TestProdConvSample:
         module = ProdConv(inputs=leaf, kernel_size_h=kernel_h, kernel_size_w=kernel_w)
 
         num_samples = 20
-        samples = module.sample(num_samples=num_samples)
+        channel_idx = torch.randint(
+            low=0, high=module.out_shape.channels, size=(num_samples, module.in_shape.features)
+        )
+        mask = torch.ones(num_samples, module.in_shape.features, dtype=torch.bool)
+        repetition_index = torch.randint(low=0, high=module.out_shape.repetitions, size=(num_samples,))
+        sampling_ctx = SamplingContext(
+            channel_index=channel_idx,
+            mask=mask,
+            repetition_index=repetition_index,
+        )
+        data = torch.full((num_samples, height * width), float("nan"))
+        samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
         assert samples.shape == (num_samples, height * width)
 
@@ -201,7 +212,19 @@ class TestProdConvSample:
         leaf = make_normal_leaf(height, width, out_channels=out_channels)
         module = ProdConv(inputs=leaf, kernel_size_h=kernel_h, kernel_size_w=kernel_w)
 
-        samples = module.sample(num_samples=10)
+        num_samples = 10
+        channel_idx = torch.randint(
+            low=0, high=module.out_shape.channels, size=(num_samples, module.in_shape.features)
+        )
+        mask = torch.ones(num_samples, module.in_shape.features, dtype=torch.bool)
+        repetition_index = torch.randint(low=0, high=module.out_shape.repetitions, size=(num_samples,))
+        sampling_ctx = SamplingContext(
+            channel_index=channel_idx,
+            mask=mask,
+            repetition_index=repetition_index,
+        )
+        data = torch.full((num_samples, height * width), float("nan"))
+        samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
         assert torch.isfinite(samples).all()
 
     @pytest.mark.parametrize("out_channels,hwk", sample_params)
@@ -220,9 +243,11 @@ class TestProdConvSample:
             channel_idx[:, i] = i % out_channels
 
         mask = torch.ones(batch_size, out_features, dtype=torch.bool)
+        repetition_index = torch.zeros(batch_size, dtype=torch.long)
+        sampling_ctx = SamplingContext(channel_index=channel_idx, mask=mask, repetition_index=repetition_index)
 
         data = torch.full((batch_size, height * width), float("nan"))
-        module.sample(data=data)
+        module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
         # After upsampling, samples should be finite
         assert torch.isfinite(data).all()

@@ -12,6 +12,7 @@ from spflow.meta.data import Scope
 from spflow.modules.conv import SumConv
 from spflow.modules.leaves import Normal
 from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import SamplingContext
 
 # Test parameter values
 in_channels_values = [1, 3]
@@ -233,6 +234,22 @@ class TestSumConvLogLikelihood:
 class TestSumConvSample:
     """Test SumConv sampling."""
 
+    @staticmethod
+    def _make_sampling_context(module: SumConv, batch_size: int, *, is_mpe: bool = False) -> SamplingContext:
+        channel_index = torch.randint(
+            low=0,
+            high=module.out_shape.channels,
+            size=(batch_size, module.out_shape.features),
+        )
+        mask = torch.ones((batch_size, module.out_shape.features), dtype=torch.bool)
+        repetition_index = torch.randint(low=0, high=module.out_shape.repetitions, size=(batch_size,))
+        return SamplingContext(
+            channel_index=channel_index,
+            mask=mask,
+            repetition_index=repetition_index,
+            is_mpe=is_mpe,
+        )
+
     @pytest.mark.parametrize("in_channels,out_channels,hw", sample_params)
     def test_sample_shape(self, in_channels, out_channels, hw):
         """Test that samples have correct shape."""
@@ -241,7 +258,9 @@ class TestSumConvSample:
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
         num_samples = 20
-        samples = module.sample(num_samples=num_samples)
+        data = torch.full((num_samples, height * width), torch.nan)
+        sampling_ctx = self._make_sampling_context(module=module, batch_size=num_samples)
+        samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
         assert samples.shape == (num_samples, height * width)
 
@@ -252,7 +271,9 @@ class TestSumConvSample:
         leaf = make_normal_leaf(height, width, out_channels=in_channels)
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
-        samples = module.sample(num_samples=10)
+        data = torch.full((10, height * width), torch.nan)
+        sampling_ctx = self._make_sampling_context(module=module, batch_size=10)
+        samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
         assert torch.isfinite(samples).all()
 
     @pytest.mark.parametrize("in_channels,out_channels,hw", sample_params)
@@ -262,9 +283,13 @@ class TestSumConvSample:
         leaf = make_normal_leaf(height, width, out_channels=in_channels)
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
-        samples1 = module.sample(num_samples=5, is_mpe=True)
+        data1 = torch.full((5, height * width), torch.nan)
+        sampling_ctx1 = self._make_sampling_context(module=module, batch_size=5, is_mpe=True)
+        samples1 = module._sample(data=data1, sampling_ctx=sampling_ctx1, cache=Cache())
 
-        samples2 = module.sample(num_samples=5, is_mpe=True)
+        data2 = torch.full((5, height * width), torch.nan)
+        sampling_ctx2 = self._make_sampling_context(module=module, batch_size=5, is_mpe=True)
+        samples2 = module._sample(data=data2, sampling_ctx=sampling_ctx2, cache=Cache())
 
         # MPE should give deterministic results (same selection)
         # Note: actual values may vary due to leaf sampling
@@ -275,7 +300,9 @@ class TestSumConvSample:
         leaf = make_normal_leaf(4, 4, out_channels=2)
         module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
 
-        samples = module.sample()
+        data = torch.full((1, 16), torch.nan)
+        sampling_ctx = self._make_sampling_context(module=module, batch_size=1)
+        samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
         assert samples.shape == (1, 16)
 
     def test_sample_uses_repetition_index_and_cached_input_lls(self):
@@ -288,7 +315,16 @@ class TestSumConvSample:
         data = _randn(batch_size, 16)
         module.log_likelihood(data, cache=cache)
 
-        out = module.sample(data=torch.full((batch_size, 16), float("nan")), cache=cache)
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((batch_size, 16), dtype=torch.long),
+            mask=torch.ones((batch_size, 16), dtype=torch.bool),
+            repetition_index=torch.tensor([0, 1, 0], dtype=torch.long),
+        )
+        out = module._sample(
+            data=torch.full((batch_size, 16), float("nan")),
+            sampling_ctx=sampling_ctx,
+            cache=cache,
+        )
         assert out.shape == (batch_size, 16)
 
     def test_sample_parent_feature_width_raises_shape_error(self):
@@ -297,26 +333,64 @@ class TestSumConvSample:
         leaf = make_normal_leaf(4, 4, out_channels=2)
         module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
 
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((batch_size, 4), dtype=torch.long),
+            mask=torch.ones((batch_size, 4), dtype=torch.bool),
+        )
+        with pytest.raises(ShapeError, match="incompatible sampling context feature width"):
+            module._sample(
+                data=torch.full((batch_size, 16), float("nan")),
+                sampling_ctx=sampling_ctx,
+                cache=Cache(),
+            )
+
+    def test_sample_invalid_context_width_raises_shape_error(self):
+        """Test sample rejects sampling context widths incompatible with spatial upsampling."""
+        batch_size = 2
+        leaf = make_normal_leaf(4, 4, out_channels=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((batch_size, 2), dtype=torch.long),
+            mask=torch.ones((batch_size, 2), dtype=torch.bool),
+        )
+        with pytest.raises(ShapeError, match="incompatible sampling context feature width"):
+            module._sample(
+                data=torch.full((batch_size, 16), float("nan")),
+                sampling_ctx=sampling_ctx,
+                cache=Cache(),
+            )
+
     def test_sample_non_square_features_raises(self):
         """Test sample rejects non-square feature counts."""
         leaf = Normal(scope=Scope(list(range(6))), out_channels=2)
         module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((2, 6), dtype=torch.long),
+            mask=torch.ones((2, 6), dtype=torch.bool),
+        )
 
         with pytest.raises(ValueError):
-            module.sample(num_samples=2)
+            module._sample(data=torch.full((2, 6), float("nan")), sampling_ctx=sampling_ctx, cache=Cache())
 
     def test_sample_non_divisible_spatial_dims_raises(self):
         """Test sample rejects square dims not divisible by kernel size."""
         leaf = make_normal_leaf(3, 3, out_channels=2)
         module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((2, 9), dtype=torch.long),
+            mask=torch.ones((2, 9), dtype=torch.bool),
+        )
 
         with pytest.raises(ValueError):
-            module.sample(num_samples=2)
+            module._sample(data=torch.full((2, 9), float("nan")), sampling_ctx=sampling_ctx, cache=Cache())
 
     def test_sample_requires_context_for_non_scalar_output(self):
         leaf = make_normal_leaf(4, 4, out_channels=2)
         module = SumConv(inputs=leaf, out_channels=2, kernel_size=2)
-        samples = module.sample(num_samples=2)
+        data = torch.full((2, 16), torch.nan)
+        sampling_ctx = self._make_sampling_context(module=module, batch_size=2)
+        samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
         assert samples.shape == (2, 16)
 
 

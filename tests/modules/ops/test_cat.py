@@ -70,7 +70,21 @@ def test_sample(out_channels: int, out_features: int, num_reps, dim: int):
         dim=dim,
     )
     data = torch.full((n_samples, module.out_shape.features), torch.nan)
-    samples = module.sample(data=data)
+    channel_index = _randint(
+        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
+    )
+    mask = torch.full((n_samples, module.out_shape.features), True, dtype=torch.bool)
+    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = make_sampling_context(
+        num_samples=n_samples,
+        num_features=module.out_shape.features,
+        num_channels=module.out_shape.channels,
+        num_repetitions=num_reps,
+        channel_index=channel_index,
+        mask=mask,
+        repetition_index=repetition_index,
+    )
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()
@@ -98,8 +112,16 @@ def test_sample_dim2_defaults_to_first_global_channel():
     module = Cat(inputs=[child_a, child_b], dim=2)
 
     data = torch.full((num_samples, 2), torch.nan)
-
-    samples = module.sample(data=data)
+    sampling_ctx = make_sampling_context(
+        num_samples=num_samples,
+        num_features=2,
+        num_channels=4,
+        num_repetitions=1,
+        channel_index=torch.zeros((num_samples, 2), dtype=torch.long),
+        mask=torch.ones((num_samples, 2), dtype=torch.bool),
+        repetition_index=torch.zeros((num_samples,), dtype=torch.long),
+    )
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     expected = torch.full((2,), 100.0, dtype=samples.dtype)
     for row_idx in range(num_samples):
         torch.testing.assert_close(

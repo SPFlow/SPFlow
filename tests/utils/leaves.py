@@ -111,7 +111,8 @@ def evaluate_log_likelihood(module: LeafModule, data: torch.Tensor):
 
 
 def evaluate_samples(node: LeafModule, data: torch.Tensor, is_mpe: bool, sampling_ctx):
-    samples = node.sample(data=data)
+    sampling_ctx.is_mpe = is_mpe
+    samples = node._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == data.shape
     s_query = samples[:, node.scope.query]
     assert s_query.shape == (data.shape[0], len(node.scope.query))
