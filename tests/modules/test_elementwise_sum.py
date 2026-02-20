@@ -19,8 +19,14 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.sums.elementwise_sum import ElementwiseSum
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
-from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, DummyLeaf
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
+from tests.utils.leaves import (
+    DummyLeaf,
+    make_leaf,
+    make_normal_data,
+    make_normal_leaf,
+)
+from tests.utils.sampling_context_helpers import patch_simple_as_categorical_one_hot
 
 in_channels_values = [1, 4]
 out_channels_values = [1, 5]
@@ -341,6 +347,154 @@ def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
 
     # Check, that the last three scopes (those that were conditioned on) are still the same
     torch.testing.assert_close(data_copy[:, [3, 4, 5]], samples[:, [3, 4, 5]], rtol=0.0, atol=0.0)
+
+
+class TestDifferentiableSampling:
+    @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
+    def test_diff_sampling(self, in_channels: int, out_channels: int, out_features: int, num_reps: int):
+        n_samples = 12
+        module = make_sum(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            out_features=out_features,
+            num_repetitions=num_reps,
+        )
+
+        channel_index = _randint(
+            low=0,
+            high=module.out_shape.channels,
+            size=(n_samples, module.out_shape.features),
+        )
+        repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+        sampling_ctx = SamplingContext(
+            channel_index=to_one_hot(channel_index, dim=-1, dim_size=module.out_shape.channels),
+            mask=torch.full((n_samples, module.out_shape.features), True),
+            repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+            is_differentiable=True,
+        )
+
+        samples = module._sample(
+            data=torch.full((n_samples, module.out_shape.features), torch.nan),
+            sampling_ctx=sampling_ctx,
+            cache=Cache(),
+        )
+        assert samples.shape == (n_samples, module.out_shape.features)
+        samples_query = samples[:, module.scope.query]
+        assert torch.isfinite(samples_query).all()
+
+    @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
+    def test_diff_sampling_equals_non_diff_sampling(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        in_channels: int,
+        out_channels: int,
+        out_features: int,
+        num_reps: int,
+    ):
+        n_samples = 16
+        scope = Scope(list(range(out_features)))
+        mean = torch.arange(
+            in_channels, dtype=torch.get_default_dtype()
+        ).view(1, in_channels, 1).expand(out_features, in_channels, num_reps)
+        std = torch.full_like(mean, 1e-8)
+        normal_leaf = make_normal_leaf(
+            scope=scope,
+            out_channels=in_channels,
+            num_repetitions=num_reps,
+            mean=mean,
+            std=std,
+        )
+
+        module = ElementwiseSum(
+            inputs=[normal_leaf],
+            out_channels=out_channels,
+            num_repetitions=num_reps,
+        )
+        weights = torch.arange(
+            1,
+            1 + out_features * in_channels * out_channels * num_reps,
+            dtype=torch.get_default_dtype(),
+        ).reshape(out_features, in_channels, out_channels, 1, num_reps)
+        weights /= weights.sum(dim=3, keepdim=True)
+        module.weights = weights
+
+        channel_index = _randint(
+            low=0,
+            high=module.out_shape.channels,
+            size=(n_samples, module.out_shape.features),
+        )
+        repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+        mask = torch.full((n_samples, module.out_shape.features), True)
+
+        sampling_ctx_a = SamplingContext(
+            channel_index=channel_index.clone(),
+            mask=mask.clone(),
+            repetition_index=repetition_index.clone(),
+            is_mpe=False,
+        )
+        sampling_ctx_b = SamplingContext(
+            channel_index=to_one_hot(channel_index, dim=-1, dim_size=module.out_shape.channels),
+            mask=mask.clone(),
+            repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+            is_mpe=False,
+            is_differentiable=True,
+        )
+
+        patch_simple_as_categorical_one_hot(monkeypatch)
+
+        torch.manual_seed(1337)
+        samples_a = module._sample(
+            data=torch.full((n_samples, module.out_shape.features), torch.nan),
+            sampling_ctx=sampling_ctx_a,
+            cache=Cache(),
+        )
+        torch.manual_seed(1337)
+        samples_b = module._sample(
+            data=torch.full((n_samples, module.out_shape.features), torch.nan),
+            sampling_ctx=sampling_ctx_b,
+            cache=Cache(),
+        )
+
+        torch.testing.assert_close(samples_a, samples_b, rtol=1e-6, atol=1e-5)
+
+    @pytest.mark.parametrize(
+        "in_channels,out_channels,num_reps", product(in_channels_values, out_channels_values, num_repetitions)
+    )
+    def test_diff_sampling_with_conditional_cache(self, in_channels: int, out_channels: int, num_reps: int):
+        out_features = 6
+        n_samples = 20
+        module = make_sum(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            out_features=out_features,
+            num_repetitions=num_reps,
+        )
+
+        data = _randn(n_samples, out_features)
+        data[:, [0, 1, 2]] = torch.nan
+        data_copy = data.clone()
+
+        cache = Cache()
+        module.log_likelihood(data, cache=cache)
+
+        channel_index = _randint(
+            low=0,
+            high=module.out_shape.channels,
+            size=(n_samples, module.out_shape.features),
+        )
+        repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+        sampling_ctx = SamplingContext(
+            channel_index=to_one_hot(channel_index, dim=-1, dim_size=module.out_shape.channels),
+            mask=torch.full((n_samples, module.out_shape.features), True),
+            repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+            is_differentiable=True,
+        )
+
+        samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=cache)
+        assert samples.shape == (n_samples, out_features)
+        samples_query = samples[:, module.scope.query]
+        assert torch.isfinite(samples_query).all()
+        torch.testing.assert_close(data_copy[:, [3, 4, 5]], samples[:, [3, 4, 5]], rtol=0.0, atol=0.0)
 
 
 @pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)

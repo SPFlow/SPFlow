@@ -8,6 +8,7 @@ from einops import rearrange, repeat
 from torch import Tensor, nn
 
 from spflow.exceptions import (
+    InvalidParameterError,
     InvalidParameterCombinationError,
     InvalidWeightsError,
     MissingCacheError,
@@ -21,7 +22,13 @@ from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import (
+    SamplingContext,
+    index_tensor,
+    repeat_channel_index,
+    repeat_repetition_index,
+    sample_from_logits,
+)
 
 
 class ElementwiseSum(Module):
@@ -148,6 +155,21 @@ class ElementwiseSum(Module):
             dtype=torch.long,
         )
         self.register_buffer(name="unraveled_channel_indices", tensor=unraveled_channel_indices)
+        # Differentiable sampling routes parent channels as one-hot/soft vectors over the
+        # flattened channel axis (ci * co). These projection matrices map that flattened
+        # distribution to child-local marginals over ci and co without integer indexing.
+        self.register_buffer(
+            name="flat_to_input_channels",
+            tensor=torch.nn.functional.one_hot(
+                unraveled_channel_indices[:, 0], num_classes=self.in_shape.channels
+            ).to(dtype=torch.get_default_dtype()),
+        )
+        self.register_buffer(
+            name="flat_to_sum_channels",
+            tensor=torch.nn.functional.one_hot(
+                unraveled_channel_indices[:, 1], num_classes=self._num_sums
+            ).to(dtype=torch.get_default_dtype()),
+        )
 
         if weights is None:
             # Initialize weights randomly with small epsilon to avoid zeros
@@ -291,96 +313,120 @@ class ElementwiseSum(Module):
             allowed_feature_widths=(1, self.out_shape.features),
         )
         sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
+        if sampling_ctx.is_differentiable and not sampling_ctx.hard:
+            raise InvalidParameterError(
+                "ElementwiseSum differentiable sampling requires hard=True because routing masks are boolean."
+            )
 
         # Index into the correct weight channels given by parent module
         # (stay in logits space since Categorical distribution accepts logits directly)
-        if sampling_ctx.repetition_index is not None:
-            batch_size = int(sampling_ctx.channel_index.shape[0])
-            logits = repeat(self.logits, "f ci co i r -> b f ci co i r", b=batch_size)
+        batch_size = int(sampling_ctx.channel_index.shape[0])
+        logits = repeat(self.logits, "f ci co i r -> b f ci co i r", b=batch_size)
+        num_features = int(logits.shape[1])
+        num_input_channels = int(logits.shape[2])
+        num_output_channels = int(logits.shape[3])
+        num_inputs = int(logits.shape[4])
+        rep_idx = repeat_repetition_index(
+            sampling_ctx.repetition_index,
+            "n r -> n f ci co i r",
+            f=num_features,
+            ci=num_input_channels,
+            co=num_output_channels,
+            i=num_inputs,
+        )
+        logits = index_tensor(
+            logits,
+            index=rep_idx,
+            dim=-1,
+            is_differentiable=sampling_ctx.is_differentiable,
+        )
 
-            indices = sampling_ctx.repetition_index  # Shape (30000, 1, 1)
-
-            # Use gather to select the correct repetition
-            # Repeat indices to match the target dimension for gathering
-            num_features = int(logits.shape[1])
-            num_input_channels = int(logits.shape[2])
-            num_output_channels = int(logits.shape[3])
-            num_inputs = int(logits.shape[4])
-            indices = repeat(
-                rearrange(indices, "... -> (...)"),
-                "n -> n f ci co i 1",
-                f=num_features,
-                ci=num_input_channels,
-                co=num_output_channels,
-                i=num_inputs,
+        if sampling_ctx.is_differentiable:
+            flat_to_input = self.flat_to_input_channels.to(
+                device=sampling_ctx.channel_index.device,
+                dtype=sampling_ctx.channel_index.dtype,
             )
-            logits = torch.gather(logits, dim=-1, index=indices)
-            logits = rearrange(logits, "b f ci co i 1 -> b f ci co i")
+            flat_to_sum = self.flat_to_sum_channels.to(
+                device=sampling_ctx.channel_index.device,
+                dtype=sampling_ctx.channel_index.dtype,
+            )
+            # [B,F,CI*CO] @ [CI*CO,CI/CO] -> [B,F,CI] / [B,F,CO]
+            cids_in_channels_per_input = sampling_ctx.channel_index @ flat_to_input
+            cids_num_sums = sampling_ctx.channel_index @ flat_to_sum
         else:
-            if self.out_shape.repetitions > 1:
-                raise ValueError(
-                    "sampling_ctx.repetition_index must be provided when sampling from a module with "
-                    "num_repetitions > 1."
-                )
-            logits = self.logits[..., 0]  # Select the 0th repetition
-            logits = rearrange(logits, "f ci co i -> 1 f ci co i")
+            cids_mapped = self.unraveled_channel_indices[sampling_ctx.channel_index]
+            cids_in_channels_per_input = cids_mapped[..., 0]
+            cids_num_sums = cids_mapped[..., 1]
 
-            # Expand to batch size
-            batch_size = int(sampling_ctx.channel_index.shape[0])
-            logits = repeat(logits, "1 f ci co i -> b f ci co i", b=batch_size)
-
-        cids_mapped = self.unraveled_channel_indices[sampling_ctx.channel_index]
-
-        # Take the first element of the tuple (input_channel_idx, output_channel_idx)
-        # This is the out_channels index for all inputs in the Stack module
-        cids_in_channels_per_input = cids_mapped[..., 0]
-        cids_num_sums = cids_mapped[..., 1]
-
-        # Index weights with cids_num_sums (selects the correct output channel)
-        num_input_channels = int(logits.shape[-3])
-        num_inputs = int(logits.shape[-1])
-        cids_num_sums = repeat(
+        # Select sum-channel and then input-channel for each parent channel route.
+        num_input_channels = int(logits.shape[2])
+        num_inputs = int(logits.shape[4])
+        cids_num_sums_idx = repeat_channel_index(
             cids_num_sums,
-            "b f -> b f ci 1 i",
+            "b f co -> b f ci co i",
             ci=num_input_channels,
             i=num_inputs,
         )
-        logits = logits.gather(dim=3, index=cids_num_sums)
-        logits = rearrange(logits, "b f ci 1 i -> b f ci i")
-
-        # Index logits with oids_in_channels_per_input to get the correct logits for each input
-        num_inputs = int(logits.shape[-1])
-        logits = logits.gather(
-            dim=2,
-            index=repeat(cids_in_channels_per_input, "b f -> b f 1 i", i=num_inputs),
+        logits = index_tensor(
+            logits,
+            index=cids_num_sums_idx,
+            dim=3,
+            is_differentiable=sampling_ctx.is_differentiable,
         )
-        logits = rearrange(logits, "b f 1 i -> b f i")
+        cids_in_channels_idx = repeat_channel_index(
+            cids_in_channels_per_input,
+            "b f ci -> b f ci i",
+            i=num_inputs,
+        )
+        logits = index_tensor(
+            logits,
+            index=cids_in_channels_idx,
+            dim=2,
+            is_differentiable=sampling_ctx.is_differentiable,
+        )
 
         if "log_likelihood" in cache and all(cache["log_likelihood"][inp] is not None for inp in self.inputs):
-            input_lls = [cache["log_likelihood"][inp] for inp in self.inputs]
-            input_lls = torch.stack(input_lls, dim=self.sum_dim)  # torch.stack(input_lls, dim=-1)
+            input_lls = []
+            for inp in self.inputs:
+                inp_ll = cache["log_likelihood"][inp]
+                if inp.out_shape.channels == 1 and self.in_shape.channels > 1:
+                    inp_ll = repeat(inp_ll, "b f 1 r -> b f ci r", ci=self.in_shape.channels)
+                input_lls.append(inp_ll)
+            input_lls = torch.stack(input_lls, dim=self.sum_dim)
             if sampling_ctx.repetition_index is not None:
                 num_features = int(input_lls.shape[1])
                 num_input_channels = int(input_lls.shape[2])
                 num_inputs = int(input_lls.shape[3])
-                indices = repeat(
-                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                    "n -> n f ci i 1",
+                rep_idx = repeat_repetition_index(
+                    sampling_ctx.repetition_index,
+                    "n r -> n f ci i r",
                     f=num_features,
                     ci=num_input_channels,
                     i=num_inputs,
                 )
-                input_lls = torch.gather(input_lls, dim=-1, index=indices)
-                input_lls = rearrange(input_lls, "b f ci i 1 -> b f ci i")
+                input_lls = index_tensor(
+                    input_lls,
+                    index=rep_idx,
+                    dim=-1,
+                    is_differentiable=sampling_ctx.is_differentiable,
+                )
             is_conditional = True
         else:
             is_conditional = False
 
         if is_conditional:
             num_inputs = int(input_lls.shape[3])
-            cids_in_channels_input_lls = repeat(cids_in_channels_per_input, "b f -> b f 1 i", i=num_inputs)
-            input_lls = input_lls.gather(dim=2, index=cids_in_channels_input_lls)
-            input_lls = rearrange(input_lls, "b f 1 i -> b f i")
+            cids_in_channels_input_lls = repeat_channel_index(
+                cids_in_channels_per_input,
+                "b f ci -> b f ci i",
+                i=num_inputs,
+            )
+            input_lls = index_tensor(
+                input_lls,
+                index=cids_in_channels_input_lls,
+                dim=2,
+                is_differentiable=sampling_ctx.is_differentiable,
+            )
 
             # Compute log posterior by reweighing logits with input lls
             log_prior = logits
@@ -388,14 +434,22 @@ class ElementwiseSum(Module):
             log_posterior = log_posterior.log_softmax(dim=2)
             logits = log_posterior
 
-        # Sample/MPE from categorical distribution defined by weights to obtain indices into the Stack dimension
-        if sampling_ctx.is_mpe:
-            cids_stack = torch.argmax(logits, dim=-1)
+        # Sample/MPE over the input-module axis.
+        cids_stack = sample_from_logits(
+            logits=logits,
+            dim=-1,
+            is_mpe=sampling_ctx.is_mpe,
+            is_differentiable=sampling_ctx.is_differentiable,
+            hard=sampling_ctx.hard,
+            tau=sampling_ctx.tau,
+        )
+        if sampling_ctx.is_differentiable:
+            selected_input = cids_stack.argmax(dim=-1)
         else:
-            cids_stack = torch.distributions.Categorical(logits=logits).sample()
+            selected_input = cids_stack
 
         for i, inp in enumerate(self.inputs):
-            child_mask = sampling_ctx.mask & (cids_stack == i)
+            child_mask = sampling_ctx.mask & (selected_input == i)
             sampling_ctx_cpy = sampling_ctx.with_routing(
                 channel_index=cids_in_channels_per_input,
                 mask=child_mask,
