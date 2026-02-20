@@ -20,8 +20,9 @@ from spflow.utils.projections import (
 )
 from spflow.utils.sampling_context import (
     SamplingContext,
-    update_channel_index_strict,
+    update_channel_index_strict, index_tensor
 )
+from spflow.utils.sampling_context import sample_from_logits
 
 
 class Sum(Module):
@@ -40,11 +41,11 @@ class Sum(Module):
     """
 
     def __init__(
-        self,
-        inputs: Module | list[Module],
-        out_channels: int = 1,
-        num_repetitions: int = 1,
-        weights: Tensor | list[float] | None = None,
+            self,
+            inputs: Module | list[Module],
+            out_channels: int = 1,
+            num_repetitions: int = 1,
+            weights: Tensor | list[float] | None = None,
     ) -> None:
         """Create a Sum module for mixture modeling.
 
@@ -122,11 +123,11 @@ class Sum(Module):
         self.weights = weights
 
     def _process_weights_parameter(
-        self,
-        inputs: Module | list[Module],
-        weights: Tensor | None,
-        out_channels: int,
-        num_repetitions: int | None,
+            self,
+            inputs: Module | list[Module],
+            weights: Tensor | None,
+            out_channels: int,
+            num_repetitions: int | None,
     ) -> tuple[Tensor | None, int, int | None]:
         if weights is None:
             return weights, out_channels, num_repetitions
@@ -152,7 +153,7 @@ class Sum(Module):
 
         inferred_num_repetitions = weights.shape[-1]
         if num_repetitions is not None and (
-            num_repetitions != 1 and num_repetitions != inferred_num_repetitions
+                num_repetitions != 1 and num_repetitions != inferred_num_repetitions
         ):
             raise InvalidParameterCombinationError(
                 f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. "
@@ -204,8 +205,8 @@ class Sum(Module):
 
     @weights.setter
     def weights(
-        self,
-        values: Tensor,
+            self,
+            values: Tensor,
     ) -> None:
         if values.shape != self.weights_shape:
             raise ShapeError(
@@ -219,8 +220,8 @@ class Sum(Module):
 
     @log_weights.setter
     def log_weights(
-        self,
-        values: Tensor,
+            self,
+            values: Tensor,
     ) -> None:
         """Set log weights of all nodes.
 
@@ -239,9 +240,9 @@ class Sum(Module):
 
     @cached
     def log_likelihood(
-        self,
-        data: Tensor,
-        cache: Cache | None = None,
+            self,
+            data: Tensor,
+            cache: Cache | None = None,
     ) -> Tensor:
         """Compute log likelihood P(data | module).
 
@@ -276,10 +277,10 @@ class Sum(Module):
         return output
 
     def _sample(
-        self,
-        data: Tensor,
-        sampling_ctx: SamplingContext,
-        cache: Cache,
+            self,
+            data: Tensor,
+            sampling_ctx: SamplingContext,
+            cache: Cache,
     ) -> Tensor:
         """Generate samples from sum module.
 
@@ -303,70 +304,56 @@ class Sum(Module):
         sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
 
         # Index into the correct weight channels given by parent module
-        if sampling_ctx.repetition_index is not None:
-            batch_size = int(sampling_ctx.channel_index.shape[0])
-            logits = repeat(self.logits, "f ci co r -> b f ci co r", b=batch_size)
-            # shape [b, n_features, in_c, out_c, r]
+        batch_size = int(sampling_ctx.channel_index.shape[0])
+        logits = repeat(self.logits, "f ci co r -> b f ci co r", b=batch_size)
+        # shape [b, n_features, in_c, out_c, r]
 
-            indices = sampling_ctx.repetition_index
+        r_idxs = sampling_ctx.repetition_index
 
-            # Use gather to select the correct repetition
-            # Repeat indices to match the target dimension for gathering
-            num_features = int(logits.shape[1])
-            in_channels_total = logits.shape[2]
-            out_channels = int(logits.shape[3])
-            indices = repeat(
-                rearrange(indices, "... -> (...)"),
-                "n -> n f ci co 1",
-                f=num_features,
-                ci=in_channels_total,
-                co=out_channels,
-            )
-            # Gather the logits based on the repetition indices
-            logits = torch.gather(logits, dim=-1, index=indices)
-            logits = rearrange(logits, "b f ci co 1 -> b f ci co")
-
-        else:
-            if self.out_shape.repetitions > 1:
-                raise ValueError(
-                    "sampling_ctx.repetition_index must be provided when sampling from a module with "
-                    "num_repetitions > 1."
-                )
-            logits = self.logits[..., 0]  # Select the 0th repetition
-            logits = rearrange(logits, "f ci co -> 1 f ci co")
-
-            # Expand to batch size
-            batch_size = int(sampling_ctx.channel_index.shape[0])
-            logits = repeat(logits, "1 f ci co -> b f ci co", b=batch_size)
-
+        # Use gather to select the correct repetition
+        # Repeat indices to match the target dimension for gathering
+        num_features = int(logits.shape[1])
         in_channels_total = logits.shape[2]
-        idxs = repeat(sampling_ctx.channel_index, "b f -> b f ci 1", ci=in_channels_total)
-        # Gather the logits based on the channel indices
-        logits = logits.gather(dim=3, index=idxs)
-        logits = rearrange(logits, "b f ci 1 -> b f ci")
+        out_channels = int(logits.shape[3])
+        if sampling_ctx.is_differentiable:
+            _R = self.out_shape.repetitions
+            repeat_str = "n r -> n f ci co r"
+        else:
+            _R = 1
+            repeat_str = "n -> n f ci co r"
+
+        r_idxs = repeat(r_idxs, repeat_str, f=num_features, ci=in_channels_total, co=out_channels, r=_R)
+
+        # Gather the logits based on the repetition indices
+        logits = index_tensor(logits, index=r_idxs, dim=-1, is_differentiable=sampling_ctx.is_differentiable)
+
+        # Channels
+        in_channels_total = logits.shape[2]
+
+        if sampling_ctx.is_differentiable:
+            c_idxs = repeat(sampling_ctx.channel_index, "b f co -> b f ci co", f=num_features, ci=in_channels_total, co=out_channels)
+        else:
+            c_idxs = repeat(sampling_ctx.channel_index, "b f -> b f ci 1", ci=in_channels_total)
+        logits = index_tensor(logits, index=c_idxs, dim=3, is_differentiable=sampling_ctx.is_differentiable)
 
         # Check if evidence is given (cached log-likelihoods)
         if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
             # Get the log likelihoods from the cache
             input_lls = cache["log_likelihood"][self.inputs]
 
-            if sampling_ctx.repetition_index is not None:
-                num_features = int(input_lls.shape[1])
-                in_channels_total = int(input_lls.shape[2])
-                indices = repeat(
-                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                    "n -> n f ci 1",
-                    f=num_features,
-                    ci=in_channels_total,
-                )
+            num_features = int(input_lls.shape[1])
+            in_channels_total = int(input_lls.shape[2])
+            r_idxs = repeat(
+                rearrange(sampling_ctx.repetition_index, "... -> (...)"),
+                "n -> n f ci 1",
+                f=num_features,
+                ci=in_channels_total,
+            )
 
-                # Use gather to select the correct repetition
-                input_lls = torch.gather(input_lls, dim=-1, index=indices)
-                input_lls = rearrange(input_lls, "b f ci 1 -> b f ci")
-            else:
-                # When no repetition_index, squeeze the repetitions dimension of input_lls
-                if input_lls.dim() == 4 and input_lls.shape[-1] == 1:
-                    input_lls = rearrange(input_lls, "b f ci 1 -> b f ci")
+            # Use gather to select the correct repetition
+            index_tensor(input_lls, index=r_idxs, dim=-1, is_differentiable=sampling_ctx.is_differentiable)
+
+            input_lls = rearrange(input_lls, "b f ci 1 -> b f ci")
 
             log_prior = logits
             log_posterior = log_prior + input_lls
@@ -374,12 +361,9 @@ class Sum(Module):
             logits = log_posterior
 
         # Sample from categorical distribution defined by weights to obtain indices into input channels
-        if sampling_ctx.is_mpe:
-            # Take the argmax of the logits to obtain the most probable index
-            new_channel_index = torch.argmax(logits, dim=-1)
-        else:
-            # Sample from categorical distribution defined by weights to obtain indices into input channels
-            new_channel_index = torch.distributions.Categorical(logits=logits).sample()
+        new_channel_index = sample_from_logits(logits=logits, dim=-1, is_mpe=sampling_ctx.is_mpe,
+                                               is_differentiable=sampling_ctx.is_differentiable, hard=sampling_ctx.hard,
+                                               tau=sampling_ctx.tau)
 
         update_channel_index_strict(sampling_ctx, new_channel_index)
 
@@ -393,11 +377,11 @@ class Sum(Module):
         return data
 
     def _expectation_maximization_step(
-        self,
-        data: Tensor,
-        bias_correction: bool = True,
-        *,
-        cache: Cache,
+            self,
+            data: Tensor,
+            bias_correction: bool = True,
+            *,
+            cache: Cache,
     ) -> None:
         """Perform expectation-maximization step.
 
@@ -442,10 +426,10 @@ class Sum(Module):
         self.inputs._expectation_maximization_step(data, cache=cache, bias_correction=bias_correction)
 
     def marginalize(
-        self,
-        marg_rvs: list[int],
-        prune: bool = True,
-        cache: Cache | None = None,
+            self,
+            marg_rvs: list[int],
+            prune: bool = True,
+            cache: Cache | None = None,
     ) -> Sum | None:
         """Marginalize out specified random variables.
 

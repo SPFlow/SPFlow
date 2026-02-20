@@ -16,6 +16,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.leaves import apply_nan_strategy, parse_leaf_args
 from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import index_one_hot, index_tensor
 
 
 class LeafModule(Module, ABC):
@@ -614,7 +615,7 @@ class LeafModule(Module, ABC):
 
         # Mask that tells us which feature at which sample is relevant and should be sampled
         samples_mask = marg_mask
-        ctx_channel_index, ctx_mask = self._slice_sampling_context(
+        c_idx, ctx_mask = self._slice_sampling_context(
             sampling_ctx=sampling_ctx, num_features=data.shape[1], scope_cols=scope_cols
         )
         samples_mask[:, scope_cols] &= ctx_mask
@@ -646,19 +647,19 @@ class LeafModule(Module, ABC):
                 if not self.is_conditional:
                     samples = repeat(samples, "1 f ci r -> n f ci r", n=int(n_samples.item())).detach()
                 # repetition_index shape: (n_samples,)
-                repetition_index = sampling_ctx.repetition_index[instance_mask]
+                r_idx = sampling_ctx.repetition_index[instance_mask]
 
                 num_features = samples.shape[1]
                 num_channels = samples.shape[2]
-                r_idxs = repeat(
-                    rearrange(repetition_index, "b -> b 1 1 1"),
+                r_idx = repeat(
+                    rearrange(r_idx, "b -> b 1 1 1"),
                     "b 1 1 1 -> b f c 1",
                     f=num_features,
                     c=num_channels,
                 )
 
                 # Gather samples according to repetition index
-                samples = rearrange(torch.gather(samples, dim=-1, index=r_idxs), "b f ci 1 -> b f ci")
+                samples = rearrange(torch.gather(samples, dim=-1, index=r_idx), "b f ci 1 -> b f ci")
 
             elif (
                 sampling_ctx.repetition_index is not None
@@ -683,33 +684,36 @@ class LeafModule(Module, ABC):
             else:
                 dist = self.distribution
                 # Sample n_samples from distribution
-                samples = dist.sample((n_samples,))
+                # TODO: Differentiate between sampling_ctx.is_differentiable and not
+                if not sampling_ctx.is_differentiable:
+                    samples = dist.sample((n_samples,))
+                else:
+                    # Reparameterized sampling for differentiability
+                    samples = dist.rsample((n_samples,))
 
-            if sampling_ctx.repetition_index is not None and samples.ndim == 4:
-                # repetition_index shape: (n_samples,)
-                repetition_index = sampling_ctx.repetition_index[instance_mask]
+            # repetition_index shape: (n_samples,)
+            r_idx = sampling_ctx.repetition_index[instance_mask]
 
-                num_features = samples.shape[1]
-                num_channels = samples.shape[2]
-                r_idxs = repeat(
-                    rearrange(repetition_index, "b -> b 1 1 1"),
+            num_features = samples.shape[1]
+            num_channels = samples.shape[2]
+            if not sampling_ctx.is_differentiable:
+                r_idx = repeat(
+                    rearrange(r_idx, "b -> b 1 1 1"),
                     "b 1 1 1 -> b f c 1",
                     f=num_features,
                     c=num_channels,
                 )
-
-                # Gather samples according to repetition index
-                samples = rearrange(torch.gather(samples, dim=-1, index=r_idxs), "b f ci 1 -> b f ci")
-
-            elif (
-                sampling_ctx.repetition_index is not None
-                and samples.ndim != 4
-                or sampling_ctx.repetition_index is None
-                and samples.ndim == 4
-            ):
-                raise ValueError(
-                    "Either there is no repetition index or the samples are not 4-dimensional. This should not happen."
+            else:
+                r_idx = repeat(
+                    rearrange(r_idx, "b r -> b 1 1 r"),
+                    "b 1 1 r -> b f c r",
+                    f=num_features,
+                    c=num_channels,
+                    r=self.out_shape.repetitions
                 )
+
+            samples = index_tensor(samples, index=r_idx, dim=-1, is_differentiable=sampling_ctx.is_differentiable)
+
 
         if samples.shape[0] != sampling_ctx.channel_index[instance_mask].shape[0]:
             raise ValueError(
@@ -720,12 +724,16 @@ class LeafModule(Module, ABC):
             # If the output of the input module has a single channel, set the output_ids to zero since
             # this input was broadcasted to match the channel dimension of the other inputs
             sampling_ctx.channel_index.zero_()
-            ctx_channel_index = torch.zeros_like(ctx_channel_index)
+            c_idx = torch.zeros_like(c_idx)
+            # TODO: adapt for is_differentiable case
 
-        c_idxs = rearrange(ctx_channel_index[instance_mask], "b f -> b f 1")
 
-        # Index the channel_index to get the correct samples for each scope
-        samples = rearrange(samples.gather(dim=2, index=c_idxs), "b f 1 -> b f")
+        c_idx = c_idx[instance_mask]
+        if not sampling_ctx.is_differentiable:
+            c_idx = rearrange(c_idx, "b f -> b f 1")
+
+        samples = index_tensor(tensor=samples, index=c_idx, dim=2, is_differentiable=sampling_ctx.is_differentiable)
+
 
         # Ensure, that no data is overwritten
         if data[samples_mask].isfinite().any():

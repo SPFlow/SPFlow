@@ -19,7 +19,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.sums import Sum
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, DummyLeaf
 
 in_channels_values = [1, 4]
@@ -176,12 +176,6 @@ def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps
         num_repetitions=num_reps,
     )
     data = torch.full((n_samples, module.out_shape.features), torch.nan)
-    channel_index = _randint(
-        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-    )
-    mask = torch.full((n_samples, module.out_shape.features), True)
-    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
     samples = module.sample(data=data)
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
@@ -212,12 +206,6 @@ def test_sample_product_inputs(in_channels: int, out_channels: int, out_features
     module = Sum(out_channels=out_channels, inputs=prod, num_repetitions=num_reps)
 
     data = torch.full((n_samples, out_features), torch.nan)
-    channel_index = _randint(
-        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-    )
-    mask = torch.full((n_samples, module.out_shape.features), True)
-    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
     samples = module.sample(data=data)
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
@@ -789,3 +777,121 @@ def test_feature_to_scope_with_repetitions(num_reps: int):
             assert feature_scopes[f_idx, r_idx].query == (f_idx,)
             # All repetitions should have same scope structure (may differ in content for certain modules)
             assert feature_scopes[f_idx, r_idx] == leaf_scopes[f_idx, r_idx]
+
+
+class TestDifferentiableSampling:
+    def test_diff_sampling(self):
+        in_channels = 2
+        out_channels = 2
+        out_features = 4
+        num_reps = 5
+        sum_out_channels = 3
+        n_samples = 10
+
+        data_a = torch.full((n_samples, out_features), torch.nan)
+        channel_index = _randint(low=0, high=sum_out_channels, size=(n_samples, out_features))
+        channel_index = to_one_hot(channel_index, dim=-1, dim_size=sum_out_channels)
+        mask = torch.full((n_samples, out_features), True)
+        repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+        repetition_index = to_one_hot(repetition_index, dim=-1, dim_size=num_reps)
+        sampling_ctx_a = SamplingContext(
+            channel_index=channel_index, mask=mask, repetition_index=repetition_index, is_differentiable=True
+        )
+
+        mean = _rand((out_features, out_channels, num_reps))
+        std = _rand((out_features, out_channels, num_reps))
+
+        normal_layer_a = make_normal_leaf(
+            out_features=out_features,
+            out_channels=in_channels,
+            num_repetitions=num_repetitions,
+            mean=mean,
+            std=std,
+        )
+        module = Sum(inputs=normal_layer_a, out_channels=sum_out_channels, num_repetitions=num_reps)
+
+        module._sample(
+            data=data_a,
+            sampling_ctx=sampling_ctx_a,
+            cache=Cache(),
+        )
+
+        pass
+
+    def test_diff_sampling_equals_non_diff_sampling(self, monkeypatch: pytest.MonkeyPatch):
+        in_channels = 2
+        out_features = 4
+        num_reps = 5
+        sum_out_channels = 3
+        n_samples = 10
+
+        feature_to_scope = np.array(
+            [[Scope([i]) for _ in range(num_reps)] for i in range(out_features)],
+            dtype=object,
+        )
+        toy_input = _ToyInput(feature_to_scope=feature_to_scope, out_channels=in_channels)
+        module = Sum(inputs=toy_input, out_channels=sum_out_channels, num_repetitions=num_reps)
+
+        weights = torch.arange(
+            1,
+            1 + out_features * in_channels * sum_out_channels * num_reps,
+            dtype=torch.get_default_dtype(),
+        ).reshape(out_features, in_channels, sum_out_channels, num_reps)
+        weights /= weights.sum(dim=1, keepdim=True)
+        module.weights = weights
+
+        channel_index = torch.arange(n_samples * out_features).reshape(n_samples, out_features) % sum_out_channels
+        repetition_index = torch.arange(n_samples) % num_reps
+        mask = torch.full((n_samples, out_features), True)
+
+        sampling_ctx_a = SamplingContext(
+            channel_index=channel_index.clone(),
+            mask=mask.clone(),
+            repetition_index=repetition_index.clone(),
+            is_mpe=False,
+        )
+        sampling_ctx_b = SamplingContext(
+            channel_index=to_one_hot(channel_index, dim=-1, dim_size=sum_out_channels),
+            mask=mask.clone(),
+            repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+            is_mpe=False,
+            is_differentiable=True,
+        )
+
+        def _simple_as_categorical_one_hot(
+            logits=None, log_weights=None, dim=-1, is_mpe=False, hard=True, tau=1.0
+        ):
+            del is_mpe
+            del hard
+            del tau
+            x = logits if logits is not None else log_weights
+            dim_norm = dim if dim >= 0 else x.dim() + dim
+            x_last = x if dim_norm == x.dim() - 1 else x.movedim(dim_norm, -1)
+            sampled = torch.distributions.Categorical(logits=x_last).sample()
+            out = to_one_hot(sampled, dim=-1, dim_size=x_last.shape[-1], dtype=x_last.dtype)
+            return out if dim_norm == x.dim() - 1 else out.movedim(-1, dim_norm)
+
+        import spflow.utils.sampling_context as sp_sampling_context
+
+        monkeypatch.setattr(sp_sampling_context, "SIMPLE", _simple_as_categorical_one_hot)
+
+        torch.manual_seed(1337)
+        samples_a = module._sample(
+            data=torch.full((n_samples, out_features), torch.nan),
+            sampling_ctx=sampling_ctx_a,
+            cache=Cache(),
+        )
+        torch.manual_seed(1337)
+        samples_b = module._sample(
+            data=torch.full((n_samples, out_features), torch.nan),
+            sampling_ctx=sampling_ctx_b,
+            cache=Cache(),
+        )
+
+        torch.testing.assert_close(samples_a, samples_b, rtol=1e-6, atol=1e-6)
+        torch.testing.assert_close(
+            sampling_ctx_b.channel_index,
+            to_one_hot(sampling_ctx_a.channel_index, dim=-1, dim_size=in_channels),
+            rtol=0.0,
+            atol=0.0,
+        )

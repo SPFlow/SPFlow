@@ -6,6 +6,9 @@ import pytest
 from spflow.exceptions import InvalidParameterError, ShapeError
 from spflow.utils.sampling_context import (
     SamplingContext,
+    SIMPLE,
+    to_one_hot,
+    to_one_hot_along_dim,
 )
 
 
@@ -555,3 +558,103 @@ def test_validate_sampling_context_rejects_out_of_range_repetition_index():
             num_samples=2,
             num_repetitions=2,
         )
+
+
+def test_to_one_hot_inserts_axis_for_vector_indices():
+    index = torch.tensor([2, 0, 3], dtype=torch.long)
+    actual = to_one_hot(index=index, dim=1, dim_size=4)
+    expected = torch.tensor(
+        [
+            [0, 0, 1, 0],
+            [1, 0, 0, 0],
+            [0, 0, 0, 1],
+        ],
+        dtype=torch.long,
+    )
+    assert torch.equal(actual, expected)
+    assert actual.shape == (3, 4)
+
+
+def test_to_one_hot_supports_non_last_dimension():
+    index = torch.tensor(
+        [
+            [0, 1, 2],
+            [2, 1, 0],
+        ]
+    )  # (2, 3)
+    actual = to_one_hot(index=index, dim=1, dim_size=3)
+    assert actual.shape == (2, 3, 3)
+    assert torch.equal(actual.sum(dim=1), torch.ones((2, 3), dtype=torch.long))
+
+
+def test_to_one_hot_along_dim_alias_matches_to_one_hot():
+    index = torch.tensor([1, 0], dtype=torch.long)
+    actual = to_one_hot_along_dim(index, dim=1, dim_size=3)
+    expected = to_one_hot(index=index, dim=1, dim_size=3)
+    assert torch.equal(actual, expected)
+
+
+def test_to_one_hot_rejects_invalid_dim():
+    index = torch.tensor([0, 1], dtype=torch.long)
+    with pytest.raises(InvalidParameterError, match="dim must be in range"):
+        to_one_hot(index=index, dim=2, dim_size=3)
+
+
+def test_to_one_hot_rejects_invalid_dim_size():
+    index = torch.tensor([0, 1], dtype=torch.long)
+    with pytest.raises(InvalidParameterError, match="dim_size must be >= 1"):
+        to_one_hot(index=index, dim=1, dim_size=0)
+
+
+def test_to_one_hot_rejects_out_of_range_indices():
+    index = torch.tensor([0, 4], dtype=torch.long)
+    with pytest.raises(InvalidParameterError, match="index values must lie in"):
+        to_one_hot(index=index, dim=1, dim_size=4)
+
+
+def test_to_one_hot_allows_output_dtype_override():
+    index = torch.tensor(
+        [
+            [0, 1],
+            [1, 0],
+        ],
+        dtype=torch.long,
+    )
+    actual = to_one_hot(index=index, dim=-1, dim_size=2, dtype=torch.float32)
+    assert actual.dtype == torch.float32
+
+
+@pytest.mark.parametrize("hard", [True, False])
+def test_simple_logits_backpropagates_to_logits(hard):
+    logits = torch.tensor(
+        [[1.0, -0.5, 0.2], [0.1, 0.3, -0.4]],
+        dtype=torch.float32,
+        requires_grad=True,
+    )
+    loss_weights = torch.tensor([[1.0, 2.0, 0.5], [0.7, 1.5, 3.0]], dtype=torch.float32)
+
+    out = SIMPLE(logits=logits, dim=-1, is_mpe=True, hard=hard, tau=0.7)
+    loss = (out * loss_weights).sum()
+    loss.backward()
+
+    assert logits.grad is not None
+    assert torch.isfinite(logits.grad).all()
+    assert torch.count_nonzero(logits.grad).item() > 0
+
+
+@pytest.mark.parametrize("hard", [True, False])
+def test_simple_logits_backpropagates_to_log_weights(hard):
+    probs = torch.tensor(
+        [[0.2, 0.5, 0.3], [0.6, 0.1, 0.3]],
+        dtype=torch.float32,
+    )
+    log_weights = probs.log().detach().clone().requires_grad_(True)
+    loss_weights = torch.tensor([[1.2, 0.4, 2.5], [0.3, 1.7, 0.8]], dtype=torch.float32)
+
+    out = SIMPLE(log_weights=log_weights, dim=-1, is_mpe=True, hard=hard, tau=0.9)
+    loss = (out * loss_weights).sum()
+    loss.backward()
+
+    assert log_weights.grad is not None
+    assert torch.isfinite(log_weights.grad).all()
+    assert torch.count_nonzero(log_weights.grad).item() > 0
