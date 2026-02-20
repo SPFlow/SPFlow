@@ -16,7 +16,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.leaves import apply_nan_strategy, parse_leaf_args
 from spflow.utils.sampling_context import SamplingContext
-from spflow.utils.sampling_context import index_one_hot, index_tensor
+from spflow.utils.sampling_context import index_tensor, repeat_repetition_index
 
 
 class LeafModule(Module, ABC):
@@ -651,15 +651,15 @@ class LeafModule(Module, ABC):
 
                 num_features = samples.shape[1]
                 num_channels = samples.shape[2]
-                r_idx = repeat(
-                    rearrange(r_idx, "b -> b 1 1 1"),
-                    "b 1 1 1 -> b f c 1",
+                r_idx = repeat_repetition_index(
+                    repetition_index=r_idx,
+                    pattern="b r -> b f c r",
                     f=num_features,
                     c=num_channels,
                 )
-
-                # Gather samples according to repetition index
-                samples = rearrange(torch.gather(samples, dim=-1, index=r_idx), "b f ci 1 -> b f ci")
+                samples = index_tensor(
+                    samples, index=r_idx, dim=-1, is_differentiable=sampling_ctx.is_differentiable
+                )
 
             elif (
                 sampling_ctx.repetition_index is not None
@@ -696,24 +696,16 @@ class LeafModule(Module, ABC):
 
             num_features = samples.shape[1]
             num_channels = samples.shape[2]
-            if not sampling_ctx.is_differentiable:
-                r_idx = repeat(
-                    rearrange(r_idx, "b -> b 1 1 1"),
-                    "b 1 1 1 -> b f c 1",
-                    f=num_features,
-                    c=num_channels,
-                )
-            else:
-                r_idx = repeat(
-                    rearrange(r_idx, "b r -> b 1 1 r"),
-                    "b 1 1 r -> b f c r",
-                    f=num_features,
-                    c=num_channels,
-                    r=self.out_shape.repetitions
-                )
+            r_idx = repeat_repetition_index(
+                repetition_index=r_idx,
+                pattern="b r -> b f c r",
+                f=num_features,
+                c=num_channels,
+            )
 
-            samples = index_tensor(samples, index=r_idx, dim=-1, is_differentiable=sampling_ctx.is_differentiable)
-
+            samples = index_tensor(
+                samples, index=r_idx, dim=-1, is_differentiable=sampling_ctx.is_differentiable
+            )
 
         if samples.shape[0] != sampling_ctx.channel_index[instance_mask].shape[0]:
             raise ValueError(
@@ -727,13 +719,13 @@ class LeafModule(Module, ABC):
             c_idx = torch.zeros_like(c_idx)
             # TODO: adapt for is_differentiable case
 
-
         c_idx = c_idx[instance_mask]
         if not sampling_ctx.is_differentiable:
             c_idx = rearrange(c_idx, "b f -> b f 1")
 
-        samples = index_tensor(tensor=samples, index=c_idx, dim=2, is_differentiable=sampling_ctx.is_differentiable)
-
+        samples = index_tensor(
+            tensor=samples, index=c_idx, dim=2, is_differentiable=sampling_ctx.is_differentiable
+        )
 
         # Ensure, that no data is overwritten
         if data[samples_mask].isfinite().any():
