@@ -350,10 +350,13 @@ class Sum(Module):
                 ci=in_channels_total,
             )
 
-            # Use gather to select the correct repetition
-            index_tensor(input_lls, index=r_idxs, dim=-1, is_differentiable=sampling_ctx.is_differentiable)
-
-            input_lls = rearrange(input_lls, "b f ci 1 -> b f ci")
+            # Use gather to select the correct repetition.
+            input_lls = index_tensor(
+                input_lls,
+                index=r_idxs,
+                dim=-1,
+                is_differentiable=sampling_ctx.is_differentiable,
+            )
 
             log_prior = logits
             log_posterior = log_prior + input_lls
