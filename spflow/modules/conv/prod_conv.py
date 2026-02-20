@@ -14,10 +14,10 @@ from torch.nn import functional as F
 
 from spflow.exceptions import ShapeError
 from spflow.meta.data.scope import Scope
+from spflow.modules.conv.utils import upsample_sampling_context
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
-from spflow.modules.conv.utils import upsample_sampling_context
 from spflow.utils.sampling_context import SamplingContext
 
 
@@ -291,8 +291,10 @@ class ProdConv(Module):
                     )
                 channel_idx = sampling_ctx.channel_index[:, :in_features].contiguous()
                 mask = sampling_ctx.mask[:, :in_features].contiguous()
-                sampling_ctx.channel_index = channel_idx
-                sampling_ctx.mask = mask
+                sampling_ctx.update(
+                    channel_index=channel_idx,
+                    mask=mask,
+                )
             elif upsampled_features < in_features:
                 raise ShapeError(
                     "ProdConv.sample upsampling produced too few features for input routing: "

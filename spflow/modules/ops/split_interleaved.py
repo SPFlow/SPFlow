@@ -149,8 +149,10 @@ class SplitInterleaved(Split):
                 "b (split f) -> b (f split)",
                 split=self.num_splits,
             )
-            sampling_ctx.channel_index = channel_index
-            sampling_ctx.mask = mask
+            sampling_ctx.update(
+                channel_index=channel_index,
+                mask=mask,
+            )
 
         self.inputs._sample(
             data=data,

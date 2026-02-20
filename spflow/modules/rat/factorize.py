@@ -13,7 +13,7 @@ import torch
 from einops import rearrange, repeat
 from torch import Tensor
 
-from spflow.exceptions import InvalidParameterError, StructureError
+from spflow.exceptions import StructureError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -206,8 +206,10 @@ class Factorize(BaseProduct):
         channel_index = torch.sum(rearrange(sampling_ctx.channel_index, "b o -> b 1 o") * indices, dim=-1)
         mask = torch.sum(rearrange(sampling_ctx.mask, "b o -> b 1 o") * indices, dim=-1).bool()
 
-        sampling_ctx.channel_index = channel_index
-        sampling_ctx.mask = mask
+        sampling_ctx.update(
+            channel_index=channel_index,
+            mask=mask,
+        )
 
         self.inputs[0]._sample(
             data=data,
