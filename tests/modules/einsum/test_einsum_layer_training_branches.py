@@ -11,7 +11,7 @@ from spflow.meta import Scope
 from spflow.modules.einsum import EinsumLayer
 from spflow.modules.ops.split import SplitMode
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.modules.einsum.layer_test_utils import make_einsum_single_input, make_einsum_two_inputs
 from tests.utils.leaves import CachingDummyInput, DummyLeaf, make_leaf, make_normal_data, make_normal_leaf
 
@@ -219,6 +219,33 @@ class TestEinsumLayerCoverageBranches:
             mask=mask,
             repetition_index=repetition_index,
             is_mpe=True,
+        )
+
+        left_ll = torch.randn(
+            batch_size, module.out_shape.features, module._left_channels, module.out_shape.repetitions
+        )
+        right_ll = torch.randn(
+            batch_size, module.out_shape.features, module._right_channels, module.out_shape.repetitions
+        )
+        cache = Cache()
+        cache["log_likelihood"][module.inputs[0]] = left_ll
+        cache["log_likelihood"][module.inputs[1]] = right_ll
+
+        samples = module._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
+        assert samples.shape == data.shape
+        assert torch.isfinite(samples[:, module.scope.query]).all()
+
+    def test_sample_two_inputs_uses_cached_log_likelihoods_differentiable(self):
+        module = make_einsum_two_inputs(2, 3, 4, 2)
+        batch_size = 8
+        data = torch.full((batch_size, 8), torch.nan)
+        channel_index = torch.randint(0, module.out_shape.channels, (batch_size, module.out_shape.features))
+        repetition_index = torch.randint(0, module.out_shape.repetitions, (batch_size,))
+        sampling_ctx = SamplingContext(
+            channel_index=to_one_hot(channel_index, dim=-1, dim_size=module.out_shape.channels),
+            mask=torch.ones((batch_size, module.out_shape.features), dtype=torch.bool),
+            repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=module.out_shape.repetitions),
+            is_differentiable=True,
         )
 
         left_ll = torch.randn(

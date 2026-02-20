@@ -10,7 +10,7 @@ from spflow.modules.ops.split import Split
 from spflow.modules.ops.split_consecutive import SplitConsecutive
 from spflow.modules.ops.split_interleaved import SplitInterleaved
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.modules.einsum.layer_test_utils import make_linsum_single_input, make_linsum_two_inputs
 from tests.utils.leaves import make_normal_data, make_normal_leaf
 
@@ -56,6 +56,27 @@ class TestLinsumLayerSampling:
 
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()
+
+    def test_differentiable_sampling_two_inputs(self):
+        num_samples = 20
+        in_features = 4
+        module = make_linsum_two_inputs(
+            in_channels=2, out_channels=3, in_features=in_features, num_repetitions=2
+        )
+
+        data = torch.full((num_samples, in_features * 2), torch.nan)
+        channel_index = torch.randint(0, module.out_shape.channels, (num_samples, module.out_shape.features))
+        repetition_index = torch.randint(0, module.out_shape.repetitions, (num_samples,))
+        sampling_ctx = SamplingContext(
+            channel_index=to_one_hot(channel_index, dim=-1, dim_size=module.out_shape.channels),
+            repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=module.out_shape.repetitions),
+            mask=torch.ones((num_samples, module.out_shape.features), dtype=torch.bool),
+            is_differentiable=True,
+        )
+        samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+
+        assert samples.shape == (num_samples, in_features * 2)
+        assert torch.isfinite(samples[:, module.scope.query]).all()
 
 
 class TestLinsumLayerSplitConsecutiveOptimization:
@@ -116,6 +137,26 @@ class TestLinsumLayerSplitConsecutiveOptimization:
         channel_index = torch.zeros((num_samples, 2), dtype=torch.long)
         mask = torch.ones((num_samples, 2), dtype=torch.bool)
         sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask)
+        samples = linsum._sample(data=sample_data, sampling_ctx=sampling_ctx, cache=Cache())
+        assert samples.shape == (num_samples, 4)
+        assert torch.isfinite(samples).all()
+
+    def test_split_alternate_input_differentiable_sampling(self):
+        leaf = make_normal_leaf(out_features=4, out_channels=2, num_repetitions=2)
+        split_alt = SplitInterleaved(leaf)
+        linsum = LinsumLayer(inputs=split_alt, out_channels=3, num_repetitions=2)
+
+        num_samples = 20
+        sample_data = torch.full((num_samples, 4), torch.nan)
+        channel_index = torch.randint(0, linsum.out_shape.channels, (num_samples, linsum.out_shape.features))
+        repetition_index = torch.randint(0, linsum.out_shape.repetitions, (num_samples,))
+        sampling_ctx = SamplingContext(
+            channel_index=to_one_hot(channel_index, dim=-1, dim_size=linsum.out_shape.channels),
+            repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=linsum.out_shape.repetitions),
+            mask=torch.ones((num_samples, linsum.out_shape.features), dtype=torch.bool),
+            is_differentiable=True,
+        )
+
         samples = linsum._sample(data=sample_data, sampling_ctx=sampling_ctx, cache=Cache())
         assert samples.shape == (num_samples, 4)
         assert torch.isfinite(samples).all()

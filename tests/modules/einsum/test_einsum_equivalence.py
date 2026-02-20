@@ -1,18 +1,17 @@
 """Tests for EinsumLayer equivalence with SumLayer(OuterProductLayer)."""
 
 from itertools import product
+
 import pytest
 import torch
-import numpy as np
 
-from spflow.meta import Scope
 from spflow.modules.einsum import EinsumLayer
-from spflow.modules.sums import Sum
 from spflow.modules.products import OuterProduct
+from spflow.modules.sums import Sum
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
-from tests.utils.leaves import make_normal_leaf, make_normal_data, DummyLeaf, make_leaf
-
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
+from tests.utils.leaves import make_normal_leaf, make_normal_data
+from tests.utils.sampling_context_helpers import patch_simple_as_categorical_one_hot
 
 # Test parameter combinations
 in_channels_values = [1, 3]
@@ -104,3 +103,45 @@ class TestEinsumLayerEquivalence:
         )
 
         torch.testing.assert_close(sample_einsum, sample_sum, rtol=1e-5, atol=1e-8)
+
+    def test_diff_sampling_equals_non_diff_sampling(self, monkeypatch: pytest.MonkeyPatch):
+        in_channels = 2
+        out_channels = 3
+        in_features = 4
+        num_reps = 2
+        batch_size = 10
+        einsum, _ = self._create_models(in_channels, out_channels, in_features, num_reps)
+
+        channel_indices = torch.randint(0, out_channels, (batch_size, einsum.out_shape.features))
+        repetition_indices = torch.randint(0, num_reps, (batch_size,))
+        mask = torch.ones((batch_size, einsum.out_shape.features), dtype=torch.bool)
+        sampling_ctx_a = SamplingContext(
+            channel_index=channel_indices.clone(),
+            repetition_index=repetition_indices.clone(),
+            mask=mask.clone(),
+            is_mpe=False,
+        )
+        sampling_ctx_b = SamplingContext(
+            channel_index=to_one_hot(channel_indices, dim=-1, dim_size=out_channels),
+            repetition_index=to_one_hot(repetition_indices, dim=-1, dim_size=num_reps),
+            mask=mask.clone(),
+            is_mpe=False,
+            is_differentiable=True,
+        )
+
+        patch_simple_as_categorical_one_hot(monkeypatch)
+
+        torch.manual_seed(1337)
+        samples_a = einsum._sample(
+            data=torch.full((batch_size, in_features), torch.nan),
+            sampling_ctx=sampling_ctx_a,
+            cache=Cache(),
+        )
+        torch.manual_seed(1337)
+        samples_b = einsum._sample(
+            data=torch.full((batch_size, in_features), torch.nan),
+            sampling_ctx=sampling_ctx_b,
+            cache=Cache(),
+        )
+
+        torch.testing.assert_close(samples_a, samples_b, rtol=1e-6, atol=1e-6)

@@ -27,7 +27,11 @@ from spflow.modules.ops.split import Split, SplitMode
 from spflow.modules.ops.split_consecutive import SplitConsecutive
 from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import proj_convex_to_real
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import (
+    SamplingContext,
+    index_tensor,
+    sample_from_logits,
+)
 
 
 class LinsumLayer(Module):
@@ -327,27 +331,51 @@ class LinsumLayer(Module):
         # logits shape: (B, D, O, R, C)
 
         # Select output channel based on parent's channel_index
-        channel_idx = sampling_ctx.channel_index  # (B, D)
+        channel_idx = sampling_ctx.channel_index
 
         # Gather the correct output channel
         num_repetitions = self.out_shape.repetitions
         num_input_channels = self._in_channels
-        idx = repeat(channel_idx, "b f -> b f 1 r ci", r=num_repetitions, ci=num_input_channels)
-        logits = logits.gather(dim=2, index=idx)
-        logits = rearrange(logits, "b f 1 r ci -> b f r ci")
+        if sampling_ctx.is_differentiable:
+            idx = repeat(
+                channel_idx,
+                "b f co -> b f co r ci",
+                r=num_repetitions,
+                ci=num_input_channels,
+            )
+        else:
+            idx = repeat(channel_idx, "b f -> b f 1 r ci", r=num_repetitions, ci=num_input_channels)
+        logits = index_tensor(
+            logits,
+            index=idx,
+            dim=2,
+            is_differentiable=sampling_ctx.is_differentiable,
+        )
         # logits shape: (B, D, R, C)
 
         # Select repetition if specified
         if sampling_ctx.repetition_index is not None:
             num_features = self.out_shape.features
-            rep_idx = repeat(
-                rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                "b -> b f 1 ci",
-                f=num_features,
-                ci=num_input_channels,
+            if sampling_ctx.is_differentiable:
+                rep_idx = repeat(
+                    sampling_ctx.repetition_index,
+                    "b r -> b f r ci",
+                    f=num_features,
+                    ci=num_input_channels,
+                )
+            else:
+                rep_idx = repeat(
+                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
+                    "b -> b f 1 ci",
+                    f=num_features,
+                    ci=num_input_channels,
+                )
+            logits = index_tensor(
+                logits,
+                index=rep_idx,
+                dim=2,
+                is_differentiable=sampling_ctx.is_differentiable,
             )
-            logits = logits.gather(dim=2, index=rep_idx)
-            logits = rearrange(logits, "b f 1 ci -> b f ci")
             # logits shape: (B, D, C)
         else:
             if self.out_shape.repetitions > 1:
@@ -371,16 +399,32 @@ class LinsumLayer(Module):
             if sampling_ctx.repetition_index is not None:
                 num_features = int(left_ll.shape[1])
                 num_input_channels = int(left_ll.shape[2])
-                rep_idx_l = repeat(
-                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                    "b -> b f ci 1",
-                    f=num_features,
-                    ci=num_input_channels,
+                if sampling_ctx.is_differentiable:
+                    rep_idx_l = repeat(
+                        sampling_ctx.repetition_index,
+                        "b r -> b f ci r",
+                        f=num_features,
+                        ci=num_input_channels,
+                    )
+                else:
+                    rep_idx_l = repeat(
+                        rearrange(sampling_ctx.repetition_index, "... -> (...)"),
+                        "b -> b f ci 1",
+                        f=num_features,
+                        ci=num_input_channels,
+                    )
+                left_ll = index_tensor(
+                    left_ll,
+                    index=rep_idx_l,
+                    dim=-1,
+                    is_differentiable=sampling_ctx.is_differentiable,
                 )
-                left_ll = left_ll.gather(dim=-1, index=rep_idx_l)
-                right_ll = right_ll.gather(dim=-1, index=rep_idx_l)
-                left_ll = rearrange(left_ll, "b f ci 1 -> b f ci")
-                right_ll = rearrange(right_ll, "b f ci 1 -> b f ci")
+                right_ll = index_tensor(
+                    right_ll,
+                    index=rep_idx_l,
+                    dim=-1,
+                    is_differentiable=sampling_ctx.is_differentiable,
+                )
 
             # Product log-likelihood for each channel
             prod_ll = left_ll + right_ll  # (B, D, C)
@@ -391,12 +435,14 @@ class LinsumLayer(Module):
             log_posterior = log_posterior - torch.logsumexp(log_posterior, dim=-1, keepdim=True)
             logits = log_posterior
 
-        # Sample or MPE
-        if sampling_ctx.is_mpe:
-            indices = logits.argmax(dim=-1)  # (B, D)
-        else:
-            dist = torch.distributions.Categorical(logits=logits)
-            indices = dist.sample()  # (B, D)
+        indices = sample_from_logits(
+            logits=logits,
+            dim=-1,
+            is_mpe=sampling_ctx.is_mpe,
+            is_differentiable=sampling_ctx.is_differentiable,
+            hard=sampling_ctx.hard,
+            tau=sampling_ctx.tau,
+        )
 
         # Sample from left and right children with same channel index
         # (Linear combination means left and right use the same channel)
@@ -411,7 +457,7 @@ class LinsumLayer(Module):
         else:
             # Single input with Split module - use generic merge_split_indices
             # For LinsumLayer, both left and right use the same indices (linear combination)
-            full_indices = self.inputs.merge_split_indices(indices, indices)
+            full_indices = self.inputs.merge_split_tensors(indices, indices)
             full_mask = repeat(sampling_ctx.mask, "b f -> b (f two)", two=2)
 
             child_ctx = sampling_ctx.with_routing(channel_index=full_indices, mask=full_mask)

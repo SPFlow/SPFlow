@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import torch
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterError
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 
 
 def make_sampling_context(
@@ -59,3 +61,31 @@ def make_sampling_context(
         mask=mask,
         repetition_index=repetition_index,
     )
+
+
+def patch_simple_as_categorical_one_hot(monkeypatch: Any) -> None:
+    """Patch SIMPLE to categorical one-hot sampling for deterministic parity tests."""
+
+    def _simple_as_categorical_one_hot(
+        logits: Tensor | None = None,
+        log_weights: Tensor | None = None,
+        dim: int = -1,
+        is_mpe: bool = False,
+        hard: bool = True,
+        tau: float = 1.0,
+    ) -> Tensor:
+        del is_mpe
+        del hard
+        del tau
+        x = logits if logits is not None else log_weights
+        if x is None:
+            raise ValueError("Either logits or log_weights must be provided.")
+        dim_norm = dim if dim >= 0 else x.dim() + dim
+        x_last = x if dim_norm == x.dim() - 1 else x.movedim(dim_norm, -1)
+        sampled = torch.distributions.Categorical(logits=x_last).sample()
+        out = to_one_hot(sampled, dim=-1, dim_size=x_last.shape[-1], dtype=x_last.dtype)
+        return out if dim_norm == x.dim() - 1 else out.movedim(-1, dim_norm)
+
+    import spflow.utils.sampling_context as sp_sampling_context
+
+    monkeypatch.setattr(sp_sampling_context, "SIMPLE", _simple_as_categorical_one_hot)

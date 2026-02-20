@@ -27,7 +27,11 @@ from spflow.modules.ops.split import Split, SplitMode
 from spflow.modules.ops.split_consecutive import SplitConsecutive
 from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import proj_convex_to_real
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import (
+    SamplingContext,
+    index_tensor,
+    sample_from_logits,
+)
 
 
 class EinsumLayer(Module):
@@ -155,6 +159,20 @@ class EinsumLayer(Module):
                 [(i, j) for i in range(self._left_channels) for j in range(self._right_channels)],
                 dtype=torch.long,
             ),
+        )
+        self.register_buffer(
+            "flat_to_left_channels",
+            torch.nn.functional.one_hot(
+                self.unraveled_channel_indices[:, 0],
+                num_classes=self._left_channels,
+            ).to(dtype=torch.get_default_dtype()),
+        )
+        self.register_buffer(
+            "flat_to_right_channels",
+            torch.nn.functional.one_hot(
+                self.unraveled_channel_indices[:, 1],
+                num_classes=self._right_channels,
+            ).to(dtype=torch.get_default_dtype()),
         )
 
         if weights is None:
@@ -351,37 +369,63 @@ class EinsumLayer(Module):
         # logits shape: (B, D, O, R, I, J)
 
         # Select output channel based on parent's channel_index
-        # sampling_ctx.channel_index: (B, D) - indices into out_channels
-        channel_idx = sampling_ctx.channel_index  # (B, D)
+        # sampling_ctx.channel_index indexes out_channels.
+        channel_idx = sampling_ctx.channel_index
 
         # Gather the correct output channel
         # Expand channel_idx to match logits dimensions
         num_repetitions = self.out_shape.repetitions
         num_left_channels = self._left_channels
         num_right_channels = self._right_channels
-        idx = repeat(
-            channel_idx,
-            "b f -> b f 1 r i j",
-            r=num_repetitions,
-            i=num_left_channels,
-            j=num_right_channels,
+        if sampling_ctx.is_differentiable:
+            idx = repeat(
+                channel_idx,
+                "b f co -> b f co r i j",
+                r=num_repetitions,
+                i=num_left_channels,
+                j=num_right_channels,
+            )
+        else:
+            idx = repeat(
+                channel_idx,
+                "b f -> b f 1 r i j",
+                r=num_repetitions,
+                i=num_left_channels,
+                j=num_right_channels,
+            )
+        logits = index_tensor(
+            logits,
+            index=idx,
+            dim=2,
+            is_differentiable=sampling_ctx.is_differentiable,
         )
-        logits = logits.gather(dim=2, index=idx)
-        logits = rearrange(logits, "b f 1 r i j -> b f r i j")
         # logits shape: (B, D, R, I, J)
 
         # Select repetition if specified
         if sampling_ctx.repetition_index is not None:
             num_features = self.out_shape.features
-            rep_idx = repeat(
-                rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                "b -> b f 1 i j",
-                f=num_features,
-                i=num_left_channels,
-                j=num_right_channels,
+            if sampling_ctx.is_differentiable:
+                rep_idx = repeat(
+                    sampling_ctx.repetition_index,
+                    "b r -> b f r i j",
+                    f=num_features,
+                    i=num_left_channels,
+                    j=num_right_channels,
+                )
+            else:
+                rep_idx = repeat(
+                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
+                    "b -> b f 1 i j",
+                    f=num_features,
+                    i=num_left_channels,
+                    j=num_right_channels,
+                )
+            logits = index_tensor(
+                logits,
+                index=rep_idx,
+                dim=2,
+                is_differentiable=sampling_ctx.is_differentiable,
             )
-            logits = logits.gather(dim=2, index=rep_idx)
-            logits = rearrange(logits, "b f 1 i j -> b f i j")
             # logits shape: (B, D, I, J)
         else:
             if self.out_shape.repetitions > 1:
@@ -408,16 +452,45 @@ class EinsumLayer(Module):
             if sampling_ctx.repetition_index is not None:
                 num_features = int(left_ll.shape[1])
                 num_left_channels = int(left_ll.shape[2])
-                rep_idx_l = repeat(
-                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                    "b -> b f i 1",
-                    f=num_features,
-                    i=num_left_channels,
+                num_right_channels = int(right_ll.shape[2])
+                if sampling_ctx.is_differentiable:
+                    rep_idx_l = repeat(
+                        sampling_ctx.repetition_index,
+                        "b r -> b f i r",
+                        f=num_features,
+                        i=num_left_channels,
+                    )
+                    rep_idx_r = repeat(
+                        sampling_ctx.repetition_index,
+                        "b r -> b f j r",
+                        f=num_features,
+                        j=num_right_channels,
+                    )
+                else:
+                    rep_idx_l = repeat(
+                        rearrange(sampling_ctx.repetition_index, "... -> (...)"),
+                        "b -> b f i 1",
+                        f=num_features,
+                        i=num_left_channels,
+                    )
+                    rep_idx_r = repeat(
+                        rearrange(sampling_ctx.repetition_index, "... -> (...)"),
+                        "b -> b f j 1",
+                        f=num_features,
+                        j=num_right_channels,
+                    )
+                left_ll = index_tensor(
+                    left_ll,
+                    index=rep_idx_l,
+                    dim=-1,
+                    is_differentiable=sampling_ctx.is_differentiable,
                 )
-                left_ll = left_ll.gather(dim=-1, index=rep_idx_l)
-                right_ll = right_ll.gather(dim=-1, index=rep_idx_l)
-                left_ll = rearrange(left_ll, "b f i 1 -> b f i")
-                right_ll = rearrange(right_ll, "b f j 1 -> b f j")
+                right_ll = index_tensor(
+                    right_ll,
+                    index=rep_idx_r,
+                    dim=-1,
+                    is_differentiable=sampling_ctx.is_differentiable,
+                )
 
             # Compute joint log-likelihood for each (i, j) pair
             # left_ll: (B, D, I), right_ll: (B, D, J)
@@ -432,17 +505,25 @@ class EinsumLayer(Module):
             log_posterior = log_posterior - torch.logsumexp(log_posterior, dim=-1, keepdim=True)
             logits_flat = log_posterior
 
-        # Sample or MPE
-        if sampling_ctx.is_mpe:
-            indices = logits_flat.argmax(dim=-1)  # (B, D)
-        else:
-            dist = torch.distributions.Categorical(logits=logits_flat)
-            indices = dist.sample()  # (B, D)
+        indices = sample_from_logits(
+            logits=logits_flat,
+            dim=-1,
+            is_mpe=sampling_ctx.is_mpe,
+            is_differentiable=sampling_ctx.is_differentiable,
+            hard=sampling_ctx.hard,
+            tau=sampling_ctx.tau,
+        )
 
         # Unravel indices to (i, j) pairs
-        ij_indices = self.unraveled_channel_indices[indices]  # (B, D, 2)
-        left_indices = ij_indices[..., 0]  # (B, D)
-        right_indices = ij_indices[..., 1]  # (B, D)
+        if sampling_ctx.is_differentiable:
+            left_projection = self.flat_to_left_channels.to(device=indices.device, dtype=indices.dtype)
+            right_projection = self.flat_to_right_channels.to(device=indices.device, dtype=indices.dtype)
+            left_indices = indices @ left_projection  # (B, D, I)
+            right_indices = indices @ right_projection  # (B, D, J)
+        else:
+            ij_indices = self.unraveled_channel_indices[indices]  # (B, D, 2)
+            left_indices = ij_indices[..., 0]  # (B, D)
+            right_indices = ij_indices[..., 1]  # (B, D)
 
         # Sample from left and right children
         if self._two_inputs:
@@ -455,7 +536,7 @@ class EinsumLayer(Module):
             self.inputs[1]._sample(data=data, cache=cache, sampling_ctx=right_ctx)
         else:
             # Single input with Split module - use generic merge_split_indices
-            full_indices = self.inputs.merge_split_indices(left_indices, right_indices)
+            full_indices = self.inputs.merge_split_tensors(left_indices, right_indices)
             full_mask = repeat(sampling_ctx.mask, "b f -> b (f two)", two=2)
 
             child_ctx = sampling_ctx.with_routing(channel_index=full_indices, mask=full_mask)

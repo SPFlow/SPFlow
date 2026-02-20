@@ -21,6 +21,7 @@ from spflow.modules.sums import Sum
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import make_normal_leaf, make_normal_data, make_leaf, DummyLeaf
+from tests.utils.sampling_context_helpers import patch_simple_as_categorical_one_hot
 
 in_channels_values = [1, 4]
 out_channels_values = [1, 5]
@@ -836,7 +837,9 @@ class TestDifferentiableSampling:
         weights /= weights.sum(dim=1, keepdim=True)
         module.weights = weights
 
-        channel_index = torch.arange(n_samples * out_features).reshape(n_samples, out_features) % sum_out_channels
+        channel_index = (
+            torch.arange(n_samples * out_features).reshape(n_samples, out_features) % sum_out_channels
+        )
         repetition_index = torch.arange(n_samples) % num_reps
         mask = torch.full((n_samples, out_features), True)
 
@@ -854,22 +857,7 @@ class TestDifferentiableSampling:
             is_differentiable=True,
         )
 
-        def _simple_as_categorical_one_hot(
-            logits=None, log_weights=None, dim=-1, is_mpe=False, hard=True, tau=1.0
-        ):
-            del is_mpe
-            del hard
-            del tau
-            x = logits if logits is not None else log_weights
-            dim_norm = dim if dim >= 0 else x.dim() + dim
-            x_last = x if dim_norm == x.dim() - 1 else x.movedim(dim_norm, -1)
-            sampled = torch.distributions.Categorical(logits=x_last).sample()
-            out = to_one_hot(sampled, dim=-1, dim_size=x_last.shape[-1], dtype=x_last.dtype)
-            return out if dim_norm == x.dim() - 1 else out.movedim(-1, dim_norm)
-
-        import spflow.utils.sampling_context as sp_sampling_context
-
-        monkeypatch.setattr(sp_sampling_context, "SIMPLE", _simple_as_categorical_one_hot)
+        patch_simple_as_categorical_one_hot(monkeypatch)
 
         torch.manual_seed(1337)
         samples_a = module._sample(
@@ -891,3 +879,39 @@ class TestDifferentiableSampling:
             rtol=0.0,
             atol=0.0,
         )
+
+    def test_diff_sampling_with_conditional_cache(self):
+        in_channels = 2
+        out_features = 4
+        num_reps = 3
+        sum_out_channels = 3
+        n_samples = 10
+
+        normal_layer = make_normal_leaf(
+            out_features=out_features,
+            out_channels=in_channels,
+            num_repetitions=num_reps,
+        )
+        module = Sum(inputs=normal_layer, out_channels=sum_out_channels, num_repetitions=num_reps)
+
+        cache = Cache()
+        evidence = _randn(n_samples, out_features)
+        _ = module.log_likelihood(evidence, cache=cache)
+
+        channel_index = _randint(low=0, high=sum_out_channels, size=(n_samples, out_features))
+        repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
+        sampling_ctx = SamplingContext(
+            channel_index=to_one_hot(channel_index, dim=-1, dim_size=sum_out_channels),
+            mask=torch.full((n_samples, out_features), True),
+            repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+            is_differentiable=True,
+        )
+
+        samples = module._sample(
+            data=torch.full((n_samples, out_features), torch.nan),
+            sampling_ctx=sampling_ctx,
+            cache=cache,
+        )
+
+        assert samples.shape == (n_samples, out_features)
+        assert torch.isfinite(samples).all()

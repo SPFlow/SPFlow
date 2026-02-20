@@ -10,7 +10,7 @@ import torch
 from spflow.learn import expectation_maximization
 from spflow.meta import Scope
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import DummyLeaf, make_leaf, make_normal_data, make_normal_leaf
 
 
@@ -120,6 +120,25 @@ class EinsumLikeContractTests(ABC):
         mask = torch.ones((n, module.out_shape.features), dtype=torch.bool)
         repetition_index = torch.randint(low=0, high=num_reps, size=(n,))
         ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+        samples = module._sample(data=data, sampling_ctx=ctx, cache=Cache())
+        assert samples.shape == (n, 4)
+        assert torch.isfinite(samples[:, module.scope.query]).all()
+
+    @pytest.mark.contract
+    @pytest.mark.parametrize("num_reps", [1, 2])
+    def test_differentiable_sampling_contract(self, num_reps: int) -> None:
+        module = self.make_single_input(in_channels=2, out_channels=3, in_features=4, num_reps=num_reps)
+        n = 20
+        data = torch.full((n, 4), torch.nan)
+        int_channel_index = torch.randint(low=0, high=3, size=(n, module.out_shape.features))
+        int_repetition_index = torch.randint(low=0, high=num_reps, size=(n,))
+        mask = torch.ones((n, module.out_shape.features), dtype=torch.bool)
+        ctx = SamplingContext(
+            channel_index=to_one_hot(int_channel_index, dim=-1, dim_size=module.out_shape.channels),
+            mask=mask,
+            repetition_index=to_one_hot(int_repetition_index, dim=-1, dim_size=num_reps),
+            is_differentiable=True,
+        )
         samples = module._sample(data=data, sampling_ctx=ctx, cache=Cache())
         assert samples.shape == (n, 4)
         assert torch.isfinite(samples[:, module.scope.query]).all()

@@ -18,10 +18,7 @@ from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import (
     proj_convex_to_real,
 )
-from spflow.utils.sampling_context import (
-    SamplingContext,
-    update_channel_index_strict, index_tensor
-)
+from spflow.utils.sampling_context import SamplingContext, update_channel_index_strict, index_tensor
 from spflow.utils.sampling_context import sample_from_logits
 
 
@@ -41,11 +38,11 @@ class Sum(Module):
     """
 
     def __init__(
-            self,
-            inputs: Module | list[Module],
-            out_channels: int = 1,
-            num_repetitions: int = 1,
-            weights: Tensor | list[float] | None = None,
+        self,
+        inputs: Module | list[Module],
+        out_channels: int = 1,
+        num_repetitions: int = 1,
+        weights: Tensor | list[float] | None = None,
     ) -> None:
         """Create a Sum module for mixture modeling.
 
@@ -123,11 +120,11 @@ class Sum(Module):
         self.weights = weights
 
     def _process_weights_parameter(
-            self,
-            inputs: Module | list[Module],
-            weights: Tensor | None,
-            out_channels: int,
-            num_repetitions: int | None,
+        self,
+        inputs: Module | list[Module],
+        weights: Tensor | None,
+        out_channels: int,
+        num_repetitions: int | None,
     ) -> tuple[Tensor | None, int, int | None]:
         if weights is None:
             return weights, out_channels, num_repetitions
@@ -153,7 +150,7 @@ class Sum(Module):
 
         inferred_num_repetitions = weights.shape[-1]
         if num_repetitions is not None and (
-                num_repetitions != 1 and num_repetitions != inferred_num_repetitions
+            num_repetitions != 1 and num_repetitions != inferred_num_repetitions
         ):
             raise InvalidParameterCombinationError(
                 f"Cannot specify 'num_repetitions' that does not match weights shape for 'Sum' module. "
@@ -205,8 +202,8 @@ class Sum(Module):
 
     @weights.setter
     def weights(
-            self,
-            values: Tensor,
+        self,
+        values: Tensor,
     ) -> None:
         if values.shape != self.weights_shape:
             raise ShapeError(
@@ -220,8 +217,8 @@ class Sum(Module):
 
     @log_weights.setter
     def log_weights(
-            self,
-            values: Tensor,
+        self,
+        values: Tensor,
     ) -> None:
         """Set log weights of all nodes.
 
@@ -240,9 +237,9 @@ class Sum(Module):
 
     @cached
     def log_likelihood(
-            self,
-            data: Tensor,
-            cache: Cache | None = None,
+        self,
+        data: Tensor,
+        cache: Cache | None = None,
     ) -> Tensor:
         """Compute log likelihood P(data | module).
 
@@ -277,10 +274,10 @@ class Sum(Module):
         return output
 
     def _sample(
-            self,
-            data: Tensor,
-            sampling_ctx: SamplingContext,
-            cache: Cache,
+        self,
+        data: Tensor,
+        sampling_ctx: SamplingContext,
+        cache: Cache,
     ) -> Tensor:
         """Generate samples from sum module.
 
@@ -331,7 +328,13 @@ class Sum(Module):
         in_channels_total = logits.shape[2]
 
         if sampling_ctx.is_differentiable:
-            c_idxs = repeat(sampling_ctx.channel_index, "b f co -> b f ci co", f=num_features, ci=in_channels_total, co=out_channels)
+            c_idxs = repeat(
+                sampling_ctx.channel_index,
+                "b f co -> b f ci co",
+                f=num_features,
+                ci=in_channels_total,
+                co=out_channels,
+            )
         else:
             c_idxs = repeat(sampling_ctx.channel_index, "b f -> b f ci 1", ci=in_channels_total)
         logits = index_tensor(logits, index=c_idxs, dim=3, is_differentiable=sampling_ctx.is_differentiable)
@@ -343,12 +346,20 @@ class Sum(Module):
 
             num_features = int(input_lls.shape[1])
             in_channels_total = int(input_lls.shape[2])
-            r_idxs = repeat(
-                rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                "n -> n f ci 1",
-                f=num_features,
-                ci=in_channels_total,
-            )
+            if sampling_ctx.is_differentiable:
+                r_idxs = repeat(
+                    sampling_ctx.repetition_index,
+                    "n r -> n f ci r",
+                    f=num_features,
+                    ci=in_channels_total,
+                )
+            else:
+                r_idxs = repeat(
+                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
+                    "n -> n f ci 1",
+                    f=num_features,
+                    ci=in_channels_total,
+                )
 
             # Use gather to select the correct repetition.
             input_lls = index_tensor(
@@ -364,9 +375,14 @@ class Sum(Module):
             logits = log_posterior
 
         # Sample from categorical distribution defined by weights to obtain indices into input channels
-        new_channel_index = sample_from_logits(logits=logits, dim=-1, is_mpe=sampling_ctx.is_mpe,
-                                               is_differentiable=sampling_ctx.is_differentiable, hard=sampling_ctx.hard,
-                                               tau=sampling_ctx.tau)
+        new_channel_index = sample_from_logits(
+            logits=logits,
+            dim=-1,
+            is_mpe=sampling_ctx.is_mpe,
+            is_differentiable=sampling_ctx.is_differentiable,
+            hard=sampling_ctx.hard,
+            tau=sampling_ctx.tau,
+        )
 
         update_channel_index_strict(sampling_ctx, new_channel_index)
 
@@ -380,11 +396,11 @@ class Sum(Module):
         return data
 
     def _expectation_maximization_step(
-            self,
-            data: Tensor,
-            bias_correction: bool = True,
-            *,
-            cache: Cache,
+        self,
+        data: Tensor,
+        bias_correction: bool = True,
+        *,
+        cache: Cache,
     ) -> None:
         """Perform expectation-maximization step.
 
@@ -429,10 +445,10 @@ class Sum(Module):
         self.inputs._expectation_maximization_step(data, cache=cache, bias_correction=bias_correction)
 
     def marginalize(
-            self,
-            marg_rvs: list[int],
-            prune: bool = True,
-            cache: Cache | None = None,
+        self,
+        marg_rvs: list[int],
+        prune: bool = True,
+        cache: Cache | None = None,
     ) -> Sum | None:
         """Marginalize out specified random variables.
 
