@@ -643,7 +643,7 @@ class LeafModule(Module, ABC):
                 # Get mode of distribution as MPE
                 samples = rearrange(self.mode, "f ci r -> 1 f ci r")
 
-            if sampling_ctx.repetition_index is not None and samples.ndim == 4:
+            if samples.ndim == 4:
                 if not self.is_conditional:
                     samples = repeat(samples, "1 f ci r -> n f ci r", n=int(n_samples.item())).detach()
                 # repetition_index shape: (n_samples,)
@@ -661,14 +661,9 @@ class LeafModule(Module, ABC):
                     samples, index=r_idx, dim=-1, is_differentiable=sampling_ctx.is_differentiable
                 )
 
-            elif (
-                sampling_ctx.repetition_index is not None
-                and samples.ndim != 4
-                or sampling_ctx.repetition_index is None
-                and samples.ndim == 4
-            ):
+            elif samples.ndim != 4:
                 raise ValueError(
-                    "Either there is no repetition index or the samples are not 4-dimensional. This should not happen."
+                    "The samples are not 4-dimensional. This should not happen."
                 )
 
             else:
@@ -677,14 +672,15 @@ class LeafModule(Module, ABC):
 
         else:
             if self.is_conditional:
+                # TODO(Steven): is differentiable sampling automatically supported here? -> I don't think so
                 # Get evidence
                 evidence = data[instance_mask][:, self.scope.evidence]
                 dist = self.conditional_distribution(evidence)
                 samples = dist.sample((1,)).squeeze(0)  # Distribution parameters already contain batch dim
             else:
+                # TODO(Steven): We need to create the distribution depending on is_differentiable
                 dist = self.distribution
                 # Sample n_samples from distribution
-                # TODO: Differentiate between sampling_ctx.is_differentiable and not
                 if not sampling_ctx.is_differentiable:
                     samples = dist.sample((n_samples,))
                 else:

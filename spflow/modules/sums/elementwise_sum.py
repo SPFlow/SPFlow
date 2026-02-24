@@ -393,23 +393,22 @@ class ElementwiseSum(Module):
                     inp_ll = repeat(inp_ll, "b f 1 r -> b f ci r", ci=self.in_shape.channels)
                 input_lls.append(inp_ll)
             input_lls = torch.stack(input_lls, dim=self.sum_dim)
-            if sampling_ctx.repetition_index is not None:
-                num_features = int(input_lls.shape[1])
-                num_input_channels = int(input_lls.shape[2])
-                num_inputs = int(input_lls.shape[3])
-                rep_idx = repeat_repetition_index(
-                    sampling_ctx.repetition_index,
-                    "n r -> n f ci i r",
-                    f=num_features,
-                    ci=num_input_channels,
-                    i=num_inputs,
-                )
-                input_lls = index_tensor(
-                    input_lls,
-                    index=rep_idx,
-                    dim=-1,
-                    is_differentiable=sampling_ctx.is_differentiable,
-                )
+            num_features = int(input_lls.shape[1])
+            num_input_channels = int(input_lls.shape[2])
+            num_inputs = int(input_lls.shape[3])
+            rep_idx = repeat_repetition_index(
+                sampling_ctx.repetition_index,
+                "n r -> n f ci i r",
+                f=num_features,
+                ci=num_input_channels,
+                i=num_inputs,
+            )
+            input_lls = index_tensor(
+                input_lls,
+                index=rep_idx,
+                dim=-1,
+                is_differentiable=sampling_ctx.is_differentiable,
+            )
             is_conditional = True
         else:
             is_conditional = False

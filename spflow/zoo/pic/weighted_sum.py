@@ -221,29 +221,20 @@ class WeightedSum(Module):
         weights = self._weights
 
         # Index into the correct weight channels given by parent module
-        if sampling_ctx.repetition_index is not None:
-            batch_size = int(sampling_ctx.channel_index.shape[0])
-            weights = repeat(weights, "f ci co r -> b f ci co r", b=batch_size)
-            num_features = int(weights.shape[1])
-            num_input_channels = int(weights.shape[2])
-            num_output_channels = int(weights.shape[3])
-            indices = repeat(
-                rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                "b -> b f ci co 1",
-                f=num_features,
-                ci=num_input_channels,
-                co=num_output_channels,
-            )
-            weights = torch.gather(weights, dim=-1, index=indices)
-            weights = rearrange(weights, "b f ci co 1 -> b f ci co")
-        else:
-            if self.out_shape.repetitions > 1:
-                raise ValueError(
-                    "sampling_ctx.repetition_index must be provided when sampling from a module with "
-                    "num_repetitions > 1."
-                )
-            batch_size = int(sampling_ctx.channel_index.shape[0])
-            weights = repeat(weights[..., 0], "f ci co -> b f ci co", b=batch_size)
+        batch_size = int(sampling_ctx.channel_index.shape[0])
+        weights = repeat(weights, "f ci co r -> b f ci co r", b=batch_size)
+        num_features = int(weights.shape[1])
+        num_input_channels = int(weights.shape[2])
+        num_output_channels = int(weights.shape[3])
+        indices = repeat(
+            rearrange(sampling_ctx.repetition_index, "... -> (...)"),
+            "b -> b f ci co 1",
+            f=num_features,
+            ci=num_input_channels,
+            co=num_output_channels,
+        )
+        weights = torch.gather(weights, dim=-1, index=indices)
+        weights = rearrange(weights, "b f ci co 1 -> b f ci co")
 
         in_channels_total = weights.shape[2]
         idxs = repeat(sampling_ctx.channel_index, "b f -> b f ci 1", ci=in_channels_total)

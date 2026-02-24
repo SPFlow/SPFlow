@@ -353,25 +353,20 @@ class LinsumLayer(Module):
         # logits shape: (B, D, R, C)
 
         # Select repetition if specified
-        if sampling_ctx.repetition_index is not None:
-            num_features = self.out_shape.features
-            rep_idx = repeat_repetition_index(
-                sampling_ctx.repetition_index,
-                "b r -> b f r ci",
-                f=num_features,
-                ci=num_input_channels,
-            )
-            logits = index_tensor(
-                logits,
-                index=rep_idx,
-                dim=2,
-                is_differentiable=sampling_ctx.is_differentiable,
-            )
-            # logits shape: (B, D, C)
-        else:
-            if self.out_shape.repetitions > 1:
-                raise ValueError("repetition_index must be provided when sampling with num_repetitions > 1")
-            logits = logits[:, :, 0, :]  # (B, D, C)
+        num_features = self.out_shape.features
+        rep_idx = repeat_repetition_index(
+            sampling_ctx.repetition_index,
+            "b r -> b f r ci",
+            f=num_features,
+            ci=num_input_channels,
+        )
+        logits = index_tensor(
+            logits,
+            index=rep_idx,
+            dim=2,
+            is_differentiable=sampling_ctx.is_differentiable,
+        )
+        # logits shape: (B, D, C)
 
         # Condition on evidence if cache has log-likelihoods.
         left_ll = None
@@ -387,27 +382,26 @@ class LinsumLayer(Module):
 
         if left_ll is not None and right_ll is not None:
             # Select repetition
-            if sampling_ctx.repetition_index is not None:
-                num_features = int(left_ll.shape[1])
-                num_input_channels = int(left_ll.shape[2])
-                rep_idx_l = repeat_repetition_index(
-                    sampling_ctx.repetition_index,
-                    "b r -> b f ci r",
-                    f=num_features,
-                    ci=num_input_channels,
-                )
-                left_ll = index_tensor(
-                    left_ll,
-                    index=rep_idx_l,
-                    dim=-1,
-                    is_differentiable=sampling_ctx.is_differentiable,
-                )
-                right_ll = index_tensor(
-                    right_ll,
-                    index=rep_idx_l,
-                    dim=-1,
-                    is_differentiable=sampling_ctx.is_differentiable,
-                )
+            num_features = int(left_ll.shape[1])
+            num_input_channels = int(left_ll.shape[2])
+            rep_idx_l = repeat_repetition_index(
+                sampling_ctx.repetition_index,
+                "b r -> b f ci r",
+                f=num_features,
+                ci=num_input_channels,
+            )
+            left_ll = index_tensor(
+                left_ll,
+                index=rep_idx_l,
+                dim=-1,
+                is_differentiable=sampling_ctx.is_differentiable,
+            )
+            right_ll = index_tensor(
+                right_ll,
+                index=rep_idx_l,
+                dim=-1,
+                is_differentiable=sampling_ctx.is_differentiable,
+            )
 
             # Product log-likelihood for each channel
             prod_ll = left_ll + right_ll  # (B, D, C)
