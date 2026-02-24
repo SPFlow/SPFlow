@@ -89,3 +89,45 @@ def patch_simple_as_categorical_one_hot(monkeypatch: Any) -> None:
     import spflow.utils.sampling_context as sp_sampling_context
 
     monkeypatch.setattr(sp_sampling_context, "SIMPLE", _simple_as_categorical_one_hot)
+
+
+def assert_nonzero_finite_grad(tensor: Tensor, name: str = "tensor") -> None:
+    """Assert gradients exist, are finite, and are non-zero."""
+    if tensor.grad is None:
+        raise AssertionError(f"{name}.grad is None")
+    if not torch.isfinite(tensor.grad).all():
+        raise AssertionError(f"{name}.grad contains non-finite values")
+    if not bool((tensor.grad.abs().sum() > 0).item()):
+        raise AssertionError(f"{name}.grad is all zeros")
+
+
+def make_diff_routing_from_logits(
+    *,
+    num_samples: int,
+    num_features: int,
+    num_channels: int,
+    num_repetitions: int,
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
+) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+    """Create differentiable routing tensors from learnable logits."""
+    if device is None:
+        device = torch.get_default_device()
+    if dtype is None:
+        dtype = torch.get_default_dtype()
+
+    channel_logits = torch.randn(
+        (num_samples, num_features, num_channels),
+        device=device,
+        dtype=dtype,
+        requires_grad=True,
+    )
+    repetition_logits = torch.randn(
+        (num_samples, num_repetitions),
+        device=device,
+        dtype=dtype,
+        requires_grad=True,
+    )
+    channel_index = channel_logits.softmax(dim=-1)
+    repetition_index = repetition_logits.softmax(dim=-1)
+    return channel_logits, repetition_logits, channel_index, repetition_index

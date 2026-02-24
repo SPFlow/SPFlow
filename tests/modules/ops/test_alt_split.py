@@ -11,7 +11,7 @@ from spflow.modules.ops import SplitConsecutive
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.products import OuterProduct
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
 out_channels_values = [1, 6]
@@ -202,6 +202,63 @@ def test_split_alternate_sampling_accepts_split_sized_context():
     samples = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == (n_samples, 6)
     assert torch.isfinite(samples).all()
+
+
+def test_split_alternate_sampling_accepts_split_sized_context_differentiable():
+    scope = Scope(list(range(0, 6)))
+    leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1)
+
+    n_samples = 10
+    data = torch.full((n_samples, 6), torch.nan)
+    channel_index = torch.randint(0, 3, size=(n_samples, 3))
+    sampling_ctx = SamplingContext(
+        channel_index=to_one_hot(channel_index, dim=-1, dim_size=3),
+        mask=torch.ones((n_samples, 3), dtype=torch.bool),
+        repetition_index=to_one_hot(torch.zeros((n_samples,), dtype=torch.long), dim=-1, dim_size=1),
+        is_differentiable=True,
+    )
+    samples = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+    assert samples.shape == (n_samples, 6)
+    assert torch.isfinite(samples).all()
+
+
+def test_split_alternate_differentiable_equals_non_diff_sampling():
+    scope = Scope(list(range(0, 6)))
+    mean = torch.arange(6 * 3, dtype=torch.get_default_dtype()).reshape(6, 3, 1)
+    std = torch.full_like(mean, 1e-6)
+    leaf = make_normal_leaf(scope=scope, mean=mean, std=std)
+    split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1)
+
+    n_samples = 12
+    channel_index = torch.randint(0, 3, size=(n_samples, 3))
+    mask = torch.ones((n_samples, 3), dtype=torch.bool)
+    repetition_index = torch.zeros((n_samples,), dtype=torch.long)
+    sampling_ctx_a = SamplingContext(
+        channel_index=channel_index.clone(),
+        mask=mask.clone(),
+        repetition_index=repetition_index.clone(),
+    )
+    sampling_ctx_b = SamplingContext(
+        channel_index=to_one_hot(channel_index, dim=-1, dim_size=3),
+        mask=mask.clone(),
+        repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=1),
+        is_differentiable=True,
+        hard=True,
+    )
+
+    samples_a = split._sample(
+        data=torch.full((n_samples, 6), torch.nan),
+        sampling_ctx=sampling_ctx_a,
+        cache=Cache(),
+    )
+    samples_b = split._sample(
+        data=torch.full((n_samples, 6), torch.nan),
+        sampling_ctx=sampling_ctx_b,
+        cache=Cache(),
+    )
+
+    torch.testing.assert_close(samples_a, samples_b, rtol=0.0, atol=1e-4)
 
 
 

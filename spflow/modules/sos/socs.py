@@ -219,6 +219,11 @@ class SOCS(Module):
         sampling_ctx: SamplingContext,
         cache: Cache,
     ) -> Tensor:
+        if sampling_ctx.is_differentiable:
+            raise UnsupportedOperationError(
+                "SOCS.sample() does not support differentiable routing yet."
+            )
+
         if sampling_ctx.is_mpe:
             raise UnsupportedOperationError("SOCS.mpe() is not supported (use MAP on components if needed).")
 

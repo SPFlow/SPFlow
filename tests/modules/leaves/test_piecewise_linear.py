@@ -7,10 +7,12 @@ import types
 import pytest
 import torch
 
-from spflow.exceptions import OptionalDependencyError
+from spflow.exceptions import OptionalDependencyError, UnsupportedOperationError
 from spflow.meta.data import Scope
 from spflow.modules.leaves.piecewise_linear import PiecewiseLinear, PiecewiseLinearDist, interp, pairwise
+from spflow.utils.cache import Cache
 from spflow.utils.domain import DataType, Domain
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 
 
 def _randn(*size: int) -> torch.Tensor:
@@ -118,6 +120,22 @@ class TestPiecewiseLinearInitialization:
         leaf = PiecewiseLinear(scope=Scope([0]))
         with pytest.raises(OptionalDependencyError):
             leaf.initialize(_randn(10, 1), [Domain.continuous_inf_support()])
+
+    def test_sample_rejects_differentiable_routing(self):
+        leaf = PiecewiseLinear(scope=Scope([0]), out_channels=1, num_repetitions=1)
+        leaf.initialize(_randn(80, 1), [Domain.continuous_inf_support()])
+        sampling_ctx = SamplingContext(
+            channel_index=to_one_hot(torch.zeros((4, 1), dtype=torch.long), dim=-1, dim_size=1),
+            mask=torch.ones((4, 1), dtype=torch.bool),
+            repetition_index=to_one_hot(torch.zeros((4,), dtype=torch.long), dim=-1, dim_size=1),
+            is_differentiable=True,
+        )
+        with pytest.raises(UnsupportedOperationError, match="differentiable routing"):
+            leaf._sample(
+                data=torch.full((4, 1), float("nan")),
+                sampling_ctx=sampling_ctx,
+                cache=Cache(),
+            )
 
     def test_initialize_shape_validation_errors(self):
         """Test input validation branches in initialize."""

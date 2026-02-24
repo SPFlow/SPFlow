@@ -9,7 +9,7 @@ from spflow.meta import Scope
 from spflow.modules.products import ElementwiseProduct
 from spflow.modules.products.outer_product import OuterProduct
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import make_normal_leaf, make_data, make_leaf, DummyLeaf
 
 cls_values = [ElementwiseProduct, OuterProduct]
@@ -110,6 +110,83 @@ def test_sample(cls, in_channels: int, out_features: int, num_reps):
     assert torch.isfinite(samples_query).all()
 
 
+@pytest.mark.parametrize("cls", cls_values)
+def test_sample_differentiable_smoke(cls):
+    n_samples = 64
+    out_features = 4
+    num_reps = 1
+    module = make_module(
+        cls=cls,
+        out_features=out_features,
+        in_channels=3,
+        num_repetitions=num_reps,
+    )
+
+    data = torch.full((n_samples, out_features * len(module.inputs)), torch.nan)
+    channel_index_int = torch.randint(
+        low=0,
+        high=module.out_shape.channels,
+        size=(n_samples, module.out_shape.features),
+    )
+    sampling_ctx = SamplingContext(
+        channel_index=to_one_hot(channel_index_int, dim=-1, dim_size=module.out_shape.channels),
+        mask=torch.ones((n_samples, module.out_shape.features), dtype=torch.bool),
+        repetition_index=to_one_hot(torch.zeros((n_samples,), dtype=torch.long), dim=-1, dim_size=num_reps),
+        is_differentiable=True,
+        hard=True,
+    )
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+    assert samples.shape == data.shape
+    assert torch.isfinite(samples[:, module.scope.query]).all()
+
+
+@pytest.mark.parametrize("cls", cls_values)
+def test_sample_differentiable_equals_non_diff_sampling(cls):
+    n_samples = 48
+    out_features = 4
+    num_reps = 1
+    module = make_module(
+        cls=cls,
+        out_features=out_features,
+        in_channels=3,
+        num_repetitions=num_reps,
+    )
+    channel_index = torch.randint(
+        low=0,
+        high=module.out_shape.channels,
+        size=(n_samples, module.out_shape.features),
+    )
+    mask = torch.ones((n_samples, module.out_shape.features), dtype=torch.bool)
+    repetition_index = torch.zeros((n_samples,), dtype=torch.long)
+    sampling_ctx_a = SamplingContext(
+        channel_index=channel_index.clone(),
+        mask=mask.clone(),
+        repetition_index=repetition_index.clone(),
+    )
+    sampling_ctx_b = SamplingContext(
+        channel_index=to_one_hot(channel_index, dim=-1, dim_size=module.out_shape.channels),
+        mask=mask.clone(),
+        repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+        is_differentiable=True,
+        hard=True,
+    )
+
+    torch.manual_seed(1337)
+    samples_a = module._sample(
+        data=torch.full((n_samples, out_features * len(module.inputs)), torch.nan),
+        sampling_ctx=sampling_ctx_a,
+        cache=Cache(),
+    )
+    torch.manual_seed(1337)
+    samples_b = module._sample(
+        data=torch.full((n_samples, out_features * len(module.inputs)), torch.nan),
+        sampling_ctx=sampling_ctx_b,
+        cache=Cache(),
+    )
+
+    torch.testing.assert_close(samples_a, samples_b, rtol=1e-6, atol=1e-6)
+
+
 @pytest.mark.parametrize(
     "cls,out_features,num_reps", product(cls_values, out_features_values, num_repetitions)
 )
@@ -143,6 +220,37 @@ def test_sample_two_inputs_broadcasting_channels(cls, out_features: int, num_rep
     assert samples.shape == data.shape
     samples_query = samples[:, module.scope.query]
     assert torch.isfinite(samples_query).all()
+
+
+@pytest.mark.parametrize("cls", cls_values)
+def test_sample_differentiable_broadcasting_channels(cls):
+    out_features = 3
+    n_samples = 32
+    num_reps = 1
+    scope_a = Scope(list(range(out_features)))
+    scope_b = Scope(list(range(out_features, out_features * 2)))
+    scope_c = Scope(list(range(out_features * 2, out_features * 3)))
+    inputs_a = make_leaf(cls=DummyLeaf, out_channels=1, scope=scope_a, num_repetitions=num_reps)
+    inputs_b = make_leaf(cls=DummyLeaf, out_channels=3, scope=scope_b, num_repetitions=num_reps)
+    inputs_c = make_leaf(cls=DummyLeaf, out_channels=3, scope=scope_c, num_repetitions=num_reps)
+    module = cls(inputs=[inputs_a, inputs_b, inputs_c])
+
+    data = torch.full((n_samples, out_features * len(module.inputs)), torch.nan)
+    channel_index_int = torch.randint(
+        low=0,
+        high=module.out_shape.channels,
+        size=(n_samples, module.out_shape.features),
+    )
+    sampling_ctx = SamplingContext(
+        channel_index=to_one_hot(channel_index_int, dim=-1, dim_size=module.out_shape.channels),
+        mask=torch.ones((n_samples, module.out_shape.features), dtype=torch.bool),
+        repetition_index=to_one_hot(torch.zeros((n_samples,), dtype=torch.long), dim=-1, dim_size=num_reps),
+        is_differentiable=True,
+        hard=True,
+    )
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+    assert samples.shape == data.shape
+    assert torch.isfinite(samples[:, module.scope.query]).all()
 
 
 @pytest.mark.parametrize(

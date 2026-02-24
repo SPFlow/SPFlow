@@ -181,6 +181,11 @@ class SignedSum(Module):
 
         Only supported if all weights are >= 0 and no evidence is provided.
         """
+        if sampling_ctx.is_differentiable:
+            raise UnsupportedOperationError(
+                "SignedSum.sample() does not support differentiable routing yet."
+            )
+
         if torch.isfinite(data).any():
             raise UnsupportedOperationError(
                 "SignedSum.sample() does not support conditional sampling with evidence."

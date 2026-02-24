@@ -7,7 +7,7 @@ and feature expansion.
 
 from __future__ import annotations
 
-from einops import repeat
+from einops import rearrange, repeat
 
 from spflow.utils.sampling_context import SamplingContext
 
@@ -34,22 +34,44 @@ def upsample_sampling_context(
         scale_h: Upsampling factor in height dimension.
         scale_w: Upsampling factor in width dimension.
     """
-    batch_size = sampling_ctx.channel_index.shape[0]
     channel_idx = sampling_ctx.channel_index
     mask = sampling_ctx.mask
 
     # Reshape to spatial form
-    channel_idx = channel_idx.view(batch_size, current_height, current_width)
-    mask = mask.view(batch_size, current_height, current_width)
+    if sampling_ctx.is_differentiable:
+        channel_idx = rearrange(
+            channel_idx,
+            "b (h w) c -> b h w c",
+            h=current_height,
+            w=current_width,
+        )
+    else:
+        channel_idx = rearrange(
+            channel_idx,
+            "b (h w) -> b h w",
+            h=current_height,
+            w=current_width,
+        )
+    mask = rearrange(
+        mask,
+        "b (h w) -> b h w",
+        h=current_height,
+        w=current_width,
+    )
 
     # Upsample by repeating each spatial position along height and width.
-    channel_idx = repeat(channel_idx, "b h w -> b (h sh) (w sw)", sh=scale_h, sw=scale_w)
+    if sampling_ctx.is_differentiable:
+        channel_idx = repeat(channel_idx, "b h w c -> b (h sh) (w sw) c", sh=scale_h, sw=scale_w)
+    else:
+        channel_idx = repeat(channel_idx, "b h w -> b (h sh) (w sw)", sh=scale_h, sw=scale_w)
     mask = repeat(mask, "b h w -> b (h sh) (w sw)", sh=scale_h, sw=scale_w)
 
     # Flatten back to (batch, features)
-    new_features = current_height * scale_h * current_width * scale_w
-    channel_idx = channel_idx.view(batch_size, new_features)
-    mask = mask.view(batch_size, new_features)
+    if sampling_ctx.is_differentiable:
+        channel_idx = rearrange(channel_idx, "b h w c -> b (h w) c")
+    else:
+        channel_idx = rearrange(channel_idx, "b h w -> b (h w)")
+    mask = rearrange(mask, "b h w -> b (h w)")
 
     sampling_ctx.update(
         channel_index=channel_idx,

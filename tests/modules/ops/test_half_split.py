@@ -8,8 +8,9 @@ from spflow.meta import Scope
 from spflow.modules.ops import SplitConsecutive
 from spflow.modules.products import ElementwiseProduct, OuterProduct
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import make_normal_leaf, make_normal_data
+from tests.utils.sampling_context_helpers import assert_nonzero_finite_grad, make_diff_routing_from_logits
 
 cls = [ElementwiseProduct, OuterProduct]
 
@@ -184,6 +185,81 @@ def test_split_mode_sampling_consistency():
 
     assert samples.shape == (n_samples, 6)
     assert torch.isfinite(samples).all()
+
+
+def test_split_mode_differentiable_equals_non_diff_sampling():
+    scope = Scope(list(range(0, 6)))
+    num_reps = 3
+    split = SplitConsecutive(
+        inputs=make_normal_leaf(scope, out_channels=3, num_repetitions=num_reps),
+        num_splits=2,
+        dim=1,
+    )
+    n_samples = 14
+    channel_index = torch.randint(0, split.out_shape.channels, size=(n_samples, split.out_shape.features))
+    mask = torch.ones((n_samples, split.out_shape.features), dtype=torch.bool)
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx_a = SamplingContext(
+        channel_index=channel_index.clone(),
+        mask=mask.clone(),
+        repetition_index=repetition_index.clone(),
+    )
+    sampling_ctx_b = SamplingContext(
+        channel_index=to_one_hot(channel_index, dim=-1, dim_size=split.out_shape.channels),
+        mask=mask.clone(),
+        repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+        is_differentiable=True,
+        hard=True,
+    )
+
+    torch.manual_seed(1337)
+    samples_a = split._sample(
+        data=torch.full((n_samples, 6), torch.nan),
+        sampling_ctx=sampling_ctx_a,
+        cache=Cache(),
+    )
+    torch.manual_seed(1337)
+    samples_b = split._sample(
+        data=torch.full((n_samples, 6), torch.nan),
+        sampling_ctx=sampling_ctx_b,
+        cache=Cache(),
+    )
+
+    torch.testing.assert_close(samples_a, samples_b, rtol=1e-6, atol=1e-6)
+
+
+def test_split_mode_differentiable_gradients_flow():
+    scope = Scope(list(range(0, 6)))
+    num_reps = 3
+    split = SplitConsecutive(
+        inputs=make_normal_leaf(scope, out_channels=3, num_repetitions=num_reps),
+        num_splits=2,
+        dim=1,
+    )
+    n_samples = 10
+    channel_logits, repetition_logits, channel_index, repetition_index = make_diff_routing_from_logits(
+        num_samples=n_samples,
+        num_features=split.out_shape.features,
+        num_channels=split.out_shape.channels,
+        num_repetitions=num_reps,
+    )
+    sampling_ctx = SamplingContext(
+        channel_index=channel_index,
+        mask=torch.ones((n_samples, split.out_shape.features), dtype=torch.bool),
+        repetition_index=repetition_index,
+        is_differentiable=True,
+        hard=False,
+    )
+    out = split._sample(
+        data=torch.full((n_samples, 6), torch.nan),
+        sampling_ctx=sampling_ctx,
+        cache=Cache(),
+    )
+    loss = torch.nan_to_num(out).sum()
+    loss.backward()
+
+    assert_nonzero_finite_grad(channel_logits, "channel_logits")
+    assert_nonzero_finite_grad(repetition_logits, "repetition_logits")
 
 
 @pytest.mark.parametrize("dim", [1, 2])

@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from torch import Tensor, nn
 
+from spflow.exceptions import InvalidParameterError
 from spflow.meta.data import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -132,6 +133,11 @@ class Cat(Module):
             allowed_feature_widths=(1, self.out_shape.features),
         )
         sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
+
+        if self.dim == 2 and sampling_ctx.is_differentiable and not sampling_ctx.hard:
+            raise InvalidParameterError(
+                "Cat(dim=2) differentiable sampling requires hard=True to avoid ambiguous multi-child routing writes."
+            )
 
         if self.dim == 1:
             ranges: list[tuple[int, int]] = []

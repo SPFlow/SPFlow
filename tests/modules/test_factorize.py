@@ -8,7 +8,7 @@ from spflow.learn import expectation_maximization
 from spflow.meta.data.scope import Scope
 from spflow.modules.rat import Factorize
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import DummyLeaf, make_data, make_leaf, make_normal_data, make_normal_leaf
 
 # Constants
@@ -72,6 +72,120 @@ def test_sample(in_channels: int, out_features: int, num_reps, depth):
     assert samples.shape == data.shape
     samples_query = samples[:, factorization_layer.scope.query]
     assert torch.isfinite(samples_query).all()
+
+
+def test_sample_differentiable():
+    n_samples = 12
+    out_features = 8
+    num_reps = 4
+    factorization_layer = make_product(
+        in_channels=3,
+        out_features=out_features,
+        num_repetitions=num_reps,
+        depth=2,
+    )
+
+    data = torch.full((n_samples, out_features), torch.nan)
+    channel_index = torch.randint(
+        low=0,
+        high=factorization_layer.out_shape.channels,
+        size=(n_samples, factorization_layer.out_shape.features),
+    )
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(
+        channel_index=to_one_hot(channel_index, dim=-1, dim_size=factorization_layer.out_shape.channels),
+        mask=torch.ones((n_samples, factorization_layer.out_shape.features), dtype=torch.bool),
+        repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+        is_differentiable=True,
+        hard=True,
+    )
+    samples = factorization_layer._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+    assert samples.shape == data.shape
+    assert torch.isfinite(samples[:, factorization_layer.scope.query]).all()
+
+
+def test_sample_differentiable_with_conditional_cache():
+    n_samples = 10
+    out_features = 8
+    num_reps = 3
+    factorization_layer = make_product(
+        in_channels=3,
+        out_features=out_features,
+        num_repetitions=num_reps,
+        depth=2,
+    )
+
+    evidence = make_normal_data(out_features=out_features)
+    cache = Cache()
+    factorization_layer.log_likelihood(evidence, cache=cache)
+
+    channel_index = torch.randint(
+        low=0,
+        high=factorization_layer.out_shape.channels,
+        size=(n_samples, factorization_layer.out_shape.features),
+    )
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(
+        channel_index=to_one_hot(channel_index, dim=-1, dim_size=factorization_layer.out_shape.channels),
+        mask=torch.ones((n_samples, factorization_layer.out_shape.features), dtype=torch.bool),
+        repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+        is_differentiable=True,
+        hard=True,
+    )
+    samples = factorization_layer._sample(
+        data=torch.full((n_samples, out_features), torch.nan),
+        sampling_ctx=sampling_ctx,
+        cache=cache,
+    )
+    assert samples.shape == (n_samples, out_features)
+    assert torch.isfinite(samples[:, factorization_layer.scope.query]).all()
+
+
+def test_sample_differentiable_equals_non_diff_sampling():
+    n_samples = 14
+    out_features = 8
+    num_reps = 4
+    factorization_layer = make_product(
+        in_channels=3,
+        out_features=out_features,
+        num_repetitions=num_reps,
+        depth=2,
+    )
+
+    channel_index = torch.randint(
+        low=0,
+        high=factorization_layer.out_shape.channels,
+        size=(n_samples, factorization_layer.out_shape.features),
+    )
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+    mask = torch.ones((n_samples, factorization_layer.out_shape.features), dtype=torch.bool)
+    sampling_ctx_a = SamplingContext(
+        channel_index=channel_index.clone(),
+        mask=mask.clone(),
+        repetition_index=repetition_index.clone(),
+    )
+    sampling_ctx_b = SamplingContext(
+        channel_index=to_one_hot(channel_index, dim=-1, dim_size=factorization_layer.out_shape.channels),
+        mask=mask.clone(),
+        repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+        is_differentiable=True,
+        hard=True,
+    )
+
+    torch.manual_seed(1337)
+    samples_a = factorization_layer._sample(
+        data=torch.full((n_samples, out_features), torch.nan),
+        sampling_ctx=sampling_ctx_a,
+        cache=Cache(),
+    )
+    torch.manual_seed(1337)
+    samples_b = factorization_layer._sample(
+        data=torch.full((n_samples, out_features), torch.nan),
+        sampling_ctx=sampling_ctx_b,
+        cache=Cache(),
+    )
+
+    torch.testing.assert_close(samples_a, samples_b, rtol=1e-6, atol=1e-6)
 
 
 def test_sample_accepts_column_vector_repetition_idx():

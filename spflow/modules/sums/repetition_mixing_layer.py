@@ -5,11 +5,11 @@ import torch
 from einops import rearrange, repeat
 from torch import Tensor
 
-from spflow.exceptions import InvalidParameterCombinationError, MissingCacheError
+from spflow.exceptions import InvalidParameterCombinationError, MissingCacheError, ShapeError
 from spflow.modules.module import Module
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, sample_from_logits
 
 
 class RepetitionMixingLayer(Sum):
@@ -119,6 +119,7 @@ class RepetitionMixingLayer(Sum):
             num_repetitions=self.out_shape.repetitions,
             allowed_feature_widths=(1, self.out_shape.features),
         )
+        sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
 
         batch_size = int(sampling_ctx.channel_index.shape[0])
         logits = repeat(self.logits, "f co r -> b f co r", b=batch_size)
@@ -135,13 +136,24 @@ class RepetitionMixingLayer(Sum):
             log_posterior = log_posterior.log_softmax(dim=3)
             logits = log_posterior
 
-        if sampling_ctx.is_mpe:
-            # Take the argmax of the logits to obtain the most probable index
-            repetition_index = torch.argmax(logits.sum(-2), dim=-1).squeeze(-1)
+        rep_logits = logits.sum(-2)
+        rep_samples = sample_from_logits(
+            logits=rep_logits,
+            dim=-1,
+            is_mpe=sampling_ctx.is_mpe,
+            is_differentiable=sampling_ctx.is_differentiable,
+            hard=sampling_ctx.hard,
+            tau=sampling_ctx.tau,
+        )
+        if rep_logits.shape[1] != 1:
+            raise ShapeError(
+                "RepetitionMixingLayer.sample currently requires feature width 1 when choosing repetition routes, "
+                f"got {rep_logits.shape[1]}."
+            )
+        if sampling_ctx.is_differentiable:
+            repetition_index = rep_samples[:, 0, :]
         else:
-            # Sample from categorical distribution defined by weights to obtain indices for repetitions
-            # sum up the input channel for distribution
-            repetition_index = torch.distributions.Categorical(logits=logits.sum(-2)).sample()
+            repetition_index = rep_samples[:, 0]
 
         sampling_ctx.repetition_index = repetition_index
 

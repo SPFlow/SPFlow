@@ -9,8 +9,9 @@ from spflow.meta import Scope
 from spflow.modules.ops import SplitByIndex, SplitMode
 from spflow.modules.products import ElementwiseProduct, OuterProduct
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import make_normal_leaf, make_normal_data
+from tests.utils.sampling_context_helpers import assert_nonzero_finite_grad, make_diff_routing_from_logits
 
 
 class TestSplitByIndexBasic:
@@ -380,3 +381,80 @@ class TestSplitByIndexSamplingContextExpansion:
         out = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
         assert out.shape == data.shape
         assert torch.isfinite(out[:, split.scope.query]).all()
+
+    def test_sample_differentiable_equals_non_diff_sampling(self):
+        scope = Scope(list(range(0, 6)))
+        num_reps = 3
+        split = SplitByIndex(
+            inputs=make_normal_leaf(scope, out_channels=3, num_repetitions=num_reps),
+            indices=[[0, 2, 4], [1, 3, 5]],
+        )
+        n = 12
+        channel_index = torch.randint(0, 3, size=(n, 3))
+        mask = torch.ones((n, 3), dtype=torch.bool)
+        repetition_index = torch.randint(low=0, high=num_reps, size=(n,))
+        sampling_ctx_a = SamplingContext(
+            channel_index=channel_index.clone(),
+            mask=mask.clone(),
+            repetition_index=repetition_index.clone(),
+        )
+        sampling_ctx_b = SamplingContext(
+            channel_index=to_one_hot(channel_index, dim=-1, dim_size=3),
+            mask=mask.clone(),
+            repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+            is_differentiable=True,
+            hard=True,
+        )
+
+        torch.manual_seed(1337)
+        samples_a = split._sample(
+            data=torch.full((n, 6), torch.nan),
+            sampling_ctx=sampling_ctx_a,
+            cache=Cache(),
+        )
+        torch.manual_seed(1337)
+        samples_b = split._sample(
+            data=torch.full((n, 6), torch.nan),
+            sampling_ctx=sampling_ctx_b,
+            cache=Cache(),
+        )
+
+        torch.testing.assert_close(samples_a, samples_b, rtol=1e-6, atol=1e-6)
+        torch.testing.assert_close(
+            sampling_ctx_b.channel_index,
+            to_one_hot(sampling_ctx_a.channel_index, dim=-1, dim_size=3),
+            rtol=0.0,
+            atol=0.0,
+        )
+
+    def test_sample_differentiable_gradients_flow(self):
+        scope = Scope(list(range(0, 6)))
+        num_reps = 3
+        split = SplitByIndex(
+            inputs=make_normal_leaf(scope, out_channels=3, num_repetitions=num_reps),
+            indices=[[0, 2, 4], [1, 3, 5]],
+        )
+        n = 10
+        channel_logits, repetition_logits, channel_index, repetition_index = make_diff_routing_from_logits(
+            num_samples=n,
+            num_features=3,
+            num_channels=3,
+            num_repetitions=num_reps,
+        )
+        sampling_ctx = SamplingContext(
+            channel_index=channel_index,
+            mask=torch.ones((n, 3), dtype=torch.bool),
+            repetition_index=repetition_index,
+            is_differentiable=True,
+            hard=False,
+        )
+        out = split._sample(
+            data=torch.full((n, 6), torch.nan),
+            sampling_ctx=sampling_ctx,
+            cache=Cache(),
+        )
+        loss = torch.nan_to_num(out).sum()
+        loss.backward()
+
+        assert_nonzero_finite_grad(channel_logits, "channel_logits")
+        assert_nonzero_finite_grad(repetition_logits, "repetition_logits")

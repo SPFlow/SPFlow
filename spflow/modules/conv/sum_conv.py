@@ -17,7 +17,14 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.projections import proj_convex_to_real
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import (
+    SamplingContext,
+    index_tensor,
+    repeat_channel_index,
+    repeat_repetition_index,
+    sample_from_logits,
+    update_channel_index_strict,
+)
 
 
 class SumConv(Module):
@@ -287,59 +294,48 @@ class SumConv(Module):
         )
         sampling_ctx.broadcast_feature_width(target_features=num_features, allow_from_one=True)
 
-        channel_idx = sampling_ctx.channel_index  # (batch, H*W)
+        out_channels = int(self.out_shape.channels)
+        in_channels = int(self.in_channels)
 
-        # Get logits: (out_c, in_c, k, k, reps)
-        logits = self.logits
-
-        # Select repetition
-        if sampling_ctx.repetition_index is not None:
-            # logits: (out_c, in_c, k, k, reps) -> select reps
-            out_channels = int(logits.shape[0])
-            in_channels = int(logits.shape[1])
-            rep_idx = repeat(
-                rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                "b -> b co ci kh kw 1",
-                co=out_channels,
-                ci=in_channels,
-                kh=K,
-                kw=K,
-            )
-            logits = repeat(logits, "co ci kh kw r -> b co ci kh kw r", b=batch_size)
-            logits = torch.gather(logits, dim=-1, index=rep_idx)
-            logits = rearrange(logits, "b co ci kh kw 1 -> b co ci kh kw")
-            # logits: (batch, out_c, in_c, k, k)
-        else:
-            logits = logits[..., 0]  # (out_c, in_c, k, k)
-            logits = repeat(logits, "co ci kh kw -> b co ci kh kw", b=batch_size)
-            # logits: (batch, out_c, in_c, k, k)
+        logits = repeat(self.logits, "co ci kh kw r -> b co ci kh kw r", b=batch_size)
+        rep_idx = repeat_repetition_index(
+            sampling_ctx.repetition_index,
+            "b r -> b co ci kh kw r",
+            co=out_channels,
+            ci=in_channels,
+            kh=K,
+            kw=K,
+        )
+        logits = index_tensor(
+            logits,
+            index=rep_idx,
+            dim=-1,
+            is_differentiable=sampling_ctx.is_differentiable,
+        )
 
         # Check for cached likelihoods (conditional sampling)
         input_lls = None
         if "log_likelihood" in cache and cache["log_likelihood"].get(self.inputs) is not None:
             input_lls = cache["log_likelihood"][self.inputs]  # (batch, features, in_c, reps)
 
-            # Select repetition
-            if sampling_ctx.repetition_index is not None:
-                num_features = int(input_lls.shape[1])
-                num_input_channels = int(input_lls.shape[2])
-                rep_idx = repeat(
-                    rearrange(sampling_ctx.repetition_index, "... -> (...)"),
-                    "b -> b f ci 1",
-                    f=num_features,
-                    ci=num_input_channels,
-                )
-                input_lls = torch.gather(input_lls, dim=-1, index=rep_idx)
-                input_lls = rearrange(input_lls, "b f ci 1 -> b f ci")
-            else:
-                input_lls = input_lls[..., 0]
+            num_features = int(input_lls.shape[1])
+            num_input_channels = int(input_lls.shape[2])
+            rep_idx = repeat_repetition_index(
+                sampling_ctx.repetition_index,
+                "b r -> b f ci r",
+                f=num_features,
+                ci=num_input_channels,
+            )
+            input_lls = index_tensor(
+                input_lls,
+                index=rep_idx,
+                dim=-1,
+                is_differentiable=sampling_ctx.is_differentiable,
+            )
             # input_lls: (batch, H*W, in_c)
 
             # Reshape to spatial: (batch, H, W, in_c)
             input_lls = rearrange(input_lls, "b (h w) ci -> b h w ci", h=H, w=W)
-
-        # Reshape channel_idx to spatial: (batch, H, W)
-        channel_idx = rearrange(channel_idx, "b (h w) -> b h w", h=H, w=W)
 
         # Sample per-position: each pixel position needs its own sample
         # Create position indices for kernel
@@ -368,13 +364,21 @@ class SumConv(Module):
         k_flat_exp2 = repeat(k_flat, "b h w -> b h w 1 co ci", co=num_output_channels, ci=num_input_channels)
         selected_logits = torch.gather(logits_per_pos_exp, dim=3, index=k_flat_exp2)
         selected_logits = rearrange(selected_logits, "b h w 1 co ci -> b h w co ci")
-        # selected_logits: (batch, H, W, out_c, in_c)
+        selected_logits = rearrange(selected_logits, "b h w co ci -> b (h w) co ci")
 
-        # Now select by parent channel: channel_idx (batch, H, W)
-        parent_ch = repeat(channel_idx, "b h w -> b h w 1 ci", ci=num_input_channels)
-        selected_logits = torch.gather(selected_logits, dim=3, index=parent_ch)
-        selected_logits = rearrange(selected_logits, "b h w 1 ci -> b h w ci")
-        # selected_logits: (batch, H, W, in_c)
+        # Select parent output-channel routes (integer gather or one-hot reduction).
+        parent_ch = repeat_channel_index(
+            sampling_ctx.channel_index,
+            "b f co -> b f co ci",
+            ci=num_input_channels,
+        )
+        selected_logits = index_tensor(
+            selected_logits,
+            index=parent_ch,
+            dim=2,
+            is_differentiable=sampling_ctx.is_differentiable,
+        )
+        selected_logits = rearrange(selected_logits, "b (h w) ci -> b h w ci", h=H, w=W)
 
         # Compute posterior if we have cached likelihoods
         if input_lls is not None:
@@ -384,17 +388,33 @@ class SumConv(Module):
         else:
             log_posterior = F.log_softmax(selected_logits, dim=-1)
 
-        # Sample for each position
+        # Sample for each position.
         log_posterior_flat = rearrange(log_posterior, "b h w ci -> (b h w) ci")
-        if sampling_ctx.is_mpe:
-            sampled_channels_flat = torch.argmax(log_posterior_flat, dim=-1)
+        sampled_channels_flat = sample_from_logits(
+            logits=log_posterior_flat,
+            dim=-1,
+            is_mpe=sampling_ctx.is_mpe,
+            is_differentiable=sampling_ctx.is_differentiable,
+            hard=sampling_ctx.hard,
+            tau=sampling_ctx.tau,
+        )
+        if sampling_ctx.is_differentiable:
+            sampled_channels = rearrange(
+                sampled_channels_flat,
+                "(b h w) ci -> b (h w) ci",
+                b=batch_size,
+                h=H,
+                w=W,
+            )
         else:
-            sampled_channels_flat = torch.distributions.Categorical(logits=log_posterior_flat).sample()
-
-        sampled_channels = rearrange(sampled_channels_flat, "(b h w) -> b (h w)", b=batch_size, h=H, w=W)
-
-        # Update sampling context
-        sampling_ctx.channel_index = sampled_channels
+            sampled_channels = rearrange(
+                sampled_channels_flat,
+                "(b h w) -> b (h w)",
+                b=batch_size,
+                h=H,
+                w=W,
+            )
+        update_channel_index_strict(sampling_ctx, sampled_channels)
 
         # Sample from input
         self.inputs._sample(

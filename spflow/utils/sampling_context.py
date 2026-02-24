@@ -635,33 +635,59 @@ class SamplingContext:
         total_channels = int(sum(child_channel_counts))
         out: list[tuple[Tensor, Tensor]] = []
         global_channel_index = self.channel_index
-        active_channels = global_channel_index[self.mask]
-        if active_channels.numel() > 0:
-            invalid = (active_channels < 0) | (active_channels >= total_channels)
-            if invalid.any():
-                invalid_values = active_channels[invalid]
-                observed_min = int(invalid_values.min().item())
-                observed_max = int(invalid_values.max().item())
-                raise InvalidParameterError(
-                    "sampling_ctx.channel_index contains out-of-range channel ids on active positions: "
-                    f"valid range is [0, {total_channels - 1}], observed min={observed_min}, "
-                    f"max={observed_max}."
-                )
 
+        if not self.is_differentiable:
+            active_channels = global_channel_index[self.mask]
+            if active_channels.numel() > 0:
+                invalid = (active_channels < 0) | (active_channels >= total_channels)
+                if invalid.any():
+                    invalid_values = active_channels[invalid]
+                    observed_min = int(invalid_values.min().item())
+                    observed_max = int(invalid_values.max().item())
+                    raise InvalidParameterError(
+                        "sampling_ctx.channel_index contains out-of-range channel ids on active positions: "
+                        f"valid range is [0, {total_channels - 1}], observed min={observed_min}, "
+                        f"max={observed_max}."
+                    )
+
+            offset = 0
+            for child_channels in child_channel_counts:
+                child_start = offset
+                child_end = offset + child_channels
+                in_child_range = (global_channel_index >= child_start) & (global_channel_index < child_end)
+                local_channel_index = global_channel_index - child_start
+                local_channel_index = torch.where(
+                    in_child_range,
+                    local_channel_index,
+                    # Keep non-owned positions in-bounds for downstream gather ops;
+                    # correctness is enforced via child_mask and the range check above.
+                    torch.zeros_like(local_channel_index),
+                )
+                child_mask = in_child_range & self.mask
+                out.append((local_channel_index, child_mask))
+                offset = child_end
+            return out
+
+        if int(global_channel_index.shape[-1]) != total_channels:
+            raise InvalidParameterError(
+                "sampling_ctx.channel_index has incompatible channel axis size for channel-offset routing: "
+                f"got {global_channel_index.shape[-1]}, expected {total_channels}."
+            )
+
+        eps = torch.finfo(global_channel_index.dtype).eps
         offset = 0
         for child_channels in child_channel_counts:
             child_start = offset
             child_end = offset + child_channels
-            in_child_range = (global_channel_index >= child_start) & (global_channel_index < child_end)
-            local_channel_index = global_channel_index - child_start
+
+            local_channel_index = global_channel_index[:, :, child_start:child_end]
+            child_mass = local_channel_index.sum(dim=-1, keepdim=True)
+            child_mask = (child_mass.squeeze(-1) > 0) & self.mask
             local_channel_index = torch.where(
-                in_child_range,
-                local_channel_index,
-                # Keep non-owned positions in-bounds for downstream gather ops;
-                # correctness is enforced via child_mask and the range check above.
+                child_mass > 0,
+                local_channel_index / child_mass.clamp_min(eps),
                 torch.zeros_like(local_channel_index),
             )
-            child_mask = in_child_range & self.mask
             out.append((local_channel_index, child_mask))
             offset = child_end
         return out

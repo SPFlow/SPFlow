@@ -139,11 +139,18 @@ class SplitInterleaved(Split):
 
         # Split-sized adaptation first repeats by split, then interleaves into input order.
         if before_features != input_features:
-            channel_index = rearrange(
-                sampling_ctx.channel_index,
-                "b (split f) -> b (f split)",
-                split=self.num_splits,
-            )
+            if sampling_ctx.is_differentiable:
+                channel_index = rearrange(
+                    sampling_ctx.channel_index,
+                    "b (split f) c -> b (f split) c",
+                    split=self.num_splits,
+                )
+            else:
+                channel_index = rearrange(
+                    sampling_ctx.channel_index,
+                    "b (split f) -> b (f split)",
+                    split=self.num_splits,
+                )
             mask = rearrange(
                 sampling_ctx.mask,
                 "b (split f) -> b (f split)",

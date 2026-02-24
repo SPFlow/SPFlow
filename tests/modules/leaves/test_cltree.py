@@ -12,7 +12,7 @@ from spflow.modules.leaves.cltree import (
     _validate_discrete_values,
 )
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 
 
 
@@ -122,6 +122,23 @@ def test_sampling_produces_valid_domain_values():
     assert samples.shape == (200, 3)
     assert torch.isfinite(samples).all()
     assert ((samples >= 0) & (samples < K)).all()
+
+
+def test_sample_rejects_differentiable_routing():
+    K = 3
+    node = _make_chain_cltree(K=K)
+    sampling_ctx = SamplingContext(
+        channel_index=to_one_hot(torch.zeros((2, 3), dtype=torch.long), dim=-1, dim_size=1),
+        mask=torch.ones((2, 3), dtype=torch.bool),
+        repetition_index=to_one_hot(torch.zeros((2,), dtype=torch.long), dim=-1, dim_size=1),
+        is_differentiable=True,
+    )
+    with pytest.raises(UnsupportedOperationError, match="differentiable routing"):
+        node._sample(
+            data=torch.full((2, 3), float("nan")),
+            sampling_ctx=sampling_ctx,
+            cache=Cache(),
+        )
 
     # Conditional sampling preserves evidence.
     evidence = torch.tensor([[1.0, float("nan"), 0.0]] * 50, dtype=torch.float64)

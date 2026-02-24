@@ -12,7 +12,9 @@ from spflow.modules.products import Product
 from spflow.modules.sums import Sum
 from spflow.modules.wrapper.image_wrapper import ImageWrapper, MarginalizationContext
 from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import DummyLeaf, make_data, make_normal_leaf
+from tests.utils.sampling_context_helpers import assert_nonzero_finite_grad, make_diff_routing_from_logits
 
 num_channel = [1, 3]
 num_repetitions = [1, 3]
@@ -30,6 +32,15 @@ def make_wrapper(num_channel, num_reps):
     root = Sum(inputs=product_layer, out_channels=1, num_repetitions=num_reps)
     wrapper = ImageWrapper(module=root, height=height, width=width, num_channel=num_channel)
     return wrapper
+
+
+def make_leaf_wrapper(num_channel: int, num_reps: int, out_channels: int = 3) -> ImageWrapper:
+    height = 4
+    width = 4
+    num_features = height * width * num_channel
+    scope = Scope(list(range(num_features)))
+    leaf_module = make_normal_leaf(scope=scope, out_channels=out_channels, num_repetitions=num_reps)
+    return ImageWrapper(module=leaf_module, height=height, width=width, num_channel=num_channel)
 
 
 @pytest.mark.parametrize("num_channel, num_reps", params)
@@ -67,6 +78,82 @@ def test_sample(num_channel: int, is_mpe: bool):
 
     # Check finite
     assert torch.isfinite(samples).all()
+
+
+def test_wrapper_sample_differentiable_equals_non_diff_sampling():
+    num_channel = 3
+    num_reps = 3
+    module = make_leaf_wrapper(num_channel=num_channel, num_reps=num_reps, out_channels=3)
+    n_samples = 10
+    height = 4
+    width = 4
+    num_features = height * width * num_channel
+
+    channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, num_features))
+    mask = torch.ones((n_samples, num_features), dtype=torch.bool)
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx_a = SamplingContext(
+        channel_index=channel_index.clone(),
+        mask=mask.clone(),
+        repetition_index=repetition_index.clone(),
+    )
+    sampling_ctx_b = SamplingContext(
+        channel_index=to_one_hot(channel_index, dim=-1, dim_size=module.out_shape.channels),
+        mask=mask.clone(),
+        repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+        is_differentiable=True,
+        hard=True,
+    )
+
+    torch.manual_seed(1337)
+    samples_a = module._sample(
+        data=torch.full((n_samples, num_channel, height, width), torch.nan),
+        sampling_ctx=sampling_ctx_a,
+        cache=Cache(),
+    )
+    torch.manual_seed(1337)
+    samples_b = module._sample(
+        data=torch.full((n_samples, num_channel, height, width), torch.nan),
+        sampling_ctx=sampling_ctx_b,
+        cache=Cache(),
+    )
+
+    torch.testing.assert_close(samples_a, samples_b, rtol=1e-6, atol=1e-6)
+
+
+def test_wrapper_sample_differentiable_gradients_flow():
+    num_channel = 3
+    num_reps = 3
+    module = make_leaf_wrapper(num_channel=num_channel, num_reps=num_reps, out_channels=3)
+    n_samples = 8
+    height = 4
+    width = 4
+    num_features = height * width * num_channel
+
+    channel_logits, repetition_logits, channel_index, repetition_index = make_diff_routing_from_logits(
+        num_samples=n_samples,
+        num_features=num_features,
+        num_channels=module.out_shape.channels,
+        num_repetitions=num_reps,
+    )
+    sampling_ctx = SamplingContext(
+        channel_index=channel_index,
+        mask=torch.ones((n_samples, num_features), dtype=torch.bool),
+        repetition_index=repetition_index,
+        is_differentiable=True,
+        hard=False,
+    )
+
+    out = module._sample(
+        data=torch.full((n_samples, num_channel, height, width), torch.nan),
+        sampling_ctx=sampling_ctx,
+        cache=Cache(),
+    )
+    loss = torch.nan_to_num(out).sum()
+    loss.backward()
+
+    assert_nonzero_finite_grad(channel_logits, "channel_logits")
+    assert_nonzero_finite_grad(repetition_logits, "repetition_logits")
 
 
 @pytest.mark.parametrize("num_channel, num_reps", params)
@@ -212,4 +299,3 @@ class TestImageWrapperExceptions:
         wrong_data = torch.randn(10, 3, 4, 5)
         with pytest.raises(ShapeError):
             wrapper._expectation_maximization_step(wrong_data, cache=Cache())
-

@@ -6,8 +6,9 @@ import torch
 from spflow.learn import expectation_maximization
 from spflow.modules.products import Product
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import make_normal_leaf, make_normal_data
+from tests.utils.sampling_context_helpers import assert_nonzero_finite_grad, make_diff_routing_from_logits
 
 # Constants
 in_channels_values = [1, 3]
@@ -52,6 +53,79 @@ def test_sample(in_channels: int, out_features: int, num_reps):
         assert samples.shape == data.shape
         samples_query = samples[:, product_layer.scope.query]
         assert torch.isfinite(samples_query).all()
+
+
+def test_sample_differentiable_equals_non_diff_sampling():
+    n_samples = 24
+    in_channels = 3
+    out_features = 4
+    num_reps = 3
+    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
+
+    channel_index = torch.randint(low=0, high=product_layer.out_shape.channels, size=(n_samples, 1))
+    mask = torch.ones((n_samples, 1), dtype=torch.bool)
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+
+    sampling_ctx_a = SamplingContext(
+        channel_index=channel_index.clone(),
+        mask=mask.clone(),
+        repetition_index=repetition_index.clone(),
+    )
+    sampling_ctx_b = SamplingContext(
+        channel_index=to_one_hot(channel_index, dim=-1, dim_size=product_layer.out_shape.channels),
+        mask=mask.clone(),
+        repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+        is_differentiable=True,
+        hard=True,
+    )
+
+    torch.manual_seed(1337)
+    samples_a = product_layer._sample(
+        data=torch.full((n_samples, out_features), torch.nan),
+        sampling_ctx=sampling_ctx_a,
+        cache=Cache(),
+    )
+    torch.manual_seed(1337)
+    samples_b = product_layer._sample(
+        data=torch.full((n_samples, out_features), torch.nan),
+        sampling_ctx=sampling_ctx_b,
+        cache=Cache(),
+    )
+
+    torch.testing.assert_close(samples_a, samples_b, rtol=1e-6, atol=1e-6)
+
+
+def test_sample_differentiable_gradients_flow():
+    n_samples = 12
+    in_channels = 3
+    out_features = 4
+    num_reps = 3
+    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
+
+    channel_logits, repetition_logits, channel_index, repetition_index = make_diff_routing_from_logits(
+        num_samples=n_samples,
+        num_features=1,
+        num_channels=product_layer.out_shape.channels,
+        num_repetitions=num_reps,
+    )
+    sampling_ctx = SamplingContext(
+        channel_index=channel_index,
+        mask=torch.ones((n_samples, 1), dtype=torch.bool),
+        repetition_index=repetition_index,
+        is_differentiable=True,
+        hard=False,
+    )
+
+    out = product_layer._sample(
+        data=torch.full((n_samples, out_features), torch.nan),
+        sampling_ctx=sampling_ctx,
+        cache=Cache(),
+    )
+    loss = torch.nan_to_num(out).sum()
+    loss.backward()
+
+    assert_nonzero_finite_grad(channel_logits, "channel_logits")
+    assert_nonzero_finite_grad(repetition_logits, "repetition_logits")
 
 
 @pytest.mark.parametrize("in_channels,out_features,num_reps", params)

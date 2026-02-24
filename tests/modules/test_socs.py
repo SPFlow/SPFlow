@@ -16,13 +16,29 @@ from spflow.modules.sos.socs import _signed_eval
 from spflow.modules.sums.signed_sum import SignedSum
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 
 
 def _make_normal_component(mu: float, sigma: float) -> Normal:
     loc = torch.tensor([[[mu]]], dtype=torch.get_default_dtype())
     scale = torch.tensor([[[sigma]]], dtype=torch.get_default_dtype())
     return Normal(scope=Scope([0]), out_channels=1, num_repetitions=1, loc=loc, scale=scale)
+
+
+def test_socs_sample_rejects_differentiable_routing():
+    model = SOCS([_make_normal_component(mu=0.0, sigma=1.0)])
+    sampling_ctx = SamplingContext(
+        channel_index=to_one_hot(torch.zeros((3, 1), dtype=torch.long), dim=-1, dim_size=1),
+        mask=torch.ones((3, 1), dtype=torch.bool),
+        repetition_index=to_one_hot(torch.zeros((3,), dtype=torch.long), dim=-1, dim_size=1),
+        is_differentiable=True,
+    )
+    with pytest.raises(UnsupportedOperationError, match="differentiable routing"):
+        model._sample(
+            data=torch.full((3, 1), float("nan")),
+            sampling_ctx=sampling_ctx,
+            cache=Cache(),
+        )
 
 
 def test_socs_single_normal_matches_known_squared_density_and_Z():

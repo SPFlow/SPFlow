@@ -11,6 +11,7 @@ from spflow.meta import Scope
 from spflow.modules.leaves import Binomial, Categorical, Normal
 from spflow.modules.ops import Cat
 from spflow.utils.cache import Cache
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 from tests.utils.sampling_context_helpers import make_sampling_context
 
@@ -204,6 +205,110 @@ def test_sample_dim2_rejects_out_of_range_global_channel_id_internal_context():
         mask=torch.ones((2, 2), dtype=torch.bool),
     )
     with pytest.raises(InvalidParameterError, match="out-of-range channel ids"):
+        module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+
+
+def test_sample_dim2_differentiable_hard_routes_child_offsets():
+    scope = Scope([0, 1])
+    num_samples = 5
+    child_a = Normal(
+        scope=scope,
+        out_channels=1,
+        num_repetitions=1,
+        loc=torch.full((2, 1, 1), 100.0),
+        scale=torch.full((2, 1, 1), 1e-6),
+    )
+    child_b = Normal(
+        scope=scope,
+        out_channels=3,
+        num_repetitions=1,
+        loc=torch.tensor([0.0, 10.0, 20.0], dtype=torch.get_default_dtype()).view(1, 3, 1).repeat(2, 1, 1),
+        scale=torch.full((2, 3, 1), 1e-6),
+    )
+    module = Cat(inputs=[child_a, child_b], dim=2)
+    data = torch.full((num_samples, 2), torch.nan)
+
+    channel_ids = torch.tensor([[0, 0], [1, 1], [2, 2], [3, 3], [1, 3]], dtype=torch.long)
+    sampling_ctx = SamplingContext(
+        channel_index=to_one_hot(channel_ids, dim=-1, dim_size=module.out_shape.channels),
+        mask=torch.ones((num_samples, 2), dtype=torch.bool),
+        repetition_index=to_one_hot(torch.zeros((num_samples,), dtype=torch.long), dim=-1, dim_size=1),
+        is_differentiable=True,
+        hard=True,
+    )
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+    assert samples.shape == (num_samples, 2)
+    assert torch.isfinite(samples).all()
+
+
+def test_sample_dim2_differentiable_equals_non_diff_sampling():
+    scope = Scope([0, 1])
+    num_samples = 6
+    child_a = Normal(
+        scope=scope,
+        out_channels=2,
+        num_repetitions=1,
+        loc=torch.tensor([100.0, 200.0], dtype=torch.get_default_dtype()).view(1, 2, 1).repeat(2, 1, 1),
+        scale=torch.full((2, 2, 1), 1e-6),
+    )
+    child_b = Normal(
+        scope=scope,
+        out_channels=3,
+        num_repetitions=1,
+        loc=torch.tensor([0.0, 10.0, 20.0], dtype=torch.get_default_dtype()).view(1, 3, 1).repeat(2, 1, 1),
+        scale=torch.full((2, 3, 1), 1e-6),
+    )
+    module = Cat(inputs=[child_a, child_b], dim=2)
+    channel_ids = torch.tensor([[0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [1, 4]], dtype=torch.long)
+    mask = torch.ones((num_samples, 2), dtype=torch.bool)
+    repetition_ids = torch.zeros((num_samples,), dtype=torch.long)
+
+    sampling_ctx_a = SamplingContext(
+        channel_index=channel_ids.clone(),
+        mask=mask.clone(),
+        repetition_index=repetition_ids.clone(),
+    )
+    sampling_ctx_b = SamplingContext(
+        channel_index=to_one_hot(channel_ids, dim=-1, dim_size=module.out_shape.channels),
+        mask=mask.clone(),
+        repetition_index=to_one_hot(repetition_ids, dim=-1, dim_size=1),
+        is_differentiable=True,
+        hard=True,
+    )
+
+    samples_a = module._sample(
+        data=torch.full((num_samples, 2), torch.nan),
+        sampling_ctx=sampling_ctx_a,
+        cache=Cache(),
+    )
+    samples_b = module._sample(
+        data=torch.full((num_samples, 2), torch.nan),
+        sampling_ctx=sampling_ctx_b,
+        cache=Cache(),
+    )
+
+    torch.testing.assert_close(samples_a, samples_b, rtol=0.0, atol=1e-4)
+    torch.testing.assert_close(
+        sampling_ctx_b.channel_index,
+        to_one_hot(sampling_ctx_a.channel_index, dim=-1, dim_size=module.out_shape.channels),
+        rtol=0.0,
+        atol=0.0,
+    )
+
+
+def test_sample_dim2_differentiable_soft_rejected():
+    module = make_cat(out_channels=2, out_features=3, num_repetitions=1, dim=2)
+    num_samples = 4
+    data = torch.full((num_samples, module.out_shape.features), torch.nan)
+    channel_ids = torch.zeros((num_samples, module.out_shape.features), dtype=torch.long)
+    sampling_ctx = SamplingContext(
+        channel_index=to_one_hot(channel_ids, dim=-1, dim_size=module.out_shape.channels),
+        mask=torch.ones((num_samples, module.out_shape.features), dtype=torch.bool),
+        repetition_index=to_one_hot(torch.zeros((num_samples,), dtype=torch.long), dim=-1, dim_size=1),
+        is_differentiable=True,
+        hard=False,
+    )
+    with pytest.raises(InvalidParameterError, match="requires hard=True"):
         module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
 

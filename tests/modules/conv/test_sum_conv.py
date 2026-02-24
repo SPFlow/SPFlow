@@ -12,7 +12,8 @@ from spflow.meta.data import Scope
 from spflow.modules.conv import SumConv
 from spflow.modules.leaves import Normal
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
+from tests.utils.sampling_context_helpers import patch_simple_as_categorical_one_hot
 
 # Test parameter values
 in_channels_values = [1, 3]
@@ -235,19 +236,42 @@ class TestSumConvSample:
     """Test SumConv sampling."""
 
     @staticmethod
-    def _make_sampling_context(module: SumConv, batch_size: int, *, is_mpe: bool = False) -> SamplingContext:
-        channel_index = torch.randint(
+    def _make_sampling_context(
+        module: SumConv,
+        batch_size: int,
+        *,
+        is_mpe: bool = False,
+        is_differentiable: bool = False,
+        hard: bool = True,
+    ) -> SamplingContext:
+        channel_index_int = torch.randint(
             low=0,
             high=module.out_shape.channels,
             size=(batch_size, module.out_shape.features),
         )
         mask = torch.ones((batch_size, module.out_shape.features), dtype=torch.bool)
-        repetition_index = torch.randint(low=0, high=module.out_shape.repetitions, size=(batch_size,))
+        repetition_index_int = torch.randint(low=0, high=module.out_shape.repetitions, size=(batch_size,))
+        if is_differentiable:
+            channel_index = to_one_hot(
+                channel_index_int,
+                dim=-1,
+                dim_size=module.out_shape.channels,
+            )
+            repetition_index = to_one_hot(
+                repetition_index_int,
+                dim=-1,
+                dim_size=module.out_shape.repetitions,
+            )
+        else:
+            channel_index = channel_index_int
+            repetition_index = repetition_index_int
         return SamplingContext(
             channel_index=channel_index,
             mask=mask,
             repetition_index=repetition_index,
             is_mpe=is_mpe,
+            is_differentiable=is_differentiable,
+            hard=hard,
         )
 
     @pytest.mark.parametrize("in_channels,out_channels,hw", sample_params)
@@ -275,6 +299,86 @@ class TestSumConvSample:
         sampling_ctx = self._make_sampling_context(module=module, batch_size=10)
         samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
         assert torch.isfinite(samples).all()
+
+    @pytest.mark.parametrize("in_channels,out_channels,hw", sample_params)
+    def test_sample_differentiable_shape(self, in_channels, out_channels, hw):
+        height, width = hw
+        leaf = make_normal_leaf(height, width, out_channels=in_channels)
+        module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
+
+        num_samples = 12
+        data = torch.full((num_samples, height * width), torch.nan)
+        sampling_ctx = self._make_sampling_context(
+            module=module,
+            batch_size=num_samples,
+            is_differentiable=True,
+            hard=True,
+        )
+        samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+        assert samples.shape == (num_samples, height * width)
+        assert torch.isfinite(samples).all()
+
+    def test_sample_differentiable_equals_non_diff_sampling(self, monkeypatch: pytest.MonkeyPatch):
+        height, width = (4, 4)
+        in_channels = 3
+        out_channels = 3
+        num_reps = 2
+        batch_size = 10
+        leaf = make_normal_leaf(height, width, out_channels=in_channels, num_repetitions=num_reps)
+        module = SumConv(
+            inputs=leaf,
+            out_channels=out_channels,
+            kernel_size=2,
+            num_repetitions=num_reps,
+        )
+        channel_index = torch.randint(
+            low=0,
+            high=module.out_shape.channels,
+            size=(batch_size, module.out_shape.features),
+        )
+        repetition_index = torch.randint(
+            low=0,
+            high=module.out_shape.repetitions,
+            size=(batch_size,),
+        )
+        mask = torch.ones((batch_size, module.out_shape.features), dtype=torch.bool)
+        sampling_ctx_a = SamplingContext(
+            channel_index=channel_index.clone(),
+            mask=mask.clone(),
+            repetition_index=repetition_index.clone(),
+            is_mpe=False,
+        )
+        sampling_ctx_b = SamplingContext(
+            channel_index=to_one_hot(channel_index, dim=-1, dim_size=module.out_shape.channels),
+            mask=mask.clone(),
+            repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=module.out_shape.repetitions),
+            is_mpe=False,
+            is_differentiable=True,
+            hard=True,
+        )
+
+        patch_simple_as_categorical_one_hot(monkeypatch)
+
+        torch.manual_seed(1337)
+        samples_a = module._sample(
+            data=torch.full((batch_size, height * width), torch.nan),
+            sampling_ctx=sampling_ctx_a,
+            cache=Cache(),
+        )
+        torch.manual_seed(1337)
+        samples_b = module._sample(
+            data=torch.full((batch_size, height * width), torch.nan),
+            sampling_ctx=sampling_ctx_b,
+            cache=Cache(),
+        )
+
+        torch.testing.assert_close(samples_a, samples_b, rtol=1e-6, atol=1e-6)
+        torch.testing.assert_close(
+            sampling_ctx_b.channel_index,
+            to_one_hot(sampling_ctx_a.channel_index, dim=-1, dim_size=module.in_channels),
+            rtol=0.0,
+            atol=0.0,
+        )
 
     @pytest.mark.parametrize("in_channels,out_channels,hw", sample_params)
     def test_sample_mpe_deterministic(self, in_channels, out_channels, hw):
@@ -326,6 +430,97 @@ class TestSumConvSample:
             cache=cache,
         )
         assert out.shape == (batch_size, 16)
+
+    def test_sample_differentiable_uses_repetition_index_and_cached_input_lls(self):
+        batch_size = 4
+        leaf = make_normal_leaf(4, 4, out_channels=2, num_repetitions=2)
+        module = SumConv(inputs=leaf, out_channels=2, kernel_size=2, num_repetitions=2)
+
+        cache = Cache()
+        module.log_likelihood(_randn(batch_size, 16), cache=cache)
+        sampling_ctx = self._make_sampling_context(
+            module=module,
+            batch_size=batch_size,
+            is_differentiable=True,
+            hard=True,
+        )
+        out = module._sample(
+            data=torch.full((batch_size, 16), float("nan")),
+            sampling_ctx=sampling_ctx,
+            cache=cache,
+        )
+        assert out.shape == (batch_size, 16)
+        assert torch.isfinite(out).all()
+
+    def test_sample_differentiable_equals_non_diff_sampling_with_conditional_cache(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        height, width = (4, 4)
+        in_channels = 2
+        out_channels = 2
+        num_reps = 2
+        batch_size = 8
+        leaf = make_normal_leaf(height, width, out_channels=in_channels, num_repetitions=num_reps)
+        module = SumConv(
+            inputs=leaf,
+            out_channels=out_channels,
+            kernel_size=2,
+            num_repetitions=num_reps,
+        )
+
+        evidence = _randn(batch_size, height * width)
+        cache_a = Cache()
+        cache_b = Cache()
+        module.log_likelihood(evidence, cache=cache_a)
+        module.log_likelihood(evidence, cache=cache_b)
+
+        channel_index = torch.randint(
+            low=0,
+            high=module.out_shape.channels,
+            size=(batch_size, module.out_shape.features),
+        )
+        repetition_index = torch.randint(
+            low=0,
+            high=module.out_shape.repetitions,
+            size=(batch_size,),
+        )
+        mask = torch.ones((batch_size, module.out_shape.features), dtype=torch.bool)
+        sampling_ctx_a = SamplingContext(
+            channel_index=channel_index.clone(),
+            mask=mask.clone(),
+            repetition_index=repetition_index.clone(),
+        )
+        sampling_ctx_b = SamplingContext(
+            channel_index=to_one_hot(channel_index, dim=-1, dim_size=module.out_shape.channels),
+            mask=mask.clone(),
+            repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=module.out_shape.repetitions),
+            is_differentiable=True,
+            hard=True,
+        )
+
+        patch_simple_as_categorical_one_hot(monkeypatch)
+
+        torch.manual_seed(1337)
+        samples_a = module._sample(
+            data=torch.full((batch_size, height * width), torch.nan),
+            sampling_ctx=sampling_ctx_a,
+            cache=cache_a,
+        )
+        torch.manual_seed(1337)
+        samples_b = module._sample(
+            data=torch.full((batch_size, height * width), torch.nan),
+            sampling_ctx=sampling_ctx_b,
+            cache=cache_b,
+        )
+
+        torch.testing.assert_close(samples_a, samples_b, rtol=1e-6, atol=1e-6)
+        torch.testing.assert_close(
+            sampling_ctx_b.channel_index,
+            to_one_hot(sampling_ctx_a.channel_index, dim=-1, dim_size=module.in_channels),
+            rtol=0.0,
+            atol=0.0,
+        )
 
     def test_sample_parent_feature_width_raises_shape_error(self):
         """Test reduced parent-width contexts are rejected under strict contract."""

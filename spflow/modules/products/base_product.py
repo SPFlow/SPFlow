@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional
 
+import torch
 from torch import Tensor, nn
 
 from spflow.exceptions import ScopeError
@@ -147,21 +148,40 @@ class BaseProduct(Module, ABC):
         channel_index = self.map_out_channels_to_in_channels(sampling_ctx.channel_index)
         mask = self.map_out_mask_to_in_mask(sampling_ctx.mask)
 
-        cid_per_module = []
-        mask_per_module = []
+        # Iterate over inputs and route child-local indices/masks.
+        channel_input_dim = -2 if sampling_ctx.is_differentiable else -1
+        mask_input_dim = -1
+        for i, inp in enumerate(self.inputs):
+            cid = channel_index.select(dim=channel_input_dim, index=i)
+            child_mask = mask.select(dim=mask_input_dim, index=i)
 
-        inputs = self.inputs
-        for i in range(len(self.inputs)):
-            cid_per_module.append(channel_index[..., i])
-            mask_per_module.append(mask[..., i])
-
-        # Iterate over inputs, their channel indices and masks
-        for inp, cid, mask in zip(inputs, cid_per_module, mask_per_module):
             if cid.ndim == 1:
                 cid = cid.unsqueeze(1)
-            if mask.ndim == 1:
-                mask = mask.unsqueeze(1)
-            child_ctx = sampling_ctx.with_routing(channel_index=cid, mask=mask)
+            if child_mask.ndim == 1:
+                child_mask = child_mask.unsqueeze(1)
+
+            child_channels = int(inp.out_shape.channels)
+            if sampling_ctx.is_differentiable:
+                if child_channels == 1:
+                    cid = torch.ones(
+                        (*cid.shape[:-1], 1),
+                        dtype=cid.dtype,
+                        device=cid.device,
+                    )
+                else:
+                    cid = cid[..., :child_channels]
+                    mass = cid.sum(dim=-1, keepdim=True)
+                    eps = torch.finfo(cid.dtype).eps
+                    cid = torch.where(
+                        mass > 0,
+                        cid / mass.clamp_min(eps),
+                        torch.zeros_like(cid),
+                    )
+            else:
+                if child_channels == 1:
+                    cid = torch.zeros_like(cid)
+
+            child_ctx = sampling_ctx.with_routing(channel_index=cid, mask=child_mask)
             inp._sample(
                 data=data,
                 cache=cache,

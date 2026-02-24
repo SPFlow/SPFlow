@@ -16,7 +16,7 @@ import torch
 from einops import rearrange, repeat
 from torch import Tensor, nn
 
-from spflow.exceptions import OptionalDependencyError, ShapeError
+from spflow.exceptions import OptionalDependencyError, ShapeError, UnsupportedOperationError
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.cache import Cache
@@ -604,6 +604,11 @@ class PiecewiseLinear(LeafModule):
         Returns:
             Sampled data tensor.
         """
+        if sampling_ctx.is_differentiable:
+            raise UnsupportedOperationError(
+                "PiecewiseLinear.sample() does not support differentiable routing yet."
+            )
+
         if not self.is_initialized:
             raise ValueError(
                 "PiecewiseLinear leaf has not been initialized. " "Call initialize(data, domains) first."

@@ -10,7 +10,7 @@ from spflow.meta.data import Scope
 from spflow.modules.conv import ProdConv
 from spflow.modules.leaves import Normal
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 
 # Test parameter values
 out_channels_values = [1, 3]
@@ -251,6 +251,75 @@ class TestProdConvSample:
 
         # After upsampling, samples should be finite
         assert torch.isfinite(data).all()
+
+    @pytest.mark.parametrize("out_channels,hwk", sample_params)
+    def test_sample_differentiable_channel_upsampling(self, out_channels, hwk):
+        height, width, kernel_h, kernel_w = hwk
+        leaf = make_normal_leaf(height, width, out_channels=out_channels)
+        module = ProdConv(inputs=leaf, kernel_size_h=kernel_h, kernel_size_w=kernel_w)
+
+        batch_size = 6
+        out_features = module.out_shape.features
+        channel_idx = torch.randint(low=0, high=module.out_shape.channels, size=(batch_size, out_features))
+        sampling_ctx = SamplingContext(
+            channel_index=to_one_hot(channel_idx, dim=-1, dim_size=module.out_shape.channels),
+            mask=torch.ones(batch_size, out_features, dtype=torch.bool),
+            repetition_index=to_one_hot(torch.zeros((batch_size,), dtype=torch.long), dim=-1, dim_size=1),
+            is_differentiable=True,
+            hard=True,
+        )
+        data = torch.full((batch_size, height * width), float("nan"))
+        samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+
+        assert samples.shape == (batch_size, height * width)
+        assert torch.isfinite(samples).all()
+
+    @pytest.mark.parametrize("out_channels,hwk", sample_params)
+    def test_sample_differentiable_equals_non_diff_sampling(self, out_channels, hwk):
+        if out_channels == 1:
+            pytest.skip("Leaf singleton-channel diff routing currently rewrites channel indices in-place.")
+        height, width, kernel_h, kernel_w = hwk
+        leaf = make_normal_leaf(height, width, out_channels=out_channels)
+        module = ProdConv(inputs=leaf, kernel_size_h=kernel_h, kernel_size_w=kernel_w)
+
+        batch_size = 8
+        out_features = module.out_shape.features
+        channel_idx = torch.randint(low=0, high=module.out_shape.channels, size=(batch_size, out_features))
+        mask = torch.ones(batch_size, out_features, dtype=torch.bool)
+        repetition_index = torch.zeros((batch_size,), dtype=torch.long)
+        sampling_ctx_a = SamplingContext(
+            channel_index=channel_idx.clone(),
+            mask=mask.clone(),
+            repetition_index=repetition_index.clone(),
+        )
+        sampling_ctx_b = SamplingContext(
+            channel_index=to_one_hot(channel_idx, dim=-1, dim_size=module.out_shape.channels),
+            mask=mask.clone(),
+            repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=1),
+            is_differentiable=True,
+            hard=True,
+        )
+
+        torch.manual_seed(1337)
+        samples_a = module._sample(
+            data=torch.full((batch_size, height * width), float("nan")),
+            sampling_ctx=sampling_ctx_a,
+            cache=Cache(),
+        )
+        torch.manual_seed(1337)
+        samples_b = module._sample(
+            data=torch.full((batch_size, height * width), float("nan")),
+            sampling_ctx=sampling_ctx_b,
+            cache=Cache(),
+        )
+
+        torch.testing.assert_close(samples_a, samples_b, rtol=1e-6, atol=1e-6)
+        torch.testing.assert_close(
+            sampling_ctx_b.channel_index,
+            to_one_hot(sampling_ctx_a.channel_index, dim=-1, dim_size=module.out_shape.channels),
+            rtol=0.0,
+            atol=0.0,
+        )
 
 
 # Additional branch-focused prod_conv tests

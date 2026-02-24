@@ -265,6 +265,28 @@ def test_signed_sum_sample_rejects_negative_weights():
         node.sample(num_samples=3)
 
 
+def test_signed_sum_sample_rejects_differentiable_routing():
+    child = _SignedInput()
+    node = SignedSum(
+        inputs=child,
+        out_channels=1,
+        num_repetitions=1,
+        weights=torch.tensor([[[[0.8]], [[0.2]]]]),
+    )
+    sampling_ctx = SamplingContext(
+        channel_index=torch.ones((2, 1, 1), dtype=torch.get_default_dtype()),
+        mask=torch.ones((2, 1), dtype=torch.bool),
+        repetition_index=torch.ones((2, 1), dtype=torch.get_default_dtype()),
+        is_differentiable=True,
+    )
+    with pytest.raises(UnsupportedOperationError, match="differentiable routing"):
+        node._sample(
+            data=torch.full((2, 1), float("nan")),
+            sampling_ctx=sampling_ctx,
+            cache=Cache(),
+        )
+
+
 def test_signed_sum_sample_rejects_non_unit_repetitions():
     child = _SignedInput()
     weights = torch.ones((1, 2, 1, 2), dtype=torch.get_default_dtype())

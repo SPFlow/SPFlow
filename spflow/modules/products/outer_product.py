@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from einops import rearrange, repeat
 from torch import Tensor
+from torch.nn import functional as F
 
 from spflow.exceptions import ShapeError
 from spflow.meta.data import Scope
@@ -59,15 +60,17 @@ class OuterProduct(BaseProduct):
 
         self.num_splits = num_splits
 
-        # Store unraveled channel indices using in_shape.channels (set by BaseProduct)
+        # Store unraveled channel indices from actual child channel counts.
         if self.input_is_split:
-            unraveled_channel_indices = list(
-                product(*[list(range(self.in_shape.channels)) for _ in range(self.num_splits)])
-            )
+            split_channels = int(self.inputs[0].out_shape.channels)
+            child_channel_counts = [split_channels for _ in range(self.num_splits)]
         else:
-            unraveled_channel_indices = list(
-                product(*[list(range(self.in_shape.channels)) for _ in self.inputs])
-            )
+            child_channel_counts = [int(inp.out_shape.channels) for inp in self.inputs]
+        self._child_channel_counts = tuple(child_channel_counts)
+
+        unraveled_channel_indices = list(
+            product(*[list(range(count)) for count in self._child_channel_counts])
+        )
         self.register_buffer(
             name="unraveled_channel_indices",
             tensor=torch.tensor(unraveled_channel_indices, dtype=torch.long),
@@ -80,13 +83,7 @@ class OuterProduct(BaseProduct):
         else:
             out_features = input_features
 
-        # Compute out_channels as product of input channels
-        ocs = 1
-        for inp in self.inputs:
-            ocs *= inp.out_shape.channels
-        if len(self.inputs) == 1:
-            ocs = ocs**self.num_splits
-        out_channels = ocs
+        out_channels = len(unraveled_channel_indices)
 
         self.out_shape = ModuleShape(out_features, out_channels, self.in_shape.repetitions)
 
@@ -181,17 +178,36 @@ class OuterProduct(BaseProduct):
         Raises:
             NotImplementedError: If split type is not supported.
         """
+        if not output_ids.is_floating_point():
+            if self.input_is_split:
+                mapped_ids = self.unraveled_channel_indices[output_ids]
+                if isinstance(self.inputs[0], SplitConsecutive):
+                    return rearrange(mapped_ids, "b f i -> b (i f) 1")
+                elif isinstance(self.inputs[0], SplitInterleaved):
+                    return rearrange(mapped_ids, "b f i -> b (f i) 1")
+                else:
+                    raise NotImplementedError("Other Split types are not implemented yet.")
+            return self.unraveled_channel_indices[output_ids]
+
+        batch_size = int(output_ids.shape[0])
+        num_features = int(output_ids.shape[1])
+        num_inputs = len(self._child_channel_counts)
+        max_channels = int(max(self._child_channel_counts))
+        mapped = output_ids.new_zeros((batch_size, num_features, num_inputs, max_channels))
+        table = self.unraveled_channel_indices.to(device=output_ids.device)
+        for i, child_channels in enumerate(self._child_channel_counts):
+            projection = F.one_hot(table[:, i], num_classes=child_channels).to(dtype=output_ids.dtype)
+            child_routing = output_ids @ projection
+            mapped[:, :, i, :child_channels] = child_routing
+
         if self.input_is_split:
             if isinstance(self.inputs[0], SplitConsecutive):
-                mapped_ids = self.unraveled_channel_indices[output_ids]
-                return rearrange(mapped_ids, "b f i -> b (i f) 1")
+                return rearrange(mapped, "b f i c -> b (i f) 1 c")
             elif isinstance(self.inputs[0], SplitInterleaved):
-                mapped_ids = self.unraveled_channel_indices[output_ids]
-                return rearrange(mapped_ids, "b f i -> b (f i) 1")
+                return rearrange(mapped, "b f i c -> b (f i) 1 c")
             else:
                 raise NotImplementedError("Other Split types are not implemented yet.")
-        else:
-            return self.unraveled_channel_indices[output_ids]
+        return mapped
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
         """Map output mask to input masks.

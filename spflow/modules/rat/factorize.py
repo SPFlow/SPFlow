@@ -21,7 +21,11 @@ from spflow.modules.ops.cat import Cat
 from spflow.modules.products.base_product import BaseProduct
 from spflow.modules.products.product import Product
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import (
+    SamplingContext,
+    index_tensor,
+    repeat_repetition_index,
+)
 
 
 class Factorize(BaseProduct):
@@ -86,11 +90,12 @@ class Factorize(BaseProduct):
         return out
 
     def map_out_channels_to_in_channels(self, output_ids: Tensor) -> Tensor:
-        return self.unraveled_channel_indices[output_ids]
+        if output_ids.is_floating_point():
+            return output_ids.unsqueeze(-2)
+        return output_ids.unsqueeze(-1)
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
-        num_inputs = len(self.inputs)
-        return repeat(mask, "b f -> b f i", i=num_inputs)
+        return mask.unsqueeze(-1)
 
     @property
     def device(self):
@@ -187,26 +192,40 @@ class Factorize(BaseProduct):
         )
         sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
 
-        # gather indices for specific repetitions
         num_input_features = self.indices.shape[0]
         num_output_features = self.indices.shape[1]
         batch_size = data.shape[0]
-        rep_indices = repeat(
-            rearrange(sampling_ctx.repetition_index, "b -> b 1 1 1"),
-            "b 1 1 1 -> b i o 1",
+        indices = repeat(rearrange(self.indices, "i o r -> 1 i o r"), "1 i o r -> b i o r", b=batch_size)
+        rep_indices = repeat_repetition_index(
+            sampling_ctx.repetition_index,
+            "b r -> b i o r",
             i=num_input_features,
             o=num_output_features,
         )
-        indices = repeat(rearrange(self.indices, "i o r -> 1 i o r"), "1 i o r -> b i o r", b=batch_size)
-        indices = indices.to(dtype=torch.long, device=self.device)
-        indices = torch.gather(indices, dim=-1, index=rep_indices)
-        indices = rearrange(indices, "b i o 1 -> b i o")
+        indices = index_tensor(
+            indices,
+            index=rep_indices,
+            dim=-1,
+            is_differentiable=sampling_ctx.is_differentiable,
+        )
+        indices = indices.to(device=sampling_ctx.channel_index.device, dtype=torch.get_default_dtype())
 
-        # gather channel indices and mask
-        channel_index = torch.sum(rearrange(sampling_ctx.channel_index, "b o -> b 1 o") * indices, dim=-1)
-        mask = torch.sum(rearrange(sampling_ctx.mask, "b o -> b 1 o") * indices, dim=-1).bool()
+        if sampling_ctx.is_differentiable:
+            channel_index = torch.einsum("bio,boc->bic", indices, sampling_ctx.channel_index)
+        else:
+            channel_index = torch.einsum(
+                "bio,bo->bi",
+                indices,
+                sampling_ctx.channel_index.to(dtype=indices.dtype),
+            ).to(dtype=torch.long)
+        mask_score = torch.einsum(
+            "bio,bo->bi",
+            indices,
+            sampling_ctx.mask.to(dtype=indices.dtype),
+        )
+        mask = mask_score > 0
 
-        sampling_ctx.update(
+        child_ctx = sampling_ctx.with_routing(
             channel_index=channel_index,
             mask=mask,
         )
@@ -214,7 +233,7 @@ class Factorize(BaseProduct):
         self.inputs[0]._sample(
             data=data,
             cache=cache,
-            sampling_ctx=sampling_ctx,
+            sampling_ctx=child_ctx,
         )
 
         return data

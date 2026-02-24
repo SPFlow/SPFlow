@@ -174,6 +174,15 @@ class ElementwiseProduct(BaseProduct):
         """
         if self.input_is_split:
             num_splits = self.num_splits
+            if output_ids.is_floating_point():
+                if isinstance(self.inputs[0], SplitConsecutive):
+                    expanded_ids = repeat(output_ids, "b f c -> b i f c", i=num_splits)
+                    return rearrange(expanded_ids, "b i f c -> b (i f) 1 c")
+                elif isinstance(self.inputs[0], SplitInterleaved):
+                    expanded_ids = repeat(output_ids, "b f c -> b f i c", i=num_splits)
+                    return rearrange(expanded_ids, "b f i c -> b (f i) 1 c")
+                else:
+                    raise NotImplementedError("Other Split types are not implemented yet.")
             if isinstance(self.inputs[0], SplitConsecutive):
                 expanded_ids = repeat(output_ids, "b f -> b i f", i=num_splits)
                 return rearrange(expanded_ids, "b i f -> b (i f) 1")
@@ -182,9 +191,26 @@ class ElementwiseProduct(BaseProduct):
                 return rearrange(expanded_ids, "b f i -> b (f i) 1")
             else:
                 raise NotImplementedError("Other Split types are not implemented yet.")
-        else:
-            num_splits = len(self.inputs)
-            return repeat(output_ids, "b f -> b f i", i=num_splits)
+
+        num_inputs = len(self.inputs)
+        if not output_ids.is_floating_point():
+            mapped = repeat(output_ids, "b f -> b f i", i=num_inputs)
+            for i, inp in enumerate(self.inputs):
+                if int(inp.out_shape.channels) == 1:
+                    mapped[..., i] = 0
+            return mapped
+
+        batch_size = int(output_ids.shape[0])
+        num_features = int(output_ids.shape[1])
+        max_channels = int(self.in_shape.channels)
+        mapped = output_ids.new_zeros((batch_size, num_features, num_inputs, max_channels))
+        for i, inp in enumerate(self.inputs):
+            child_channels = int(inp.out_shape.channels)
+            if child_channels == 1:
+                mapped[:, :, i, 0] = 1.0
+            else:
+                mapped[:, :, i, :child_channels] = output_ids[:, :, :child_channels]
+        return mapped
 
     def map_out_mask_to_in_mask(self, mask: Tensor) -> Tensor:
         """Map output mask to input mask.
