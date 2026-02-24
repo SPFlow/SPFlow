@@ -192,6 +192,62 @@ def test_diff_sampling_eq_non_diff(leaf_cls, out_features: int, out_channels: in
     )
 
 
+@pytest.mark.parametrize(
+    ("leaf_ctor", "expects_grad"),
+    [
+        (lambda: leaves.Normal(scope=Scope([0])), True),
+        (lambda: leaves.Laplace(scope=Scope([0])), True),
+        (lambda: leaves.LogNormal(scope=Scope([0])), True),
+        (lambda: leaves.Gamma(scope=Scope([0])), True),
+        (lambda: leaves.Exponential(scope=Scope([0])), True),
+        (
+            lambda: leaves.Uniform(
+                scope=Scope([0]),
+                low=torch.tensor([[[0.0]]]),
+                high=torch.tensor([[[1.0]]]),
+            ),
+            False,
+        ),
+        (lambda: leaves.Bernoulli(scope=Scope([0])), True),
+        (lambda: leaves.Binomial(scope=Scope([0]), total_count=torch.tensor([[[4.0]]])), True),
+        (lambda: leaves.Categorical(scope=Scope([0]), K=3), True),
+        (lambda: leaves.Geometric(scope=Scope([0])), True),
+        (lambda: leaves.Poisson(scope=Scope([0])), True),
+        (lambda: leaves.NegativeBinomial(scope=Scope([0]), total_count=torch.tensor([[[4.0]]])), True),
+        (
+            lambda: leaves.Hypergeometric(
+                scope=Scope([0]),
+                K=torch.tensor([[[2.0]]]),
+                N=torch.tensor([[[5.0]]]),
+                n=torch.tensor([[[2.0]]]),
+            ),
+            False,
+        ),
+        (lambda: leaves.Histogram(scope=Scope([0]), bin_edges=torch.tensor([0.0, 1.0, 2.0])), True),
+    ],
+)
+def test_distribution_rsample_produces_finite_values_and_gradients(leaf_ctor, expects_grad: bool):
+    torch.manual_seed(0)
+    leaf = leaf_ctor()
+    dist = leaf.distribution(with_differentiable_sampling=True)
+    samples = dist.rsample((7,))
+
+    assert torch.isfinite(samples).all()
+
+    if not expects_grad:
+        return
+
+    trainable_params = [p for p in leaf.parameters() if p.requires_grad]
+    assert trainable_params, f"{leaf.__class__.__name__} expected to have trainable parameters."
+
+    loss = samples.mean()
+    assert loss.requires_grad, f"{leaf.__class__.__name__}.distribution(...).rsample() must be differentiable."
+    loss.backward()
+
+    assert any(
+        p.grad is not None and torch.isfinite(p.grad).all() for p in trainable_params
+    ), f"{leaf.__class__.__name__} did not receive finite gradients from rsample()."
+
 
 def _getattr_nested(obj, name):
     """Get nested attribute using dot notation (e.g., '_distribution.log_p')."""

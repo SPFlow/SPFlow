@@ -14,6 +14,7 @@ from spflow.exceptions import (
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.meta import Scope
+from spflow.modules.leaves import Bernoulli
 from spflow.modules.leaves import Normal
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
@@ -825,6 +826,31 @@ class TestDifferentiableSampling:
             assert torch.isfinite(leaf.log_scale.grad).all()
             assert float(leaf.loc.grad.abs().sum()) > 0.0
             assert float(leaf.log_scale.grad.abs().sum()) > 0.0
+
+    def test_diff_sampling_smoke_with_discrete_leaf(self):
+        torch.manual_seed(0)
+
+        leaf = Bernoulli(scope=Scope([0]), out_channels=3, num_repetitions=1)
+        weights = torch.tensor(
+            [[[[0.2]], [[0.3]], [[0.5]]]], dtype=torch.get_default_dtype()
+        )
+        module = Sum(inputs=leaf, weights=weights)
+
+        n_samples = 32
+        data = torch.full((n_samples, 1), float("nan"))
+        sampling_ctx = SamplingContext(
+            num_samples=n_samples,
+            device=data.device,
+            is_differentiable=True,
+            hard=True,
+            tau=0.7,
+        )
+        out = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+
+        assert out.shape == (n_samples, 1)
+        assert torch.isfinite(out).all()
+        assert (out >= 0.0).all()
+        assert (out <= 1.0).all()
 
     def test_diff_sampling_equals_non_diff_sampling(self, monkeypatch: pytest.MonkeyPatch):
         in_channels = 2
