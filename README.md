@@ -76,7 +76,12 @@ prod_z2_sum_z1x = Product(inputs=[leaf_z2_right, sum_z1_x])
 root = Sum(inputs=[prod_z1_sum_xz2, prod_z2_sum_z1x], out_channels=1)
 
 # Likelihood evaluation expects data shaped (N, D)
-data = torch.randn(32, 3)
+# Build each feature separately so categorical dimensions get valid integer values.
+num_rows = 32
+data_x = torch.randn(num_rows)
+data_z1 = torch.randint(low=0, high=3, size=(num_rows,), dtype=torch.int64).to(torch.float32)
+data_z2 = torch.randn(num_rows)
+data = torch.stack([data_x, data_z1, data_z2], dim=1)
 ll = root.log_likelihood(data)
 
 # Unconditional sampling
