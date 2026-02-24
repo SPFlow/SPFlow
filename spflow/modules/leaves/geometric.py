@@ -5,6 +5,7 @@ from spflow.exceptions import InvalidParameterCombinationError
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases
 from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.utils.sampling_context import SIMPLE
 
 
 class Geometric(LeafModule):
@@ -93,6 +94,10 @@ class Geometric(LeafModule):
     def _torch_distribution_class(self) -> type[torch.distributions.Geometric]:
         return torch.distributions.Geometric
 
+    @property
+    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+        return GeometricWithDifferentiableSamplingSIMPLE
+
     def params(self) -> dict[str, Tensor]:
         """Returns distribution parameters."""
         return {"logits": self.logits}
@@ -134,3 +139,42 @@ class Geometric(LeafModule):
             params_dict: Dictionary with 'probs' parameter value.
         """
         self.probs = params_dict["probs"]  # Uses property setter
+
+
+class GeometricWithDifferentiableSamplingSIMPLE(torch.distributions.Geometric):
+    """Geometric distribution with differentiable rsample via truncated SIMPLE.
+
+    Notes:
+        The Geometric distribution has infinite support over {0, 1, 2, ...}. This
+        implementation uses a truncated support [0..Kmax] where Kmax is inferred
+        from the current parameters and capped to keep computation bounded.
+    """
+
+    has_rsample = True
+    _MAX_SUPPORT: int = 1024
+
+    def sample(self, sample_shape: torch.Size = torch.Size()) -> Tensor:
+        return self.rsample(sample_shape)
+
+    def rsample(self, sample_shape: torch.Size = torch.Size()) -> Tensor:
+        sample_shape = torch.Size(sample_shape)
+
+        probs = self.probs
+        dtype = probs.dtype
+        device = probs.device
+
+        mean = (1.0 - probs) / probs
+        std = torch.sqrt(1.0 - probs) / probs
+        max_k = torch.ceil((mean + 10.0 * std + 10.0).max()).to(dtype=torch.int64)
+        max_k_int = int(torch.clamp(max_k, min=0, max=self._MAX_SUPPORT).item())
+
+        k = torch.arange(max_k_int + 1, device=device, dtype=dtype)  # (K,)
+        value = k.reshape(max_k_int + 1, *([1] * len(self.batch_shape))).expand(max_k_int + 1, *self.batch_shape)
+
+        base_dist = torch.distributions.Geometric(probs=probs, validate_args=False)
+        logits = base_dist.log_prob(value).movedim(0, -1)
+        if sample_shape:
+            logits = logits.expand(*sample_shape, *logits.shape)
+
+        samples_oh = SIMPLE(logits=logits, dim=-1, is_mpe=False)
+        return (samples_oh * k).sum(dim=-1)

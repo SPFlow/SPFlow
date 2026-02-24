@@ -5,6 +5,7 @@ from torch import Tensor
 from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta.data import Scope
 from spflow.modules.leaves.leaf import LeafModule
+from spflow.utils.sampling_context import SIMPLE
 
 
 class _HypergeometricDistribution:
@@ -113,6 +114,8 @@ class _HypergeometricDistribution:
         n = self.n
         if self.validate_args:
             support_mask = self.check_support(k)
+        else:
+            support_mask = torch.ones_like(k, dtype=torch.bool)
 
         N_minus_K = N - K  # type: ignore
         n_minus_k = n - k  # type: ignore
@@ -194,6 +197,52 @@ class _HypergeometricDistribution:
     @property
     def has_rsample(self):
         return False
+
+
+class _HypergeometricDistributionWithDifferentiableSampling(_HypergeometricDistribution):
+    """Hypergeometric distribution with differentiable rsample via SIMPLE over finite support."""
+
+    has_rsample = True
+
+    def sample(self, n_samples):
+        return self.rsample(n_samples)
+
+    def rsample(self, sample_shape: torch.Size | tuple[int, ...]) -> Tensor:
+        if not isinstance(sample_shape, (tuple, torch.Size)):
+            sample_shape = (int(sample_shape),)
+        sample_shape = torch.Size(sample_shape)
+
+        dtype = torch.get_default_dtype()
+        device = self.n.device
+        K_param = self.K.to(device=device, dtype=dtype)
+        N_param = self.N.to(device=device, dtype=dtype)
+        n_param = self.n.to(device=device, dtype=dtype)
+
+        min_successes = torch.maximum(torch.zeros_like(N_param), n_param + K_param - N_param)
+        max_successes = torch.minimum(n_param, K_param)
+
+        global_min = int(torch.floor(min_successes.min()).to(dtype=torch.int64).item())
+        global_max = int(torch.ceil(max_successes.max()).to(dtype=torch.int64).item())
+        if global_max < global_min:
+            raise ValueError(
+                f"Invalid hypergeometric support bounds: global_min={global_min}, global_max={global_max}."
+            )
+
+        k_values = torch.arange(global_min, global_max + 1, device=device, dtype=dtype)  # (K,)
+        support_size = int(k_values.numel())
+        value = k_values.reshape(support_size, *([1] * len(self.event_shape))).expand(support_size, *self.event_shape)
+
+        base_dist = _HypergeometricDistribution(self.K, self.N, self.n, validate_args=False)
+        logits = base_dist.log_prob(value).movedim(0, -1)  # (..., K)
+
+        invalid = (k_values < min_successes.unsqueeze(-1)) | (k_values > max_successes.unsqueeze(-1))
+        logits = torch.where(invalid, torch.full_like(logits, float("-inf")), logits)
+
+        if sample_shape:
+            logits = logits.expand(*sample_shape, *logits.shape)
+
+        samples_oh = SIMPLE(logits=logits, dim=-1, is_mpe=False)
+        return (samples_oh * k_values).sum(dim=-1)
 
 
 class Hypergeometric(LeafModule):
@@ -304,6 +353,10 @@ class Hypergeometric(LeafModule):
     @property
     def _torch_distribution_class(self) -> type[_HypergeometricDistribution]:
         return _HypergeometricDistribution
+
+    @property
+    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+        return _HypergeometricDistributionWithDifferentiableSampling
 
     def params(self) -> dict[str, Tensor]:
         """Returns distribution parameters."""

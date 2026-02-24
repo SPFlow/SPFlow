@@ -37,6 +37,18 @@ from spflow.modules.leaves import (
             high=torch.tensor([[[1.0]]]),
         ),
         lambda: Bernoulli(scope=Scope([0])),
+        lambda: Binomial(scope=Scope([0]), total_count=torch.tensor([[[4.0]]])),
+        lambda: Categorical(scope=Scope([0]), K=3),
+        lambda: Geometric(scope=Scope([0])),
+        lambda: Poisson(scope=Scope([0])),
+        lambda: NegativeBinomial(scope=Scope([0]), total_count=torch.tensor([[[4.0]]])),
+        lambda: Hypergeometric(
+            scope=Scope([0]),
+            K=torch.tensor([[[2.0]]]),
+            N=torch.tensor([[[5.0]]]),
+            n=torch.tensor([[[2.0]]]),
+        ),
+        lambda: Histogram(scope=Scope([0]), bin_edges=torch.tensor([0.0, 1.0, 2.0])),
     ],
 )
 def test_supported_leaves_expose_differentiable_distribution(leaf_ctor):
@@ -53,18 +65,6 @@ def test_supported_leaves_expose_differentiable_distribution(leaf_ctor):
 @pytest.mark.parametrize(
     "leaf_ctor",
     [
-        lambda: Binomial(scope=Scope([0]), total_count=torch.tensor([[[4.0]]])),
-        lambda: Categorical(scope=Scope([0]), K=3),
-        lambda: Geometric(scope=Scope([0])),
-        lambda: Poisson(scope=Scope([0])),
-        lambda: NegativeBinomial(scope=Scope([0]), total_count=torch.tensor([[[4.0]]])),
-        lambda: Hypergeometric(
-            scope=Scope([0]),
-            K=torch.tensor([[[2.0]]]),
-            N=torch.tensor([[[5.0]]]),
-            n=torch.tensor([[[2.0]]]),
-        ),
-        lambda: Histogram(scope=Scope([0]), bin_edges=torch.tensor([0.0, 1.0, 2.0])),
         lambda: PiecewiseLinear(scope=Scope([0])),
         lambda: CLTree(scope=Scope([0, 1]), K=2),
     ],

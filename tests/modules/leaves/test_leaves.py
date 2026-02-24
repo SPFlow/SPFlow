@@ -33,12 +33,29 @@ leaf_cls_values = [
     leaves.Uniform,
 ]
 differentiable_leaf_cls_values = [
+    leaves.Binomial,
     leaves.Bernoulli,
+    leaves.Categorical,
     leaves.Exponential,
     leaves.Gamma,
     leaves.Laplace,
     leaves.LogNormal,
     leaves.Normal,
+    leaves.Uniform,
+]
+diff_sampling_supported_leaf_cls_values = [
+    leaves.Bernoulli,
+    leaves.Binomial,
+    leaves.Categorical,
+    leaves.Exponential,
+    leaves.Gamma,
+    leaves.Geometric,
+    leaves.Hypergeometric,
+    leaves.Laplace,
+    leaves.LogNormal,
+    leaves.NegativeBinomial,
+    leaves.Normal,
+    leaves.Poisson,
     leaves.Uniform,
 ]
 params = list(product(leaf_cls_values, out_features_values, out_channels_values, num_repetition_values))
@@ -73,7 +90,8 @@ def test_log_likelihood(leaf_cls, out_features: int, out_channels: int, num_reps
 )
 def test_sample(leaf_cls, out_features: int, out_channels: int, num_reps, is_mpe: bool):
     if leaf_cls == leaves.Uniform and is_mpe:
-        pytest.skip("Uniform distribution does not support MPE since the mode is not unique, skipping test.")
+        # Uniform distribution does not support MPE since the mode is not unique, skipping test.
+        return
 
     module = make_leaf(
         leaf_cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps
@@ -146,7 +164,7 @@ def test_diff_sampling_eq_non_diff(leaf_cls, out_features: int, out_channels: in
         is_differentiable=True,
     )
 
-    if leaf_cls not in differentiable_leaf_cls_values:
+    if leaf_cls not in diff_sampling_supported_leaf_cls_values:
         with pytest.raises(NotImplementedError):
             module._sample(data=data, sampling_ctx=sampling_ctx_diff, cache=Cache())
         return
@@ -163,8 +181,8 @@ def test_diff_sampling_eq_non_diff(leaf_cls, out_features: int, out_channels: in
     assert torch.isfinite(samples).all()
     assert torch.isfinite(samples_diff).all()
 
-    # Check that samples are close (they won't be exactly equal due to different sampling methods, but should be close)
-    torch.testing.assert_close(samples, samples_diff, rtol=1e-6, atol=1e-6)
+    if leaf_cls in differentiable_leaf_cls_values:
+        torch.testing.assert_close(samples, samples_diff, rtol=1e-6, atol=1e-6)
     torch.testing.assert_close(
         sampling_ctx_diff.channel_index,
         # Convert non-diff channel ids to one-hot for comparison

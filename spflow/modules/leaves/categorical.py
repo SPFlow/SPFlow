@@ -8,6 +8,7 @@ from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.cache import Cache
 from spflow.utils.leaves import init_parameter
 from spflow.utils.projections import proj_convex_to_real, proj_real_to_convex
+from spflow.utils.sampling_context import SIMPLE
 
 
 class Categorical(LeafModule):
@@ -110,6 +111,10 @@ class Categorical(LeafModule):
     @property
     def _torch_distribution_class(self) -> type[torch.distributions.Categorical]:
         return torch.distributions.Categorical
+
+    @property
+    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+        return CategoricalWithDifferentiableSampling
 
     def params(self) -> dict[str, Tensor]:
         """Returns distribution parameters."""
@@ -226,3 +231,26 @@ class Categorical(LeafModule):
         total_prob = valid_probs.sum(dim=-1)
 
         return torch.log(torch.clamp(total_prob, min=1e-40))
+
+
+class CategoricalWithDifferentiableSampling(torch.distributions.Categorical):
+    """Categorical distribution with differentiable rsample via SIMPLE.
+
+    Returns (straight-through) hard category indices as floating point values.
+    """
+
+    has_rsample = True
+
+    def sample(self, sample_shape: torch.Size = torch.Size()) -> Tensor:
+        return self.rsample(sample_shape)
+
+    def rsample(self, sample_shape: torch.Size = torch.Size()) -> Tensor:
+        sample_shape = torch.Size(sample_shape)
+
+        logits = self.logits
+        if sample_shape:
+            logits = logits.expand(*sample_shape, *logits.shape)
+
+        samples_oh = SIMPLE(logits=logits, dim=-1, is_mpe=False)
+        k = torch.arange(logits.shape[-1], device=logits.device, dtype=logits.dtype)
+        return (samples_oh * k).sum(dim=-1)

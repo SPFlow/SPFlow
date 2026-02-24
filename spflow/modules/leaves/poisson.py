@@ -3,6 +3,7 @@ from torch import Tensor, nn
 
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases
+from spflow.utils.sampling_context import SIMPLE
 
 
 class Poisson(LeafModule):
@@ -68,6 +69,10 @@ class Poisson(LeafModule):
     def _torch_distribution_class(self) -> type[torch.distributions.Poisson]:
         return torch.distributions.Poisson
 
+    @property
+    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+        return PoissonWithDifferentiableSamplingSIMPLE
+
     def params(self) -> dict[str, Tensor]:
         """Returns distribution parameters."""
         return {"rate": self.rate}
@@ -105,3 +110,41 @@ class Poisson(LeafModule):
             params_dict: Dictionary with 'rate' parameter value.
         """
         self.rate = params_dict["rate"]  # Uses property setter
+
+
+class PoissonWithDifferentiableSamplingSIMPLE(torch.distributions.Poisson):
+    """Poisson distribution with differentiable rsample via truncated SIMPLE.
+
+    Notes:
+        The Poisson distribution has infinite support over {0, 1, 2, ...}. This
+        implementation uses a truncated support [0..Kmax] where Kmax is inferred
+        from the current rate and capped to keep computation bounded.
+    """
+
+    has_rsample = True
+    _MAX_SUPPORT: int = 2048
+
+    def sample(self, sample_shape: torch.Size = torch.Size()) -> Tensor:
+        return self.rsample(sample_shape)
+
+    def rsample(self, sample_shape: torch.Size = torch.Size()) -> Tensor:
+        sample_shape = torch.Size(sample_shape)
+
+        rate = self.rate
+        dtype = rate.dtype
+        device = rate.device
+
+        std = torch.sqrt(torch.clamp(rate, min=0.0))
+        max_k = torch.ceil((rate + 10.0 * std + 10.0).max()).to(dtype=torch.int64)
+        max_k_int = int(torch.clamp(max_k, min=0, max=self._MAX_SUPPORT).item())
+
+        k = torch.arange(max_k_int + 1, device=device, dtype=dtype)  # (K,)
+        value = k.reshape(max_k_int + 1, *([1] * len(self.batch_shape))).expand(max_k_int + 1, *self.batch_shape)
+
+        base_dist = torch.distributions.Poisson(rate=rate, validate_args=False)
+        logits = base_dist.log_prob(value).movedim(0, -1)
+        if sample_shape:
+            logits = logits.expand(*sample_shape, *logits.shape)
+
+        samples_oh = SIMPLE(logits=logits, dim=-1, is_mpe=False)
+        return (samples_oh * k).sum(dim=-1)

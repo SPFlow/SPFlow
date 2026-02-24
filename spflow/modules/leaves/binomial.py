@@ -1,3 +1,5 @@
+from enum import Enum
+
 import torch
 from torch import Tensor, nn
 
@@ -6,6 +8,12 @@ from spflow.meta.data import Scope
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases
 from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.utils.sampling_context import SIMPLE
+
+
+class BinomialDifferentiableSamplingMethod(str, Enum):
+    NORMAL = "normal"
+    SIMPLE = "simple"
 
 
 class Binomial(LeafModule):
@@ -39,6 +47,7 @@ class Binomial(LeafModule):
         logits: Tensor | None = None,
         parameter_fn: nn.Module = None,
         validate_args: bool | None = True,
+        differentiable_sampling_method: BinomialDifferentiableSamplingMethod = BinomialDifferentiableSamplingMethod.NORMAL,
     ):
         """Initialize Binomial distribution leaf module.
 
@@ -51,6 +60,7 @@ class Binomial(LeafModule):
             logits: Log-odds tensor for success probability.
             parameter_fn: Optional neural network for parameter generation.
             validate_args: Whether to enable torch.distributions argument validation.
+            differentiable_sampling_method: Method for differentiable sampling (default: NORMAL).
         """
         if total_count is None:
             raise InvalidParameterCombinationError("'n' parameter is required for Binomial distribution")
@@ -77,6 +87,7 @@ class Binomial(LeafModule):
         logits_tensor = init_value if logits is not None else proj_bounded_to_real(init_value, lb=0.0, ub=1.0)
 
         self._logits = nn.Parameter(logits_tensor)
+        self.differentiable_sampling_method = differentiable_sampling_method
 
     @property
     def total_count(self) -> Tensor:
@@ -160,3 +171,90 @@ class Binomial(LeafModule):
             params_dict: Dictionary with 'probs' parameter value.
         """
         self.probs = params_dict["probs"]  # Uses property setter
+
+    @property
+    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+        if self.differentiable_sampling_method == BinomialDifferentiableSamplingMethod.NORMAL:
+            return BinomialWithDifferentiableSamplingNormal
+        elif self.differentiable_sampling_method == BinomialDifferentiableSamplingMethod.SIMPLE:
+            return BinomialWithDifferentiableSamplingSIMPLE
+        else:
+            raise ValueError(f"Unsupported differentiable sampling method: {self.differentiable_sampling_method}")
+
+class BinomialWithDifferentiableSamplingNormal(torch.distributions.Binomial):
+    """Binomial distribution with a differentiable rsample via Normal approximation.
+
+    This provides a straight-through (STE) rounding estimator on top of a Normal
+    approximation: `X ≈ round(clamp(μ + σ ε, [0, n]))`, where `ε ~ N(0, 1)`.
+    """
+
+    has_rsample = True
+
+    def sample(self, sample_shape: torch.Size = torch.Size()) -> Tensor:
+        return self.rsample(sample_shape)
+
+    def rsample(self, sample_shape: torch.Size = torch.Size()) -> Tensor:
+        """Generate differentiable samples using a Normal approximation + STE rounding."""
+        sample_shape = torch.Size(sample_shape)
+        extended_shape = self._extended_shape(sample_shape)
+
+        probs = self.probs
+        dtype = probs.dtype
+        device = probs.device
+        total_count = self.total_count.to(dtype=dtype, device=device)
+
+        mean = total_count * probs
+        var = total_count * probs * (1.0 - probs)
+        std = torch.sqrt(torch.clamp(var, min=0.0))
+
+        eps = torch.randn(extended_shape, dtype=dtype, device=device)
+        sample_cont = mean + std * eps
+        sample_cont = torch.clamp(sample_cont, min=0.0)
+        sample_cont = torch.minimum(sample_cont, total_count)
+
+        sample_hard = torch.round(sample_cont)
+        # Straight-through estimator: hard forward value, identity gradient.
+        return (sample_hard - sample_cont).detach() + sample_cont
+
+class BinomialWithDifferentiableSamplingSIMPLE(torch.distributions.Binomial):
+    """Binomial distribution with differentiable rsample via SIMPLE over counts {0..n}.
+
+    This constructs logits for each possible count `k` and applies SIMPLE along the
+    class dimension, returning the (relaxed) count as a weighted sum of class indices.
+    """
+
+    has_rsample = True
+
+    def sample(self, sample_shape: torch.Size = torch.Size()) -> Tensor:
+        return self.rsample(sample_shape)
+
+    def rsample(self, sample_shape: torch.Size = torch.Size()) -> Tensor:
+        """Generate differentiable samples using SIMPLE."""
+        sample_shape = torch.Size(sample_shape)
+        probs = self.probs
+        dtype = probs.dtype
+        device = probs.device
+
+        total_count = self.total_count.to(device=device)
+        max_total = int(torch.max(total_count).to(dtype=torch.int64).item())
+        if max_total < 0:
+            raise ValueError(f"total_count must be >= 0, got max(total_count)={max_total}.")
+
+        k = torch.arange(max_total + 1, device=device, dtype=dtype)  # (K,)
+        value = k.reshape(max_total + 1, *([1] * len(self.batch_shape))).expand(max_total + 1, *self.batch_shape)
+
+        # Avoid torch.distributions validation failures by computing log-probs
+        # through a base Binomial distribution with validate_args disabled.
+        base_dist = torch.distributions.Binomial(
+            total_count=self.total_count, logits=self.logits, validate_args=False
+        )
+        logits = base_dist.log_prob(value).movedim(0, -1)
+        total_count_expanded = total_count.to(dtype=dtype).unsqueeze(-1)
+        invalid = k > total_count_expanded
+        logits = torch.where(invalid, torch.full_like(logits, float("-inf")), logits)
+
+        if sample_shape:
+            logits = logits.expand(*sample_shape, *logits.shape)
+
+        samples_oh = SIMPLE(logits=logits, dim=-1, is_mpe=False)
+        return (samples_oh * k).sum(dim=-1)

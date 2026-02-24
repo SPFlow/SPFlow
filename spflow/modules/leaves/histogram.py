@@ -9,6 +9,7 @@ from spflow.meta.data import Scope
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.leaves import init_parameter
 from spflow.utils.projections import proj_convex_to_real, proj_real_to_convex
+from spflow.utils.sampling_context import SIMPLE
 
 
 class HistogramDist:
@@ -147,6 +148,33 @@ class HistogramDist:
         return x.reshape(n_samples, f, c, r)
 
 
+class HistogramDistWithDifferentiableSampling(HistogramDist):
+    """Histogram distribution with differentiable sampling via SIMPLE over bins."""
+
+    has_rsample = True
+
+    def sample(self, sample_shape: torch.Size | tuple[int, ...]) -> Tensor:
+        return self.rsample(sample_shape)
+
+    def rsample(self, sample_shape: torch.Size | tuple[int, ...]) -> Tensor:
+        if isinstance(sample_shape, torch.Size):
+            n_samples = int(sample_shape[0]) if len(sample_shape) else 1
+        else:
+            n_samples = int(sample_shape[0]) if len(sample_shape) else 1
+
+        logits = self._logits.expand(n_samples, *self._logits.shape)  # (N, F, C, R, B)
+        samples_oh = SIMPLE(logits=logits, dim=-1, is_mpe=False)
+
+        edges = self._bin_edges.to(device=logits.device, dtype=logits.dtype)
+        left_edges = edges[:-1]
+        right_edges = edges[1:]
+
+        left = (samples_oh * rearrange(left_edges, "b -> 1 1 1 1 b")).sum(dim=-1)
+        right = (samples_oh * rearrange(right_edges, "b -> 1 1 1 1 b")).sum(dim=-1)
+
+        u = torch.rand_like(left)
+        return left + u * (right - left)
+
 class Histogram(LeafModule):
     """Histogram leaf distribution (continuous piecewise-constant density).
 
@@ -252,12 +280,8 @@ class Histogram(LeafModule):
         return None
 
     def distribution(self, with_differentiable_sampling: bool = False) -> HistogramDist:
-        if with_differentiable_sampling:
-            raise NotImplementedError(
-                "Histogram does not support differentiable sampling. "
-                "Use distribution(with_differentiable_sampling=False)."
-            )
-        return HistogramDist(
+        dist_cls = HistogramDistWithDifferentiableSampling if with_differentiable_sampling else HistogramDist
+        return dist_cls(
             bin_edges=self.bin_edges.to(self._logits.device), logits=self._logits, min_prob=self._min_prob
         )
 
