@@ -1,5 +1,5 @@
-import torch
-import os
+from pathlib import Path
+
 from spflow.modules.sums import Sum
 from spflow.modules.products import Product, OuterProduct
 from spflow.modules.leaves import Normal, Categorical
@@ -7,9 +7,12 @@ from spflow.modules.ops import SplitConsecutive
 from spflow.meta.data.scope import Scope
 from spflow.utils.visualization import visualize
 
-def generate_docs_visualizations():
-    output_dir = "docs/source/_static"
-    os.makedirs(output_dir, exist_ok=True)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def generate_docs_visualizations() -> None:
+    output_dir = PROJECT_ROOT / "docs" / "source" / "_static"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     print("Generating node-based structure visualization...")
     x11 = Normal(scope=0, out_channels=1)
@@ -23,19 +26,19 @@ def generate_docs_visualizations():
     prod4 = Product([x12, x22])
 
     pc = Sum([prod1, prod2, prod3, prod4], weights=[0.3, 0.1, 0.2, 0.4])
-    visualize(pc, output_path=os.path.join(output_dir, "node-based-structure"), format="svg")
-    print(f"Saved to {os.path.join(output_dir, 'node-based-structure.svg')}")
+    visualize(pc, output_path=str(output_dir / "node-based-structure"), format="svg")
+    print(f"Saved to {output_dir / 'node-based-structure.svg'}")
 
     print("Generating layered structure visualization...")
     x_layered = Normal(scope=[0, 1], out_channels=2)
     prod_layered = OuterProduct(SplitConsecutive(x_layered), num_splits=2)
     pc_layered = Sum(prod_layered, weights=[0.3, 0.1, 0.2, 0.4])
-    visualize(pc_layered, output_path=os.path.join(output_dir, "layered-structure"), format="svg")
-    print(f"Saved to {os.path.join(output_dir, 'layered-structure.svg')}")
+    visualize(pc_layered, output_path=str(output_dir / "layered-structure"), format="svg")
+    print(f"Saved to {output_dir / 'layered-structure.svg'}")
 
-def generate_readme_visualization():
-    output_dir = "res"
-    os.makedirs(output_dir, exist_ok=True)
+def generate_readme_visualization() -> None:
+    output_dir = PROJECT_ROOT / "res"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     X_idx, Z1_idx, Z2_idx = 0, 1, 2
 
@@ -62,8 +65,15 @@ def generate_readme_visualization():
     root = Sum(inputs=[prod_z1_sum_xz2, prod_z2_sum_z1x], out_channels=1)
 
     print("Generating README visualization...")
-    visualize(root, output_path="res/structure", show_scope=True, show_shape=True, show_params=True, format="svg")
-    print(f"Saved to {os.path.join(output_dir, 'structure.svg')}")
+    visualize(
+        root,
+        output_path=str(output_dir / "structure"),
+        show_scope=True,
+        show_shape=True,
+        show_params=True,
+        format="svg",
+    )
+    print(f"Saved to {output_dir / 'structure.svg'}")
 
 if __name__ == "__main__":
     generate_docs_visualizations()
