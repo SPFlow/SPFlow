@@ -7,6 +7,7 @@ from spflow.modules.leaves.leaf import LeafModule
 from spflow.utils.cache import Cache
 from spflow.utils.leaves import init_parameter, _handle_mle_edge_cases
 from spflow.utils.projections import proj_bounded_to_real, proj_real_to_bounded
+from spflow.utils.sampling_context import SIMPLE
 
 
 class Bernoulli(LeafModule):
@@ -89,6 +90,11 @@ class Bernoulli(LeafModule):
     @property
     def _torch_distribution_class(self) -> type[torch.distributions.Bernoulli]:
         return torch.distributions.Bernoulli
+
+    @property
+    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+        """Return a distribution class that supports differentiable sampling."""
+        return BernoulliWithDifferentiableSampling
 
     def params(self) -> dict[str, Tensor]:
         """Returns distribution parameters."""
@@ -184,3 +190,31 @@ class Bernoulli(LeafModule):
         total_prob = prob0 + prob1
 
         return torch.log(torch.clamp(total_prob, min=1e-40))
+
+
+class BernoulliWithDifferentiableSampling(torch.distributions.Bernoulli):
+    """Bernoulli distribution class that supports differentiable sampling via RelaxedBernoulli."""
+
+    def sample(self, sample_shape=torch.Size()):
+        return self.rsample(sample_shape)
+
+    def rsample(self, sample_shape=torch.Size()) -> Tensor:
+        """Generate differentiable samples using SIMPLE."""
+        if isinstance(sample_shape, torch.Size):
+            expanded_shape = tuple(int(s) for s in sample_shape)
+        elif isinstance(sample_shape, tuple):
+            expanded_shape = tuple(int(s) for s in sample_shape)
+        else:
+            expanded_shape = (int(sample_shape),)
+
+        logits = self.logits
+        log_p0 = torch.nn.functional.logsigmoid(-logits)
+        log_p1 = torch.nn.functional.logsigmoid(logits)
+        two_class_logits = torch.stack((log_p0, log_p1), dim=-1)
+
+        if expanded_shape:
+            two_class_logits = two_class_logits.expand(*expanded_shape, *two_class_logits.shape)
+
+        samples_oh = SIMPLE(logits=two_class_logits, dim=-1, is_mpe=False)
+        samples = samples_oh[..., 1]  # Extract class "1".
+        return samples

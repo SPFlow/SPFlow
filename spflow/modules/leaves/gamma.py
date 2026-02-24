@@ -94,7 +94,16 @@ class Gamma(LeafModule):
     def _torch_distribution_class(self) -> type[torch.distributions.Gamma]:
         return torch.distributions.Gamma
 
-    def conditional_distribution(self, evidence: Tensor) -> torch.distributions.Gamma:
+    @property
+    def _torch_distribution_class_with_differentiable_sampling(
+        self,
+    ) -> type[torch.distributions.Gamma]:
+        return torch.distributions.Gamma
+
+    def conditional_distribution(
+        self, evidence: Tensor, with_differentiable_sampling: bool = False
+    ) -> torch.distributions.Gamma:
+        del with_differentiable_sampling
         # Pass evidence to parameter network to get parameters
         params = self.parameter_fn(evidence)
 

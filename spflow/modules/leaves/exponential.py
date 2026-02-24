@@ -68,6 +68,12 @@ class Exponential(LeafModule):
     def _torch_distribution_class(self) -> type[torch.distributions.Exponential]:
         return torch.distributions.Exponential
 
+    @property
+    def _torch_distribution_class_with_differentiable_sampling(
+        self,
+    ) -> type[torch.distributions.Exponential]:
+        return torch.distributions.Exponential
+
     def params(self) -> dict[str, Tensor]:
         """Returns distribution parameters."""
         return {"rate": self.rate}

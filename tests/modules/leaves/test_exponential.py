@@ -27,7 +27,7 @@ def make_module(rate) -> Exponential:
 def test_constructor_negative_rate(out_features: int, out_channels: int, num_repetitions: int):
     rate = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_module(rate=torch.full_like(rate, -1.0)).distribution
+        make_module(rate=torch.full_like(rate, -1.0)).distribution()
 
 
 @pytest.mark.parametrize(
@@ -37,4 +37,4 @@ def test_constructor_negative_rate(out_features: int, out_channels: int, num_rep
 def test_constructor_zero_rate(out_features: int, out_channels: int, num_repetitions: int):
     rate = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_module(rate=torch.full_like(rate, 0.0)).distribution
+        make_module(rate=torch.full_like(rate, 0.0)).distribution()

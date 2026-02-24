@@ -85,32 +85,55 @@ class LeafModule(Module, ABC):
         """Indicates if the leaf uses a parameter network for conditional parameters."""
         return self.parameter_fn is not None
 
-    @property
-    def distribution(self) -> torch.distributions.Distribution:
-        """Returns the underlying torch.distributions.Distribution object."""
-        return self.__make_distribution(self.params())
+    def distribution(
+        self, with_differentiable_sampling: bool = False
+    ) -> torch.distributions.Distribution:
+        """Return this leaf's distribution.
+
+        Args:
+            with_differentiable_sampling: Hook for subclasses to return an alternative
+                differentiable distribution when sampling requires gradient flow.
+                Ignored by the base implementation.
+        """
+        return self.__make_distribution(self.params(), with_differentiable_sampling=with_differentiable_sampling)
 
     @property
     @abstractmethod
     def _torch_distribution_class(self) -> type[torch.distributions.Distribution]:
         pass
 
-    def __make_distribution(self, params: Dict[str, Tensor]) -> torch.distributions.Distribution:
+    @property
+    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not implement an alternative distribution with differentiable sampling. "
+            f"Override _torch_distribution_class_with_differentiable_sampling or set with_differentiable_sampling=False when calling distribution()."
+        )
+
+    def __make_distribution(self, params: Dict[str, Tensor], with_differentiable_sampling: bool = False) -> torch.distributions.Distribution:
         """Helper method to create distribution from given parameters.
 
         Args:
             params: Dictionary of distribution parameters.
+            with_differentiable_sampling: Whether to use the differentiable sampling distribution class.
 
         Returns:
             torch.distributions.Distribution constructed from the parameters.
         """
-        return self._torch_distribution_class(validate_args=self._validate_args, **params)  # type: ignore[call-arg]
+        if with_differentiable_sampling:
+            return self._torch_distribution_class_with_differentiable_sampling(validate_args=self._validate_args, **params)  # type: ignore[call-arg]
+        else:
+            return self._torch_distribution_class(validate_args=self._validate_args, **params)  # type: ignore[call-arg]
 
-    def conditional_distribution(self, evidence: Tensor) -> torch.distributions.Distribution:
-        """Generates torch.distributions object conditionally based on evidence.
+    def conditional_distribution(
+        self, evidence: Tensor, with_differentiable_sampling: bool = False
+    ) -> torch.distributions.Distribution:
+        """Generate a conditional distribution from evidence.
 
         Args:
             evidence: Evidence tensor for conditioning.
+            with_differentiable_sampling: Hook for subclasses to return an alternative
+                distribution with differentiable sampling when needed. Ignored by the base
+                implementation.
 
         Returns:
             torch.distributions.Distribution constructed from conditional parameters.
@@ -118,7 +141,7 @@ class LeafModule(Module, ABC):
         if evidence is None:
             raise ValueError("Evidence tensor must be provided for conditional distribution.")
         params = self.parameter_fn(evidence)
-        return self.__make_distribution(params)
+        return self.__make_distribution(params, with_differentiable_sampling=with_differentiable_sampling)
 
     @property
     @abstractmethod
@@ -198,14 +221,16 @@ class LeafModule(Module, ABC):
         """Returns the parameters of the distribution."""
         pass
 
-    @property
-    def mode(self) -> Tensor:
+    def mode(self, is_differentiable: bool = False) -> Tensor:
         """Return distribution mode.
+
+        Args:
+            is_differentiable: Whether to return the mode from the differentiable distribution (if supported).
 
         Returns:
             Mode of the distribution.
         """
-        return self.distribution.mode
+        return self.distribution().mode
 
     def marginalized_params(self, indices: list[int]) -> dict[str, Tensor]:
         """Return parameters marginalized to specified indices.
@@ -427,7 +452,7 @@ class LeafModule(Module, ABC):
             data_e = data[:, self.scope.evidence]
             dist = self.conditional_distribution(data_e)
         else:
-            dist = self.distribution
+            dist = self.distribution()
 
         log_prob = dist.log_prob(data_q)
 
@@ -478,7 +503,7 @@ class LeafModule(Module, ABC):
         high_expanded = rearrange(high_scoped, "b f -> b f 1 1")
 
         # Get the distribution
-        dist = self.distribution
+        dist = self.distribution()
 
         # Check if distribution has cdf method
         if not hasattr(dist, "cdf"):
@@ -627,7 +652,10 @@ class LeafModule(Module, ABC):
         if sampling_ctx.is_mpe:
             if self.is_conditional:
                 evidence = data[instance_mask][:, self.scope.evidence]
-                dist = self.conditional_distribution(evidence)
+                dist = self.conditional_distribution(
+                    evidence=evidence,
+                    with_differentiable_sampling=sampling_ctx.is_differentiable,
+                )
                 if not hasattr(dist, "mode"):
                     raise UnsupportedOperationError(
                         f"MPE sampling requires a distribution with a 'mode' attribute, but "
@@ -641,7 +669,8 @@ class LeafModule(Module, ABC):
                     samples = rearrange(samples, "b f ci -> b f ci 1")
             else:
                 # Get mode of distribution as MPE
-                samples = rearrange(self.mode, "f ci r -> 1 f ci r")
+                dist = self.distribution(with_differentiable_sampling=sampling_ctx.is_differentiable)
+                samples = rearrange(dist.mode, "f ci r -> 1 f ci r")
 
             if samples.ndim == 4:
                 if not self.is_conditional:
@@ -672,20 +701,24 @@ class LeafModule(Module, ABC):
 
         else:
             if self.is_conditional:
-                # TODO(Steven): is differentiable sampling automatically supported here? -> I don't think so
                 # Get evidence
                 evidence = data[instance_mask][:, self.scope.evidence]
-                dist = self.conditional_distribution(evidence)
-                samples = dist.sample((1,)).squeeze(0)  # Distribution parameters already contain batch dim
-            else:
-                # TODO(Steven): We need to create the distribution depending on is_differentiable
-                dist = self.distribution
-                # Sample n_samples from distribution
-                if not sampling_ctx.is_differentiable:
-                    samples = dist.sample((n_samples,))
+                dist = self.conditional_distribution(
+                    evidence=evidence,
+                    with_differentiable_sampling=sampling_ctx.is_differentiable,
+                )
+                # Distribution parameters already contain batch dim, therefore sample shape is (1,)
+                if getattr(dist, "has_rsample", False):
+                    samples = dist.rsample((1,)).squeeze(0)
                 else:
-                    # Reparameterized sampling for differentiability
+                    samples = dist.sample((1,)).squeeze(0)
+            else:
+                # Sample n_samples from distribution
+                dist = self.distribution(with_differentiable_sampling=sampling_ctx.is_differentiable)
+                if getattr(dist, "has_rsample", False):
                     samples = dist.rsample((n_samples,))
+                else:
+                    samples = dist.sample((n_samples,))
 
             # repetition_index shape: (n_samples,)
             r_idx = sampling_ctx.repetition_index[instance_mask]
@@ -699,21 +732,22 @@ class LeafModule(Module, ABC):
                 c=num_channels,
             )
 
-            samples = index_tensor(
-                samples, index=r_idx, dim=-1, is_differentiable=sampling_ctx.is_differentiable
-            )
+            # Index into samples with r_idx to select the correct repetition for each sample
+            samples = index_tensor(samples, index=r_idx, dim=-1, is_differentiable=sampling_ctx.is_differentiable)
 
         if samples.shape[0] != sampling_ctx.channel_index[instance_mask].shape[0]:
             raise ValueError(
                 f"Sample shape mismatch: got {samples.shape[0]}, expected {sampling_ctx.channel_index[instance_mask].shape[0]}"
             )
 
-        if self.out_shape.channels == 1:
-            # If the output of the input module has a single channel, set the output_ids to zero since
-            # this input was broadcasted to match the channel dimension of the other inputs
-            sampling_ctx.channel_index.zero_()
-            c_idx = torch.zeros_like(c_idx)
-            # TODO: adapt for is_differentiable case
+        # if self.out_shape.channels == 1:
+        #     # If the output of the input module has a single channel, set the output_ids to zero since
+        #     # this input was broadcasted to match the channel dimension of the other inputs
+        #     sampling_ctx.channel_index.zero_()
+        #     c_idx = torch.zeros_like(c_idx)
+        #     # TODO: adapt for is_differentiable case
+        #     if sampling_ctx.is_differentiable:
+        #         raise NotImplementedError("Differentiable sampling for single-channel outputs is not implemented yet.")
 
         c_idx = c_idx[instance_mask]
         if not sampling_ctx.is_differentiable:

@@ -145,9 +145,9 @@ class IndexLeaf(LeafModule):
         """Return a value in the support of the distribution."""
         return 0.0
 
-    @property
-    def distribution(self) -> torch.distributions.Distribution:
+    def distribution(self, with_differentiable_sampling: bool = False) -> torch.distributions.Distribution:
         """Return the custom distribution that outputs scope indices."""
+        del with_differentiable_sampling
         return IndexValueDistribution(self.scope_indices, validate_args=self._validate_args)
 
     def params(self) -> dict[str, Tensor]:

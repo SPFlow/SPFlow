@@ -70,6 +70,12 @@ class Laplace(LeafModule):
     def _torch_distribution_class(self) -> type[torch.distributions.Laplace]:
         return torch.distributions.Laplace
 
+    @property
+    def _torch_distribution_class_with_differentiable_sampling(
+        self,
+    ) -> type[torch.distributions.Laplace]:
+        return torch.distributions.Laplace
+
     def params(self):
         return {"loc": self.loc, "scale": self.scale}
 

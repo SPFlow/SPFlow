@@ -56,7 +56,7 @@ def test_constructor_negative_N(out_features: int, out_channels: int, num_repeti
     """Test the constructor of a Hypergeometric distribution with negative N."""
     K, N, n = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_leaf(K=K, N=-1.0 * N, n=n).distribution
+        make_leaf(K=K, N=-1.0 * N, n=n).distribution()
 
 
 @pytest.mark.parametrize(
@@ -67,7 +67,7 @@ def test_constructor_negative_n(out_features: int, out_channels: int, num_repeti
     """Test the constructor of a Hypergeometric distribution with negative n."""
     K, N, n = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_leaf(K=K, N=N, n=-1.0 * n).distribution
+        make_leaf(K=K, N=N, n=-1.0 * n).distribution()
 
 
 @pytest.mark.parametrize(
@@ -78,7 +78,7 @@ def test_constructor_negative_K(out_features: int, out_channels: int, num_repeti
     """Test the constructor of a Hypergeometric distribution with negative K."""
     K, N, n = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_leaf(K=-1.0 * K, N=N, n=n).distribution
+        make_leaf(K=-1.0 * K, N=N, n=n).distribution()
 
 
 @pytest.mark.parametrize(
@@ -89,7 +89,7 @@ def test_constructor_n_greater_than_N(out_features: int, out_channels: int, num_
     """Test the constructor of a Hypergeometric distribution with n > N."""
     K, N, n = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_leaf(K=K, N=N, n=N + 1).distribution
+        make_leaf(K=K, N=N, n=N + 1).distribution()
 
 
 @pytest.mark.parametrize(
@@ -100,7 +100,7 @@ def test_constructor_K_greater_than_N(out_features: int, out_channels: int, num_
     """Test the constructor of a Hypergeometric distribution with K > N."""
     K, N, n = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_leaf(K=N + 1, N=N, n=n).distribution
+        make_leaf(K=N + 1, N=N, n=n).distribution()
 
 
 def test_hypergeometric_missing_parameters():
@@ -141,7 +141,7 @@ def test_align_support_mask_expands_lower_rank_mask():
     K = torch.full((1, 1, 1), 2.0)
     N = torch.full((1, 1, 1), 5.0)
     n = torch.full((1, 1, 1), 2.0)
-    distribution = make_leaf(K=K, N=N, n=n).distribution
+    distribution = make_leaf(K=K, N=N, n=n).distribution()
 
     mask = torch.tensor([[True, False]])
     data = torch.zeros((2, 2, 3))
@@ -157,7 +157,7 @@ def test_align_support_mask_raises_on_rank_mismatch():
     K = torch.full((1, 1, 1), 2.0)
     N = torch.full((1, 1, 1), 5.0)
     n = torch.full((1, 1, 1), 2.0)
-    distribution = make_leaf(K=K, N=N, n=n).distribution
+    distribution = make_leaf(K=K, N=N, n=n).distribution()
 
     mask = torch.ones((2, 2, 2), dtype=torch.bool)
     data = torch.zeros((2, 2))
@@ -170,7 +170,7 @@ def test_align_support_mask_raises_on_incompatible_shapes():
     K = torch.full((1, 1, 1), 2.0)
     N = torch.full((1, 1, 1), 5.0)
     n = torch.full((1, 1, 1), 2.0)
-    distribution = make_leaf(K=K, N=N, n=n).distribution
+    distribution = make_leaf(K=K, N=N, n=n).distribution()
 
     mask = torch.ones((2, 3), dtype=torch.bool)
     data = torch.zeros((2, 4))
@@ -188,7 +188,7 @@ def test_hypergeometric_check_support_raises_for_out_of_support_values():
 
     data = torch.tensor([[0.0, 1.0], [3.0, 5.0]])
     with pytest.raises(ValueError):
-        leaf.distribution.check_support(data)
+        leaf.distribution().check_support(data)
 
 
 def test_hypergeometric_check_support_delegates_and_returns_mask():
@@ -209,7 +209,7 @@ def test_hypergeometric_sample_accepts_int_sample_count():
     K = torch.full((1, 1, 1), 2.0)
     N = torch.full((1, 1, 1), 5.0)
     n = torch.full((1, 1, 1), 2.0)
-    distribution = make_leaf(K=K, N=N, n=n).distribution
+    distribution = make_leaf(K=K, N=N, n=n).distribution()
 
     samples = distribution.sample(7)
     assert samples.shape == (7, 1, 1, 1)

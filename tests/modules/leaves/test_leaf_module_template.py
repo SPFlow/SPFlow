@@ -41,8 +41,8 @@ class DummyLeaf(LeafModule):
     def _supported_value(self):
         return 0.0
 
-    @property
-    def distribution(self) -> torch.distributions.Distribution:
+    def distribution(self, with_differentiable_sampling: bool = False) -> torch.distributions.Distribution:
+        del with_differentiable_sampling
         return torch.distributions.Normal(self.mean, self.std)
 
     def params(self) -> dict[str, torch.Tensor]:

@@ -27,4 +27,4 @@ def make_module(rate) -> Poisson:
 def test_constructor_negative_rate(out_features: int, out_channels: int, num_repetitions: int):
     rate = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_module(rate=torch.full_like(rate, -1.0)).distribution
+        make_module(rate=torch.full_like(rate, -1.0)).distribution()

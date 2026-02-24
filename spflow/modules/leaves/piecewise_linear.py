@@ -329,13 +329,21 @@ class PiecewiseLinear(LeafModule):
         """Returns a value in the support of the distribution."""
         return 0.0
 
-    @property
-    def distribution(self) -> PiecewiseLinearDist:
-        """Returns the underlying PiecewiseLinearDist object.
+    def distribution(self, with_differentiable_sampling: bool = False) -> PiecewiseLinearDist:
+        """Return the underlying PiecewiseLinearDist object.
+
+        Args:
+            with_differentiable_sampling: Whether to request a differentiable
+                sampling distribution.
 
         Raises:
             ValueError: If the distribution has not been initialized.
         """
+        if with_differentiable_sampling:
+            raise NotImplementedError(
+                "PiecewiseLinear does not support differentiable sampling. "
+                "Use distribution(with_differentiable_sampling=False)."
+            )
         if not self.is_initialized:
             raise ValueError(
                 "PiecewiseLinear leaf has not been initialized. " "Call initialize(data, domains) first."
@@ -349,7 +357,7 @@ class PiecewiseLinear(LeafModule):
         Returns:
             Mode of the distribution.
         """
-        return self.distribution.mode
+        return self.distribution().mode
 
     def params(self) -> dict:
         """Returns the parameters of the distribution.
@@ -574,7 +582,7 @@ class PiecewiseLinear(LeafModule):
         data_q = rearrange(data_q, "n f -> n 1 f")
 
         # Compute log probabilities
-        dist = self.distribution
+        dist = self.distribution()
         log_prob = dist.log_prob(data_q)
 
         # Marginalize entries
@@ -641,7 +649,7 @@ class PiecewiseLinear(LeafModule):
         instance_mask = samples_mask.sum(1) > 0
         n_samples = instance_mask.sum()
 
-        dist = self.distribution
+        dist = self.distribution(with_differentiable_sampling=sampling_ctx.is_differentiable)
         n_samples_int = int(n_samples.item())
 
         if sampling_ctx.is_mpe:

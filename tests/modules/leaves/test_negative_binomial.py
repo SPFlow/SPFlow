@@ -77,7 +77,7 @@ def test_constructor_probs_greater_than_one(out_features: int, out_channels: int
     """Invalid probs (>1.0) trigger torch validation."""
     n, p = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_module(n=n, p=1.5 + p).distribution
+        make_module(n=n, p=1.5 + p).distribution()
 
 
 @pytest.mark.parametrize(
@@ -88,7 +88,7 @@ def test_constructor_probs_negative(out_features: int, out_channels: int, num_re
     """Invalid probs (<0.0) trigger torch validation."""
     n, p = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_module(n=n, p=p - 1.5).distribution
+        make_module(n=n, p=p - 1.5).distribution()
 
 
 @pytest.mark.parametrize(
@@ -99,7 +99,7 @@ def test_constructor_n_negative(out_features: int, out_channels: int, num_repeti
     """Negative n values are invalid."""
     n, p = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_module(n=torch.full_like(n, -10.0), p=p).distribution
+        make_module(n=torch.full_like(n, -10.0), p=p).distribution()
 
 
 def test_negative_binomial_invalid_parameter_combination():

@@ -251,8 +251,12 @@ class Histogram(LeafModule):
         """Histogram uses a custom distribution, not a torch.distributions class."""
         return None
 
-    @property
-    def distribution(self) -> HistogramDist:
+    def distribution(self, with_differentiable_sampling: bool = False) -> HistogramDist:
+        if with_differentiable_sampling:
+            raise NotImplementedError(
+                "Histogram does not support differentiable sampling. "
+                "Use distribution(with_differentiable_sampling=False)."
+            )
         return HistogramDist(
             bin_edges=self.bin_edges.to(self._logits.device), logits=self._logits, min_prob=self._min_prob
         )

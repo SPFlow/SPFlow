@@ -95,7 +95,7 @@ class TestExpectationMaximization:
             num_repetitions=1,
         )
         # Create well-behaved data from the module itself
-        data = module.distribution.sample((1000,)).squeeze(-1).squeeze(-1)
+        data = module.distribution().sample((1000,)).squeeze(-1).squeeze(-1)
 
         # Run with high max_steps, should converge early
         ll_history = expectation_maximization(module, data, max_steps=100)

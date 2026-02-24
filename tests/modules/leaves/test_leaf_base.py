@@ -31,6 +31,10 @@ class TinyLeaf(LeafModule):
 
     _torch_distribution_class = torch.distributions.Normal
 
+    @property
+    def _torch_distribution_class_with_differentiable_sampling(self):
+        return torch.distributions.Normal
+
     def __init__(
         self,
         scope: Scope,
@@ -188,7 +192,87 @@ def test_mode_property_matches_distribution_mode():
     leaf = TinyLeaf(scope=scope)
     leaf.loc.data = torch.ones_like(leaf.loc) * 1.75
 
-    torch.testing.assert_close(leaf.mode, torch.full_like(leaf.loc, 1.75))
+    torch.testing.assert_close(leaf.mode(), torch.full_like(leaf.loc, 1.75))
+
+
+def test_distribution_ignores_differentiable_flag_by_default():
+    """Base distribution implementation should keep default behavior unchanged."""
+    leaf = TinyLeaf(scope=Scope([0]), out_channels=2, num_repetitions=3)
+
+    dist_default = leaf.distribution()
+    dist_differentiable = leaf.distribution(with_differentiable_sampling=True)
+
+    torch.testing.assert_close(dist_default.loc, dist_differentiable.loc)
+    torch.testing.assert_close(dist_default.scale, dist_differentiable.scale)
+
+
+def test_distribution_raises_without_differentiable_override():
+    leaf = NoComputeLeaf(scope=Scope([0]))
+
+    with pytest.raises(NotImplementedError):
+        leaf.distribution(with_differentiable_sampling=True)
+
+
+def test_sample_forwards_is_differentiable_to_distribution(monkeypatch):
+    class DistWithRsample:
+        has_rsample = True
+
+        def sample(self, sample_shape):
+            raise AssertionError("Expected rsample() in differentiable sampling mode.")
+
+        def rsample(self, sample_shape):
+            n = int(sample_shape[0])
+            return torch.full((n, 1, 1, 1), 2.0)
+
+    leaf = TinyLeaf(scope=Scope([0]))
+    seen_flags: list[bool] = []
+
+    def fake_distribution(with_differentiable_sampling: bool = False):
+        seen_flags.append(with_differentiable_sampling)
+        return DistWithRsample()
+
+    monkeypatch.setattr(leaf, "distribution", fake_distribution)
+
+    data = torch.tensor([[float("nan")], [float("nan")]])
+    sampling_ctx = SamplingContext(
+        channel_index=torch.ones((2, 1, 1), dtype=torch.float32),
+        mask=torch.ones((2, 1), dtype=torch.bool),
+        repetition_index=torch.ones((2, 1), dtype=torch.float32),
+        is_mpe=False,
+        is_differentiable=True,
+    )
+    out = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+
+    assert seen_flags == [True]
+    assert out.shape == data.shape
+
+
+def test_sample_forwards_is_differentiable_to_conditional_distribution(monkeypatch):
+    class DistWithMode:
+        def __init__(self, batch_size: int):
+            self.mode = torch.full((batch_size, 1), 5.0)
+
+    leaf = TinyLeaf(scope=Scope(query=[0], evidence=[1]), parameter_fn=SimpleParameterNet(value=0.0))
+    seen_flags: list[bool] = []
+
+    def fake_conditional_distribution(evidence, with_differentiable_sampling: bool = False):
+        seen_flags.append(with_differentiable_sampling)
+        return DistWithMode(batch_size=evidence.shape[0])
+
+    monkeypatch.setattr(leaf, "conditional_distribution", fake_conditional_distribution)
+
+    data = torch.tensor([[float("nan"), 1.0], [float("nan"), 2.0]])
+    sampling_ctx = SamplingContext(
+        channel_index=torch.ones((2, 1, 1), dtype=torch.float32),
+        mask=torch.ones((2, 1), dtype=torch.bool),
+        repetition_index=torch.ones((2, 1), dtype=torch.float32),
+        is_mpe=True,
+        is_differentiable=True,
+    )
+    out = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+
+    assert seen_flags == [True]
+    assert out.shape == data.shape
 
 
 def test_mle_rejects_conditional_leaf():
@@ -425,7 +509,11 @@ def test_sample_conditional_mpe_raises_for_distribution_without_mode(monkeypatch
         pass
 
     leaf = TinyLeaf(scope=Scope(query=[0], evidence=[1]), parameter_fn=SimpleParameterNet(value=0.0))
-    monkeypatch.setattr(leaf, "conditional_distribution", lambda evidence: DistNoMode())
+    monkeypatch.setattr(
+        leaf,
+        "conditional_distribution",
+        lambda evidence, with_differentiable_sampling=False: DistNoMode(),
+    )
     data = torch.tensor([[float("nan"), 1.0], [float("nan"), 2.0]])
 
     with pytest.raises(UnsupportedOperationError):
@@ -442,11 +530,19 @@ def test_sample_conditional_mpe_mode_dim_variants(monkeypatch):
     data = torch.tensor([[float("nan"), 1.0], [float("nan"), 2.0]])
     leaf = TinyLeaf(scope=Scope(query=[0], evidence=[1]), parameter_fn=SimpleParameterNet(value=0.0))
 
-    monkeypatch.setattr(leaf, "conditional_distribution", lambda evidence: DistMode2D())
+    monkeypatch.setattr(
+        leaf,
+        "conditional_distribution",
+        lambda evidence, with_differentiable_sampling=False: DistMode2D(),
+    )
     out_2d = leaf.sample(data=data.clone(), is_mpe=True)
     torch.testing.assert_close(out_2d[:, 0], torch.tensor([5.0, 6.0]))
 
-    monkeypatch.setattr(leaf, "conditional_distribution", lambda evidence: DistMode3D())
+    monkeypatch.setattr(
+        leaf,
+        "conditional_distribution",
+        lambda evidence, with_differentiable_sampling=False: DistMode3D(),
+    )
     out_3d = leaf.sample(data=data.clone(), is_mpe=True)
     torch.testing.assert_close(out_3d[:, 0], torch.tensor([7.0, 8.0]))
 
@@ -462,11 +558,19 @@ def test_sample_conditional_paths_raise_for_invalid_sample_rank(monkeypatch):
     data = torch.tensor([[float("nan"), 1.0], [float("nan"), 2.0]])
     leaf = TinyLeaf(scope=Scope(query=[0], evidence=[1]), parameter_fn=SimpleParameterNet(value=0.0))
 
-    monkeypatch.setattr(leaf, "conditional_distribution", lambda evidence: DistBadModeRank())
+    monkeypatch.setattr(
+        leaf,
+        "conditional_distribution",
+        lambda evidence, with_differentiable_sampling=False: DistBadModeRank(),
+    )
     with pytest.raises(ValueError):
         leaf.sample(data=data.clone(), is_mpe=True)
 
-    monkeypatch.setattr(leaf, "conditional_distribution", lambda evidence: DistBadSampleRank())
+    monkeypatch.setattr(
+        leaf,
+        "conditional_distribution",
+        lambda evidence, with_differentiable_sampling=False: DistBadSampleRank(),
+    )
     with pytest.raises((ValueError, IndexError)):
         leaf.sample(data=data.clone(), is_mpe=False)
 

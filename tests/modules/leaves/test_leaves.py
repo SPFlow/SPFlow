@@ -9,9 +9,10 @@ from spflow.learn.expectation_maximization import expectation_maximization
 from spflow.meta import Scope
 from spflow.modules import leaves
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import evaluate_log_likelihood
 from tests.utils.leaves import make_leaf, make_data, create_conditional_parameter_fn, make_leaf_args
+from tests.utils.sampling_context_helpers import patch_simple_as_categorical_one_hot
 
 out_channels_values = [1, 3]
 out_features_values = [1, 4]
@@ -29,6 +30,15 @@ leaf_cls_values = [
     leaves.NegativeBinomial,
     leaves.Normal,
     leaves.Poisson,
+    leaves.Uniform,
+]
+differentiable_leaf_cls_values = [
+    leaves.Bernoulli,
+    leaves.Exponential,
+    leaves.Gamma,
+    leaves.Laplace,
+    leaves.LogNormal,
+    leaves.Normal,
     leaves.Uniform,
 ]
 params = list(product(leaf_cls_values, out_features_values, out_channels_values, num_repetition_values))
@@ -62,6 +72,9 @@ def test_log_likelihood(leaf_cls, out_features: int, out_channels: int, num_reps
     ),
 )
 def test_sample(leaf_cls, out_features: int, out_channels: int, num_reps, is_mpe: bool):
+    if leaf_cls == leaves.Uniform and is_mpe:
+        pytest.skip("Uniform distribution does not support MPE since the mode is not unique, skipping test.")
+
     module = make_leaf(
         leaf_cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps
     )
@@ -86,6 +99,80 @@ def test_sample(leaf_cls, out_features: int, out_channels: int, num_reps, is_mpe
 
     # Check finite
     assert torch.isfinite(samples).all()
+
+
+@pytest.mark.parametrize(
+    "leaf_cls, out_features, out_channels, num_reps, is_mpe",
+    list(
+        product(
+            leaf_cls_values, out_features_values, out_channels_values, num_repetition_values, [True, False]
+        )
+    ),
+)
+def test_diff_sampling_eq_non_diff(leaf_cls, out_features: int, out_channels: int, num_reps, is_mpe: bool, monkeypatch):
+
+    if leaf_cls == leaves.Uniform and is_mpe:
+        # Uniform distribution does not support MPE since the mode is not unique, skipping test.
+        return
+
+    module = make_leaf(
+        leaf_cls, out_channels=out_channels, out_features=out_features, num_repetitions=num_reps
+    )
+
+    # Setup sampling context
+    n_samples = 10
+    data = torch.full((n_samples, out_features), torch.nan)
+    channel_index = torch.randint(low=0, high=out_channels, size=(n_samples, out_features))
+    mask = torch.full((n_samples, out_features), True, dtype=torch.bool)
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
+    sampling_ctx = SamplingContext(
+        channel_index=channel_index,
+        mask=mask,
+        repetition_index=repetition_index,
+        is_mpe=is_mpe,
+        is_differentiable=False,
+    )
+
+    # Sample
+    torch.manual_seed(1337)
+    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+
+    # Setup diff sampling context
+    sampling_ctx_diff = SamplingContext(
+        channel_index=to_one_hot(channel_index, dim=-1, dim_size=out_channels),
+        mask=mask,
+        repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
+        is_mpe=is_mpe,
+        is_differentiable=True,
+    )
+
+    if leaf_cls not in differentiable_leaf_cls_values:
+        with pytest.raises(NotImplementedError):
+            module._sample(data=data, sampling_ctx=sampling_ctx_diff, cache=Cache())
+        return
+
+    patch_simple_as_categorical_one_hot(monkeypatch)
+
+    # Sample
+    torch.manual_seed(1337)
+    samples_diff = module._sample(data=data, sampling_ctx=sampling_ctx_diff, cache=Cache())
+
+    assert samples_diff.shape == (n_samples, out_features)
+
+    # Check finite
+    assert torch.isfinite(samples).all()
+    assert torch.isfinite(samples_diff).all()
+
+    # Check that samples are close (they won't be exactly equal due to different sampling methods, but should be close)
+    torch.testing.assert_close(samples, samples_diff, rtol=1e-6, atol=1e-6)
+    torch.testing.assert_close(
+        sampling_ctx_diff.channel_index,
+        # Convert non-diff channel ids to one-hot for comparison
+        to_one_hot(sampling_ctx.channel_index, dim=-1, dim_size=out_channels),
+        rtol=0.0,
+        atol=0.0,
+    )
+
 
 
 def _getattr_nested(obj, name):
@@ -113,7 +200,7 @@ def test_maximum_likelihood_estimation(leaf_cls, out_features: int, bias_correct
         cls=leaf_cls, out_channels=out_channels, num_repetitions=num_reps, out_features=out_features
     )
 
-    data = leaf_sampler.distribution.sample((5000,)).squeeze(-1).squeeze(-1)
+    data = leaf_sampler.distribution().sample((5000,)).squeeze(-1).squeeze(-1)
     leaf_module.maximum_likelihood_estimation(data, bias_correction=bias_correction)
 
     # Check that module and sampler params are equal
@@ -259,7 +346,7 @@ def test_constructor_nan_param(leaf_cls, out_features: int, out_channels: int, n
 
     # Construct module B with parameters of module A is initialization
     with pytest.raises(ValueError):
-        leaf_cls(scope=module_a.scope, **nan_params).distribution
+        leaf_cls(scope=module_a.scope, **nan_params).distribution()
 
 
 @pytest.mark.parametrize(
@@ -280,7 +367,7 @@ def test_constructor_inf_param(leaf_cls, out_features: int, out_channels: int, n
 
     # Construct module B with parameters of module A is initialization
     with pytest.raises(ValueError):
-        leaf_cls(scope=module_a.scope, **nan_params).distribution
+        leaf_cls(scope=module_a.scope, **nan_params).distribution()
 
 
 @pytest.mark.parametrize(
@@ -301,7 +388,7 @@ def test_constructor_neginf_param(leaf_cls, out_features: int, out_channels: int
 
     # Construct module B with parameters of module A is initialization
     with pytest.raises(ValueError):
-        leaf_cls(scope=module_a.scope, **nan_params).distribution
+        leaf_cls(scope=module_a.scope, **nan_params).distribution()
 
 
 # Conditional distribution tests

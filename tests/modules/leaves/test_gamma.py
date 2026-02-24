@@ -32,7 +32,7 @@ def make_module(concentration, rate) -> Gamma:
 def test_constructor_negative_concentration(out_features: int, out_channels: int, num_repetitions: int):
     concentration, rate = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_module(concentration=torch.full_like(concentration, -1.0), rate=rate).distribution
+        make_module(concentration=torch.full_like(concentration, -1.0), rate=rate).distribution()
 
 
 @pytest.mark.parametrize(
@@ -42,7 +42,7 @@ def test_constructor_negative_concentration(out_features: int, out_channels: int
 def test_constructor_negative_rate(out_features: int, out_channels: int, num_repetitions: int):
     concentration, rate = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_module(concentration=concentration, rate=torch.full_like(rate, -1.0)).distribution
+        make_module(concentration=concentration, rate=torch.full_like(rate, -1.0)).distribution()
 
 
 @pytest.mark.parametrize(
@@ -52,7 +52,7 @@ def test_constructor_negative_rate(out_features: int, out_channels: int, num_rep
 def test_constructor_zero_concentration(out_features: int, out_channels: int, num_repetitions: int):
     concentration, rate = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_module(concentration=torch.full_like(concentration, 0.0), rate=rate).distribution
+        make_module(concentration=torch.full_like(concentration, 0.0), rate=rate).distribution()
 
 
 @pytest.mark.parametrize(
@@ -62,7 +62,7 @@ def test_constructor_zero_concentration(out_features: int, out_channels: int, nu
 def test_constructor_zero_rate(out_features: int, out_channels: int, num_repetitions: int):
     concentration, rate = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_module(concentration=concentration, rate=torch.full_like(rate, 0.0)).distribution
+        make_module(concentration=concentration, rate=torch.full_like(rate, 0.0)).distribution()
 
 
 @pytest.mark.parametrize(

@@ -72,6 +72,12 @@ class Normal(LeafModule):
     def _torch_distribution_class(self) -> type[torch.distributions.Normal]:
         return torch.distributions.Normal
 
+    @property
+    def _torch_distribution_class_with_differentiable_sampling(
+        self,
+    ) -> type[torch.distributions.Normal]:
+        return torch.distributions.Normal
+
     def params(self):
         return {"loc": self.loc, "scale": self.scale}
 

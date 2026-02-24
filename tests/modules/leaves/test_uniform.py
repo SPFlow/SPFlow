@@ -67,7 +67,7 @@ def test_uniform_constructor_equal_bounds(out_features: int, out_channels: int, 
     """Test the constructor of a Uniform distribution with identical bounds."""
     low, _ = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_leaf(low=low, high=low).distribution
+        make_leaf(low=low, high=low).distribution()
 
 
 @pytest.mark.parametrize(
@@ -80,7 +80,7 @@ def test_uniform_constructor_low_greater_than_high(
     """Test the constructor of a Uniform distribution with low greater than high."""
     low, high = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_leaf(low=high, high=low).distribution
+        make_leaf(low=high, high=low).distribution()
 
 
 def test_uniform_non_finite_params():

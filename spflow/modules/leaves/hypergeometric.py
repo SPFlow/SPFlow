@@ -191,6 +191,10 @@ class _HypergeometricDistribution:
 
         return data
 
+    @property
+    def has_rsample(self):
+        return False
+
 
 class Hypergeometric(LeafModule):
     """Hypergeometric distribution leaf for sampling without replacement.
@@ -360,4 +364,4 @@ class Hypergeometric(LeafModule):
         Returns:
             Boolean tensor indicating which values are in support.
         """
-        return self.distribution.check_support(data)
+        return self.distribution().check_support(data)

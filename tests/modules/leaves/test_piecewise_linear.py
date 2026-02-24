@@ -88,7 +88,7 @@ class TestPiecewiseLinearInitialization:
         leaf = PiecewiseLinear(scope=scope)
 
         with pytest.raises(ValueError):
-            _ = leaf.distribution
+            _ = leaf.distribution()
 
         with pytest.raises(ValueError):
             leaf.log_likelihood(_randn(10, 1))

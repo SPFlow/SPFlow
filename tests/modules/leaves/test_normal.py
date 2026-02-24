@@ -49,7 +49,7 @@ def test_constructor_negative_scale(out_features: int, out_channels: int, num_re
     """Test the constructor of a Normal distribution with negative scale."""
     loc, scale = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_leaf(loc=loc, scale=-1.0 * scale).distribution
+        make_leaf(loc=loc, scale=-1.0 * scale).distribution()
 
 
 @pytest.mark.parametrize(
@@ -60,7 +60,7 @@ def test_constructor_zero_scale(out_features: int, out_channels: int, num_repeti
     """Test the constructor of a Normal distribution with zero scale."""
     loc, scale = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_leaf(loc=loc, scale=0.0 * scale).distribution
+        make_leaf(loc=loc, scale=0.0 * scale).distribution()
 
 
 @pytest.mark.parametrize(

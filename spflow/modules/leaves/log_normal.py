@@ -76,6 +76,12 @@ class LogNormal(LeafModule):
     def _torch_distribution_class(self) -> type[torch.distributions.LogNormal]:
         return torch.distributions.LogNormal
 
+    @property
+    def _torch_distribution_class_with_differentiable_sampling(
+        self,
+    ) -> type[torch.distributions.LogNormal]:
+        return torch.distributions.LogNormal
+
     def params(self) -> dict[str, Tensor]:
         """Returns distribution parameters."""
         return {"loc": self.loc, "scale": self.scale}

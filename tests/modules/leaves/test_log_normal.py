@@ -61,7 +61,7 @@ def test_constructor_negative_scale(out_features: int, out_channels: int, num_re
     """PyTorch validation triggers for negative scale."""
     loc, scale = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_leaf(loc=loc, scale=-1.0 * scale).distribution
+        make_leaf(loc=loc, scale=-1.0 * scale).distribution()
 
 
 @pytest.mark.parametrize(
@@ -72,7 +72,7 @@ def test_constructor_zero_scale(out_features: int, out_channels: int, num_repeti
     """PyTorch validation triggers for zero scale."""
     loc, scale = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_leaf(loc=loc, scale=0.0 * scale).distribution
+        make_leaf(loc=loc, scale=0.0 * scale).distribution()
 
 
 @pytest.mark.parametrize(
@@ -83,7 +83,7 @@ def test_constructor_nan_loc(out_features: int, out_channels: int, num_repetitio
     """PyTorch validation triggers for NaN loc."""
     loc, scale = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_leaf(loc=loc * torch.nan, scale=scale).distribution
+        make_leaf(loc=loc * torch.nan, scale=scale).distribution()
 
 
 @pytest.mark.parametrize(
@@ -94,7 +94,7 @@ def test_constructor_nan_scale(out_features: int, out_channels: int, num_repetit
     """PyTorch validation triggers for NaN scale."""
     loc, scale = make_params(out_features, out_channels, num_repetitions)
     with pytest.raises(ValueError):
-        make_leaf(loc=loc, scale=scale * torch.nan).distribution
+        make_leaf(loc=loc, scale=scale * torch.nan).distribution()
 
 
 @pytest.mark.parametrize(

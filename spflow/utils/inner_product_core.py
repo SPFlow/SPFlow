@@ -356,8 +356,8 @@ def leaf_inner_product(a: Module, b: Module) -> Tensor:
                     "PiecewiseLinear inner product currently supports continuous domains only."
                 )
 
-        dist_a = a.distribution
-        dist_b = b.distribution
+        dist_a = a.distribution()
+        dist_b = b.distribution()
         F, Ca, Cb, R = (
             a.out_shape.features,
             a.out_shape.channels,
@@ -919,9 +919,9 @@ def triple_product_tensor(
                         "PiecewiseLinear triple product currently supports continuous domains only."
                     )
 
-            dist_a = a.distribution
-            dist_b = b.distribution
-            dist_c = c.distribution
+            dist_a = a.distribution()
+            dist_b = b.distribution()
+            dist_c = c.distribution()
             F, Ca, Cb, Cc, R = (
                 a.out_shape.features,
                 a.out_shape.channels,

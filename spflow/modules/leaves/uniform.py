@@ -81,6 +81,12 @@ class Uniform(LeafModule):
         return torch.distributions.Uniform
 
     @property
+    def _torch_distribution_class_with_differentiable_sampling(
+        self,
+    ) -> type[torch.distributions.Uniform]:
+        return torch.distributions.Uniform
+
+    @property
     def mode(self) -> Tensor:
         """Returns the mode (midpoint) of the distribution."""
         return (self.low + self.high) / 2
@@ -166,3 +172,10 @@ class Uniform(LeafModule):
         cache: Cache,
     ) -> None:
         del data, bias_correction, cache
+
+
+class _Uniform(torch.distributions.Uniform):
+
+    def mode(self):
+        # We deviate from torch here, since torch returns NaN
+        raise NotImplementedError("Mode is not defined (not unique) for Uniform distributions")
