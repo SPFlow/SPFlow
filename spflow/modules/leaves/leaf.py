@@ -740,15 +740,6 @@ class LeafModule(Module, ABC):
                 f"Sample shape mismatch: got {samples.shape[0]}, expected {sampling_ctx.channel_index[instance_mask].shape[0]}"
             )
 
-        # if self.out_shape.channels == 1:
-        #     # If the output of the input module has a single channel, set the output_ids to zero since
-        #     # this input was broadcasted to match the channel dimension of the other inputs
-        #     sampling_ctx.channel_index.zero_()
-        #     c_idx = torch.zeros_like(c_idx)
-        #     # TODO: adapt for is_differentiable case
-        #     if sampling_ctx.is_differentiable:
-        #         raise NotImplementedError("Differentiable sampling for single-channel outputs is not implemented yet.")
-
         c_idx = c_idx[instance_mask]
         if not sampling_ctx.is_differentiable:
             c_idx = rearrange(c_idx, "b f -> b f 1")

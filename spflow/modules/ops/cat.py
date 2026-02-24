@@ -154,6 +154,13 @@ class Cat(Module):
             per_module = sampling_ctx.route_channel_offsets(
                 child_channel_counts=[int(module.out_shape.channels) for module in self.inputs],
             )
+            if sampling_ctx.is_differentiable:
+                ownership = torch.stack([child_mask for _, child_mask in per_module], dim=0).sum(dim=0)
+                invalid = (ownership != 1) & sampling_ctx.mask
+                if invalid.any():
+                    raise InvalidParameterError(
+                        "Cat(dim=2) differentiable routing must select exactly one child per active (batch, feature)."
+                    )
             channel_index_per_module = [pair[0] for pair in per_module]
             mask_per_module = [pair[1] for pair in per_module]
 

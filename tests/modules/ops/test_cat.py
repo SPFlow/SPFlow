@@ -239,6 +239,10 @@ def test_sample_dim2_differentiable_hard_routes_child_offsets():
     samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == (num_samples, 2)
     assert torch.isfinite(samples).all()
+    expected = torch.where(
+        channel_ids == 0, channel_ids.new_tensor(100.0), (channel_ids - 1).to(samples.dtype) * 10.0
+    )
+    torch.testing.assert_close(samples, expected.to(samples.dtype), rtol=0.0, atol=1e-3)
 
 
 def test_sample_dim2_differentiable_equals_non_diff_sampling():
@@ -309,6 +313,44 @@ def test_sample_dim2_differentiable_soft_rejected():
         hard=False,
     )
     with pytest.raises(InvalidParameterError, match="requires hard=True"):
+        module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+
+
+def test_sample_dim2_differentiable_multi_child_routing_rejected():
+    scope = Scope([0, 1])
+    num_samples = 2
+    child_a = Normal(
+        scope=scope,
+        out_channels=1,
+        num_repetitions=1,
+        loc=torch.full((2, 1, 1), 100.0),
+        scale=torch.full((2, 1, 1), 1e-6),
+    )
+    child_b = Normal(
+        scope=scope,
+        out_channels=3,
+        num_repetitions=1,
+        loc=torch.tensor([0.0, 10.0, 20.0], dtype=torch.get_default_dtype()).view(1, 3, 1).repeat(2, 1, 1),
+        scale=torch.full((2, 3, 1), 1e-6),
+    )
+    module = Cat(inputs=[child_a, child_b], dim=2)
+    data = torch.full((num_samples, 2), torch.nan)
+
+    channel_index = torch.zeros((num_samples, 2, module.out_shape.channels), dtype=torch.get_default_dtype())
+    channel_index[0, 0, 0] = 1.0
+    channel_index[0, 0, 1] = 1.0
+    channel_index[0, 1, 0] = 1.0
+    channel_index[1, 0, 0] = 1.0
+    channel_index[1, 1, 1] = 1.0
+    sampling_ctx = SamplingContext(
+        channel_index=channel_index,
+        mask=torch.ones((num_samples, 2), dtype=torch.bool),
+        repetition_index=to_one_hot(torch.zeros((num_samples,), dtype=torch.long), dim=-1, dim_size=1),
+        is_differentiable=True,
+        hard=True,
+    )
+
+    with pytest.raises(InvalidParameterError, match="select exactly one child"):
         module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
 

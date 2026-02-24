@@ -508,6 +508,50 @@ def test_route_channel_offsets_allows_out_of_range_when_masked_off():
     assert torch.equal(covered, torch.tensor([[False, True, True]], dtype=torch.bool))
 
 
+def test_route_channel_offsets_differentiable_one_hot_is_exclusive_and_normalized():
+    batch = 2
+    features = 3
+    child_channel_counts = [1, 3]
+    total_channels = sum(child_channel_counts)
+
+    channel_ids = torch.tensor([[0, 1, 2], [3, 0, 1]], dtype=torch.long)
+    ctx = SamplingContext(
+        channel_index=to_one_hot(channel_ids, dim=-1, dim_size=total_channels),
+        repetition_index=to_one_hot(torch.zeros((batch,), dtype=torch.long), dim=-1, dim_size=1),
+        mask=torch.ones((batch, features), dtype=torch.bool),
+        is_differentiable=True,
+        hard=True,
+    )
+
+    routes = ctx.route_channel_offsets(child_channel_counts=child_channel_counts)
+    assert len(routes) == 2
+    (child0_idx, child0_mask), (child1_idx, child1_mask) = routes
+
+    expected_child0_mask = channel_ids == 0
+    expected_child1_mask = channel_ids > 0
+    assert torch.equal(child0_mask, expected_child0_mask)
+    assert torch.equal(child1_mask, expected_child1_mask)
+
+    ownership = torch.stack([child0_mask, child1_mask], dim=0).sum(dim=0)
+    assert torch.equal(ownership, torch.ones_like(channel_ids))
+
+    torch.testing.assert_close(
+        child0_idx.squeeze(-1),
+        expected_child0_mask.to(dtype=child0_idx.dtype),
+        rtol=0.0,
+        atol=0.0,
+    )
+
+    expected_child1_one_hot = to_one_hot(torch.clamp(channel_ids - 1, min=0), dim=-1, dim_size=3)
+    expected_child1_idx = expected_child1_one_hot * expected_child1_mask.unsqueeze(-1).to(
+        expected_child1_one_hot.dtype
+    )
+    torch.testing.assert_close(child1_idx, expected_child1_idx, rtol=0.0, atol=0.0)
+    torch.testing.assert_close(
+        child1_idx.sum(dim=-1), expected_child1_mask.to(dtype=child1_idx.dtype), rtol=0.0, atol=0.0
+    )
+
+
 def test_validate_sampling_context_accepts_matching_context():
     ctx = SamplingContext(num_samples=4)
     ctx.validate_sampling_context(

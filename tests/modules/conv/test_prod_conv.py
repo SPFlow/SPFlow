@@ -276,8 +276,6 @@ class TestProdConvSample:
 
     @pytest.mark.parametrize("out_channels,hwk", sample_params)
     def test_sample_differentiable_equals_non_diff_sampling(self, out_channels, hwk):
-        if out_channels == 1:
-            pytest.skip("Leaf singleton-channel diff routing currently rewrites channel indices in-place.")
         height, width, kernel_h, kernel_w = hwk
         leaf = make_normal_leaf(height, width, out_channels=out_channels)
         module = ProdConv(inputs=leaf, kernel_size_h=kernel_h, kernel_size_w=kernel_w)

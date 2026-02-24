@@ -14,6 +14,7 @@ from spflow.exceptions import (
 from spflow.learn import expectation_maximization
 from spflow.learn import train_gradient_descent
 from spflow.meta import Scope
+from spflow.modules.leaves import Normal
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.products import ElementwiseProduct
@@ -778,42 +779,52 @@ def test_feature_to_scope_with_repetitions(num_reps: int):
 
 class TestDifferentiableSampling:
     def test_diff_sampling(self):
-        in_channels = 2
-        out_channels = 2
-        out_features = 4
-        num_reps = 5
+        torch.manual_seed(7)
+        n_samples = 32
+        out_features = 1
+        in_channels = 4
         sum_out_channels = 3
-        n_samples = 10
 
-        data_a = torch.full((n_samples, out_features), torch.nan)
-        channel_index = _randint(low=0, high=sum_out_channels, size=(n_samples, out_features))
+        leaf_a = Normal(scope=0, out_channels=in_channels, num_repetitions=1)
+        leaf_b = Normal(scope=0, out_channels=in_channels, num_repetitions=1)
+        module = Sum(inputs=[leaf_a, leaf_b], out_channels=sum_out_channels, num_repetitions=1)
+
+        channel_index = torch.zeros((n_samples, out_features), dtype=torch.long)
         channel_index = to_one_hot(channel_index, dim=-1, dim_size=sum_out_channels)
-        mask = torch.full((n_samples, out_features), True)
-        repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
-        repetition_index = to_one_hot(repetition_index, dim=-1, dim_size=num_reps)
-        sampling_ctx_a = SamplingContext(
-            channel_index=channel_index, mask=mask, repetition_index=repetition_index, is_differentiable=True
+        repetition_index = torch.zeros((n_samples,), dtype=torch.long)
+        repetition_index = to_one_hot(repetition_index, dim=-1, dim_size=1)
+        sampling_ctx = SamplingContext(
+            channel_index=channel_index,
+            mask=torch.full((n_samples, out_features), True),
+            repetition_index=repetition_index,
+            is_differentiable=True,
+            hard=True,
+            tau=1.0,
         )
 
-        mean = _rand((out_features, out_channels, num_reps))
-        std = _rand((out_features, out_channels, num_reps))
+        # Make `data` require grad (and be non-leaf) so in-place sampling writes
+        # are tracked via autograd's CopySlices.
+        data = torch.full((n_samples, out_features), torch.nan, requires_grad=True)
+        data = data + 0.0
 
-        normal_layer_a = make_normal_leaf(
-            out_features=out_features,
-            out_channels=in_channels,
-            num_repetitions=num_repetitions,
-            mean=mean,
-            std=std,
-        )
-        module = Sum(inputs=normal_layer_a, out_channels=sum_out_channels, num_repetitions=num_reps)
+        out = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+        assert out.requires_grad
+        assert torch.isfinite(out).all()
 
-        module._sample(
-            data=data_a,
-            sampling_ctx=sampling_ctx_a,
-            cache=Cache(),
-        )
+        loss = out.square().mean()
+        loss.backward()
 
-        pass
+        assert module.logits.grad is not None
+        assert torch.isfinite(module.logits.grad).all()
+        assert float(module.logits.grad.abs().sum()) > 0.0
+
+        for leaf in (leaf_a, leaf_b):
+            assert leaf.loc.grad is not None
+            assert leaf.log_scale.grad is not None
+            assert torch.isfinite(leaf.loc.grad).all()
+            assert torch.isfinite(leaf.log_scale.grad).all()
+            assert float(leaf.loc.grad.abs().sum()) > 0.0
+            assert float(leaf.log_scale.grad.abs().sum()) > 0.0
 
     def test_diff_sampling_equals_non_diff_sampling(self, monkeypatch: pytest.MonkeyPatch):
         in_channels = 2
