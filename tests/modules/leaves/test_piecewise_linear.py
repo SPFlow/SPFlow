@@ -33,7 +33,6 @@ class TestPiecewiseLinearInitialization:
         scope = Scope([0, 1])
         leaf = PiecewiseLinear(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
 
-        # Generate synthetic data
         data = _randn(100, 2)
         domains = [
             Domain.continuous_inf_support(),
@@ -46,15 +45,14 @@ class TestPiecewiseLinearInitialization:
         assert leaf.xs is not None
         assert leaf.ys is not None
         assert len(leaf.xs) == num_repetitions
-        assert len(leaf.xs[0]) == out_channels  # num_leaves (out_channels)
-        assert len(leaf.xs[0][0]) == 2  # num_features
+        assert len(leaf.xs[0]) == out_channels
+        assert len(leaf.xs[0][0]) == 2
 
     def test_initialization_discrete(self):
         """Test initialization with discrete data."""
         scope = Scope([0])
         leaf = PiecewiseLinear(scope=scope, out_channels=1, num_repetitions=1)
 
-        # Generate synthetic discrete data (0-9)
         data = _randint(0, 10, (100, 1)).float()
         domains = [Domain.discrete_range(0, 9)]
 
@@ -68,7 +66,6 @@ class TestPiecewiseLinearInitialization:
         scope = Scope([0, 1])
         leaf = PiecewiseLinear(scope=scope, out_channels=1, num_repetitions=1)
 
-        # Generate mixed data
         continuous_data = _randn(100, 1)
         discrete_data = _randint(0, 5, (100, 1)).float()
         data = torch.cat([continuous_data, discrete_data], dim=1)
@@ -182,7 +179,7 @@ class TestPiecewiseLinearLogLikelihood:
         test_data = _randn(20, 2)
         log_prob = leaf.log_likelihood(test_data)
 
-        # Expected shape: (batch, features, channels, leaves, repetitions)
+        # Lock this axis contract to catch silent reshaping regressions.
         assert log_prob.shape == (20, 1, 2, out_channels, num_repetitions)
 
     def test_log_likelihood_values(self):
@@ -194,11 +191,10 @@ class TestPiecewiseLinearLogLikelihood:
         domains = [Domain.continuous_inf_support()]
         leaf.initialize(data, domains)
 
-        # Test on data within the training range
         test_data = _randn(50, 1)
         log_prob = leaf.log_likelihood(test_data)
 
-        # Log probs should be finite
+        # Finite outputs guard against interpolation instabilities.
         assert torch.isfinite(log_prob).all()
 
     def test_log_likelihood_marginalization(self):
@@ -210,14 +206,13 @@ class TestPiecewiseLinearLogLikelihood:
         domains = [Domain.continuous_inf_support(), Domain.continuous_inf_support()]
         leaf.initialize(data, domains)
 
-        # Create test data with NaN (marginalized) values
+        # NaNs represent marginalized features and should not poison log-likelihoods.
         test_data = _randn(10, 2)
         test_data[0, 0] = float("nan")
         test_data[5, 1] = float("nan")
 
         log_prob = leaf.log_likelihood(test_data)
 
-        # Should still produce valid output
         assert not torch.isnan(log_prob).any()
 
     def test_log_likelihood_requires_2d_data(self):
@@ -235,14 +230,14 @@ class TestPiecewiseLinearDist:
 
     def test_log_prob(self):
         """Test log_prob computation."""
-        # Create a simple piecewise linear distribution
-        xs = [[[[torch.tensor([-1.0, 0.0, 1.0, 2.0])]]]]  # [R][L][F][C]
+        # Explicit nesting mirrors the internal [R][L][F][C] parameter layout.
+        xs = [[[[torch.tensor([-1.0, 0.0, 1.0, 2.0])]]]]
         ys = [[[[torch.tensor([0.0, 0.5, 0.5, 0.0])]]]]
         domains = [Domain.continuous_inf_support()]
 
         dist = PiecewiseLinearDist(xs, ys, domains)
 
-        x = torch.tensor([[0.5]]).unsqueeze(1)  # [N, C, F]
+        x = torch.tensor([[0.5]]).unsqueeze(1)
         log_prob = dist.log_prob(x)
 
         assert log_prob.shape == (1, 1, 1, 1, 1)
@@ -251,14 +246,13 @@ class TestPiecewiseLinearDist:
     def test_mode(self):
         """Test mode computation."""
         xs = [[[[torch.tensor([-1.0, 0.0, 1.0, 2.0])]]]]
-        ys = [[[[torch.tensor([0.0, 0.2, 0.8, 0.0])]]]]  # Mode should be at x=1.0
+        ys = [[[[torch.tensor([0.0, 0.2, 0.8, 0.0])]]]]
         domains = [Domain.continuous_inf_support()]
 
         dist = PiecewiseLinearDist(xs, ys, domains)
         mode = dist.mode
 
-        assert mode.shape == (1, 1, 1, 1)  # [C, F, L, R]
-        # Mode should be at x=1.0 (highest density)
+        assert mode.shape == (1, 1, 1, 1)
         assert torch.isclose(mode[0, 0, 0, 0], torch.tensor(1.0))
 
     def test_log_prob_accepts_5d_input(self):
@@ -268,7 +262,7 @@ class TestPiecewiseLinearDist:
         domains = [Domain.continuous_inf_support()]
         dist = PiecewiseLinearDist(xs, ys, domains)
 
-        x = torch.tensor([[[[[0.25]]]], [[[[1.5]]]]])  # [N=2, C=1, F=1, 1, 1]
+        x = torch.tensor([[[[[0.25]]]], [[[[1.5]]]]])
         log_prob = dist.log_prob(x)
 
         assert log_prob.shape == (2, 1, 1, 1, 1)
@@ -356,7 +350,6 @@ class TestPiecewiseLinearSampling:
         domains = [Domain.continuous_inf_support(), Domain.continuous_inf_support()]
         leaf.initialize(data, domains)
 
-        # Create NaN tensor for sampling
         sample_data = torch.full((10, 2), float("nan"))
         samples = leaf.sample(num_samples=10, data=sample_data)
 
@@ -431,7 +424,7 @@ class TestPiecewiseLinearInitializeBranches:
         data = torch.tensor([[0.0], [1.0], [2.0], [1.0]])
         leaf.initialize(data, [Domain.discrete_range(0, 2)])
 
-        # cluster_idx=1 gets no points; with tails this should be [0, 1/3, 1/3, 1/3, 0]
+        # Empty-cluster fallback must stay normalized even after tail padding.
         y_empty_cluster = leaf.ys[0][1][0][0]
         assert torch.isclose(y_empty_cluster[1:-1].sum(), torch.tensor(1.0), atol=1e-5)
 

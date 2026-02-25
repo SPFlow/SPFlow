@@ -10,6 +10,7 @@ from tests.utils.leaves import DummyLeaf, make_leaf
 
 @pytest.fixture
 def dummy_input_module():
+    # Keep a multi-feature/multi-channel leaf so shape wiring bugs surface.
     return make_leaf(cls=DummyLeaf, out_channels=2, out_features=3, num_repetitions=1)
 
 
@@ -26,8 +27,10 @@ def test_integral_initialization_shapes_and_scope(dummy_input_module) -> None:
     assert module.scope == dummy_input_module.scope
     assert module.in_shape == dummy_input_module.out_shape
     assert module.out_shape.features == module.in_shape.features
+    # Integrating out latent channels must collapse outputs to one channel/repetition.
     assert module.out_shape.channels == 1
     assert module.out_shape.repetitions == 1
+    # Scope mapping should be forwarded unchanged so upstream feature alignment is preserved.
     assert module.feature_to_scope.shape == dummy_input_module.feature_to_scope.shape
 
 
@@ -41,6 +44,7 @@ def test_integral_not_implemented_methods(dummy_input_module) -> None:
     )
 
     data = torch.randn(5, len(module.scope.query))
+    # Symbolic Integral nodes should fail fast until specialized implementations exist.
     with pytest.raises(NotImplementedError):
         module.log_likelihood(data)
     with pytest.raises(NotImplementedError):

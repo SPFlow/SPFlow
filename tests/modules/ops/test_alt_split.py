@@ -1,38 +1,19 @@
-from itertools import product
-
 import numpy as np
 import pytest
 import torch
 
 from spflow.exceptions import ShapeError
 from spflow.meta import Scope
-from spflow.modules.ops import SplitInterleaved
 from spflow.modules.ops import SplitConsecutive
+from spflow.modules.ops import SplitInterleaved
 from spflow.modules.products import ElementwiseProduct
-from spflow.modules.products import OuterProduct
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 
-out_channels_values = [1, 6]
-features_values_multiplier = [1, 6]
-num_splits = [2, 3]
-split_type = [SplitConsecutive, SplitInterleaved]
-params = list(product(out_channels_values, features_values_multiplier, num_splits, split_type))
 
-
-cls = [ElementwiseProduct, OuterProduct]
-
-out_channels_values = [1, 3]
-out_features_values = [2, 4]
-num_repetition_values = [1, 5]
-
-
-@pytest.mark.parametrize(
-    "cls,out_channels,out_features,num_repetitions",
-    product(cls, out_channels_values, out_features_values, num_repetition_values),
-)
-def test_split_result(cls, out_channels: int, out_features: int, num_repetitions: int):
+@pytest.mark.parametrize("num_repetitions", [1, 5])
+def test_split_result(num_repetitions: int):
     out_channels = 10
     num_features = 6
     scope = Scope(list(range(0, num_features)))
@@ -49,6 +30,7 @@ def test_split_result(cls, out_channels: int, out_features: int, num_repetitions
     leaf_half_1 = make_normal_leaf(scope=scope_1, mean=mean_1, std=std_1)
     leaf_half_2 = make_normal_leaf(scope=scope_2, mean=mean_2, std=std_2)
     split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1)
+    # Equivalent manual construction verifies even/odd routing semantics directly.
     spn1 = ElementwiseProduct(inputs=split)
     spn2 = ElementwiseProduct(inputs=[leaf_half_1, leaf_half_2])
     assert spn1.out_shape.channels == spn2.out_shape.channels
@@ -57,9 +39,6 @@ def test_split_result(cls, out_channels: int, out_features: int, num_repetitions
     ll_1 = spn1.log_likelihood(data)
     ll_2 = spn2.log_likelihood(data)
     torch.testing.assert_close(ll_1, ll_2, rtol=1e-5, atol=1e-6)
-
-
-# New tests for Phase 3 coverage improvement
 
 
 def test_split_alternate_extra_repr():
@@ -79,10 +58,9 @@ def test_split_alternate_feature_mapping():
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
     split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1)
 
-    # Split operations delegate to input's feature_to_scope
     feature_scopes = split.feature_to_scope
 
-    # Should be identical to the input's feature_to_scope
+    # Exact mapping equality protects downstream modules that index by RV identity.
     assert feature_scopes.shape == (3, 2, 1)
 
     assert np.array_equal(
@@ -90,7 +68,6 @@ def test_split_alternate_feature_mapping():
         np.array([[Scope(0), Scope(2), Scope(4)], [Scope(1), Scope(3), Scope(5)]]).reshape(3, 2, 1),
     )
 
-    # Each element should be a Scope object
     assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
 
 
@@ -117,9 +94,8 @@ def test_split_alternate_num_splits_two():
     lls = split.log_likelihood(data)
 
     assert len(lls) == 2
-    # Even indices: 0, 2, 4, 6 -> 4 features
+    # Explicit sizes pin the even/odd partition contract for alternating splits.
     assert lls[0].shape == (data.shape[0], 4, 2, 1)
-    # Odd indices: 1, 3, 5, 7 -> 4 features
     assert lls[1].shape == (data.shape[0], 4, 2, 1)
 
 
@@ -161,7 +137,7 @@ def test_split_alternate_consistency():
     lls1 = split.log_likelihood(data)
     lls2 = split.log_likelihood(data)
 
-    # Results should be identical for same input
+    # Determinism here catches accidental stateful behavior inside split kernels.
     assert len(lls1) == len(lls2)
     for ll1, ll2 in zip(lls1, lls2):
         torch.testing.assert_close(ll1, ll2, rtol=0.0, atol=0.0)
@@ -258,8 +234,8 @@ def test_split_alternate_differentiable_equals_non_diff_sampling():
         cache=Cache(),
     )
 
+    # Hard one-hot routing should be numerically equivalent to integer routing.
     torch.testing.assert_close(samples_a, samples_b, rtol=0.0, atol=1e-4)
-
 
 
 def test_split_alternate_sampling_rejects_incompatible_split_sized_context_internal_context():
@@ -288,7 +264,7 @@ def test_split_alternate_uneven_features(num_features):
     lls = split.log_likelihood(data)
 
     assert len(lls) == 2
-    # Verify split sizes
+    # Ceiling/floor balance is the key invariant for odd feature counts.
     expected_size_0 = (num_features + 1) // 2  # Ceiling division
     expected_size_1 = num_features // 2  # Floor division
     assert lls[0].shape[1] == expected_size_0
@@ -301,17 +277,13 @@ def test_split_alternate_masks_correctness():
     leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=1)
     split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1)
 
-    # Check masks
     assert len(split.split_masks) == 2
     mask_0 = split.split_masks[0]
     mask_1 = split.split_masks[1]
 
-    # mask_0 should be True for indices 0, 2, 4, 6
+    # Disjoint + full coverage is required for lossless recomposition after splitting.
     assert mask_0.sum() == 4
-    # mask_1 should be True for indices 1, 3, 5, 7
     assert mask_1.sum() == 4
 
-    # Masks should be mutually exclusive
     assert (mask_0 & mask_1).sum() == 0
-    # Together they should cover all features
     assert (mask_0 | mask_1).sum() == 8

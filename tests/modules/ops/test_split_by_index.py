@@ -33,7 +33,7 @@ class TestSplitByIndexBasic:
         scope = Scope(list(range(0, 8)))
         leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
 
-        # Split into groups of different sizes
+        # Uneven groups are common in hand-crafted structures and must validate cleanly.
         split = SplitByIndex(inputs=leaf, indices=[[0, 1], [2, 3, 4], [5, 6, 7]])
 
         assert split.num_splits == 3
@@ -44,7 +44,7 @@ class TestSplitByIndexBasic:
         scope = Scope(list(range(0, 6)))
         leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
 
-        # Non-contiguous splits
+        # Non-contiguous routing is the core capability this module adds.
         split = SplitByIndex(inputs=leaf, indices=[[0, 2, 4], [1, 3, 5]])
 
         assert split.num_splits == 2
@@ -59,6 +59,7 @@ class TestSplitByIndexValidation:
         scope = Scope(list(range(0, 6)))
         leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
 
+        # Each RV must map to exactly one split; overlaps make routing ambiguous.
         with pytest.raises(ValueError):
             SplitByIndex(inputs=leaf, indices=[[0, 1, 2], [2, 3, 4, 5]])
 
@@ -128,21 +129,17 @@ class TestSplitByIndexLogLikelihood:
         """Test that log_likelihood selects correct features."""
         scope = Scope(list(range(0, 4)))
 
-        # Create leaf with known distinct values per feature
+        # Distinct means per feature make misrouted indices immediately visible.
         mean = torch.arange(4).float().reshape(4, 1, 1)
         std = torch.ones(4, 1, 1) * 10.0
         leaf = make_normal_leaf(scope, mean=mean, std=std)
 
-        # Split with non-contiguous indices
         split = SplitByIndex(inputs=leaf, indices=[[0, 2], [1, 3]])
 
-        # Data with distinct values
         data = mean.squeeze().reshape(1, 4)
         lls = split.log_likelihood(data)
 
-        # First split should get features 0, 2
-        # Second split should get features 1, 3
-        # At the mean, log_likelihood should be highest
+        # Shape checks enforce that each group keeps exactly its assigned RVs.
         assert len(lls) == 2
         assert lls[0].shape[1] == 2  # features 0, 2
         assert lls[1].shape[1] == 2  # features 1, 3
@@ -196,7 +193,6 @@ class TestSplitByIndexMerge:
         leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
         split = SplitByIndex(inputs=leaf, indices=[[0, 1, 2], [3, 4, 5]])
 
-        # Create split indices
         batch_size = 5
         left_indices = torch.arange(3).unsqueeze(0).expand(batch_size, -1)
         right_indices = torch.arange(3, 6).unsqueeze(0).expand(batch_size, -1)
@@ -204,7 +200,6 @@ class TestSplitByIndexMerge:
         merged = split.merge_split_indices(left_indices, right_indices)
 
         assert merged.shape == (batch_size, 6)
-        # Should be [0,1,2,3,4,5] for each batch
         expected = torch.arange(6).unsqueeze(0).expand(batch_size, -1)
         assert torch.equal(merged, expected)
 
@@ -215,14 +210,12 @@ class TestSplitByIndexMerge:
         split = SplitByIndex(inputs=leaf, indices=[[0, 2], [1, 3]])
 
         batch_size = 3
-        # First split (indices 0, 2) gets values 10, 20
-        # Second split (indices 1, 3) gets values 30, 40
+        # Asymmetric values expose whether merge restores original feature order.
         first_split = torch.tensor([[10, 20], [10, 20], [10, 20]])
         second_split = torch.tensor([[30, 40], [30, 40], [30, 40]])
 
         merged = split.merge_split_indices(first_split, second_split)
 
-        # Result should be [10, 30, 20, 40] for each batch (original order: 0, 1, 2, 3)
         expected = torch.tensor([[10, 30, 20, 40], [10, 30, 20, 40], [10, 30, 20, 40]])
         assert torch.equal(merged, expected)
 
@@ -283,7 +276,7 @@ class TestSplitByIndexIntegration:
         ll = prod.log_likelihood(data)
 
         assert torch.isfinite(ll).all()
-        # OuterProduct should increase channels
+        # Channel growth confirms SplitByIndex output is structurally valid for OuterProduct.
         assert prod.out_shape.channels > split.out_shape.channels
 
     def test_gradients_flow(self):
@@ -298,6 +291,7 @@ class TestSplitByIndexIntegration:
         loss = ll.sum()
         loss.backward()
 
+        # Non-None grads verify split indexing does not detach leaf parameters.
         for param in leaf.parameters():
             if param.requires_grad:
                 assert param.grad is not None
@@ -321,7 +315,7 @@ class TestSplitByIndexProperties:
         leaf = make_normal_leaf(scope, out_channels=5, num_repetitions=3)
         split = SplitByIndex(inputs=leaf, indices=[[0, 1], [2, 3], [4, 5]])
 
-        # out_shape should match input
+        # Keeping out_shape invariant avoids downstream shape bookkeeping errors.
         assert split.out_shape.features == 6
         assert split.out_shape.channels == 5
         assert split.out_shape.repetitions == 3
@@ -344,7 +338,7 @@ class TestSplitByIndexProperties:
 
         f2s = split.feature_to_scope
         assert f2s.shape == (3, 2, 2)
-        # Second split has only 2 elements and should be padded with -1.
+        # -1 padding is a sentinel for missing slots in ragged groups.
         assert f2s[2, 1, 0] == -1
         assert f2s[2, 1, 1] == -1
 
@@ -364,6 +358,7 @@ class TestSplitByIndexSamplingContextExpansion:
         )
         out = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
         assert out.shape == (n, 4)
+        # In-place expansion keeps caller context reusable by downstream samplers.
         assert sampling_ctx.channel_index.shape == (n, 4)
         assert sampling_ctx.mask.shape == (n, 4)
 

@@ -20,6 +20,7 @@ After sampling:
 So regardless of the scope ordering, data[i] should equal i for all i in scope.
 This proves scope order doesn't affect the semantic result.
 """
+
 import itertools
 
 import pytest
@@ -114,7 +115,7 @@ class IndexLeaf(LeafModule):
             out_channels: Number of output channels.
             num_repetitions: Number of repetitions.
         """
-        # Create dummy params for initialization
+        # Base class requires parameter-shaped storage even though this test leaf is synthetic.
         dummy_param = torch.zeros(len(scope.query), out_channels, num_repetitions)
         super().__init__(
             scope=scope,
@@ -125,8 +126,7 @@ class IndexLeaf(LeafModule):
 
         self._out_features = len(scope.query)
 
-        # Create scope indices tensor: each position i contains scope.query[i]
-        # Shape: (out_features, out_channels, num_repetitions)
+        # Broadcast global feature ids across routing axes to expose index-placement bugs.
         scope_indices = (
             torch.tensor(scope.query, dtype=torch.float32)
             .view(-1, 1, 1)
@@ -184,8 +184,6 @@ def create_sampling_context(
     )
 
 
-
-
 class TestScopeOrderInvariance:
     """Tests verifying that scope order does not affect sampling results.
 
@@ -232,10 +230,9 @@ class TestScopeOrderInvariance:
             num_repetitions=num_repetitions,
         )
 
-        # Total features in data tensor (max scope index + 1)
+        # Include non-scope columns so placement is validated in global feature space.
         num_total_features = max(scope_query) + 1
 
-        # Create data tensor with NaN for all positions
         data = torch.full((num_samples, num_total_features), float("nan"))
         sampling_ctx = create_sampling_context(
             num_samples=num_samples,
@@ -243,15 +240,9 @@ class TestScopeOrderInvariance:
             out_channels=out_channels,
             num_repetitions=num_repetitions,
         )
-        # Sample from the leaf
         samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
-        # The expected behavior: data[idx] should equal idx for all idx in scope
-        # This is because:
-        # - The distribution returns scope.query[i] at feature position i
-        # - Feature position i is placed at data[scope.query[i]]
-        # So data[scope.query[i]] = scope.query[i], meaning data[idx] = idx
-
+        # Invariant: value and destination column share the same global scope index.
         for scope_idx in scope_query:
             expected_value = float(scope_idx)
             actual_value = samples[0, scope_idx].item()
@@ -260,10 +251,7 @@ class TestScopeOrderInvariance:
                 torch.full((num_samples,), expected_value),
                 rtol=0.0,
                 atol=0.0,
-            ), (
-                f"For scope {scope_query}: data[{scope_idx}] should be {expected_value}, "
-                f"got {actual_value}"
-            )
+            ), f"For scope {scope_query}: data[{scope_idx}] should be {expected_value}, got {actual_value}"
 
     def test_all_permutations_produce_same_data(self):
         """Test that ALL permutations of a scope produce identical data tensors.
@@ -281,7 +269,6 @@ class TestScopeOrderInvariance:
         num_repetitions = 1
         num_total_features = 3
 
-        # Expected result for ALL permutations
         expected = torch.tensor([[0.0, 1.0, 2.0]] * num_samples)
 
         for perm in itertools.permutations(base_scope):
@@ -302,8 +289,7 @@ class TestScopeOrderInvariance:
             samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
-                f"For permutation {list(perm)}, expected {expected[0].tolist()}, "
-                f"got {samples[0].tolist()}"
+                f"For permutation {list(perm)}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
             )
 
     def test_scope_order_with_multiple_channels(self):
@@ -334,7 +320,7 @@ class TestScopeOrderInvariance:
             samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
+                f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
             )
 
     def test_scope_order_with_multiple_repetitions(self):
@@ -365,7 +351,7 @@ class TestScopeOrderInvariance:
             samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
+                f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
             )
 
     def test_log_likelihood_always_one(self):
@@ -412,7 +398,7 @@ class TestScopeOrderInvariance:
             samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
+                f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
             )
 
     def test_mpe_sampling_with_scope_permutations(self):
@@ -443,7 +429,7 @@ class TestScopeOrderInvariance:
             samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
+                f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
             )
 
     def test_non_contiguous_scope(self):
@@ -461,7 +447,8 @@ class TestScopeOrderInvariance:
         scope = Scope(scope_query)
         leaf = IndexLeaf(scope=scope, out_channels=out_channels, num_repetitions=num_repetitions)
 
-        num_total_features = max(scope_query) + 1  # includes out-of-scope feature positions
+        # Use the full global width so untouched columns stay NaN.
+        num_total_features = max(scope_query) + 1
         data = torch.full((num_samples, num_total_features), float("nan"))
         sampling_ctx = create_sampling_context(
             num_samples=num_samples,
@@ -511,5 +498,5 @@ class TestScopeOrderInvariance:
             samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
             assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, " f"got {samples[0].tolist()}"
+                f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
             )

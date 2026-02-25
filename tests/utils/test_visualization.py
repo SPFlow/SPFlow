@@ -78,19 +78,19 @@ def simple_model():
 @patch("spflow.utils.visualization.pydot")
 def test_visualize_success(mock_pydot, simple_model, tmp_path):
     """Test successful visualization calls pydot methods."""
-    # Setup mocks
+    # Keep pydot mocked so the test validates dispatch only, not Graphviz I/O.
     mock_graph = MagicMock()
     mock_pydot.Dot.return_value = mock_graph
 
     output_path = str(tmp_path / "test_graph")
 
-    # Test different formats
+    # This guards the format->writer mapping contract used by CLI exports.
     formats = ["png", "pdf", "svg", "dot", "plain", "canon"]
     for fmt in formats:
         mock_graph.reset_mock()
         visualize(simple_model, output_path, format=fmt)
 
-        # Verify write methods called
+        # Assert the exact writer to catch regressions in output routing.
         if fmt == "png":
             mock_graph.write_png.assert_called_with(f"{output_path}.png", prog="dot")
         elif fmt == "pdf":
@@ -111,7 +111,7 @@ def test_visualize_graphviz_not_found(mock_pydot, simple_model, tmp_path):
     mock_graph = MagicMock()
     mock_pydot.Dot.return_value = mock_graph
 
-    # Mock write_png to raise FileNotFoundError (simulating missing binary)
+    # Missing Graphviz should surface as the library-specific error for callers.
     mock_graph.write_png.side_effect = FileNotFoundError("Executable not found")
 
     output_path = str(tmp_path / "test_graph")
@@ -125,7 +125,7 @@ def test_visualize_pydot_exception(mock_pydot, simple_model, tmp_path):
     mock_graph = MagicMock()
     mock_pydot.Dot.return_value = mock_graph
 
-    # Mock write_png to raise PydotException
+    # Low-level pydot failures should be normalized to GraphvizError.
     from pydot.exceptions import PydotException
 
     mock_graph.write_png.side_effect = PydotException("Error message")
@@ -152,7 +152,7 @@ def test_visualize_engine_variants(mock_pydot, simple_model, tmp_path):
     visualize(simple_model, output_path, format="png", engine="dot-lr")
 
     mock_pydot.Dot.assert_called_with(graph_type="digraph", rankdir="LR", dpi="300")
-    # Should call write_png with prog="dot" (after internal conversion)
+    # dot-lr is an alias; execution still must invoke the dot binary.
     mock_graph.write_png.assert_called_with(f"{output_path}.png", prog="dot")
 
 

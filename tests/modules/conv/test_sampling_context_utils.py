@@ -61,7 +61,9 @@ def test_upsample_sampling_context_diff_matches_non_diff() -> None:
     upsample_sampling_context(ctx_a, current_height=2, current_width=2, scale_h=2, scale_w=2)
     upsample_sampling_context(ctx_b, current_height=2, current_width=2, scale_h=2, scale_w=2)
 
+    # Boolean mask semantics should stay identical regardless of routing representation.
     assert torch.equal(ctx_a.mask, ctx_b.mask)
+    # One-hot diff path must encode the same discrete routing decisions after upsampling.
     torch.testing.assert_close(
         ctx_b.channel_index,
         to_one_hot(ctx_a.channel_index, dim=-1, dim_size=3),

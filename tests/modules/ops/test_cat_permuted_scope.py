@@ -17,8 +17,7 @@ class IndexLeaf(LeafModule):
     For testing scope order invariance: if scope.query = [7, 2, 5, 4],
     then samples[:, 0] = 7, samples[:, 1] = 2, samples[:, 2] = 5, samples[:, 3] = 4.
 
-    This allows us to easily verify that samples are placed at the correct
-    data positions regardless of scope order.
+    This makes scope-order regressions obvious because wrong routing changes values directly.
     """
 
     def __init__(
@@ -27,7 +26,7 @@ class IndexLeaf(LeafModule):
         out_channels: int = 1,
         num_repetitions: int = 1,
     ):
-        # Create dummy params matching expected shapes
+        # We only exercise sampling routing, but LeafModule still requires parameter tensors.
         num_features = len(scope) if isinstance(scope, (list, tuple)) else 1
         if isinstance(scope, Scope):
             num_features = len(scope.query)
@@ -48,7 +47,7 @@ class IndexLeaf(LeafModule):
         return 0.0
 
     def params(self):
-        # Return dummy params - not used for sampling
+        # Distribution parameters are irrelevant in this deterministic test double.
         return {"loc": torch.zeros(1), "scale": torch.ones(1)}
 
     def _compute_parameter_estimates(self, data, weights, bias_correction):
@@ -56,9 +55,8 @@ class IndexLeaf(LeafModule):
 
     @property
     def mode(self):
-        # Mode returns the scope indices themselves
+        # Returning RV ids keeps expected outputs independent of distribution math.
         indices = torch.tensor(self.scope.query, dtype=torch.float32)
-        # Shape: [out_features, out_channels, num_repetitions]
         return indices.view(-1, 1, 1).expand(-1, self.out_shape.channels, self.out_shape.repetitions)
 
     def _sample(
@@ -70,7 +68,7 @@ class IndexLeaf(LeafModule):
         """Return deterministic values based on scope indices."""
         del cache
 
-        # Find which positions need sampling (NaN and in scope)
+        # Restrict writes to unresolved variables from this leaf's scope.
         out_of_scope = [x for x in range(data.shape[1]) if x not in self.scope.query]
         marg_mask = torch.isnan(data)
         marg_mask[:, out_of_scope] = False
@@ -84,10 +82,7 @@ class IndexLeaf(LeafModule):
         if n_samples == 0:
             return data
 
-        # Place scope indices at the correct positions
-        # For each query variable in our scope, put its index value there
         for _, rv_idx in enumerate(self.scope.query):
-            # Only fill where the mask is True for this position
             mask_for_rv = samples_mask[:, rv_idx]
             data[mask_for_rv, rv_idx] = float(rv_idx)
 
@@ -104,7 +99,7 @@ class TestCatPermutedScope:
         out_channels = 1
         num_repetitions = 1
 
-        # Sequential scopes
+        # Baseline case ensures the deterministic helper itself behaves as expected.
         scope1 = [0, 1, 2, 3]
         scope2 = [4, 5, 6, 7]
 
@@ -113,7 +108,6 @@ class TestCatPermutedScope:
 
         cat = Cat(inputs=[leaf1, leaf2], dim=1)
 
-        # Sample
         data = torch.full((num_samples, num_features), float("nan"))
         channel_index = torch.zeros(num_samples, num_features, dtype=torch.long)
         mask = torch.ones(num_samples, num_features, dtype=torch.bool)
@@ -125,7 +119,7 @@ class TestCatPermutedScope:
         )
         samples = cat._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
-        # Expected: each position i should have value i
+        # Position-wise identity is the routing invariant we care about.
         expected = torch.tensor([[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]] * num_samples)
 
         assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), f"Expected {expected}, got {samples}"
@@ -137,7 +131,7 @@ class TestCatPermutedScope:
         out_channels = 1
         num_repetitions = 1
 
-        # Permuted scopes (like random evidence/query split)
+        # Mirrors evidence/query permutations that previously broke sample placement.
         scope1 = [3, 1, 6, 0]  # Evidence-like (permuted)
         scope2 = [7, 2, 5, 4]  # Query-like (permuted)
 
@@ -146,7 +140,6 @@ class TestCatPermutedScope:
 
         cat = Cat(inputs=[leaf1, leaf2], dim=1)
 
-        # Sample
         data = torch.full((num_samples, num_features), float("nan"))
         channel_index = torch.zeros(num_samples, num_features, dtype=torch.long)
         mask = torch.ones(num_samples, num_features, dtype=torch.bool)
@@ -158,8 +151,7 @@ class TestCatPermutedScope:
         )
         samples = cat._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
-        # Expected: each position i should have value i (the RV index)
-        # Position 0 -> value 0, Position 1 -> value 1, etc.
+        # If scope ordering leaks into indexing, this exact identity check fails immediately.
         expected = torch.tensor([[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]] * num_samples)
 
         assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (

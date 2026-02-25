@@ -13,6 +13,7 @@ def test_linsum_weight_shape_is_linear_vs_einsum() -> None:
     einsum = EinsumLayer(out_channels=3, inputs=inputs, num_repetitions=1)
     linsum = LinsumLayer(out_channels=3, inputs=inputs, num_repetitions=1)
 
+    # Linsum collapses pairwise channel interactions; Einsum keeps explicit left/right channel axes.
     assert len(linsum.weights_shape) == 4
     assert len(einsum.weights_shape) == 5
 

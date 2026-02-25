@@ -26,5 +26,6 @@ def test_signed_logsumexp_all_neg_inf_and_eps_branches():
     logabs_terms = torch.tensor([[-torch.inf, -torch.inf]])
     sign_terms = torch.tensor([[1, -1]], dtype=torch.int8)
     out_logabs, out_sign = signed_logsumexp(logabs_terms, sign_terms, dim=0, keepdim=True, eps=1e-8)
+    # No finite mass means the signed result should collapse to exact zero sign.
     assert torch.isneginf(out_logabs).all()
     assert torch.equal(out_sign, torch.zeros_like(out_sign))

@@ -13,10 +13,10 @@ from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 from tests.utils.sampling_context_helpers import patch_simple_as_categorical_one_hot
 
-# Test parameter combinations
+# Sweep dimensions/repetitions to catch layout-dependent regressions.
 in_channels_values = [1, 3]
 out_channels_values = [1, 4]
-in_features_values = [2, 4]  # Must be even for splitting
+in_features_values = [2, 4]  # Inputs are split in half in the equivalence construction.
 num_repetitions_values = [1, 2]
 
 params = list(product(in_channels_values, out_channels_values, in_features_values, num_repetitions_values))
@@ -42,19 +42,16 @@ class TestLinsumLayerEquivalence:
             num_repetitions=num_reps,
         )
 
-        # Create LinsumLayer
         linsum = LinsumLayer(
             inputs=[left_input, right_input], out_channels=out_channels, num_repetitions=num_reps
         )
 
-        # Create Sum(ElementwiseProduct) Equivalent
         prod_layer = ElementwiseProduct(inputs=[left_input, right_input], num_splits=2)
 
         sum_layer = Sum(inputs=prod_layer, out_channels=out_channels, num_repetitions=num_reps)
 
-        # Sync Weights
-        # Permutation: (D, O, R, C) -> (D, C, O, R)
-        # 0 -> 0 (D), 3 -> 1 (C), 1 -> 2 (O), 2 -> 3 (R)
+        # Align parameter tensors so any output mismatch reflects layer logic, not indexing layout.
+        # Linsum stores (D, O, R, C) while Sum expects (D, C, O, R).
         w_linsum = linsum.weights
         w_sum = w_linsum.permute(0, 3, 1, 2)
         sum_layer.weights = w_sum
@@ -154,13 +151,13 @@ class TestLinsumLayerEquivalence:
 class TestLinsumLayerSingleInputEquivalence:
     """Test LinsumLayer single-input (SplitConsecutive) equivalence with Sum(ElementwiseProduct(SplitConsecutive))."""
 
-    # Filter out configurations where in_channels > out_features // 2
-    # (causes ElementwiseProduct shape validation issues unrelated to LinsumLayer)
+    # Keep only valid explicit-composition shapes so failures point to Linsum semantics.
+    # Larger channel counts fail ElementwiseProduct validation for unrelated reasons.
     single_input_params = [(ic, oc, if_, nr) for ic, oc, if_, nr in params if ic <= if_ // 2]
 
     def _create_single_input_models(self, in_channels, out_channels, in_features, num_reps):
         """Helper to create equivalent models with single input and sync weights."""
-        # Create single input that will be split internally
+        # Single-leaf input exercises Linsum's internal split path against an explicit split graph.
         from spflow.modules.ops.split_consecutive import SplitConsecutive
 
         leaf = make_normal_leaf(
@@ -170,16 +167,13 @@ class TestLinsumLayerSingleInputEquivalence:
             num_repetitions=num_reps,
         )
 
-        # Create LinsumLayer with single input (uses internal SplitConsecutive)
         linsum = LinsumLayer(inputs=leaf, out_channels=out_channels, num_repetitions=num_reps)
 
-        # Create Sum(ElementwiseProduct(SplitConsecutive)) Equivalent
         split_layer = SplitConsecutive(leaf, dim=1, num_splits=2)
         prod_layer = ElementwiseProduct(inputs=split_layer, num_splits=2)
         sum_layer = Sum(inputs=prod_layer, out_channels=out_channels, num_repetitions=num_reps)
 
-        # Sync Weights
-        # LinsumLayer: (D, O, R, C) -> Sum: (D, C, O, R)
+        # Match parameter layout between implementations to isolate structural differences.
         w_linsum = linsum.weights
         w_sum = w_linsum.permute(0, 3, 1, 2)
         sum_layer.weights = w_sum

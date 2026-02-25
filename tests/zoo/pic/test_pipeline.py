@@ -31,7 +31,7 @@ class ConstantOneFunction(nn.Module):
     """Return 1 for any broadcasted z/y inputs."""
 
     def forward(self, z: Tensor, y: Tensor) -> Tensor:
-        # z, y are expected to have the same leading shape, e.g. (out_ch, in_ch, dim)
+        # Keep this strict so later shape mismatches fail near the source.
         if z.shape[:-1] != y.shape[:-1]:
             raise ValueError("z and y leading shapes must match.")
         return torch.ones(z.shape[:-1], device=z.device, dtype=z.dtype)
@@ -44,8 +44,9 @@ class NormalPICInput(Module):
         super().__init__()
         self.scope = x_scope
         self.latent_scope = z_scope
-        self.in_shape = None  # not used for symbolic PIC nodes
-        self.out_shape = None  # not used for symbolic PIC nodes
+        # Symbolic PIC leaves are placeholders until pic2qpc materialization.
+        self.in_shape = None
+        self.out_shape = None
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -68,9 +69,7 @@ class NormalPICInput(Module):
     def log_likelihood(self, data: Tensor, cache=None) -> Tensor:  # pragma: no cover
         raise NotImplementedError("NormalPICInput is symbolic; materialize to QPC with pic2qpc().")
 
-    def sample(
-        self, num_samples=None, data=None, is_mpe=False, cache=None
-    ) -> Tensor:  # pragma: no cover
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None) -> Tensor:  # pragma: no cover
         raise NotImplementedError
 
     def _sample(self, data: Tensor, sampling_ctx, cache) -> Tensor:  # pragma: no cover
@@ -104,9 +103,7 @@ class ConstantPICInput(Module):
     def log_likelihood(self, data: Tensor, cache=None) -> Tensor:  # pragma: no cover
         raise NotImplementedError("ConstantPICInput is symbolic; materialize to QPC with pic2qpc().")
 
-    def sample(
-        self, num_samples=None, data=None, is_mpe=False, cache=None
-    ) -> Tensor:  # pragma: no cover
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None) -> Tensor:  # pragma: no cover
         raise NotImplementedError
 
     def _sample(self, data: Tensor, sampling_ctx, cache) -> Tensor:  # pragma: no cover
@@ -164,7 +161,7 @@ def test_rg2pic_single_region_root_leaf_has_empty_latent():
 
 
 def test_tucker_root_materializes_to_scalar_and_matches_explicit_quadrature():
-    # RG: {0,1} -> {0} | {1}
+    # Two-child split hits the Tucker merge path at the root.
     r0 = Region(Scope([0]))
     r1 = Region(Scope([1]))
     root = Region(Scope([0, 1]))
@@ -192,7 +189,7 @@ def test_tucker_root_materializes_to_scalar_and_matches_explicit_quadrature():
     assert qpc.out_shape.channels == 1
     assert isinstance(qpc.inputs, OuterProduct)
 
-    # Numerical correctness: compare to explicit tensor-product quadrature.
+    # Regression guard against silent normalization/mixing changes in materialization.
     data = torch.tensor([[0.25, -0.5], [1.0, 0.0]])
     ll = qpc.log_likelihood(data).squeeze()  # (B,)
 
@@ -201,14 +198,14 @@ def test_tucker_root_materializes_to_scalar_and_matches_explicit_quadrature():
     ll1 = dist.log_prob(data[:, 1].unsqueeze(-1))  # (B, K)
 
     log_w = torch.log(weights)
-    # (B, K, K): log(w_i w_j) + ll0_i + ll1_j
+    # Manual tensor-product baseline keeps the expected computation transparent.
     scores = log_w.view(1, K, 1) + log_w.view(1, 1, K) + ll0.view(-1, K, 1) + ll1.view(-1, 1, K)
     expected = torch.logsumexp(scores.reshape(data.shape[0], -1), dim=-1)
     assert torch.allclose(ll, expected, atol=1e-5)
 
 
 def test_pic_sum_eq4_no_cross_channel_mixing():
-    # Two children, each outputs K channels. Sum should mix per-channel independently (Eq. 4).
+    # Eq. 4 requires channel-wise mixing; cross-channel leakage is a correctness bug.
     K = 3
     points = torch.linspace(-1, 1, K)
     rule = QuadratureRule(points=points, weights=torch.ones(K) / K)
@@ -378,7 +375,9 @@ def test_rg2pic_assigns_leaf_latent_and_attaches_metadata():
     root = Region(Scope([0]))
     rg = RegionGraph(root)
     pic = rg2pic(rg, leaf_factory=lambda x, z: _NoLatentLeaf(x))
+    # Even if leaf_factory ignores z, rg2pic should inject the assigned latent scope.
     assert getattr(pic, "latent_scope") == Scope([])
+    # Tensorized conversion relies on this breadcrumb to recover the original RG later.
     assert getattr(pic, "_region_graph") is rg
 
 
@@ -426,6 +425,7 @@ def test_rg2pic_multiple_partitions_creates_picsum():
         sum_weights_factory=lambda n: torch.tensor([0.25, 0.75]),
     )
     assert isinstance(pic, PICSum)
+    # Keep partition ordering deterministic so user-provided sum weights stay aligned.
     assert torch.allclose(pic.weights, torch.tensor([0.25, 0.75]))
 
 
@@ -503,6 +503,7 @@ def test_merge_units_cp_tucker_and_invalid_strategy():
     assert isinstance(cp_out, PICProduct)
     assert isinstance(cp_out.left, Integral)
     assert isinstance(cp_out.right, Integral)
+    # CP merges must allocate a fresh latent variable for both child integrals.
     assert cp_out.left.latent_scope == Scope([42])
 
     tucker_out = _merge_units(
@@ -572,6 +573,7 @@ def test_maybe_attach_function_group_reuses_group_by_key():
 
     assert isinstance(integral.function, FunctionGroup)
     assert integral.function is other.function
+    # Stable head indices ensure deterministic parameter reuse across matching integrals.
     assert integral.function_head_idx == 0
     assert other.function_head_idx == 1
 
@@ -614,6 +616,7 @@ def test_pic2qpc_mode_and_quadrature_validation_errors():
         pic2qpc(pic, rule, mode="tensorized", tensorized_config=TensorizedQPCConfig(leaf_type="normal"))
 
     setattr(pic, "_region_graph", object())
+    # A malformed breadcrumb should be rejected before tensorized conversion proceeds.
     with pytest.raises(StructureError):
         pic2qpc(pic, rule, mode="tensorized", tensorized_config=TensorizedQPCConfig(leaf_type="normal"))
 
@@ -688,7 +691,8 @@ def test_pic2qpc_function_group_materialization_path():
 
     i1.function_head_idx = group.add_unit(i1)
     i2.function_head_idx = group.add_unit(i2)
-    group.add_unit(i3)  # head_idx intentionally left None to exercise skip branch
+    # Missing head idx simulates partially registered groups seen during incremental builds.
+    group.add_unit(i3)
 
     pic_sum = PICSum(inputs=[i1, i2], weights=torch.tensor([0.5, 0.5]), latent_scope=Scope([2]))
     qpc = pic2qpc(pic_sum, rule)
@@ -706,13 +710,15 @@ def test_pic2qpc_integral_with_empty_integrated_scope_uses_scalar_kron_weights()
     )
     qpc = pic2qpc(integral, rule)
     assert isinstance(qpc, WeightedSum)
+    # With no integrated scope, output channels should track only the new latent quadrature axis.
     assert qpc.out_shape.channels == 3
 
 
 def test_pic2qpc_function_group_empty_units_and_zero_dim_bucket_paths():
     rule = QuadratureRule(points=torch.linspace(-1, 1, 2), weights=torch.tensor([0.5, 0.5]))
     empty_group = FunctionGroup(sharing_type="c", input_dim=2, hidden_dim=8)
-    empty_group.add_unit(object())  # non-Integral placeholder: keeps evaluate_batched valid
+    # Non-Integral placeholder ensures empty Integral buckets still evaluate safely.
+    empty_group.add_unit(object())
     child = _SelfMaterializingLeaf(
         scope=Scope([0]), latent_scope=Scope([1]), log_values=torch.log(torch.tensor([1.0, 2.0]))
     )
@@ -754,7 +760,8 @@ def test_pic2qpc_function_group_revisit_skips_already_materialized_units():
         input_module=right, latent_scope=Scope([2]), integrated_latent_scope=Scope([1]), function=group
     )
     i1.function_head_idx = group.add_unit(i1)
-    group.add_unit(i2)  # leave i2.function_head_idx unset; fallback path should still materialize i2
+    # Unset head index should not strand units when grouped nodes are revisited.
+    group.add_unit(i2)
 
     pic_sum = PICSum(inputs=[i1, i2], weights=torch.tensor([0.5, 0.5]), latent_scope=Scope([2]))
     qpc = pic2qpc(pic_sum, rule)

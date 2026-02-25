@@ -22,7 +22,7 @@ def _det_cat(scope: int, value: int) -> Categorical:
 
 
 def _joint_model_yx(weights: dict[tuple[int, int], float]) -> Sum:
-    # Variables: y at index 0, x at index 1.
+    # Keep index placement explicit because WoE APIs address targets by feature index.
     comps = []
     w_list = []
     for (y, x), w in weights.items():
@@ -32,7 +32,7 @@ def _joint_model_yx(weights: dict[tuple[int, int], float]) -> Sum:
 
 
 def test_conditional_probability_matches_manual_ratio():
-    # p(y=1,x=1)=0.45, p(y=0,x=1)=0.05 => p(y=1|x=1)=0.9
+    # Hand-computable ratio anchors this test to an interpretable conditional target.
     model = _joint_model_yx({(1, 1): 0.45, (1, 0): 0.05, (0, 1): 0.05, (0, 0): 0.45})
     evidence = torch.tensor([[torch.nan, 1.0]], dtype=torch.get_default_dtype())
     p = conditional_probability(
@@ -81,6 +81,7 @@ def test_woe_matches_manual_log_odds_difference():
         channel_agg="first",
         repetition_agg="first",
     )
+    # Swapping full/reduced evidence should negate WoE by definition.
     assert abs((w + w_rev).item()) < 1e-6
 
 
@@ -98,5 +99,7 @@ def test_woe_leave_one_out_scores_only_observed_features():
         repetition_agg="first",
     )
     assert we.shape == x_instance.shape
+    # Target label slot is unobserved (NaN) and must remain unscored.
     assert torch.isnan(we[0, 0])
+    # Observed evidence feature gets a finite leave-one-out attribution.
     assert torch.isfinite(we[0, 1])

@@ -1,5 +1,12 @@
+"""Integration/math tests for leaf-related inner/triple-product closed forms.
+
+These tests intentionally live outside `tests/modules/leaves` because they
+validate analytic math identities of composed utility operators.
+"""
+
 import math
 
+import pytest
 import torch
 
 from spflow.meta.data.scope import Scope
@@ -12,6 +19,8 @@ from spflow.modules.leaves.log_normal import LogNormal
 from spflow.modules.leaves.poisson import Poisson
 from spflow.modules.leaves.uniform import Uniform
 from spflow.utils.inner_product import inner_product_matrix, triple_product_scalar
+
+pytestmark = [pytest.mark.integration_style, pytest.mark.numerical]
 
 
 def test_exponential_inner_product_closed_form():

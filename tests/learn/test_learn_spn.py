@@ -27,8 +27,7 @@ def _rand(*size, **kwargs) -> torch.Tensor:
 
 
 def test_kmeans():
-    # simulate cluster data
-    # cluster = [_randn((100, 1))+ i*100.0 for i in range(num_cluster)]
+    # Well-separated means reduce flakiness in unsupervised partition checks.
 
     cluster_1 = _randn((100, 1)) - 20.0
     cluster_2 = _randn((100, 1)) - 10.0
@@ -36,7 +35,6 @@ def test_kmeans():
     cluster_4 = _randn((100, 1)) + 10.0
     cluster_5 = _randn((100, 1)) + 20.0
 
-    # compute clusters using k-means
     cluster_mask = cluster_by_kmeans(
         torch.vstack([cluster_1, cluster_2, cluster_3, cluster_4, cluster_5]).float(), n_clusters=5
     )
@@ -45,10 +43,11 @@ def test_kmeans():
 
 
 def make_rdc_data(n_samples=1000):
-    feature1 = _randn(n_samples)  # Normal distribution
-    feature2 = _rand(n_samples) * 4 - 2  # Uniform distribution [-2, 2]
-    feature3 = torch.distributions.Exponential(1.0).sample((n_samples,))  # Exponential distribution
-    feature4 = torch.distributions.Binomial(10, 0.5).sample((n_samples,))  # Binomial distribution
+    # Mixed marginals make RDC partitioning handle non-Gaussian feature types.
+    feature1 = _randn(n_samples)
+    feature2 = _rand(n_samples) * 4 - 2
+    feature3 = torch.distributions.Exponential(1.0).sample((n_samples,))
+    feature4 = torch.distributions.Binomial(10, 0.5).sample((n_samples,))
 
     data = torch.stack((feature1, feature2, feature3, feature4), dim=1)
     return data
@@ -57,11 +56,10 @@ def make_rdc_data(n_samples=1000):
 def test_rdc():
     from networkx import connected_components as ccnp, from_numpy_array
 
-    # Generate synthetic data
     data = make_rdc_data()
     threshold = 0.3
 
-    # Compute RDC
+    # Build the feature dependency graph explicitly to validate threshold partitioning.
     rdcs = torch.eye(data.shape[1])
     for i, j in combinations(range(data.shape[1]), 2):
         r = rdc(data[:, i], data[:, j])
@@ -82,8 +80,8 @@ def test_rdc():
 
     partitions = []
 
-    for partition_id in torch.sort(torch.unique(partition_ids), dim=-1)[0]:  # uc
-        partitions.append(torch.where(partition_ids == partition_id))  # uc
+    for partition_id in torch.sort(torch.unique(partition_ids), dim=-1)[0]:
+        partitions.append(torch.where(partition_ids == partition_id))
 
     assert len(partitions) == 4
 
@@ -93,12 +91,10 @@ def test_rdc():
     list(product([1, 2], [1, 2])),
 )
 def test_multiple_features(leaf_channel, sum_channel):
-    # Create leaf layer with Gaussian distributions
     scope = Scope(list(range(5)))
     leaf_layer = Normal(scope=scope, out_channels=leaf_channel)
 
-    # Learn SPN structure from data
-    # Construct synthetic data for demonstration with five different clusters
+    # Diverse clusters make recursive split/cluster branches more likely to trigger.
     cluster_1 = _randn(200, 5) + torch.tensor([0, 0, 0, 0, 0])
     cluster_2 = _randn(200, 5) + torch.tensor([5, 5, 5, 5, 5])
     cluster_3 = _randn(200, 5) + torch.tensor([-5, -5, -5, -5, -5])

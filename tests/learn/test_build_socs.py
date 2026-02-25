@@ -23,7 +23,7 @@ def test_build_socs_creates_compatible_components_and_signed_sums():
     assert len(model.components) == 3
     check_socs_compatibility(model)
 
-    # All sums should be converted to SignedSum when signed=True.
+    # signed=True is a contract that every sum-like node uses signed weights.
     for comp in model.components:
         assert any(isinstance(m, SignedSum) for m in comp.modules())
 
@@ -56,7 +56,7 @@ def test_build_socs_parameter_validation_and_rng_none_paths():
     unsigned = build_socs(template, num_components=2, signed=False)
     assert not any(isinstance(m, SignedSum) for c in unsigned.components for m in c.modules())
 
-    # seed=None exercises rand_like/randn_like branch in conversion.
+    # seed=None should still use stochastic conversion paths without explicit RNG.
     model = build_socs(template, num_components=2, signed=True, noise_scale=0.1, flip_prob=0.5, seed=None)
     for comp in model.components:
         assert any(isinstance(m, SignedSum) for m in comp.modules())

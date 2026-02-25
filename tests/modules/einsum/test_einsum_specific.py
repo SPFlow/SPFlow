@@ -24,5 +24,6 @@ def test_einsum_two_inputs_support_asymmetric_channels_end_to_end() -> None:
 def test_einsum_two_inputs_requires_disjoint_scopes() -> None:
     left = make_leaf(cls=DummyLeaf, out_channels=2, scope=Scope([0, 1]), num_repetitions=1)
     right = make_leaf(cls=DummyLeaf, out_channels=2, scope=Scope([1, 2]), num_repetitions=1)
+    # Overlapping scopes would violate decomposability for product-like composition.
     with pytest.raises(ValueError):
         EinsumLayer(inputs=[left, right], out_channels=2)

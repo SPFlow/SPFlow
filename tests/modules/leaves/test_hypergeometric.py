@@ -215,6 +215,22 @@ def test_hypergeometric_sample_accepts_int_sample_count():
     assert samples.shape == (7, 1, 1, 1)
 
 
+def test_hypergeometric_differentiable_distribution_rsample_is_in_support_and_finite():
+    K = torch.full((1, 1, 1), 2.0)
+    N = torch.full((1, 1, 1), 5.0)
+    n = torch.full((1, 1, 1), 2.0)
+    leaf = make_leaf(K=K, N=N, n=n)
+
+    dist = leaf.distribution(with_differentiable_sampling=True)
+    samples = dist.rsample((10,))
+
+    assert samples.shape == (10, 1, 1, 1)
+    assert torch.isfinite(samples).all()
+    assert ((samples - samples.round()).abs() == 0).all()
+    assert (samples >= 0).all()
+    assert (samples <= 2).all()
+
+
 def test_constructor_rejects_non_integer_N():
     K = torch.full((1, 1, 1), 2.0)
     N = torch.full((1, 1, 1), 5.5)

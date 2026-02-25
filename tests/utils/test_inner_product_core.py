@@ -1,3 +1,9 @@
+"""Integration/math guardrail tests for inner-product core utilities.
+
+These tests intentionally live outside `tests/modules/leaves` because they
+exercise operator-level behavior rather than leaf API contracts.
+"""
+
 import copy
 
 import pytest
@@ -22,10 +28,10 @@ from spflow.utils.inner_product_core import (
     _neg_binom_logpmf,
     inner_product_matrix,
     leaf_inner_product,
-    log_self_inner_product_scalar,
-    triple_product_scalar,
     triple_product_tensor,
 )
+
+pytestmark = pytest.mark.integration_style
 
 
 def _normal(scope: list[int], loc: float = 0.0, scale: float = 1.0) -> Normal:
@@ -151,6 +157,7 @@ def test_leaf_inner_product_piecewise_guardrails_and_short_grid():
         initialized=True,
         domains=[Domain.continuous_range(0.0, 2.0)],
     )
+    # A one-knot piecewise leaf has zero-width integration cells, so overlap mass stays zero.
     out = leaf_inner_product(single, single)
     torch.testing.assert_close(out, torch.zeros_like(out))
 
@@ -164,6 +171,7 @@ def test_leaf_inner_product_cltree_and_unsupported_branches():
 
     b = CLTree(scope=Scope([0, 1]), out_channels=1, num_repetitions=1, K=2)
     b.parents = a.parents.clone()
+    # Inner products assume identical tree structure; changing one parent breaks that invariant.
     b.parents[1] = -1 if int(a.parents[1].item()) != -1 else 0
     with pytest.raises(UnsupportedOperationError):
         leaf_inner_product(a, b)
@@ -201,28 +209,6 @@ def test_inner_product_matrix_shape_and_cat_errors():
         inner_product_matrix(c_bad, c_bad)
 
 
-def test_inner_product_matrix_product_sum_and_unsupported_paths():
-    pa = Product([_bernoulli([0], 0.2), _bernoulli([1], 0.4)])
-    pb = Product([_bernoulli([0], 0.7), _bernoulli([1], 0.6)])
-    k = inner_product_matrix(pa, pb)
-    assert k.shape == (1, 1, 1, 1)
-    assert torch.isfinite(k).all()
-
-    sa = Sum(inputs=[_bernoulli([0], 0.3), _bernoulli([0], 0.8)], weights=torch.tensor([[[[0.2]], [[0.8]]]]))
-    sb = Sum(inputs=[_bernoulli([0], 0.5), _bernoulli([0], 0.9)], weights=torch.tensor([[[[0.6]], [[0.4]]]]))
-    ks = inner_product_matrix(sa, sb)
-    assert ks.shape == (1, 1, 1, 1)
-    assert torch.isfinite(ks).all()
-
-    with pytest.raises(UnsupportedOperationError):
-        inner_product_matrix(_normal([0]), sa)
-
-
-def test_log_self_inner_product_scalar_shape_guard():
-    with pytest.raises(ShapeError):
-        log_self_inner_product_scalar(_bernoulli([0, 1]))
-
-
 def test_triple_product_cache_symmetry_and_memo_creation():
     a = _bernoulli([0], 0.2)
     b = _bernoulli([0], 0.8)
@@ -230,7 +216,9 @@ def test_triple_product_cache_symmetry_and_memo_creation():
     cache = Cache()
     t_ab = triple_product_tensor(a, b, c, cache=cache)
     t_ba = triple_product_tensor(b, a, c, cache=cache)
+    # Swapping first two arguments should only transpose channel axes, not change values.
     torch.testing.assert_close(t_ab, t_ba.permute(0, 2, 1, 3, 4))
+    # Regression guard: memo table is stored in extras so repeated calls can reuse sub-results.
     assert "_triple_product_memo" in cache.extras
 
 
@@ -314,57 +302,6 @@ def test_triple_product_leaf_and_piecewise_guardrails():
         triple_product_tensor(_normal([0]), _bernoulli([0]), _bernoulli([0]))
 
 
-def test_triple_product_cat_product_sum_and_fallback_paths():
-    prod_a = Product([_bernoulli([0], 0.2), _bernoulli([1], 0.4)])
-    prod_b = Product([_bernoulli([0], 0.5), _bernoulli([1], 0.6)])
-    prod_c = Product([_bernoulli([0], 0.7), _bernoulli([1], 0.8)])
-    tp = triple_product_tensor(prod_a, prod_b, prod_c)
-    assert tp.shape == (1, 1, 1, 1, 1)
-    assert torch.isfinite(tp).all()
-
-    sum_a = Sum(
-        inputs=[_bernoulli([0], 0.2), _bernoulli([0], 0.8)],
-        weights=torch.tensor([[[[0.3]], [[0.7]]]]),
-    )
-    sum_b = Sum(
-        inputs=[_bernoulli([0], 0.5), _bernoulli([0], 0.6)],
-        weights=torch.tensor([[[[0.4]], [[0.6]]]]),
-    )
-    sum_c = Sum(
-        inputs=[_bernoulli([0], 0.1), _bernoulli([0], 0.9)],
-        weights=torch.tensor([[[[0.2]], [[0.8]]]]),
-    )
-    ts = triple_product_tensor(sum_a, sum_b, sum_c)
-    assert ts.shape == (1, 1, 1, 1, 1)
-    assert torch.isfinite(ts).all()
-
-    c0 = Cat(inputs=[_bernoulli([0]), _bernoulli([0])], dim=2)
-    c1 = copy.deepcopy(c0)
-    c2 = copy.deepcopy(c0)
-    c1.dim = 1
-    with pytest.raises(ShapeError):
-        triple_product_tensor(c0, c1, c2)
-
-    d0 = Cat(inputs=[_bernoulli([0, 1])], dim=1)
-    d1 = Cat(inputs=[_bernoulli([0]), _bernoulli([1])], dim=1)
-    d2 = Cat(inputs=[_bernoulli([0]), _bernoulli([1])], dim=1)
-    with pytest.raises(ShapeError):
-        triple_product_tensor(d0, d1, d2)
-
-    c_bad = copy.deepcopy(c0)
-    c_bad.dim = 3
-    with pytest.raises(UnsupportedOperationError):
-        triple_product_tensor(c_bad, c_bad, c_bad)
-
-    with pytest.raises(UnsupportedOperationError):
-        triple_product_tensor(_normal([0]), sum_b, sum_c)
-
-
-def test_triple_product_scalar_shape_guard():
-    with pytest.raises(ShapeError):
-        triple_product_scalar(_bernoulli([0, 1]), _bernoulli([0]), _bernoulli([0]))
-
-
 def test_private_neg_binom_logpmf_matches_torch():
     ks = torch.arange(0, 6, dtype=torch.float64)
     r = torch.tensor(3.0, dtype=torch.float64)
@@ -381,29 +318,6 @@ def test_inner_product_product_cache_write_branch():
     k1 = inner_product_matrix(pa, pb, cache=cache)
     k2 = inner_product_matrix(pa, pb, cache=cache)
     torch.testing.assert_close(k1, k2)
-
-
-def test_triple_product_leaf_normal_and_categorical_happy_paths():
-    na = _normal([0], loc=0.1, scale=0.7)
-    nb = _normal([0], loc=-0.2, scale=1.1)
-    nc = _normal([0], loc=0.4, scale=0.9)
-    tn = triple_product_tensor(na, nb, nc)
-    assert tn.shape == (1, 1, 1, 1, 1)
-    assert torch.isfinite(tn).all()
-    assert float(tn[0, 0, 0, 0, 0].item()) > 0.0
-
-    c1 = Categorical(
-        scope=Scope([0]), out_channels=1, num_repetitions=1, K=3, probs=torch.tensor([[[[0.1, 0.3, 0.6]]]])
-    )
-    c2 = Categorical(
-        scope=Scope([0]), out_channels=1, num_repetitions=1, K=3, probs=torch.tensor([[[[0.5, 0.25, 0.25]]]])
-    )
-    c3 = Categorical(
-        scope=Scope([0]), out_channels=1, num_repetitions=1, K=3, probs=torch.tensor([[[[0.2, 0.4, 0.4]]]])
-    )
-    tc = triple_product_tensor(c1, c2, c3)
-    expected = torch.sum(c1.probs.to(torch.float64) * c2.probs.to(torch.float64) * c3.probs.to(torch.float64))
-    torch.testing.assert_close(tc[0, 0, 0, 0, 0], expected, rtol=0.0, atol=0.0)
 
 
 def test_triple_product_cache_direct_hit_and_cache_write_paths():

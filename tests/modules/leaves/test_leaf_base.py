@@ -304,42 +304,34 @@ def test_sample_accepts_column_vector_repetition_index(is_mpe: bool):
 
 def test_feature_to_scope():
     """Test feature_to_scope property returns correct array of Scope objects."""
-    # Test with 3 features and 2 repetitions
     scope = Scope([0, 1, 2])
     leaf = TinyLeaf(scope=scope, out_channels=3, num_repetitions=2)
 
     feature_scopes = leaf.feature_to_scope
 
-    # Validate shape equals (3, 2)
     assert feature_scopes.shape == (3, 2), f"Expected shape (3, 2), got {feature_scopes.shape}"
 
-    # Validate all elements are Scope objects
     for i in range(3):
         for j in range(2):
-            assert isinstance(
-                feature_scopes[i, j], Scope
-            ), f"Element at ({i}, {j}) is not a Scope object, got {type(feature_scopes[i, j])}"
+            assert isinstance(feature_scopes[i, j], Scope), (
+                f"Element at ({i}, {j}) is not a Scope object, got {type(feature_scopes[i, j])}"
+            )
 
-    # Validate each feature maps to correct single-element scope
-    # Feature 0 should map to Scope([0])
-    assert feature_scopes[0, 0] == Scope(
-        [0]
-    ), f"Feature 0 should map to Scope([0]), got {feature_scopes[0, 0]}"
-    # Feature 1 should map to Scope([1])
-    assert feature_scopes[1, 0] == Scope(
-        [1]
-    ), f"Feature 1 should map to Scope([1]), got {feature_scopes[1, 0]}"
-    # Feature 2 should map to Scope([2])
-    assert feature_scopes[2, 0] == Scope(
-        [2]
-    ), f"Feature 2 should map to Scope([2]), got {feature_scopes[2, 0]}"
+    assert feature_scopes[0, 0] == Scope([0]), (
+        f"Feature 0 should map to Scope([0]), got {feature_scopes[0, 0]}"
+    )
+    assert feature_scopes[1, 0] == Scope([1]), (
+        f"Feature 1 should map to Scope([1]), got {feature_scopes[1, 0]}"
+    )
+    assert feature_scopes[2, 0] == Scope([2]), (
+        f"Feature 2 should map to Scope([2]), got {feature_scopes[2, 0]}"
+    )
 
-    # Validate all repetitions have identical scope mappings
     for i in range(3):
         for j in range(1, 2):
-            assert (
-                feature_scopes[i, 0] == feature_scopes[i, j]
-            ), f"Feature {i} has different scopes across repetitions: {feature_scopes[i, 0]} vs {feature_scopes[i, j]}"
+            assert feature_scopes[i, 0] == feature_scopes[i, j], (
+                f"Feature {i} has different scopes across repetitions: {feature_scopes[i, 0]} vs {feature_scopes[i, j]}"
+            )
 
 
 def test_feature_to_scope_single_repetition():
@@ -349,10 +341,8 @@ def test_feature_to_scope_single_repetition():
 
     feature_scopes = leaf.feature_to_scope
 
-    # Shape should be (3, 1)
     assert feature_scopes.shape == (3, 1)
 
-    # Validate mapping for non-contiguous scope
     assert feature_scopes[0, 0] == Scope([5])
     assert feature_scopes[1, 0] == Scope([10])
     assert feature_scopes[2, 0] == Scope([15])
@@ -365,10 +355,8 @@ def test_feature_to_scope_single_feature():
 
     feature_scopes = leaf.feature_to_scope
 
-    # Shape should be (1, 3)
     assert feature_scopes.shape == (1, 3)
 
-    # All repetitions should map to Scope([42])
     for j in range(3):
         assert feature_scopes[0, j] == Scope([42])
 
@@ -381,10 +369,8 @@ def test_feature_to_scope_many_repetitions():
 
     feature_scopes = leaf.feature_to_scope
 
-    # Shape should be (2, 5)
     assert feature_scopes.shape == (2, num_repetitions)
 
-    # Verify consistency across all repetitions
     for rep_idx in range(num_repetitions):
         assert feature_scopes[0, rep_idx] == Scope([0])
         assert feature_scopes[1, rep_idx] == Scope([1])
@@ -399,13 +385,11 @@ def test_feature_to_scope_array_type():
 
     feature_scopes = leaf.feature_to_scope
 
-    # Verify it's a numpy array
     assert isinstance(feature_scopes, np.ndarray), f"Expected np.ndarray, got {type(feature_scopes)}"
 
-    # Verify dtype is object (since it contains Scope objects)
-    assert (
-        feature_scopes.dtype == object or feature_scopes.dtype == Scope
-    ), f"Expected dtype object or Scope, got {feature_scopes.dtype}"
+    assert feature_scopes.dtype == object or feature_scopes.dtype == Scope, (
+        f"Expected dtype object or Scope, got {feature_scopes.dtype}"
+    )
 
 
 def test_inputs_setter_raises_attribute_error():
@@ -553,7 +537,8 @@ def test_sample_conditional_paths_raise_for_invalid_sample_rank(monkeypatch):
 
     class DistBadSampleRank:
         def sample(self, sample_shape):
-            return torch.ones((1, 2, 1))  # squeeze(0) -> (2, 1), not 4D
+            # Return a rank that must trip defensive shape checks in sampling.
+            return torch.ones((1, 2, 1))
 
     data = torch.tensor([[float("nan"), 1.0], [float("nan"), 2.0]])
     leaf = TinyLeaf(scope=Scope(query=[0], evidence=[1]), parameter_fn=SimpleParameterNet(value=0.0))

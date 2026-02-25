@@ -37,6 +37,7 @@ def test_convpc_apc_encode_decode_and_likelihood_shapes():
 
     ll_joint = encoder.joint_log_likelihood(x, z)
     ll_x = encoder.log_likelihood_x(x)
+    # Per-sample vectors are expected by APC objectives that combine these terms.
     assert ll_joint.shape == (5,)
     assert ll_x.shape == (5,)
     assert torch.isfinite(ll_joint).all()
@@ -71,10 +72,12 @@ def test_convpc_apc_decode_fill_evidence_keeps_observed_entries():
 
     x_rec = encoder.decode(z, x=x_partial, fill_evidence=True)
     observed = torch.isfinite(x_partial)
+    # Evidence fill should be imputation-only; observed values are invariants.
     assert torch.equal(x_rec[observed], x_partial[observed].to(x_rec.dtype))
 
 
 def test_convpc_reference_allows_latent_dim_mismatch_via_packing():
+    # Reference mode packs/unpacks latents, so strict width matching is intentionally relaxed.
     encoder = ConvPcJointEncoder(
         input_height=4,
         input_width=4,
@@ -95,6 +98,7 @@ def test_convpc_reference_allows_latent_dim_mismatch_via_packing():
 
 
 def test_convpc_legacy_requires_matching_latent_dim_for_injection_depth():
+    # Legacy mode keeps the old strict contract to avoid silently changing historical behavior.
     with pytest.raises(InvalidParameterError, match="latent_dim must match the feature count"):
         ConvPcJointEncoder(
             input_height=4,

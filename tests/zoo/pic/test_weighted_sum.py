@@ -95,7 +95,8 @@ class TestWeightedSumInit:
     def test_init_1d_weights(self):
         """Test initialization with 1D weights (broadcasts to 4D)."""
         leaf = Normal(scope=Scope([0]), out_channels=4)
-        weights = torch.ones(4)  # Will become (1, 4, 1, 1)
+        # 1D inputs are a public convenience API; keep broadcast behavior stable.
+        weights = torch.ones(4)
 
         ws = WeightedSum(inputs=leaf, weights=weights)
 
@@ -104,7 +105,8 @@ class TestWeightedSumInit:
     def test_init_2d_weights(self):
         """Test initialization with 2D weights."""
         leaf = Normal(scope=Scope([0]), out_channels=3)
-        weights = torch.ones(3, 2)  # Will become (1, 3, 2, 1)
+        # 2D weights should still map to the canonical internal rank-4 layout.
+        weights = torch.ones(3, 2)
 
         ws = WeightedSum(inputs=leaf, weights=weights)
 
@@ -114,11 +116,12 @@ class TestWeightedSumInit:
         """Test initialization with multiple inputs (will be concatenated)."""
         leaf1 = Normal(scope=Scope([0]), out_channels=2)
         leaf2 = Normal(scope=Scope([0]), out_channels=2)
-        weights = torch.ones(1, 4, 1, 1)  # 4 = 2 + 2 (concatenated)
+        # Channel counts must add across inputs because PIC sums concatenate first.
+        weights = torch.ones(1, 4, 1, 1)
 
         ws = WeightedSum(inputs=[leaf1, leaf2], weights=weights)
 
-        assert ws.in_shape.channels == 4  # Concatenated
+        assert ws.in_shape.channels == 4
 
     def test_init_empty_inputs_raises(self):
         """Test that empty inputs raises ValueError."""
@@ -130,7 +133,7 @@ class TestWeightedSumInit:
         from spflow.exceptions import ShapeError
 
         leaf = Normal(scope=Scope([0]), out_channels=2)
-        weights = torch.ones(1, 1, 1, 1, 1)  # 5D
+        weights = torch.ones(1, 1, 1, 1, 1)
 
         with pytest.raises(ShapeError):
             WeightedSum(inputs=leaf, weights=weights)
@@ -145,7 +148,8 @@ class TestWeightedSumInit:
     def test_init_3d_weights_and_feature_broadcast(self):
         """Test 3D weight expansion plus feature broadcasting."""
         leaf = Normal(scope=Scope([0, 1]), out_channels=2)
-        weights = torch.ones(1, 2, 3)  # (1, IC, OC) -> unsqueeze + repeat over 2 features
+        # Feature broadcast matters for shared quadrature weights across variables.
+        weights = torch.ones(1, 2, 3)
         ws = WeightedSum(inputs=leaf, weights=weights)
         assert ws.weights.shape == (2, 2, 3, 1)
 
@@ -186,21 +190,21 @@ class TestWeightedSumNoNormalization:
 
         ws = WeightedSum(inputs=leaf, weights=weights)
 
-        # Weights should NOT be normalized to sum to 1 per channel
+        # Regression guard: QPC uses raw quadrature weights, not probability normalization.
         assert torch.allclose(ws.weights, weights)
-        # These weights don't sum to 1 and that should be fine
+        # Non-unit sums are expected for numerical integration rules.
         assert not torch.allclose(ws.weights.sum(dim=1), torch.ones(1, 1, 1))
 
     def test_unnormalized_weights_allowed(self):
         """Test that quadrature-style weights (not summing to 1) work."""
         leaf = Normal(scope=Scope([0]), out_channels=5)
-        # Quadrature weights example (e.g., Gauss-Legendre)
+        # Integration weights commonly sum to domain length, not to 1.
         quadrature_weights = torch.tensor([0.2369, 0.4786, 0.5688, 0.4786, 0.2369])
         ws_weights = quadrature_weights.view(1, 5, 1, 1)
 
         ws = WeightedSum(inputs=leaf, weights=ws_weights)
 
-        # These sum to ~2.0, not 1.0, and should be preserved
+        # Keep the original mass so integral scaling is numerically correct.
         assert torch.allclose(ws.weights.sum(), torch.tensor(2.0), atol=0.01)
 
     def test_log_weights_is_log_of_raw(self):
@@ -216,7 +220,8 @@ class TestWeightedSumNoNormalization:
     def test_log_weights_allows_structural_zeros(self):
         """Test that structural zeros produce -inf log-weights (needed for sparse mixing matrices)."""
         leaf = Normal(scope=Scope([0]), out_channels=3)
-        weights = torch.tensor([1.0, 0.0, 2.0]).view(1, 3, 1, 1)  # (F, IC, OC, R)
+        # Structural zeros encode impossible routes and must survive as -inf in log-space.
+        weights = torch.tensor([1.0, 0.0, 2.0]).view(1, 3, 1, 1)
 
         ws = WeightedSum(inputs=leaf, weights=weights)
 
@@ -229,20 +234,19 @@ class TestWeightedSumLogLikelihood:
     def test_log_likelihood_shape(self):
         """Test log-likelihood output shape."""
         leaf = Normal(scope=Scope([0, 1]), out_channels=3)
-        weights = torch.ones(2, 3, 2, 1)  # 2 features, 3 in_channels, 2 out_channels
+        weights = torch.ones(2, 3, 2, 1)
 
         ws = WeightedSum(inputs=leaf, weights=weights)
 
-        data = torch.randn(10, 2)  # batch=10, features=2
+        data = torch.randn(10, 2)
         ll = ws.log_likelihood(data)
 
-        assert ll.shape == (10, 2, 2, 1)  # (batch, features, out_channels, repetitions)
+        assert ll.shape == (10, 2, 2, 1)
 
     def test_log_likelihood_uses_raw_weights(self):
         """Test that log-likelihood uses unnormalized weights."""
-        # Create simple setup
         leaf = Normal(scope=Scope([0]), out_channels=1)
-        # Weight of 2.0 (not normalized)
+        # Using weight 2.0 verifies log-likelihood adds log(weight) directly.
         weights = torch.tensor([[[[2.0]]]])
 
         ws = WeightedSum(inputs=leaf, weights=weights)
@@ -250,7 +254,6 @@ class TestWeightedSumLogLikelihood:
         data = torch.tensor([[0.0]])
         ll = ws.log_likelihood(data)
 
-        # log(2 * p(x)) = log(2) + log(p(x))
         leaf_ll = leaf.log_likelihood(data)
         expected = torch.logsumexp(leaf_ll.unsqueeze(3) + torch.log(weights), dim=2)
 
@@ -282,7 +285,7 @@ class TestWeightedSumSetWeights:
         ws = WeightedSum(inputs=leaf, weights=weights)
 
         with pytest.raises(ShapeError):
-            ws.weights = torch.ones(1, 2, 1, 1)  # Wrong shape
+            ws.weights = torch.ones(1, 2, 1, 1)
 
 
 class TestWeightedSumSamplingAndMarginalize:
@@ -302,6 +305,7 @@ class TestWeightedSumSamplingAndMarginalize:
         inp = DummyInput(feature_to_scope=f2s, channels=1, repetitions=1)
         ws = WeightedSum(inputs=inp, weights=torch.ones(1, 1, 1, 1))
         data = torch.zeros(2, 1)
+        # Bypass decorators to hit the raw cache=None branch directly.
         ll = WeightedSum.log_likelihood.__wrapped__(ws, data, cache=None)
         assert ll.shape == (2, 1, 1, 1)
 
@@ -358,6 +362,7 @@ class TestWeightedSumSamplingAndMarginalize:
             mask=torch.ones((2, 2), dtype=torch.bool),
             repetition_index=torch.zeros(2, dtype=torch.long),
         )
+        # Corrupt internal state to verify explicit shape checks catch inconsistent contexts.
         sampling_ctx._mask = torch.ones((2, 1), dtype=torch.bool)  # type: ignore[attr-defined]
         with pytest.raises(InvalidParameterError, match="mismatched channel_index/mask shapes"):
             ws._sample(data=torch.full((2, 2), float("nan")), sampling_ctx=sampling_ctx, cache=Cache())
@@ -384,6 +389,7 @@ class TestWeightedSumSamplingAndMarginalize:
         ws = WeightedSum(inputs=inp, weights=torch.ones(1, 1, 1, 1))
         marg = ws.marginalize([2])
         assert isinstance(marg, WeightedSum)
+        # No-overlap should be a structural no-op, not a child clone/rebuild.
         assert marg.inputs is inp
 
     def test_marginalize_partial_with_consistent_masks(self):

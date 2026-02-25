@@ -13,6 +13,7 @@ def test_learn_hclt_binary_builds_and_scores() -> None:
     model = learn_hclt_binary(data, num_hidden_cats=3, num_trees=2, init="uniform")
     ll = model.log_likelihood(data)
 
+    # HCLT learner returns a single-root density model with scalar log-likelihood per sample.
     assert tuple(ll.shape) == (32, 1, 1, 1)
 
 
@@ -49,6 +50,7 @@ def test_hclt_input_validation_errors(fn) -> None:
     with pytest.raises(ShapeError):
         fn(data.unsqueeze(0), num_hidden_cats=2)
     with pytest.raises(InvalidParameterError):
+        # NaNs should be rejected early because MI estimation cannot recover from them.
         fn(data.masked_fill(torch.eye(8, 4, dtype=torch.bool), float("nan")), num_hidden_cats=2)
     with pytest.raises(InvalidParameterError):
         fn(data, num_hidden_cats=2, init="bad-init")

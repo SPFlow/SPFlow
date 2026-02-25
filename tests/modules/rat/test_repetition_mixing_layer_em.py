@@ -14,7 +14,7 @@ from spflow.utils.cache import Cache, cached
 from tests.utils.leaves import CachingDummyInput
 
 
-# Test parameters
+# Tiny sweep is enough to cover shape-dependent EM branches.
 in_channels_values = [2, 4]
 num_repetitions_values = [2, 3]
 out_features_values = [1, 2]
@@ -33,22 +33,19 @@ class TestRepetitionMixingLayerEMBasic:
         )
         layer = RepetitionMixingLayer(inputs=inputs, out_channels=in_channels, num_repetitions=num_reps)
 
-        # Store original weights
         original_weights = layer.weights.clone()
 
-        # Run forward pass to populate cache
         data = torch.randn(50, out_features)
         cache = Cache()
         ll = layer.log_likelihood(data, cache=cache)
 
-        # Set gradient for module_lls (simulating EM upward pass)
+        # Simulate parent responsibilities so this test isolates local EM math.
         cache["log_likelihood"][layer].grad = torch.ones_like(cache["log_likelihood"][layer])
 
-        # Run EM with mocked leaf EM to avoid propagation issues
+        # Mock child updates to keep the assertion focused on layer weights.
         with patch.object(inputs, "_expectation_maximization_step"):
             layer._expectation_maximization_step(data, cache=cache)
 
-        # Check weights changed (always possible since sum_dim sums over repetitions)
         assert not torch.allclose(layer.weights, original_weights, rtol=0.0, atol=0.0)
 
     @pytest.mark.parametrize("in_channels", in_channels_values)
@@ -58,18 +55,16 @@ class TestRepetitionMixingLayerEMBasic:
         inputs = CachingDummyInput(out_channels=in_channels, num_repetitions=num_reps)
         layer = RepetitionMixingLayer(inputs=inputs, out_channels=in_channels, num_repetitions=num_reps)
 
-        # Run forward pass and EM
         data = torch.randn(50, 1)
         cache = Cache()
         ll = layer.log_likelihood(data, cache=cache)
 
-        # Set gradient
         cache["log_likelihood"][layer].grad = torch.ones_like(cache["log_likelihood"][layer])
 
         with patch.object(inputs, "_expectation_maximization_step"):
             layer._expectation_maximization_step(data, cache=cache)
 
-        # Check weights still sum to 1 over sum_dim (repetitions)
+        # EM must keep normalized mixing weights over the repetition axis.
         weights_sum = layer.weights.sum(dim=layer.sum_dim)
         torch.testing.assert_close(weights_sum, torch.ones_like(weights_sum), rtol=1e-5, atol=1e-5)
 
@@ -85,7 +80,7 @@ class TestRepetitionMixingLayerEMErrors:
         data = torch.randn(10, 1)
         cache = Cache()
 
-        # Add module lls but not input lls
+        # Missing child likelihoods should fail fast instead of silently skipping EM.
         cache["log_likelihood"][layer] = torch.zeros(10, 1, 2, 1)
 
         with pytest.raises(ValueError):
@@ -99,7 +94,7 @@ class TestRepetitionMixingLayerEMErrors:
         data = torch.randn(10, 1)
         cache = Cache()
 
-        # Add input lls but not module lls
+        # Missing parent likelihoods should fail fast for the same reason.
         cache["log_likelihood"][inputs] = torch.zeros(10, 1, 2, 2)
 
         with pytest.raises(ValueError):
@@ -129,7 +124,6 @@ class TestRepetitionMixingLayerEMPropagation:
         cache = Cache()
         ll = layer.log_likelihood(data, cache=cache)
 
-        # Set gradient
         cache["log_likelihood"][layer].grad = torch.ones_like(cache["log_likelihood"][layer])
 
         with patch.object(inputs, "_expectation_maximization_step") as mock_em:
@@ -152,8 +146,7 @@ class TestRepetitionMixingLayerEMIntegration:
         data = torch.randn(50, 1)
         ll_history = expectation_maximization(layer, data, max_steps=3)
 
-        # Check that EM ran for expected steps
         assert len(ll_history) >= 1
 
-        # Check that the log-likelihoods are finite
+        # Finite history confirms the full EM loop stayed numerically stable.
         assert torch.isfinite(ll_history).all()

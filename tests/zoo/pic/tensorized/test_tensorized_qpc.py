@@ -39,7 +39,7 @@ class DummyPIC(Module):
 
 
 def test_pic2qpc_tensorized_runs_on_nary_partition():
-    # Root region with a single 4-ary partition.
+    # N-ary root verifies tensorized conversion does not assume binary structure.
     leaves = [Region(Scope([i])) for i in range(4)]
     root = Region(Scope([0, 1, 2, 3]))
     root.add_partition(tuple(leaves))
@@ -56,12 +56,13 @@ def test_pic2qpc_tensorized_runs_on_nary_partition():
 
     data = torch.randn(5, 4)
     ll = qpc.log_likelihood(data)
+    # Tensorized path must still emit canonical SPFlow (B,F,C,R) log-likelihood shape.
     assert ll.shape == (5, 1, 1, 1)
     assert torch.isfinite(ll).all()
 
 
 def test_tensorized_qpc_builds_fold_mask_when_arities_vary():
-    # Build an RG where the root has two partitions with different arity, forcing padding.
+    # Uneven arities must produce masks so padded child slots never contribute mass.
     r0 = Region(Scope([0]))
     r1 = Region(Scope([1]))
     r2 = Region(Scope([2]))
@@ -81,6 +82,7 @@ def test_tensorized_qpc_builds_fold_mask_when_arities_vary():
     cfg = TensorizedQPCConfig(leaf_type="normal", layer_cls="cp", n_chunks=1)
 
     qpc = TensorizedQPC.from_region_graph(rg, quadrature_rule=rule, config=cfg)
+    # Any padded fold should carry a mask so invalid child slots stay inactive.
     assert any(pl.fold_mask is not None for pl in qpc.partition_layers)
 
     data = torch.randn(2, 4)
@@ -98,8 +100,7 @@ def test_innernet_normalizes_over_norm_dim():
     net = InnerNet(group_args=args, net_dim=8, sharing="f")
 
     param = net(z, w, n_chunks=2)
-    # param has shape (num_funcs, K, K) (after permute including func dim).
+    # This normalization invariant keeps quadrature-generated weights well-scaled.
     assert param.shape[0] == 3
-    # Sum over norm dims should be 1 for each function.
     summed = param.sum(dim=(1, 2))
     assert torch.allclose(summed, torch.ones_like(summed), atol=1e-4)

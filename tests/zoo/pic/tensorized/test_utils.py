@@ -38,7 +38,7 @@ class TestLogFuncExp:
 
         result = log_func_exp(left, right, func=linear_func, dim=1, keepdim=False)
 
-        # Expected: log(sum(exp(left) * exp(right))) = log(sum(exp(left + right)))
+        # This identity is the contract that lets callers stay in log-space safely.
         expected = torch.logsumexp(left + right, dim=1)
 
         assert torch.allclose(result, expected, atol=1e-5)
@@ -81,6 +81,7 @@ class TestLogFuncExp:
         loss = result.sum()
         loss.backward()
 
+        # Stable gradients are required because tensorized layers are trained end-to-end.
         assert x.grad is not None
         assert torch.isfinite(x.grad).all()
 

@@ -1,3 +1,8 @@
+"""SOS integration/math checks for leaf-related inner/triple products.
+
+This suite intentionally remains outside `tests/modules/leaves`.
+"""
+
 import math
 
 import torch
@@ -65,7 +70,7 @@ def _hypergeo_pmf(*, k: int, K: int, N: int, n: int) -> float:
 
 
 def test_hypergeometric_inner_and_triple_matches_exact_enumeration():
-    # All leaves must share N for the implemented closed-form.
+    # The closed-form overlap used by the implementation assumes a shared population size N.
     N = 12
     params = [(5, 4), (7, 6), (4, 5)]  # (K, n)
 
@@ -131,7 +136,7 @@ def _neg_binom_pmf(ks: torch.Tensor, *, r: int, p: float) -> torch.Tensor:
 
 
 def test_negative_binomial_inner_and_triple_matches_truncated_enumeration():
-    # Use high success probabilities so truncation is extremely accurate.
+    # High success probabilities push tail mass down so finite truncation is a trustworthy oracle.
     r1, p1 = 2, 0.8
     r2, p2 = 3, 0.7
     r3, p3 = 4, 0.85
@@ -202,7 +207,7 @@ def _make_piecewise_linear(
 ) -> PiecewiseLinear:
     leaf = PiecewiseLinear(scope=scope, out_channels=out_channels, num_repetitions=1)
 
-    # Dist expects nested lists: [R][L][F][C]
+    # Build internals in the exact nested layout expected by PiecewiseLinear internals.
     leaf.xs = [[[[xs]]]]  # type: ignore[assignment]
     leaf.ys = [[[[ys]]]]  # type: ignore[assignment]
     leaf.domains = [domain]  # type: ignore[assignment]
@@ -214,11 +219,11 @@ def test_piecewise_linear_inner_and_triple_matches_dense_trapezoid():
     scope = Scope([0])
     dom = Domain.continuous_range(0.0, 2.0)
 
-    # Two different compact-support piecewise-linear densities on [0,2].
+    # Asymmetric supports/slopes make interpolation integration regressions easier to surface.
     xa = torch.tensor([0.0, 1.0, 2.0], dtype=torch.float64)
-    ya = torch.tensor([0.0, 1.0, 0.0], dtype=torch.float64)  # triangle, integrates to 1
+    ya = torch.tensor([0.0, 1.0, 0.0], dtype=torch.float64)  # Unit-mass baseline profile.
     xb = torch.tensor([0.0, 0.5, 1.5, 2.0], dtype=torch.float64)
-    yb = torch.tensor([0.0, 0.6, 0.6, 0.0], dtype=torch.float64)  # trapezoid-like
+    yb = torch.tensor([0.0, 0.6, 0.6, 0.0], dtype=torch.float64)  # Flat plateau stresses overlap handling.
     xc = torch.tensor([0.0, 0.7, 2.0], dtype=torch.float64)
     yc = torch.tensor([0.0, 0.9, 0.0], dtype=torch.float64)
 

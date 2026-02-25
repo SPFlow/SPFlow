@@ -21,7 +21,9 @@ class _IdentityWrapper(Wrapper):
     def _expectation_maximization_step(self, data, bias_correction: bool = True, *, cache):
         return self.module._expectation_maximization_step(data, bias_correction=bias_correction, cache=cache)
 
-    def maximum_likelihood_estimation(self, data, weights=None, bias_correction: bool = True, nan_strategy="ignore"):
+    def maximum_likelihood_estimation(
+        self, data, weights=None, bias_correction: bool = True, nan_strategy="ignore"
+    ):
         return self.module.maximum_likelihood_estimation(
             data=data,
             weights=weights,
@@ -37,6 +39,7 @@ def test_wrapper_delegates_shape_scope_and_feature_map() -> None:
     leaf = make_normal_leaf(out_features=3, out_channels=2, num_repetitions=1)
     wrapper = _IdentityWrapper(module=leaf)
 
+    # Wrappers are metadata-transparent: downstream modules should see child contracts unchanged.
     assert wrapper.scope == leaf.scope
     assert wrapper.in_shape == leaf.in_shape
     assert wrapper.out_shape == leaf.out_shape
@@ -46,6 +49,7 @@ def test_wrapper_delegates_shape_scope_and_feature_map() -> None:
 def test_wrapper_device_and_repr() -> None:
     leaf = make_normal_leaf(out_features=2, out_channels=1, num_repetitions=1)
     wrapper = _IdentityWrapper(module=leaf)
+    # Device reporting must follow wrapped parameters to avoid mixed-device surprises.
     assert wrapper.device == next(leaf.parameters()).device
 
     repr_str = wrapper.extra_repr()

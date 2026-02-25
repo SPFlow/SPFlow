@@ -15,7 +15,7 @@ class DummyInput(Module):
     def __init__(self, out_channels: int = 2, num_repetitions: int = 2, out_features: int = 1):
         super().__init__()
         self.scope = Scope(list(range(out_features)))
-        # Create feature_to_scope mapping as numpy array of Scope objects
+        # Explicit Scope objects let delegation assertions fail clearly on regressions.
         self._feature_to_scope = np.array([[Scope(i)] for i in range(out_features)], dtype=object)
         self._in_shape = ModuleShape(out_features, 1, 1)
         self._out_shape = ModuleShape(out_features, out_channels, num_repetitions)
@@ -34,7 +34,7 @@ class DummyInput(Module):
 
     def log_likelihood(self, data, cache=None):
         batch = data.shape[0]
-        # Shape matches expected (B, F, OC, R) orientation used in MixingLayer.
+        # Keep canonical axis order so failures point to the layer, not this fixture.
         return torch.zeros(
             batch, self.out_shape.features, self.out_shape.channels, self.out_shape.repetitions
         )
@@ -132,25 +132,22 @@ def test_mixing_layer_conflicting_weights_and_out_channels():
 
 def test_mixing_layer_feature_to_scope():
     """Test feature_to_scope delegates correctly to input module."""
-    # Test with single feature
     inputs = DummyInput(out_channels=2, num_repetitions=2, out_features=1)
     layer = RepetitionMixingLayer(inputs=inputs, out_channels=2, num_repetitions=2)
 
     feature_scopes = layer.feature_to_scope
     input_scopes = inputs.feature_to_scope
 
-    # Should delegate to input's feature_to_scope
+    # Repetition mixing should not change which variables each feature represents.
     assert np.array_equal(feature_scopes, input_scopes)
     assert feature_scopes.shape == (1, 1)
 
-    # Each element should be a Scope object
     assert isinstance(feature_scopes[0, 0], Scope)
     assert feature_scopes[0, 0] == Scope(0)
 
 
 def test_mixing_layer_feature_to_scope_various_channels():
     """Test feature_to_scope with different channel configurations."""
-    # MixingLayer requires out_features=1, test with various channels
     for out_channels in [1, 2, 5]:
         inputs = DummyInput(out_channels=out_channels, num_repetitions=2, out_features=1)
         layer = RepetitionMixingLayer(inputs=inputs, out_channels=out_channels, num_repetitions=2)
@@ -158,27 +155,23 @@ def test_mixing_layer_feature_to_scope_various_channels():
         feature_scopes = layer.feature_to_scope
         input_scopes = inputs.feature_to_scope
 
-        # Delegation check
         assert np.array_equal(feature_scopes, input_scopes)
         assert feature_scopes.shape == (1, 1)
 
-        # Verify all elements are Scope objects
         assert isinstance(feature_scopes[0, 0], Scope)
         assert feature_scopes[0, 0] == Scope(0)
 
 
 def test_mixing_layer_feature_to_scope_various_repetitions():
     """Test feature_to_scope works with different num_repetitions."""
-    # MixingLayer requires out_features=1
     for num_reps in [1, 2, 5]:
         inputs = DummyInput(out_channels=2, num_repetitions=num_reps, out_features=1)
         layer = RepetitionMixingLayer(inputs=inputs, out_channels=2, num_repetitions=num_reps)
 
         feature_scopes = layer.feature_to_scope
 
-        # Should always delegate to input regardless of repetitions
+        # Changing repetition count must not alter scope metadata.
         assert np.array_equal(feature_scopes, inputs.feature_to_scope)
         assert feature_scopes.shape == (1, 1)
 
-        # Verify Scope objects
         assert isinstance(feature_scopes[0, 0], Scope)

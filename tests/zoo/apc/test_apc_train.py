@@ -35,6 +35,7 @@ def _build_model() -> AutoencodingPC:
 
 def test_train_apc_step_is_unsupported():
     model = _build_model()
+    # Pass a real optimizer so failure comes from the disabled training path itself.
     optimizer = Adam(model.parameters(), lr=1e-2)
     batch = torch.randn(12, 4)
 
@@ -46,6 +47,7 @@ def test_evaluate_apc_is_unsupported():
     model = _build_model()
     data = torch.randn(40, 4)
 
+    # Evaluation helpers were rolled back with training; keep this failure mode explicit.
     with pytest.raises(UnsupportedOperationError):
         evaluate_apc(model, data, batch_size=8)
 
@@ -54,6 +56,7 @@ def test_fit_apc_is_unsupported():
     model = _build_model()
     train = torch.randn(64, 4)
 
+    # fit_apc is the highest-level helper, so this guards the full rollback boundary.
     with pytest.raises(UnsupportedOperationError):
         fit_apc(
             model=model,

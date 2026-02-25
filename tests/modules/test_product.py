@@ -1,20 +1,10 @@
-from itertools import product
-
 import pytest
 import torch
 
-from spflow.learn import expectation_maximization
 from spflow.modules.products import Product
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext, to_one_hot
+from spflow.utils.sampling_context import SamplingContext
 from tests.utils.leaves import make_normal_leaf, make_normal_data
-from tests.utils.sampling_context_helpers import assert_nonzero_finite_grad, make_diff_routing_from_logits
-
-# Constants
-in_channels_values = [1, 3]
-out_features_values = [1, 4]
-num_repetitions = [1, 5]
-params = list(product(in_channels_values, out_features_values, num_repetitions))
 
 
 def make_product(in_channels=None, out_features=None, inputs=None, num_repetitions=None):
@@ -25,115 +15,10 @@ def make_product(in_channels=None, out_features=None, inputs=None, num_repetitio
     return Product(inputs=inputs)
 
 
-@pytest.mark.parametrize("in_channels,out_features,num_reps", params)
-def test_log_likelihood(in_channels: int, out_features: int, num_reps):
-    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
-    data = make_normal_data(out_features=out_features)
-    lls = product_layer.log_likelihood(data)
-    # Always expect 4D output
-    assert lls.shape == (data.shape[0], 1, product_layer.out_shape.channels, num_reps)
-
-
-@pytest.mark.parametrize("in_channels,out_features,num_reps", params)
-def test_sample(in_channels: int, out_features: int, num_reps):
-    n_samples = 10
-    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
-    for i in range(product_layer.out_shape.channels):
-        data = torch.full((n_samples, out_features), torch.nan)
-        channel_index = torch.full((n_samples, product_layer.out_shape.features), fill_value=i)
-        mask = torch.full((n_samples, product_layer.out_shape.features), True, dtype=torch.bool)
-        if num_reps is not None:
-            repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-        else:
-            repetition_index = None
-        sampling_ctx = SamplingContext(
-            channel_index=channel_index, mask=mask, repetition_index=repetition_index
-        )
-        samples = product_layer._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
-        assert samples.shape == data.shape
-        samples_query = samples[:, product_layer.scope.query]
-        assert torch.isfinite(samples_query).all()
-
-
-def test_sample_differentiable_equals_non_diff_sampling():
-    n_samples = 24
-    in_channels = 3
-    out_features = 4
-    num_reps = 3
-    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
-
-    channel_index = torch.randint(low=0, high=product_layer.out_shape.channels, size=(n_samples, 1))
-    mask = torch.ones((n_samples, 1), dtype=torch.bool)
-    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-
-    sampling_ctx_a = SamplingContext(
-        channel_index=channel_index.clone(),
-        mask=mask.clone(),
-        repetition_index=repetition_index.clone(),
-    )
-    sampling_ctx_b = SamplingContext(
-        channel_index=to_one_hot(channel_index, dim=-1, dim_size=product_layer.out_shape.channels),
-        mask=mask.clone(),
-        repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
-        is_differentiable=True,
-        hard=True,
-    )
-
-    torch.manual_seed(1337)
-    samples_a = product_layer._sample(
-        data=torch.full((n_samples, out_features), torch.nan),
-        sampling_ctx=sampling_ctx_a,
-        cache=Cache(),
-    )
-    torch.manual_seed(1337)
-    samples_b = product_layer._sample(
-        data=torch.full((n_samples, out_features), torch.nan),
-        sampling_ctx=sampling_ctx_b,
-        cache=Cache(),
-    )
-
-    torch.testing.assert_close(samples_a, samples_b, rtol=1e-6, atol=1e-6)
-
-
-def test_sample_differentiable_gradients_flow():
-    n_samples = 12
-    in_channels = 3
-    out_features = 4
-    num_reps = 3
-    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
-
-    channel_logits, repetition_logits, channel_index, repetition_index = make_diff_routing_from_logits(
-        num_samples=n_samples,
-        num_features=1,
-        num_channels=product_layer.out_shape.channels,
-        num_repetitions=num_reps,
-    )
-    sampling_ctx = SamplingContext(
-        channel_index=channel_index,
-        mask=torch.ones((n_samples, 1), dtype=torch.bool),
-        repetition_index=repetition_index,
-        is_differentiable=True,
-        hard=False,
-    )
-
-    out = product_layer._sample(
-        data=torch.full((n_samples, out_features), torch.nan),
-        sampling_ctx=sampling_ctx,
-        cache=Cache(),
-    )
-    loss = torch.nan_to_num(out).sum()
-    loss.backward()
-
-    assert_nonzero_finite_grad(channel_logits, "channel_logits")
-    assert_nonzero_finite_grad(repetition_logits, "repetition_logits")
-
-
-@pytest.mark.parametrize("in_channels,out_features,num_reps", params)
-def test_expectation_maximization(in_channels: int, out_features: int, num_reps):
-    product_layer = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
-    data = make_normal_data(out_features=out_features)
-    with torch.autograd.set_detect_anomaly(True):
-        expectation_maximization(product_layer, data, max_steps=10)
+# Cross-module product contracts moved to:
+# - test_product_contract_loglikelihood.py
+# - test_product_contract_sampling.py
+# - test_product_contract_training_marginalization.py
 
 
 def test_constructor():
@@ -150,39 +35,6 @@ def test_constructor():
     assert module.out_shape.channels == in_channels
     assert module.out_shape.repetitions == num_reps
 
-    data = make_normal_data(out_features=out_features)
-    lls = module.log_likelihood(data)
-    assert lls.shape == (data.shape[0], 1, in_channels, num_reps)
-    assert torch.isfinite(lls).all()
-
-
-@pytest.mark.parametrize(
-    "prune,in_channels,marg_rvs,num_reps",
-    product(
-        [True, False],
-        in_channels_values,
-        [[0], [1], [2], [0, 1], [1, 2], [0, 2], [0, 1, 2]],
-        num_repetitions,
-    ),
-)
-def test_marginalize(prune, in_channels: int, marg_rvs: list[int], num_reps):
-    out_features = 3
-    module = make_product(in_channels=in_channels, out_features=out_features, num_repetitions=num_reps)
-
-    # Marginalize scope
-    marginalized_module = module.marginalize(marg_rvs, prune=prune)
-
-    if len(marg_rvs) == out_features:
-        assert marginalized_module is None
-        return
-
-    if prune and len(marg_rvs) == (out_features - 1):
-        # If pruning is active and only one scope is left, the (pruned) input module should be returned
-        assert isinstance(marginalized_module, type(module.inputs))
-
-    # Scope query should not contain marginalized rv
-    assert len(set(marginalized_module.scope.query).intersection(marg_rvs)) == 0
-
 
 def test_multiple_inputs():
     in_channels = 2
@@ -197,7 +49,7 @@ def test_multiple_inputs():
         scope=[0, 1, 2, 3],
         out_features=out_features,
         out_channels=in_channels,
-        num_repetitions=num_repetitions,
+        num_repetitions=num_reps,
         mean=mean,
         std=std,
     )
@@ -205,7 +57,7 @@ def test_multiple_inputs():
         scope=[0, 1],
         out_features=out_features / 2,
         out_channels=in_channels,
-        num_repetitions=num_repetitions,
+        num_repetitions=num_reps,
         mean=mean[0:2, :, :],
         std=std[0:2, :, :],
     )
@@ -213,7 +65,7 @@ def test_multiple_inputs():
         scope=[2, 3],
         out_features=out_features / 2,
         out_channels=in_channels,
-        num_repetitions=num_repetitions,
+        num_repetitions=num_reps,
         mean=mean[2:4, :, :],
         std=std[2:4, :, :],
     )
@@ -222,7 +74,7 @@ def test_multiple_inputs():
 
     module_b = Product(inputs=[normal_layer_b1, normal_layer_b2])
 
-    # test log likelihood
+    # Guard against regressions where list-input composition changes semantics.
 
     data = make_normal_data(out_features=out_features)
 
@@ -231,7 +83,7 @@ def test_multiple_inputs():
 
     torch.testing.assert_close(ll_a, ll_b, rtol=1e-5, atol=1e-6)
 
-    # test sampling
+    # Sampling should stay equivalent for both construction paths under shared routing.
 
     n_samples = 10
 
@@ -263,43 +115,36 @@ def test_feature_to_scope():
     """
     from spflow.meta import Scope
 
-    # Test with single repetition
     out_features = 6
     out_channels = 3
     num_reps = 1
 
-    # Create input with known scope
     scope = Scope(list(range(out_features)))
     leaf = make_normal_leaf(scope=scope, out_channels=out_channels, num_repetitions=num_reps)
     product = Product(inputs=leaf)
 
-    # Get feature_to_scope
     feature_scopes = product.feature_to_scope
 
-    # Validate shape: should be (1, num_repetitions) since Product outputs 1 feature
     assert feature_scopes.shape == (
         1,
         num_reps,
     ), f"Expected shape (1, {num_reps}), got {feature_scopes.shape}"
 
-    # Validate all elements are Scope objects
     assert all(isinstance(s, Scope) for s in feature_scopes.flatten()), "All elements should be Scope objects"
 
-    # Validate scope content: should be the joined scope of all input features
     expected_scope = Scope.join_all(leaf.feature_to_scope[:, 0])
     assert feature_scopes[0, 0] == expected_scope, f"Expected {expected_scope}, got {feature_scopes[0, 0]}"
 
-    # Verify the joined scope contains all input features
-    assert set(feature_scopes[0, 0].query) == set(
-        range(out_features)
-    ), "Joined scope should contain all input features"
+    # Product must not drop feature IDs when collapsing to one output feature.
+    assert set(feature_scopes[0, 0].query) == set(range(out_features)), (
+        "Joined scope should contain all input features"
+    )
 
 
 def test_feature_to_scope_multiple_repetitions():
     """Test feature_to_scope with multiple repetitions for Product module."""
     from spflow.meta import Scope
 
-    # Test with multiple repetitions
     out_features = 4
     out_channels = 2
     num_reps = 3
@@ -308,34 +153,30 @@ def test_feature_to_scope_multiple_repetitions():
     leaf = make_normal_leaf(scope=scope, out_channels=out_channels, num_repetitions=num_reps)
     product = Product(inputs=leaf)
 
-    # Get feature_to_scope
     feature_scopes = product.feature_to_scope
 
-    # Validate shape: should be (1, num_repetitions)
     assert feature_scopes.shape == (
         1,
         num_reps,
     ), f"Expected shape (1, {num_reps}), got {feature_scopes.shape}"
 
-    # Validate all elements are Scope objects
     assert all(isinstance(s, Scope) for s in feature_scopes.flatten()), "All elements should be Scope objects"
 
-    # Validate each repetition has the same joined scope
+    # Repetition-specific bookkeeping must not alter the represented variable set.
     for r in range(num_reps):
         expected_scope = Scope.join_all(leaf.feature_to_scope[:, r])
-        assert (
-            feature_scopes[0, r] == expected_scope
-        ), f"Repetition {r}: expected {expected_scope}, got {feature_scopes[0, r]}"
-        assert set(feature_scopes[0, r].query) == set(
-            range(out_features)
-        ), f"Repetition {r}: joined scope should contain all features"
+        assert feature_scopes[0, r] == expected_scope, (
+            f"Repetition {r}: expected {expected_scope}, got {feature_scopes[0, r]}"
+        )
+        assert set(feature_scopes[0, r].query) == set(range(out_features)), (
+            f"Repetition {r}: joined scope should contain all features"
+        )
 
 
 def test_feature_to_scope_multiple_inputs():
     """Test feature_to_scope with multiple input modules for Product module."""
     from spflow.meta import Scope
 
-    # Create two inputs with disjoint scopes
     out_features_1 = 3
     out_features_2 = 2
     out_channels = 2
@@ -347,24 +188,20 @@ def test_feature_to_scope_multiple_inputs():
     leaf_1 = make_normal_leaf(scope=scope_1, out_channels=out_channels, num_repetitions=num_reps)
     leaf_2 = make_normal_leaf(scope=scope_2, out_channels=out_channels, num_repetitions=num_reps)
 
-    # Product with multiple inputs (they will be concatenated)
     product = Product(inputs=[leaf_1, leaf_2])
 
-    # Get feature_to_scope
     feature_scopes = product.feature_to_scope
 
-    # Validate shape: should be (1, num_repetitions)
     assert feature_scopes.shape == (
         1,
         num_reps,
     ), f"Expected shape (1, {num_reps}), got {feature_scopes.shape}"
 
-    # Validate all elements are Scope objects
     assert all(isinstance(s, Scope) for s in feature_scopes.flatten()), "All elements should be Scope objects"
 
-    # Validate scope content: should contain all features from both inputs
+    # Disjoint child scopes should union cleanly in the parent scope map.
     total_features = out_features_1 + out_features_2
     for r in range(num_reps):
-        assert set(feature_scopes[0, r].query) == set(
-            range(total_features)
-        ), f"Repetition {r}: joined scope should contain all {total_features} features"
+        assert set(feature_scopes[0, r].query) == set(range(total_features)), (
+            f"Repetition {r}: joined scope should contain all {total_features} features"
+        )

@@ -13,7 +13,7 @@ class _ToyTensorizedLayer(TensorizedLayer):
         self.weight = nn.Parameter(torch.full((self.num_folds, self.num_output_units), 0.5))
 
     def forward(self, x: Tensor) -> Tensor:
-        # x shape: (F, H, K, *B) -> return (F, K, *B)
+        # Keep implementation trivial so base-class invariants are the only moving part.
         return x.sum(dim=1)
 
 
@@ -30,6 +30,7 @@ def test_tensorized_layer_constructor_guards() -> None:
 
 def test_tensorized_layer_num_params_and_reset() -> None:
     layer = _ToyTensorizedLayer(num_input_units=3, num_output_units=4, arity=2, num_folds=2)
+    # num_params should reflect registered trainable tensors, not constructor metadata.
     assert layer.num_params == layer.weight.numel()
 
     with torch.no_grad():

@@ -104,7 +104,7 @@ class TestCnetMPE:
         data = make_binary_data(n_samples=100, n_vars=4)
         model = learn_cnet(data, cardinalities=2, min_instances_slice=30)
 
-        # Create data with missing values
+        # MPE is only meaningful when NaNs denote variables to impute.
         test_data = data[:8].clone()
         test_data[0, 0] = float("nan")
         test_data[1, 1] = float("nan")
@@ -112,16 +112,14 @@ class TestCnetMPE:
 
         result = model.sample(data=test_data, is_mpe=True)
 
-        # Check NaNs are filled
         assert not torch.isnan(result).any()
-        # Check values are valid
+        # Keep generated assignments inside declared binary domain.
         assert (result >= 0).all()
         assert (result < 2).all()
 
     def test_cnet_exact_mpe_matches_bruteforce_tiny(self):
         """Test MPE matches brute-force for tiny 2-variable binary problem."""
-        # Create simple 2-variable binary data with clear pattern
-        # Mostly (0,0) and (1,1), so MPE given one should predict the other
+        # Strong correlation yields an unambiguous MPE target for regression-style verification.
         torch.manual_seed(42)
         data = torch.tensor(
             [
@@ -132,17 +130,17 @@ class TestCnetMPE:
                 [1.0, 1.0],
                 [1.0, 1.0],
                 [1.0, 1.0],
-                [0.0, 1.0],  # noise
+                [0.0, 1.0],
             ]
         )
 
         model = learn_cnet(data, cardinalities=2, min_instances_slice=2, min_features_slice=1)
 
-        # Test MPE: given x0=0, what is best x1?
+        # Condition on x0 and require MPE to recover the likely companion value.
         test_data = torch.tensor([[0.0, float("nan")]])
         result = model.sample(data=test_data, is_mpe=True)
 
-        # Brute force: compute LL for all assignments
+        # Brute force remains tractable here and serves as the correctness oracle.
         lls = []
         for x1_val in [0, 1]:
             test = torch.tensor([[0.0, float(x1_val)]])
@@ -151,7 +149,6 @@ class TestCnetMPE:
 
         best_bruteforce = max(lls, key=lambda x: x[1])[0]
 
-        # MPE should match brute-force
         assert result[0, 1].item() == best_bruteforce
 
 
@@ -165,7 +162,7 @@ class TestCnetSeedReproducibility:
         model1 = learn_cnet(data, cardinalities=2, cond="random", seed=42)
         model2 = learn_cnet(data, cardinalities=2, cond="random", seed=42)
 
-        # Same seed should produce same structure (same LL on test data)
+        # Compare likelihoods instead of topology to avoid brittle structural assertions.
         test_data = make_binary_data(n_samples=10, n_vars=5, seed=123)
         ll1 = model1.log_likelihood(test_data)
         ll2 = model2.log_likelihood(test_data)
@@ -214,7 +211,7 @@ class TestCnetInputValidation:
     def test_value_exceeds_cardinality_raises(self):
         """Test that values >= cardinality raise error."""
         data = make_binary_data(n_samples=100, n_vars=4)
-        data[0, 0] = 2  # Exceeds cardinality of 2
+        data[0, 0] = 2
         with pytest.raises(InvalidParameterError):
             learn_cnet(data, cardinalities=2)
 
@@ -222,7 +219,7 @@ class TestCnetInputValidation:
         """Test that cardinalities length mismatch raises error."""
         data = make_binary_data(n_samples=100, n_vars=4)
         with pytest.raises(InvalidParameterError):
-            learn_cnet(data, cardinalities=[2, 2])  # Only 2 instead of 4
+            learn_cnet(data, cardinalities=[2, 2])
 
 
 def test_internal_validation_entropy_and_variable_selection_branches():
@@ -248,12 +245,12 @@ def test_internal_validation_entropy_and_variable_selection_branches():
 
 
 def test_learn_cnet_branches_for_single_var_and_empty_slices():
-    # remaining_scope empty branch
+    # One-variable slices exercise the early-stop branch where no split is possible.
     d1 = torch.tensor([[0.0], [1.0], [0.0], [1.0]])
     m1 = learn_cnet(d1, cardinalities=2, min_instances_slice=1, min_features_slice=0)
     assert m1 is not None
 
-    # empty-slice branch + single non-empty branch collapse
+    # Degenerate partitions guard the collapse path after empty child slices.
     d2 = torch.tensor([[0.0, 0.0], [0.0, 1.0], [0.0, 0.0], [0.0, 1.0]])
     m2 = learn_cnet(d2, cardinalities=[3, 2], min_instances_slice=1, min_features_slice=1, cond="naive_mle")
     ll = m2.log_likelihood(d2)
@@ -267,7 +264,7 @@ def test_learn_cnet_random_seeded_path_executes():
 
 
 def test_learn_cnet_cond_var_none_and_zero_total_branches(monkeypatch):
-    # Force empty variable order in cond=random -> cond_var=None fallback.
+    # Empty permutation validates fallback when no conditioning variable is selected.
     monkeypatch.setattr(
         cnet_mod.torch, "randperm", lambda *args, **kwargs: torch.tensor([], dtype=torch.long)
     )
@@ -275,7 +272,7 @@ def test_learn_cnet_cond_var_none_and_zero_total_branches(monkeypatch):
     m = learn_cnet(d, cardinalities=2, cond="random", min_instances_slice=1, min_features_slice=1)
     assert m is not None
 
-    # Force validation bypass and run with empty data to hit total == 0 normalization branch.
+    # Empty training set checks normalization safety for total == 0.
     monkeypatch.setattr(cnet_mod, "_validate_discrete_data", lambda data, cardinalities, scope: None)
     monkeypatch.setattr(
         cnet_mod.torch, "randperm", lambda *args, **kwargs: torch.tensor([0, 1], dtype=torch.long)

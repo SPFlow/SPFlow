@@ -12,7 +12,7 @@ from spflow.modules.leaves import Normal
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext, to_one_hot
 
-# Test parameter values
+# Keep a small grid to exercise shape math and patch aggregation branches.
 out_channels_values = [1, 3]
 height_width_kernel_values = [
     (4, 4, 2, 2),
@@ -20,7 +20,7 @@ height_width_kernel_values = [
     (8, 8, 4, 4),
 ]
 
-# Combined parameter lists
+# Reuse identical sweeps across construction/ll/sampling to reduce drift.
 construction_params = list(product(out_channels_values, height_width_kernel_values))
 ll_params = list(product(out_channels_values, height_width_kernel_values))
 sample_params = list(product(out_channels_values, height_width_kernel_values))
@@ -78,7 +78,7 @@ class TestProdConvConstruction:
         out_h = height // kernel_h
         out_w = width // kernel_w
         assert module.out_shape.features == out_h * out_w
-        assert module.out_shape.channels == out_channels  # Channels preserved
+        assert module.out_shape.channels == out_channels
         assert module.out_shape.repetitions == num_reps
 
 
@@ -106,22 +106,20 @@ class TestProdConvLogLikelihood:
     @pytest.mark.parametrize("out_channels,hwk", ll_params)
     def test_log_likelihood_sum_in_log_space(self, out_channels, hwk):
         """Test that ProdConv sums log-likelihoods within patches."""
-        # Use fixed parameters for this specific test
+        # Fixed geometry makes the expected first patch sum unambiguous.
         leaf = make_normal_leaf(4, 4, out_channels=1)
         module = ProdConv(inputs=leaf, kernel_size_h=2, kernel_size_w=2)
 
-        # Create data
         data = torch.randn(1, 16)
         cache = Cache()
         ll = module.log_likelihood(data, cache=cache)
 
-        # Get input log-likelihoods
         input_ll = cache["log_likelihood"][leaf]  # (1, 16, 1, 1)
 
-        # Reshape input to spatial
+        # Reshape once so patch indexing mirrors the convolutional layout.
         input_ll_spatial = input_ll.view(1, 4, 4, 1, 1)
 
-        # First output position should be sum of first 2x2 patch
+        # Locks the log-space reduction contract for one concrete patch.
         expected_first = input_ll_spatial[0, 0:2, 0:2, 0, 0].sum()
         actual_first = ll[0, 0, 0, 0]
 
@@ -157,10 +155,9 @@ class TestProdConvFeatureToScope:
         out_w = width // kernel_w
         out_features = out_h * out_w
 
-        # Shape should be (out_features, num_reps)
         assert f2s.shape == (out_features, num_reps)
 
-        # First output position should have scope from first patch
+        # First output tile should aggregate exactly the first receptive field.
         first_scope = f2s[0, 0]
         expected_indices = set()
         for i in range(kernel_h):
@@ -237,19 +234,20 @@ class TestProdConvSample:
         batch_size = 5
         out_features = module.out_shape.features
 
-        # Create sampling context with specific channel indices
+        # Deterministic pattern makes channel upsampling regressions easier to spot.
         channel_idx = torch.zeros(batch_size, out_features, dtype=torch.long)
         for i in range(out_features):
             channel_idx[:, i] = i % out_channels
 
         mask = torch.ones(batch_size, out_features, dtype=torch.bool)
         repetition_index = torch.zeros(batch_size, dtype=torch.long)
-        sampling_ctx = SamplingContext(channel_index=channel_idx, mask=mask, repetition_index=repetition_index)
+        sampling_ctx = SamplingContext(
+            channel_index=channel_idx, mask=mask, repetition_index=repetition_index
+        )
 
         data = torch.full((batch_size, height * width), float("nan"))
         module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
-        # After upsampling, samples should be finite
         assert torch.isfinite(data).all()
 
     @pytest.mark.parametrize("out_channels,hwk", sample_params)
@@ -320,7 +318,7 @@ class TestProdConvSample:
         )
 
 
-# Additional branch-focused prod_conv tests
+# Regression-focused tests for rarely hit validation/marginalization branches.
 import numpy as np
 
 from spflow.modules.module import Module

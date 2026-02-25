@@ -20,7 +20,7 @@ class TestMixingSumLayerInit:
         layer = MixingSumLayer(num_input_units=5, num_output_units=5, arity=3, num_folds=2)
 
         assert layer.params.shape == (2, 3, 5)
-        # Weights are normalized across arity dimension for each fold/unit.
+        # Normalization keeps mixture interpretation valid after initialization.
         assert torch.allclose(layer.params.sum(dim=1), torch.ones(2, 5), atol=1e-6)
 
 
@@ -75,6 +75,7 @@ class TestMixingSumLayerForward:
         out = layer(x)
 
         mask = fold_mask.view(2, 3, 1, 1)
+        # Build an explicit probability-space baseline to verify masked children contribute nothing.
         explicit_prob = torch.einsum("fhk,fhkb->fkb", layer.params, torch.exp(x) * mask)
         expected = torch.log(explicit_prob)
 

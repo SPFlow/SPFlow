@@ -100,7 +100,7 @@ def _partition_module(
     params_fold: Tensor,
     children: list[Module],
 ) -> Module:
-    # All children must have disjoint scopes.
+    # Scope disjointness is required by product semantics in the unfolded baseline.
     if kind == "tucker":
         assert len(children) == 2
         left, right = children
@@ -121,7 +121,7 @@ def _partition_module(
             W = params_fold[h]  # (K,O)
             weights = W.view(1, W.shape[0], W.shape[1], 1)
             weighted_children.append(WeightedSum(inputs=child, weights=weights))
-        # Product across children in log-space = sum of log-likelihoods.
+        # Mirror SPN semantics explicitly so CP expansion stays numerically comparable.
         if len(weighted_children) == 2:
             return ElementwiseProduct(inputs=weighted_children)
         cur = weighted_children[0]
@@ -164,7 +164,7 @@ def _expanded_from_tensorized(qpc: TensorizedQPC) -> Module:
     z_quad = rule.points
     w_quad = rule.weights
 
-    # Leaf parameters and leaf modules.
+    # Materialize leaves first so unfolded graph reuses exactly the sampled parameters.
     leaf_param = qpc.input_net(z_quad, n_chunks=qpc.config.n_chunks)  # (V,K,P) or (V,K,C)
     leaf_modules = _leaf_modules_from_params(
         leaf_type=qpc.config.leaf_type,
@@ -173,11 +173,9 @@ def _expanded_from_tensorized(qpc: TensorizedQPC) -> Module:
         leaf_param=leaf_param,
     )
 
-    region_out: dict[Region, Module] = {
-        r: m for r, m in zip(qpc._leaf_regions, leaf_modules)
-    }  # pylint: disable=protected-access
+    region_out: dict[Region, Module] = {r: m for r, m in zip(qpc._leaf_regions, leaf_modules)}  # pylint: disable=protected-access
 
-    # Height dict insertion order should match TensorizedQPC builder.
+    # Preserve traversal order to align layer indices with tensorized bookkeeping.
     height: dict[Region, int] = {}
     for region in rg.post_order():
         if not region.children:
@@ -230,20 +228,20 @@ def _expanded_from_tensorized(qpc: TensorizedQPC) -> Module:
         for region in lregions:
             if region in non_unary_regions:
                 continue
-            # Unary region: just pass through the only partition output.
+            # Unary regions skip mixing by design; this guards that shortcut path.
             region_out[region] = partition_outs[region][0]
 
     return region_out[rg.root]
 
 
 def _build_rgs() -> list[RegionGraph]:
-    # RG1: pure binary tree (should trigger Tucker in auto mode).
+    # Binary-only RG stresses Tucker path chosen by AUTO strategy.
     r0 = Region(Scope([0]))
     r1 = Region(Scope([1]))
     root01 = Region(Scope([0, 1]))
     root01.add_partition((r0, r1))
 
-    # RG2: pure 4-ary partition (forces CP in auto mode).
+    # High-arity partition forces CP handling in AUTO strategy.
     a0 = Region(Scope([0]))
     a1 = Region(Scope([1]))
     a2 = Region(Scope([2]))
@@ -251,7 +249,7 @@ def _build_rgs() -> list[RegionGraph]:
     root4 = Region(Scope([0, 1, 2, 3]))
     root4.add_partition((a0, a1, a2, a3))
 
-    # RG3: mixing at root with varying arity (forces fold_mask + mixing).
+    # Mixed arities require fold masks and explicit mixing weights at root.
     b0 = Region(Scope([0]))
     b1 = Region(Scope([1]))
     b2 = Region(Scope([2]))
@@ -278,7 +276,7 @@ def test_tensorized_matches_unfolded_expanded_graph(K: int, leaf_type: str):
     )
 
     for rg in _build_rgs():
-        # Build a PIC shell to exercise the public `pic2qpc` API.
+        # Go through public conversion API so this test catches integration regressions.
         pic = rg2pic(rg, leaf_factory=lambda x, z: _DummyLeaf(x, z))
         tqpc = pic2qpc(pic, rule, mode="tensorized", tensorized_config=cfg)
         assert isinstance(tqpc, TensorizedQPC)
@@ -299,4 +297,5 @@ def test_tensorized_matches_unfolded_expanded_graph(K: int, leaf_type: str):
         ll_t = tqpc.log_likelihood(data).squeeze()
         ll_e = expanded.log_likelihood(data).squeeze()
 
+        # Tight tolerance keeps this as a numerical-equivalence test, not just shape parity.
         assert torch.allclose(ll_t, ll_e, atol=1e-5, rtol=1e-5)

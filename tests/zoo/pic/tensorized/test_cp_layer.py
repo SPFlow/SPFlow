@@ -123,6 +123,7 @@ class TestUncollapsedCPLayer:
 
     def test_rank_must_be_positive(self):
         """Test that rank <= 0 raises error."""
+        # Rank-0 would erase all signal; constructor should reject this early.
         with pytest.raises(ValueError):
             UncollapsedCPLayer(
                 num_input_units=4,
@@ -143,7 +144,7 @@ class TestSharedCPLayer:
             num_folds=3,
         )
 
-        # Params are shared across folds: (H, I, O)
+        # Shared variant should not allocate per-fold parameters.
         assert layer.params.shape == (2, 4, 8)
 
     def test_output_shape(self):
@@ -159,13 +160,13 @@ class TestSharedCPLayer:
         """Test that shared params produce consistent behavior across folds."""
         layer = SharedCPLayer(num_input_units=3, num_output_units=4, num_folds=4)
 
-        # Same input for all folds
+        # Repeating inputs isolates fold-specific effects from input variation.
         x_single = torch.randn(1, 2, 3, 5)
         x_repeated = x_single.repeat(4, 1, 1, 1)
 
         out = layer(x_repeated)
 
-        # All folds should produce same output
+        # Any difference would indicate unintended fold-dependent behavior.
         for f in range(1, 4):
             assert torch.allclose(out[0], out[f], atol=1e-6)
 
@@ -210,17 +211,14 @@ class TestCPLayerEquivalence:
 
         x = torch.randn(F, H, I, B)
 
-        # Layer output
         cp_out = layer(x)
 
-        # Explicit: for each h, compute weighted sum, then product
+        # Baseline mirrors CP semantics in probability space for regression safety.
         W = layer.params  # (F, H, I, O)
         exp_x = torch.exp(x)  # (F, H, I, B)
 
-        # Per-child weighted sum: (F, H, O, B)
         weighted = torch.einsum("fhio,fhib->fhob", W, exp_x)
 
-        # Product across H: (F, O, B)
         prod = weighted.prod(dim=1)
         explicit_out = torch.log(prod)
 

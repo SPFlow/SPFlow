@@ -93,6 +93,9 @@ markers = [
     "gpu: Tests requiring CUDA/GPU.",
     "property: Property-based tests (typically with hypothesis).",
     "contract: Shared behavior contract tests across multiple implementations.",
+    "integration_style: Composed-operator or multi-component behavior tests.",
+    "slow_matrix: Large parameter-matrix tests kept for exhaustive breadth.",
+    "numerical: Numerical-identity and closed-form validation tests.",
 ]
 testpaths = [
     # for the doctests and for detecting broken yet unimported modules:

@@ -59,6 +59,7 @@ class _InputFlakyModule(_ContainerModule):
 
     @property
     def inputs(self):
+        # Simulate modules that expose inputs lazily/unreliably on traversal.
         self._n_gets += 1
         if self._n_gets == 1:
             return []
@@ -71,14 +72,17 @@ class _InputFlakyModule(_ContainerModule):
 
 def test_reduce_log_likelihood_shapes_and_methods():
     ll2 = torch.tensor([[0.1, 0.2], [0.3, 0.4]])
+    # 2D inputs are treated as already reduced over channel/repetition axes.
     out2 = reduce_log_likelihood(ll2, channel_agg="first", repetition_agg="first")
     assert out2.shape == (2,)
 
     ll3 = torch.randn(3, 2, 4)
+    # 3D tensor path validates channel aggregation before final sample collapse.
     out3 = reduce_log_likelihood(ll3, channel_agg="logsumexp", repetition_agg="first")
     assert out3.shape == (3,)
 
     ll4 = torch.randn(3, 2, 3, 2)
+    # 4D path exercises both configurable aggregators in sequence.
     out4 = reduce_log_likelihood(ll4, channel_agg="logmeanexp", repetition_agg="logsumexp")
     assert out4.shape == (3,)
 
@@ -102,6 +106,7 @@ def test_iter_modules_input_container_branches():
     assert leaf0 in seen and leaf1 in seen and list_root in seen
 
     flaky = _InputFlakyModule(Scope([0]))
+    # Traversal should tolerate one-time input introspection failures.
     seen_flaky = list(iter_modules(flaky))
     assert seen_flaky == [flaky]
 
@@ -162,6 +167,7 @@ def test_fork_rng_seed_none_and_cuda_device_handling(monkeypatch):
         return _DummyCtx()
 
     monkeypatch.setattr(torch.random, "fork_rng", _fake_fork_rng)
+    # CUDA devices must be passed as integer indices to torch.random.fork_rng.
     _ = fork_rng(7, torch.device("cuda:0"))
     assert captured["devices"] == [0]
     assert captured["enabled"] is True

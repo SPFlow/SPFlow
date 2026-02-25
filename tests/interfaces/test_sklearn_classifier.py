@@ -40,6 +40,7 @@ def test_predict_matches_argmax_proba():
 
     probs = clf.predict_proba(X)
     pred = clf.predict(X)
+    # Classifier API contract: predict delegates to argmax over predict_proba.
     np.testing.assert_array_equal(pred, np.argmax(probs, axis=1))
 
 
@@ -63,5 +64,6 @@ def test_predict_proba_uses_cpu_fallback_when_model_has_no_device():
     y = np.array([0, 1, 0, 1])
     clf = SPFlowClassifier(model=_DummyClassifierNoDevice(), dtype="float32")
     clf.fit(X, y)
+    # Models without .device should still run through the CPU fallback path.
     probs = clf.predict_proba(X)
     assert probs.shape == (4, 2)

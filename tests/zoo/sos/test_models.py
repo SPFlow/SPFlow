@@ -18,6 +18,7 @@ def _check_normalized(ll: torch.Tensor, atol: float = 1e-5) -> None:
     flat = ll.squeeze(-1).squeeze(-1).squeeze(1)
     assert flat.dim() == 1
     assert torch.isfinite(flat).all()
+    # Discrete exhaustive tests enumerate the whole support, so probabilities must sum to one.
     z = torch.logsumexp(flat, dim=0).exp()
     torch.testing.assert_close(z, torch.tensor(1.0, dtype=z.dtype, device=z.device), rtol=0.0, atol=atol)
 
@@ -98,6 +99,7 @@ def test_sos_model_complex_matches_bruteforce_tiny_discrete():
     x = _all_nary(2, 2)
     ll = model.log_likelihood(x).squeeze(-1).squeeze(-1).squeeze(1)
 
+    # For complex SOS, density is proportional to |f(x)|^2 = real^2 + imag^2.
     ((real, imag),) = model.complex_component_pairs
     cache_r = Cache()
     cache_i = Cache()
@@ -127,6 +129,7 @@ def test_sos_model_enables_non_monotonic_categorical_inputs_when_requested():
     )
 
     has_signed_leaf = any(isinstance(m, SignedCategorical) for c in model.components for m in c.modules())
+    # SignedCategorical leaves are the observable marker of non-monotonic input support.
     assert has_signed_leaf
 
 
@@ -179,6 +182,7 @@ def test_sos_model_matches_equivalent_low_level_socs(complex: bool):
     x = _all_nary(3, 2)
     ll_model = model.log_likelihood(x)
     ll_manual = manual.log_likelihood(x)
+    # High-level builder should be behaviorally equivalent to wiring components manually.
     torch.testing.assert_close(ll_model, ll_manual, rtol=1e-6, atol=1e-6)
 
 

@@ -12,7 +12,8 @@ class LinearNormalParams(nn.Module):
         loc = 2.0 * evidence[:, 0:1]
         scale = torch.full_like(loc, 0.1)
 
-        loc = loc.unsqueeze(2).unsqueeze(-1)  # (batch, features=1, channels=1, reps=1)
+        # Match the leaf parameter contract so broadcasting does not hide shape bugs.
+        loc = loc.unsqueeze(2).unsqueeze(-1)
         scale = scale.unsqueeze(2).unsqueeze(-1)
         return {"loc": loc, "scale": scale}
 

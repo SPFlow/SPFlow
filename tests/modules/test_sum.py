@@ -27,9 +27,7 @@ from tests.utils.sampling_context_helpers import patch_simple_as_categorical_one
 
 in_channels_values = [1, 4]
 out_channels_values = [1, 5]
-out_features_values = [1, 6]
 num_repetitions = [1, 7]
-params = list(product(in_channels_values, out_channels_values, out_features_values, num_repetitions))
 
 
 def _randn(*size: int) -> torch.Tensor:
@@ -59,8 +57,7 @@ def make_sum(in_channels=None, out_channels=None, out_features=None, weights=Non
         out_features=out_features, out_channels=in_channels, num_repetitions=num_repetitions
     )
 
-    # Only pass out_channels if explicitly specified, otherwise let Sum use default (1)
-    # or infer from weights
+    # Avoid forcing constructor conflicts when weights already determine channel count.
     kwargs = {"inputs": inputs, "weights": weights, "num_repetitions": num_repetitions}
     if out_channels is not None:
         kwargs["out_channels"] = out_channels
@@ -128,225 +125,12 @@ class _ToyInput(Module):
         return self
 
 
-@pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
-def test_log_likelihood(in_channels: int, out_channels: int, out_features: int, num_reps):
-    module = make_sum(
-        in_channels=in_channels,
-        out_channels=out_channels,
-        out_features=out_features,
-        num_repetitions=num_reps,
-    )
-    data = make_normal_data(out_features=out_features)
-    lls = module.log_likelihood(data)
-    # Always expect 4D output
-    assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps)
-
-
-@pytest.mark.parametrize(
-    "in_channels,out_channels,out_features,num_reps",
-    product(in_channels_values, out_channels_values, [2, 4], num_repetitions),
-)
-def test_log_likelihood_product_inputs(in_channels: int, out_channels: int, out_features: int, num_reps):
-    inputs_a = make_leaf(
-        cls=DummyLeaf,
-        out_channels=in_channels,
-        scope=Scope(range(0, out_features // 2)),
-        num_repetitions=num_reps,
-    )
-    inputs_b = make_leaf(
-        cls=DummyLeaf,
-        out_channels=in_channels,
-        scope=Scope(range(out_features // 2, out_features)),
-        num_repetitions=num_reps,
-    )
-    inputs = [inputs_a, inputs_b]
-    prod = ElementwiseProduct(inputs=inputs)
-
-    module = Sum(out_channels=out_channels, inputs=prod, num_repetitions=num_reps)
-
-    data = make_normal_data(out_features=out_features)
-    lls = module.log_likelihood(data)
-    assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps)
-
-
-@pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
-def test_sample(in_channels: int, out_channels: int, out_features: int, num_reps):
-    n_samples = 100
-    module = make_sum(
-        in_channels=in_channels,
-        out_channels=out_channels,
-        out_features=out_features,
-        num_repetitions=num_reps,
-    )
-    data = torch.full((n_samples, module.out_shape.features), torch.nan)
-    channel_index = _randint(
-        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-    )
-    mask = torch.full((n_samples, module.out_shape.features), True)
-    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
-    assert samples.shape == data.shape
-    samples_query = samples[:, module.scope.query]
-    assert torch.isfinite(samples_query).all()
-
-
-@pytest.mark.parametrize(
-    "in_channels,out_channels,out_features, num_reps",
-    product(in_channels_values, out_channels_values, [2, 8], num_repetitions),
-)
-def test_sample_product_inputs(in_channels: int, out_channels: int, out_features: int, num_reps):
-    n_samples = 100
-    inputs_a = make_leaf(
-        cls=DummyLeaf,
-        out_channels=in_channels,
-        scope=Scope(range(0, out_features // 2)),
-        num_repetitions=num_reps,
-    )
-    inputs_b = make_leaf(
-        cls=DummyLeaf,
-        out_channels=in_channels,
-        scope=Scope(range(out_features // 2, out_features)),
-        num_repetitions=num_reps,
-    )
-    inputs = [inputs_a, inputs_b]
-    prod = ElementwiseProduct(inputs=inputs)
-
-    module = Sum(out_channels=out_channels, inputs=prod, num_repetitions=num_reps)
-
-    data = torch.full((n_samples, out_features), torch.nan)
-    channel_index = _randint(
-        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-    )
-    mask = torch.full((n_samples, module.out_shape.features), True)
-    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
-    assert samples.shape == data.shape
-    samples_query = samples[:, module.scope.query]
-    assert torch.isfinite(samples_query).all()
-
-
-@pytest.mark.parametrize(
-    "in_channels,out_channels, num_reps",
-    list(product(in_channels_values, out_channels_values, num_repetitions)),
-)
-def test_conditional_sample(in_channels: int, out_channels: int, num_reps):
-    out_features = 6
-    n_samples = 100
-    module = make_sum(
-        in_channels=in_channels,
-        out_channels=out_channels,
-        out_features=out_features,
-        num_repetitions=num_reps,
-    )
-
-    # Create some data
-    data = _randn(n_samples, module.out_shape.features)
-
-    # Set first three scopes to nan
-    data[:, [0, 1, 2]] = torch.nan
-
-    data_copy = data.clone()
-
-    channel_index = _randint(
-        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-    )
-    mask = torch.full(channel_index.shape, True, dtype=torch.bool)
-    repetition_index = _randint(low=0, high=num_reps, size=(n_samples,))
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-
-    cache = Cache()
-    module.log_likelihood(data, cache=cache)
-    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=cache)
-
-    # Check that log_likelihood is cached
-    assert len(cache["log_likelihood"]) > 0
-
-    # Check for correct shape
-    assert samples.shape == data.shape
-
-    samples_query = samples[:, module.scope.query]
-    assert torch.isfinite(samples_query).all()
-
-    # Check, that the last three scopes (those that were conditioned on) are still the same
-    torch.testing.assert_close(data_copy[:, [3, 4, 5]], samples[:, [3, 4, 5]], rtol=0.0, atol=0.0)
-
-
-@pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
-def test_expectation_maximization(in_channels: int, out_channels: int, out_features: int, num_reps):
-    out_channels = 6
-    module = make_sum(
-        in_channels=in_channels,
-        out_channels=out_channels,
-        out_features=out_features,
-        num_repetitions=num_reps,
-    )
-    data = make_normal_data(out_features=out_features)
-    loc_before = module.inputs.loc.detach().clone()
-    scale_before = module.inputs.scale.detach().clone()
-
-    max_steps = 2
-    ll_history = expectation_maximization(module, data, max_steps=max_steps)
-    assert ll_history.ndim == 1
-    assert 1 <= ll_history.numel() <= max_steps
-    assert ll_history.isfinite().all()
-
-    assert not torch.equal(module.inputs.loc, loc_before)
-    assert not torch.equal(module.inputs.scale, scale_before)
-    torch.testing.assert_close(module.inputs.loc, torch.zeros_like(module.inputs.loc))
-    torch.testing.assert_close(module.inputs.scale, torch.ones_like(module.inputs.scale))
-
-
-@pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
-def test_gradient_descent_optimization(in_channels: int, out_channels: int, out_features: int, num_reps):
-    module = make_sum(
-        in_channels=in_channels,
-        out_channels=out_channels,
-        out_features=out_features,
-        num_repetitions=num_reps,
-    )
-    data = make_normal_data(out_features=out_features, num_samples=20)
-    dataset = torch.utils.data.TensorDataset(data)
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=10)
-
-    # Store weights before
-    weights_before = module.weights.clone()
-
-    # Run optimization
-    train_gradient_descent(module, data_loader, epochs=1)
-
-    # Check that weights have changed
-    if in_channels > 1:  # If in_channels is 1, the weight is 1.0 anyway
-        assert not torch.allclose(module.weights, weights_before, rtol=0.0, atol=0.0)
-
-
-@pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
-def test_weights(in_channels: int, out_channels: int, out_features: int, num_reps):
-    weights = torch.ones((out_features, in_channels, out_channels, num_reps))
-    weights = weights / weights.sum(dim=1, keepdim=True)
-
-    module = make_sum(
-        weights=weights,
-        in_channels=in_channels,
-    )
-    weights_sum = module.weights.sum(dim=module.sum_dim)
-    torch.testing.assert_close(weights_sum, torch.ones_like(weights_sum), rtol=1e-5, atol=1e-5)
-    torch.testing.assert_close(module.log_weights, module.weights.log(), rtol=1e-5, atol=1e-6)
-
-
-@pytest.mark.parametrize("in_channels,out_channels,out_features,num_reps", params)
-def test_invalid_weights_not_normalized(in_channels: int, out_channels: int, out_features: int, num_reps):
-    weights = _rand((out_features, in_channels, out_channels, num_reps))
-    with pytest.raises(InvalidWeightsError):
-        make_sum(weights=weights, in_channels=in_channels)
-
-
-@pytest.mark.parametrize("in_channels,out_channels,out_features, num_reps", params)
-def test_invalid_weights_negative(in_channels: int, out_channels: int, out_features: int, num_reps):
-    weights = _rand((out_features, in_channels, out_channels, num_reps)) - 1.0
-    with pytest.raises(InvalidWeightsError):
-        make_sum(weights=weights, in_channels=in_channels)
+# Cross-module behavioral contracts for the sum family moved to:
+# - test_sum_contract_loglikelihood.py
+# - test_sum_contract_sampling.py
+# - test_sum_contract_training.py
+# - test_sum_contract_marginalization.py
+# - test_sum_contract_weights_and_constructor.py
 
 
 def test_invalid_weights_wrong_dim():
@@ -361,29 +145,6 @@ def test_invalid_out_channels_and_weights():
     inputs = make_normal_leaf(out_features=2, out_channels=2, num_repetitions=1)
     with pytest.raises(InvalidParameterCombinationError):
         Sum(out_channels=2, inputs=inputs, weights=weights)
-
-
-def test_expectation_maximization_cache_error():
-    """Test that expectation_maximization raises ValueError when cache is missing entries."""
-    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
-    data = _randn(5, 2)
-    cache = Cache()
-    # Missing log_likelihood in cache
-    with pytest.raises(MissingCacheError):
-        module._expectation_maximization_step(data, cache=cache)
-
-
-def test_constructor_empty_inputs():
-    """Test that Sum raises ValueError when inputs is empty."""
-    with pytest.raises(ValueError):
-        Sum(inputs=[], out_channels=2)
-
-
-def test_constructor_invalid_out_channels():
-    """Test that Sum raises ValueError when out_channels < 1."""
-    leaf = make_normal_leaf(scope=Scope([0]), out_channels=2)
-    with pytest.raises(ValueError):
-        Sum(inputs=[leaf], out_channels=0)
 
 
 def test_constructor_sets_default_repetitions_when_none():
@@ -476,21 +237,6 @@ def test_sample_raises_on_incompatible_mask_width():
         module._sample(data=torch.full((5, 3), torch.nan), sampling_ctx=sampling_ctx, cache=Cache())
 
 
-def test_expectation_maximization_requires_cached_lls():
-    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
-    cache = Cache()
-    with pytest.raises(MissingCacheError):
-        module._expectation_maximization_step(_randn(3, 2), cache=cache)
-
-
-def test_expectation_maximization_raises_for_missing_module_lls():
-    module = make_sum(in_channels=2, out_channels=2, out_features=2, num_repetitions=1)
-    cache = Cache()
-    cache["log_likelihood"][module.inputs] = torch.zeros(3, 2, 2, 1)
-    with pytest.raises(MissingCacheError):
-        module._expectation_maximization_step(_randn(3, 2), cache=cache)
-
-
 def test_marginalize_handles_different_features_per_repetition():
     feature_to_scope = np.array(
         [
@@ -519,12 +265,11 @@ def test_marginalize_returns_none_when_input_marginalization_returns_none():
 def test_num_repetitions_mismatch_with_weights():
     """Test InvalidParameterCombinationError when num_repetitions mismatches weights shape."""
     out_features, in_channels, out_channels = 2, 2, 2
-    # weights with 3 repetitions
     weights = torch.ones((out_features, in_channels, out_channels, 3))
     weights /= weights.sum(dim=1, keepdim=True)
     leaf = make_normal_leaf(scope=Scope([0, 1]), out_channels=in_channels, num_repetitions=3)
 
-    # Passing num_repetitions=2 which mismatches weights shape (3)
+    # Explicit repetitions must agree with weight tensor metadata.
     with pytest.raises(InvalidParameterCombinationError):
         Sum(inputs=leaf, weights=weights, num_repetitions=2)
 
@@ -549,20 +294,18 @@ def test_marginalize(prune, in_channels: int, out_channels: int, marg_rvs: list[
     )
     weights_shape = module.weights.shape
 
-    # Marginalize scope
     marginalized_module = module.marginalize(marg_rvs, prune=prune)
 
     if len(marg_rvs) == out_features:
         assert marginalized_module is None
         return
 
-    # Scope query should not contain marginalized rv
+    # Marginalized variables must be removed from the resulting scope.
     assert len(set(marginalized_module.scope.query).intersection(marg_rvs)) == 0
 
-    # Weights num_scopes dimension should be reduced by len(marg_rv)
+    # Only the feature axis should shrink after dropping marginalized variables.
     assert marginalized_module.weights.shape[0] == weights_shape[0] - len(marg_rvs)
 
-    # Check that all other dims stayed the same
     for d in range(1, len(weights_shape)):
         assert marginalized_module.weights.shape[d] == weights_shape[d]
 
@@ -603,7 +346,7 @@ def test_multiple_input():
 
     module_b = Sum(inputs=[normal_layer_b1, normal_layer_b2], weights=module_a.weights)
 
-    # test log likelihood
+    # Lock equivalence between concatenated-child and pre-concatenated constructions.
 
     data = make_normal_data(out_features=out_features)
 
@@ -612,7 +355,7 @@ def test_multiple_input():
 
     torch.testing.assert_close(ll_a, ll_b, rtol=1e-5, atol=1e-6)
 
-    # test sampling
+    # Shared routing must produce identical samples across equivalent graph layouts.
 
     n_samples = 10
 
@@ -640,31 +383,24 @@ def test_feature_to_scope_single_input():
     out_channels = 4
     num_reps = 2
 
-    # Create input leaf module
     scope = Scope(list(range(out_features)))
     leaf = make_normal_leaf(scope=scope, out_channels=in_channels, num_repetitions=num_reps)
 
-    # Create Sum module with single input
     module = Sum(inputs=leaf, out_channels=out_channels, num_repetitions=num_reps)
 
-    # Get feature_to_scope from both modules
     feature_scopes = module.feature_to_scope
     leaf_scopes = leaf.feature_to_scope
 
-    # Should delegate to input's feature_to_scope
+    # Single-input Sum should be transparent in scope mapping.
     assert np.array_equal(feature_scopes, leaf_scopes)
 
-    # Validate shape matches input
     assert feature_scopes.shape == (out_features, num_reps)
 
-    # Validate all elements are Scope objects
     assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
 
-    # Validate content matches input (each feature should map to its corresponding scope)
     for f_idx in range(out_features):
         for r_idx in range(num_reps):
             assert feature_scopes[f_idx, r_idx] == leaf_scopes[f_idx, r_idx]
-            # Each scope should contain the single feature (query is a tuple)
             assert feature_scopes[f_idx, r_idx].query == (f_idx,)
 
 
@@ -675,28 +411,22 @@ def test_feature_to_scope_multiple_inputs():
     out_channels = 3
     num_reps = 3
 
-    # Create two input leaf modules with same scope
     scope = Scope(list(range(out_features)))
     leaf1 = make_normal_leaf(scope=scope, out_channels=in_channels, num_repetitions=num_reps)
     leaf2 = make_normal_leaf(scope=scope, out_channels=in_channels, num_repetitions=num_reps)
 
-    # Create Sum module with multiple inputs (internally creates Cat)
     module = Sum(inputs=[leaf1, leaf2], out_channels=out_channels, num_repetitions=num_reps)
 
-    # Get feature_to_scope
     feature_scopes = module.feature_to_scope
 
-    # Should delegate to Cat input's feature_to_scope
+    # Multi-input Sum should expose the Cat-composed scope map unchanged.
     cat_scopes = module.inputs.feature_to_scope
     assert np.array_equal(feature_scopes, cat_scopes)
 
-    # Validate shape
     assert feature_scopes.shape == (out_features, num_reps)
 
-    # Validate all elements are Scope objects
     assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
 
-    # Validate content (each feature should map to its scope)
     for f_idx in range(out_features):
         for r_idx in range(num_reps):
             assert feature_scopes[f_idx, r_idx].query == (f_idx,)
@@ -708,39 +438,30 @@ def test_feature_to_scope_with_product_input():
     out_channels = 3
     num_reps = 2
 
-    # Create two leaf modules for different scopes
-    # Product will have features equal to the number of features in the first input
-    # since it operates element-wise
+    # Distinct child scopes make scope-joining behavior observable.
     scope_a = Scope(list(range(0, 2)))
     scope_b = Scope(list(range(2, 4)))
     leaf_a = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_a, num_repetitions=num_reps)
     leaf_b = make_leaf(cls=DummyLeaf, out_channels=in_channels, scope=scope_b, num_repetitions=num_reps)
 
-    # Create product module - this joins scopes element-wise
     prod = ElementwiseProduct(inputs=[leaf_a, leaf_b])
 
-    # Create Sum module with product input
     module = Sum(inputs=prod, out_channels=out_channels, num_repetitions=num_reps)
 
-    # Get feature_to_scope
     feature_scopes = module.feature_to_scope
 
-    # Should delegate to product's feature_to_scope
+    # Sum should preserve upstream scope aggregation from product inputs.
     prod_scopes = prod.feature_to_scope
     assert np.array_equal(feature_scopes, prod_scopes)
 
-    # Product has same number of features as inputs (element-wise operation)
     expected_features = prod.out_shape.features
     assert feature_scopes.shape == (expected_features, num_reps)
 
-    # Validate all elements are Scope objects
     assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
 
-    # Validate content - each feature should have a joined scope from both inputs
     for f_idx in range(expected_features):
         for r_idx in range(num_reps):
-            # The product joins scopes, so each feature has scope from both leaf_a and leaf_b
-            assert len(feature_scopes[f_idx, r_idx].query) == 2  # Joined from 2 inputs
+            assert len(feature_scopes[f_idx, r_idx].query) == 2  # Confirms join includes both child scopes.
 
 
 @pytest.mark.parametrize("num_reps", [1, 3, 7])
@@ -750,31 +471,24 @@ def test_feature_to_scope_with_repetitions(num_reps: int):
     in_channels = 2
     out_channels = 3
 
-    # Create input leaf module with specified repetitions
     scope = Scope(list(range(out_features)))
     leaf = make_normal_leaf(scope=scope, out_channels=in_channels, num_repetitions=num_reps)
 
-    # Create Sum module
     module = Sum(inputs=leaf, out_channels=out_channels, num_repetitions=num_reps)
 
-    # Get feature_to_scope
     feature_scopes = module.feature_to_scope
 
-    # Should delegate to input's feature_to_scope
+    # Repetition count should not break transparent scope delegation.
     leaf_scopes = leaf.feature_to_scope
     assert np.array_equal(feature_scopes, leaf_scopes)
 
-    # Validate shape includes repetitions
     assert feature_scopes.shape == (out_features, num_reps)
 
-    # Validate all elements are Scope objects
     assert all(isinstance(scope_obj, Scope) for scope_obj in feature_scopes.flatten())
 
-    # Validate each repetition has correct scopes
     for r_idx in range(num_reps):
         for f_idx in range(out_features):
             assert feature_scopes[f_idx, r_idx].query == (f_idx,)
-            # All repetitions should have same scope structure (may differ in content for certain modules)
             assert feature_scopes[f_idx, r_idx] == leaf_scopes[f_idx, r_idx]
 
 
@@ -831,9 +545,7 @@ class TestDifferentiableSampling:
         torch.manual_seed(0)
 
         leaf = Bernoulli(scope=Scope([0]), out_channels=3, num_repetitions=1)
-        weights = torch.tensor(
-            [[[[0.2]], [[0.3]], [[0.5]]]], dtype=torch.get_default_dtype()
-        )
+        weights = torch.tensor([[[[0.2]], [[0.3]], [[0.5]]]], dtype=torch.get_default_dtype())
         module = Sum(inputs=leaf, weights=weights)
 
         n_samples = 32

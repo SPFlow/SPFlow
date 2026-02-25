@@ -18,8 +18,7 @@ class TestProcessWeightsParameter:
     @pytest.fixture
     def layer(self):
         """Create a minimal RepetitionMixingLayer instance for method testing."""
-        # Create a mock object to test _process_weights_parameter directly
-        # We need a real instance but won't use it for full construction
+        # We call a protected helper directly, so we build the lightest valid instance.
         from spflow.modules.leaves import Normal
 
         leaf = Normal(
@@ -29,12 +28,10 @@ class TestProcessWeightsParameter:
         )
         return RepetitionMixingLayer(inputs=leaf, out_channels=4, num_repetitions=3)
 
-    # --- Pass-through tests ---
-
     def test_none_weights_passthrough(self, layer):
         """Test that None weights returns unchanged values."""
         weights, out_channels, num_repetitions = layer._process_weights_parameter(
-            inputs=None,  # Not used when weights is None
+            inputs=None,
             weights=None,
             out_channels=5,
             num_repetitions=3,
@@ -42,8 +39,6 @@ class TestProcessWeightsParameter:
         assert weights is None
         assert out_channels == 5
         assert num_repetitions == 3
-
-    # --- Weight reshaping tests ---
 
     def test_1d_weights_reshaped_to_3d(self, layer):
         """Test that 1D weights are reshaped to (1, -1, 1)."""
@@ -54,7 +49,6 @@ class TestProcessWeightsParameter:
             out_channels=1,
             num_repetitions=None,
         )
-        # 1D -> (1, 4, 1)
         assert weights.dim() == 3
         assert weights.shape == (1, 4, 1)
         assert out_channels == 4
@@ -62,14 +56,13 @@ class TestProcessWeightsParameter:
 
     def test_2d_weights_reshaped_to_3d(self, layer):
         """Test that 2D weights are reshaped to (1, shape[0], shape[1])."""
-        input_weights = torch.tensor([[0.5, 0.5], [0.3, 0.7], [0.4, 0.6]])  # (3, 2)
+        input_weights = torch.tensor([[0.5, 0.5], [0.3, 0.7], [0.4, 0.6]])
         weights, out_channels, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
             out_channels=1,
             num_repetitions=None,
         )
-        # 2D (3, 2) -> (1, 3, 2)
         assert weights.dim() == 3
         assert weights.shape == (1, 3, 2)
         assert out_channels == 3
@@ -77,7 +70,7 @@ class TestProcessWeightsParameter:
 
     def test_3d_weights_unchanged(self, layer):
         """Test that 3D weights pass through unchanged."""
-        input_weights = _rand(2, 4, 3)  # (features, channels, repetitions)
+        input_weights = _rand(2, 4, 3)
         weights, out_channels, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
@@ -88,8 +81,6 @@ class TestProcessWeightsParameter:
         assert weights.shape == (2, 4, 3)
         assert out_channels == 4
         assert num_repetitions == 3
-
-    # --- out_channels inference tests ---
 
     def test_out_channels_inferred_from_1d_weights(self, layer):
         """Test that out_channels is inferred from 1D weights."""
@@ -104,7 +95,7 @@ class TestProcessWeightsParameter:
 
     def test_out_channels_inferred_from_2d_weights(self, layer):
         """Test that out_channels is inferred from 2D weights (dim 0)."""
-        input_weights = _rand(5, 2)  # 5 channels, 2 reps
+        input_weights = _rand(5, 2)
         _, out_channels, _ = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
@@ -115,7 +106,7 @@ class TestProcessWeightsParameter:
 
     def test_out_channels_inferred_from_3d_weights(self, layer):
         """Test that out_channels is inferred from 3D weights (dim 1)."""
-        input_weights = _rand(3, 7, 2)  # features=3, channels=7, reps=2
+        input_weights = _rand(3, 7, 2)
         _, out_channels, _ = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
@@ -123,8 +114,6 @@ class TestProcessWeightsParameter:
             num_repetitions=None,
         )
         assert out_channels == 7
-
-    # --- num_repetitions inference tests ---
 
     def test_num_repetitions_inferred_from_1d_weights(self, layer):
         """Test that num_repetitions defaults to 1 for 1D weights."""
@@ -139,7 +128,7 @@ class TestProcessWeightsParameter:
 
     def test_num_repetitions_inferred_from_2d_weights(self, layer):
         """Test that num_repetitions is inferred from 2D weights (dim 1)."""
-        input_weights = _rand(5, 4)  # 5 channels, 4 reps
+        input_weights = _rand(5, 4)
         _, _, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
@@ -150,7 +139,7 @@ class TestProcessWeightsParameter:
 
     def test_num_repetitions_inferred_from_3d_weights(self, layer):
         """Test that num_repetitions is inferred from 3D weights (dim -1)."""
-        input_weights = _rand(2, 5, 6)  # features=2, channels=5, reps=6
+        input_weights = _rand(2, 5, 6)
         _, _, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
@@ -159,8 +148,6 @@ class TestProcessWeightsParameter:
         )
         assert num_repetitions == 6
 
-    # --- Error case tests ---
-
     def test_error_when_out_channels_specified_with_weights(self, layer):
         """Test that specifying both out_channels and weights raises error."""
         input_weights = _rand(4)
@@ -168,13 +155,13 @@ class TestProcessWeightsParameter:
             layer._process_weights_parameter(
                 inputs=None,
                 weights=input_weights,
-                out_channels=5,  # Should not be specified with weights
+                out_channels=5,
                 num_repetitions=None,
             )
 
     def test_error_when_weights_dimension_is_4d(self, layer):
         """Test that 4D weights raise a ValueError."""
-        input_weights = _rand(2, 3, 4, 5)  # 4D tensor
+        input_weights = _rand(2, 3, 4, 5)
         with pytest.raises(ValueError):
             layer._process_weights_parameter(
                 inputs=None,
@@ -185,7 +172,7 @@ class TestProcessWeightsParameter:
 
     def test_error_when_weights_dimension_is_5d(self, layer):
         """Test that 5D weights raise a ValueError."""
-        input_weights = _rand(2, 3, 4, 5, 6)  # 5D tensor
+        input_weights = _rand(2, 3, 4, 5, 6)
         with pytest.raises(ValueError):
             layer._process_weights_parameter(
                 inputs=None,
@@ -196,39 +183,37 @@ class TestProcessWeightsParameter:
 
     def test_error_when_num_repetitions_mismatches_weights(self, layer):
         """Test that conflicting num_repetitions raises error."""
-        input_weights = _rand(3, 4)  # channels=3, reps=4
+        input_weights = _rand(3, 4)
         with pytest.raises(InvalidParameterCombinationError):
             layer._process_weights_parameter(
                 inputs=None,
                 weights=input_weights,
                 out_channels=1,
-                num_repetitions=2,  # Conflicts with weights shape (4)
+                num_repetitions=2,
             )
 
     def test_num_repetitions_1_always_allowed(self, layer):
         """Test that num_repetitions=1 is always allowed (special case)."""
-        input_weights = _rand(3, 4)  # channels=3, reps=4
+        input_weights = _rand(3, 4)
         weights, out_channels, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
             out_channels=1,
-            num_repetitions=1,  # Special case: always allowed
+            num_repetitions=1,
         )
-        # num_repetitions=1 is allowed even though weights have 4 reps
-        assert num_repetitions == 4  # Still inferred from weights
+        # This compatibility exception keeps older call sites from hard-failing.
+        assert num_repetitions == 4
 
     def test_num_repetitions_matching_is_allowed(self, layer):
         """Test that matching num_repetitions is allowed."""
-        input_weights = _rand(3, 4)  # channels=3, reps=4
+        input_weights = _rand(3, 4)
         weights, out_channels, num_repetitions = layer._process_weights_parameter(
             inputs=None,
             weights=input_weights,
             out_channels=1,
-            num_repetitions=4,  # Matches weights shape
+            num_repetitions=4,
         )
         assert num_repetitions == 4
-
-    # --- Data preservation tests ---
 
     def test_weight_values_preserved_after_reshape(self, layer):
         """Test that weight values are preserved after reshaping."""
@@ -239,7 +224,7 @@ class TestProcessWeightsParameter:
             out_channels=1,
             num_repetitions=None,
         )
-        # Values should be the same, just reshaped
+        # Reshaping must be metadata-only; probabilities cannot be altered.
         torch.testing.assert_close(weights.squeeze(), input_weights, rtol=0.0, atol=0.0)
 
     def test_2d_weight_values_preserved_after_reshape(self, layer):
@@ -251,5 +236,5 @@ class TestProcessWeightsParameter:
             out_channels=1,
             num_repetitions=None,
         )
-        # Values should be the same, just with added dimension
+        # Same invariant for 2D inputs when a feature axis is inserted.
         torch.testing.assert_close(weights.squeeze(0), input_weights, rtol=0.0, atol=0.0)

@@ -54,9 +54,11 @@ def test_score_samples_matches_direct_log_likelihood():
     expectation_maximization(model, x_tensor, max_steps=1)
 
     est = SPFlowDensityEstimator(model=model, fit_params=False, dtype="float32")
+    # scikit-learn estimators must be fitted before prediction APIs are valid.
     est.fit(X)
 
-    direct_ll = model.log_likelihood(x_tensor).sum(dim=1).squeeze(-1).squeeze(-1)  # (B,)
+    # Mirror estimator reduction to assert API-level score parity.
+    direct_ll = model.log_likelihood(x_tensor).sum(dim=1).squeeze(-1).squeeze(-1)
     np.testing.assert_allclose(est.score_samples(X), direct_ll.detach().cpu().numpy(), rtol=1e-6, atol=1e-6)
 
 
@@ -168,6 +170,7 @@ def test_fit_prometheus_forwards_kwargs(monkeypatch):
     )
     est.fit(X)
     assert captured["shape"] == (20, 2)
+    # Estimator injects min_features_slice from input dimensionality.
     assert captured["kwargs"] == {"out_channels": 3, "min_instances_slice": 7, "min_features_slice": 2}
 
 
@@ -202,6 +205,7 @@ def test_fit_calls_mle_when_fit_params_enabled(monkeypatch):
 
     est = SPFlowDensityEstimator(model=model, fit_params=True, dtype="float32")
     est.fit(X)
+    # Keep explicit model instance when fitting only its parameters.
     assert est.model_ is model
     assert called["shape"] == (16, 2)
 
@@ -245,4 +249,5 @@ def test_sample_uses_cuda_device_index_for_fork_rng(monkeypatch):
 
     out = est.sample(3, random_state=1)
     assert out.shape == (3, 2)
+    # CUDA fork_rng accepts device indices, not torch.device objects.
     assert captured["devices"] == [0]

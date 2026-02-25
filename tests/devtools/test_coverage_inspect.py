@@ -82,6 +82,7 @@ def test_parse_coverage_index_handles_non_tbody_tags_and_missing_href() -> None:
       </table>
     </body></html>
     """
+    # Parser intentionally trusts tbody region rows with linked file pages only.
     assert parse_coverage_index(html) == []
 
 
@@ -144,7 +145,7 @@ def test_get_missing_lines_from_coverage(tmp_path: Path) -> None:
     coverage = pytest.importorskip("coverage")
 
     mod = tmp_path / "m.py"
-    # Ensure one branch is missed.
+    # Keep one branch unexecuted so coverage must report a missed line.
     mod.write_text(
         "\n".join(
             [
@@ -171,7 +172,7 @@ def test_get_missing_lines_from_coverage(tmp_path: Path) -> None:
 
     missing = get_missing_lines_from_coverage(mod, data_file)
     assert missing is not None
-    # The "return 0" line should be missing.
+    # Regression check: line mapping must point to the unvisited else branch.
     assert 4 in missing
 
 
@@ -181,6 +182,7 @@ def test_get_missing_lines_from_coverage_when_module_or_data_missing(
     src = tmp_path / "a.py"
     src.write_text("x = 1\n", encoding="utf-8")
 
+    # Optional dependency path: callers should degrade to HTML-only mode cleanly.
     monkeypatch.setattr(coverage_inspect, "_try_import_coverage", lambda: None)
     assert get_missing_lines_from_coverage(src, tmp_path / ".coverage") is None
 
@@ -210,6 +212,7 @@ def test_get_missing_lines_from_coverage_uses_measured_file_fallback(
     data_file = tmp_path / ".coverage"
     data_file.write_text("stub", encoding="utf-8")
     source_abs = str(src.resolve())
+    # Coverage sometimes records execution from another workspace root.
     measured_best = f"/other/root/{src.as_posix()}"
 
     class FakeData:
@@ -246,6 +249,7 @@ def test_get_missing_lines_from_coverage_missing_data_file(
 ) -> None:
     src = tmp_path / "a.py"
     src.write_text("x=1\n", encoding="utf-8")
+    # Missing .coverage should not crash CLI flows; they fall back to HTML parsing.
     monkeypatch.setattr(coverage_inspect, "_try_import_coverage", lambda: object())
     assert get_missing_lines_from_coverage(src, tmp_path / ".coverage") is None
 
@@ -340,12 +344,12 @@ def test_find_best_measured_file_exact_and_suffix_variants() -> None:
     measured = ["/repo/spflow/x.py", "/different/prefix/repo/spflow/x.py"]
     assert coverage_inspect._find_best_measured_file(measured, abs_source) == "/repo/spflow/x.py"
 
-    # Match by "target endswith measured" branch.
+    # Exercise fallback when measured paths are shorter than target paths.
     target_with_prefix = "/prefix/repo/spflow/x.py"
     measured_short = ["repo/spflow/x.py"]
     assert coverage_inspect._find_best_measured_file(measured_short, target_with_prefix) == "repo/spflow/x.py"
 
-    # Match by relative suffix fallback.
+    # Relative source paths should still resolve via suffix matching.
     rel_source = "spflow/y.py"
     measured_rel = ["/tmp/build/spflow/y.py"]
     assert coverage_inspect._find_best_measured_file(measured_rel, rel_source) == "/tmp/build/spflow/y.py"
@@ -526,6 +530,7 @@ def test_cmd_show_falls_back_to_html_with_partial_lines(
         encoding="utf-8",
     )
 
+    # Force fallback path so include_partial is sourced from parsed HTML classes.
     monkeypatch.setattr(coverage_inspect, "get_missing_lines_from_coverage", lambda *_args, **_kwargs: None)
     args = argparse.Namespace(
         target="spflow/x.py",
@@ -616,6 +621,7 @@ def test_build_arg_parser_and_main_paths(
     out = capsys.readouterr().out
     assert "cov%" in out
 
+    # argparse exits for missing required target; main should preserve that UX.
     with pytest.raises(SystemExit):
         coverage_inspect.main(["show", "missing.py"])
 
@@ -626,6 +632,7 @@ def test_main_returns_2_when_parser_error_does_not_raise(monkeypatch: pytest.Mon
     def _no_raise_error(_msg: str) -> None:
         return None
 
+    # Defensive branch: if parser.error is customized not to exit, main still returns 2.
     monkeypatch.setattr(parser, "error", _no_raise_error)
     monkeypatch.setattr(coverage_inspect, "build_arg_parser", lambda: parser)
 

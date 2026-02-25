@@ -57,6 +57,7 @@ def _build_conv_model() -> AutoencodingPC:
 
 @pytest.mark.parametrize("builder,shape", [(_build_model, (7, 4)), (_build_conv_model, (7, 1, 4, 4))])
 def test_apc_loss_components_is_unsupported(builder, shape):
+    # Cover both dense and conv encoders so rollback guarantees stay backend-agnostic.
     model = builder()
     x = torch.randn(*shape)
 
@@ -66,6 +67,7 @@ def test_apc_loss_components_is_unsupported(builder, shape):
 
 @pytest.mark.parametrize("builder,shape", [(_build_model, (8, 4)), (_build_conv_model, (8, 1, 4, 4))])
 def test_apc_loss_is_unsupported(builder, shape):
+    # loss() is a separate entry point from loss_components(); both must stay blocked.
     model = builder()
     x = torch.randn(*shape)
 

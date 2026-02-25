@@ -54,7 +54,7 @@ def test_log_likelihood(num_channel: int, num_reps):
     data = make_data(cls=DummyLeaf, out_features=out_features, n_samples=5)
     data = data.view(data.shape[0], num_channel, height, width)
     lls = module.log_likelihood(data)
-    # Always expect 4D output
+    # ImageWrapper keeps image layout while exposing module-level likelihood axes.
     assert lls.shape == (data.shape[0], module.out_shape.features, module.out_shape.channels, num_reps)
     assert torch.isfinite(lls).all()
 
@@ -64,19 +64,15 @@ def test_log_likelihood(num_channel: int, num_reps):
     list(product(num_channel, [True, False])),
 )
 def test_sample(num_channel: int, is_mpe: bool):
-    # cls = leaves.Normal
     module = make_wrapper(num_channel, num_reps=1)
-    # Setup sampling context
     n_samples = 10
     height = 4
     width = 4
-    # Create dummy data tensor for sampling
     data = torch.full((1, num_channel, height, width), float("nan"))
     samples = module.sample(data=data, is_mpe=is_mpe)
 
     assert samples.shape == (1, num_channel, height, width)
 
-    # Check finite
     assert torch.isfinite(samples).all()
 
 
@@ -105,6 +101,7 @@ def test_wrapper_sample_differentiable_equals_non_diff_sampling():
         hard=True,
     )
 
+    # Shared RNG seed makes route/value differences attributable to context mode only.
     torch.manual_seed(1337)
     samples_a = module._sample(
         data=torch.full((n_samples, num_channel, height, width), torch.nan),
@@ -177,6 +174,7 @@ def test_expectation_maximization(
     assert 1 <= ll_history.numel() <= max_steps
     assert ll_history.isfinite().all()
 
+    # Dummy leaf M-step re-centers to standard normal moments after one EM cycle.
     assert not torch.equal(module.module.inputs.inputs.loc, loc_before)
     assert not torch.equal(module.module.inputs.inputs.scale, scale_before)
     torch.testing.assert_close(
@@ -216,7 +214,7 @@ def test_marginalize(height_indices, width_indices, channel_indices):
     )
 
 
-# Exception tests for ImageWrapper
+# Regression tests for strict shape/structure contracts at wrapper boundaries.
 class TestImageWrapperExceptions:
     """Test suite for ImageWrapper exception handling."""
 
@@ -225,15 +223,14 @@ class TestImageWrapperExceptions:
         height = 4
         width = 4
         num_channel = 3
-        num_features = height * width * num_channel  # 48 features
+        num_features = height * width * num_channel
 
-        # Create a module with different number of features (e.g., 50)
+        # Mismatch here should fail fast to prevent silent flattening bugs.
         scope = Scope(list(range(50)))
         leaf_module = make_normal_leaf(scope=scope, out_channels=2, num_repetitions=1)
         product_layer = Product(inputs=leaf_module)
         root = Sum(inputs=product_layer, out_channels=1, num_repetitions=1)
 
-        # This should raise StructureError because 50 != 4*4*3
         with pytest.raises(StructureError):
             ImageWrapper(module=root, height=height, width=width, num_channel=num_channel)
 
@@ -241,7 +238,6 @@ class TestImageWrapperExceptions:
         """Test that ShapeError is raised when flatten() receives non-4D tensor."""
         wrapper = make_wrapper(num_channel=3, num_reps=1)
 
-        # 3D tensor instead of 4D
         wrong_tensor = torch.randn(10, 3, 16)
         with pytest.raises(ShapeError):
             wrapper.flatten(wrong_tensor)
@@ -250,7 +246,6 @@ class TestImageWrapperExceptions:
         """Test that ShapeError is raised when flatten() receives wrong channel dimension."""
         wrapper = make_wrapper(num_channel=3, num_reps=1)
 
-        # 4D tensor but with wrong channel dimension (2 instead of 3)
         wrong_tensor = torch.randn(10, 2, 4, 4)
         with pytest.raises(ShapeError):
             wrapper.flatten(wrong_tensor)
@@ -259,7 +254,6 @@ class TestImageWrapperExceptions:
         """Test that ShapeError is raised when to_image_format() with batch=True receives non-2D tensor."""
         wrapper = make_wrapper(num_channel=3, num_reps=1)
 
-        # 3D tensor instead of 2D for batch mode
         wrong_tensor = torch.randn(10, 3, 16)
         with pytest.raises(ShapeError):
             wrapper.to_image_format(wrong_tensor, batch=True)
@@ -268,7 +262,6 @@ class TestImageWrapperExceptions:
         """Test that ShapeError is raised when to_image_format() with batch=False receives non-1D tensor."""
         wrapper = make_wrapper(num_channel=3, num_reps=1)
 
-        # 2D tensor instead of 1D for non-batch mode
         wrong_tensor = torch.randn(3, 16)
         with pytest.raises(ShapeError):
             wrapper.to_image_format(wrong_tensor, batch=False)
@@ -277,7 +270,6 @@ class TestImageWrapperExceptions:
         """Test that ShapeError is raised when log_likelihood() receives wrong shaped data."""
         wrapper = make_wrapper(num_channel=3, num_reps=1)
 
-        # Wrong shape: (10, 3, 4, 5) instead of (10, 3, 4, 4)
         wrong_data = torch.randn(10, 3, 4, 5)
         with pytest.raises(ShapeError):
             wrapper.log_likelihood(wrong_data)
@@ -286,7 +278,6 @@ class TestImageWrapperExceptions:
         """Test that ShapeError is raised when log_likelihood() receives wrong number of channels."""
         wrapper = make_wrapper(num_channel=3, num_reps=1)
 
-        # Wrong channels: (10, 2, 4, 4) instead of (10, 3, 4, 4)
         wrong_data = torch.randn(10, 2, 4, 4)
         with pytest.raises(ShapeError):
             wrapper.log_likelihood(wrong_data)
@@ -295,7 +286,6 @@ class TestImageWrapperExceptions:
         """Test that ShapeError is raised when expectation_maximization() receives wrong shaped data."""
         wrapper = make_wrapper(num_channel=3, num_reps=3)
 
-        # Wrong shape: (10, 3, 4, 5) instead of (10, 3, 4, 4)
         wrong_data = torch.randn(10, 3, 4, 5)
         with pytest.raises(ShapeError):
             wrapper._expectation_maximization_step(wrong_data, cache=Cache())

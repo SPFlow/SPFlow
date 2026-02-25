@@ -61,6 +61,7 @@ def test_inputnet_validation_and_f_sharing_expand():
         net(torch.linspace(-1, 1, 4), n_chunks=0)
 
     out = net(torch.linspace(-1, 1, 4), n_chunks=2)
+    # Contract is (num_vars, K, num_param) for downstream leaf materialization.
     assert out.shape == (3, 4, 2)
 
 
@@ -123,6 +124,7 @@ def test_masked_softmax_with_and_without_mask():
 
     mask = torch.tensor([[True, False]])
     with_mask = _masked_softmax(logits, mask, dim=1)
+    # Fully masked entries must become exact zeros to prevent probability leakage.
     assert torch.allclose(with_mask[:, 0, :], torch.ones_like(with_mask[:, 0, :]))
     assert torch.allclose(with_mask[:, 1, :], torch.zeros_like(with_mask[:, 1, :]))
 
@@ -203,6 +205,7 @@ def test_tensorized_qpc_feature_to_scope_property():
         _rg_single_leaf(), quadrature_rule=_rule(), config=TensorizedQPCConfig(leaf_type="normal")
     )
     scopes = qpc.feature_to_scope
+    # Single-leaf RG should map one output feature directly back to the model scope.
     assert scopes.shape == (1,)
     assert scopes[0] == qpc.scope
 
@@ -216,9 +219,7 @@ def test_leaf_log_likelihood_shape_check_and_categorical_param_check():
 
     data = torch.tensor([[1.0], [2.0]])
     with pytest.raises(ShapeError):
-        qpc_cat._leaf_log_likelihood(
-            data, torch.zeros(2, qpc_cat.num_units, 3)
-        )  # pylint: disable=protected-access
+        qpc_cat._leaf_log_likelihood(data, torch.zeros(2, qpc_cat.num_units, 3))  # pylint: disable=protected-access
 
     with pytest.raises(ShapeError):
         qpc_cat._leaf_log_likelihood(  # pylint: disable=protected-access
@@ -249,7 +250,8 @@ def test_log_likelihood_tucker_param_dimension_guards():
         quadrature_rule=_rule(),
         config=TensorizedQPCConfig(leaf_type="normal", layer_cls="tucker"),
     )
-    qpc_root.inner_nets = nn.ModuleList([_BadInnerNet(torch.zeros(1, 3, 3, 1))])  # ndim=4, root expects 3
+    # Root Tucker layer expects collapsed (F, K, K); extra dim should fail loudly.
+    qpc_root.inner_nets = nn.ModuleList([_BadInnerNet(torch.zeros(1, 3, 3, 1))])
     with pytest.raises(ShapeError):
         qpc_root.log_likelihood(torch.randn(2, 2))
 
@@ -270,7 +272,8 @@ def test_log_likelihood_tucker_param_dimension_guards():
     )
     qpc_mid.inner_nets = nn.ModuleList(
         [
-            _BadInnerNet(torch.zeros(2, 3, 3)),  # ndim=3, non-root tucker expects 4
+            # Non-root Tucker layers require child-axis preservation (rank-4 tensor).
+            _BadInnerNet(torch.zeros(2, 3, 3)),
             _BadInnerNet(torch.zeros(1, 3, 3)),
         ]
     )

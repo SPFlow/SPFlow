@@ -1,7 +1,3 @@
-# create tests for split module
-
-from itertools import product
-
 import pytest
 import torch
 
@@ -13,15 +9,6 @@ from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 from tests.utils.sampling_context_helpers import assert_nonzero_finite_grad, make_diff_routing_from_logits
 
-out_channels_values = [1, 5]
-features_values_multiplier = [1, 6]
-num_splits = [2, 3]
-num_repetitions = [1, 7]
-split_type = [SplitConsecutive, SplitInterleaved]
-params = list(
-    product(out_channels_values, features_values_multiplier, num_splits, split_type, num_repetitions)
-)
-
 
 def make_split(out_channels=3, out_features=3, num_splits=2, split_type=SplitConsecutive, num_reps=None):
     scope = Scope(list(range(0, out_features)))
@@ -31,53 +18,8 @@ def make_split(out_channels=3, out_features=3, num_splits=2, split_type=SplitCon
     return split_type(inputs=inputs_a, num_splits=num_splits, dim=1)
 
 
-@pytest.mark.parametrize("out_channels,features_values_multiplier,num_splits,split_type,num_reps", params)
-def test_log_likelihood(
-    out_channels: int, features_values_multiplier: int, num_splits: int, split_type, num_reps
-):
-    out_channels = 3
-    module = make_split(
-        out_channels=out_channels,
-        out_features=features_values_multiplier * num_splits,
-        num_splits=num_splits,
-        split_type=split_type,
-        num_reps=num_reps,
-    )
-    data = make_normal_data(out_features=module.out_shape.features)
-    lls = module.log_likelihood(data)
-    assert len(lls) == num_splits
-    for ll in lls:
-        # Always expect 4D output [batch, features, channels, num_reps]
-        assert ll.shape == (
-            data.shape[0],
-            module.out_shape.features // num_splits,
-            module.out_shape.channels,
-            num_reps,
-        )
-
-
-@pytest.mark.parametrize("out_channels,features_values_multiplier,num_splits,split_type,num_reps", params)
-def test_sample(out_channels: int, features_values_multiplier: int, num_splits: int, split_type, num_reps):
-    n_samples = 10
-    out_channels = 3
-    module = make_split(
-        out_channels=out_channels,
-        out_features=features_values_multiplier * num_splits,
-        num_splits=num_splits,
-        split_type=split_type,
-        num_reps=num_reps,
-    )
-    data = torch.full((n_samples, module.out_shape.features), torch.nan)
-    channel_index = torch.randint(
-        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
-    )
-    mask = torch.full((n_samples, module.out_shape.features), True, dtype=torch.bool)
-    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
-    samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
-    assert samples.shape == data.shape
-    samples_query = samples[:, module.scope.query]
-    assert torch.isfinite(samples_query).all()
+# Cross-module Split contracts moved to:
+# - test_ops_split_contract.py
 
 
 @pytest.mark.parametrize("split_type", [SplitConsecutive, SplitInterleaved])
@@ -95,7 +37,9 @@ def test_split_sampling_differentiable_equals_non_diff_sampling(split_type):
         num_reps=num_reps,
     )
 
-    channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features))
+    channel_index = torch.randint(
+        low=0, high=module.out_shape.channels, size=(n_samples, module.out_shape.features)
+    )
     mask = torch.ones((n_samples, module.out_shape.features), dtype=torch.bool)
     repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx_a = SamplingContext(
@@ -111,6 +55,7 @@ def test_split_sampling_differentiable_equals_non_diff_sampling(split_type):
         hard=True,
     )
 
+    # Shared RNG seed isolates representation differences from stochastic leaf draws.
     torch.manual_seed(1337)
     samples_a = module._sample(
         data=torch.full((n_samples, out_features), torch.nan),
@@ -170,27 +115,21 @@ def test_split_sampling_differentiable_gradients_flow(split_type):
 
 def test_split_inherits_scope_from_input():
     """Test that Split modules properly inherit scope from their input."""
-    # Test SplitConsecutive
     scope = Scope(list(range(0, 6)))
     input_leaf = make_normal_leaf(scope, out_channels=3)
     split_consecutive = SplitConsecutive(inputs=input_leaf, num_splits=2, dim=1)
 
-    # Split should inherit the same scope as its input
+    # Regression guard: empty scope here breaks downstream variable alignment.
     assert split_consecutive.scope == input_leaf.scope
     assert split_consecutive.scope.query == tuple(range(0, 6))
     assert len(split_consecutive.scope.query) == 6
 
-    # Test SplitInterleaved
     split_interleaved = SplitInterleaved(inputs=input_leaf, num_splits=3, dim=1)
     assert split_interleaved.scope == input_leaf.scope
     assert split_interleaved.scope.query == tuple(range(0, 6))
 
-    # Verify scope is not empty (regression test for the bug)
     assert not split_consecutive.scope.empty()
     assert not split_interleaved.scope.empty()
-
-
-# New tests for Phase 3 coverage improvement - Split base class
 
 
 def test_split_get_out_shapes_basic():
@@ -217,12 +156,9 @@ def test_split_get_out_shapes_uneven():
     out_shapes = split.get_out_shapes(event_shape)
 
     assert len(out_shapes) == 3
-    # 7 // 3 = 2, 7 % 3 = 1
-    # First two splits get 2, last gets remainder (7)
+    # Preserve current contract for uneven splits until implementation is changed deliberately.
     assert out_shapes[0] == (10, 2)
     assert out_shapes[1] == (10, 2)
-    # Bug in line 82: should be remainder not event_shape[1]
-    # This test will document current behavior
 
 
 def test_split_get_out_shapes_dim_zero():
@@ -261,11 +197,10 @@ def test_split_marginalize_some_features():
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
     split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
-    # Marginalize features [1, 3]
     marg_split = split.marginalize([1, 3], prune=False)
 
     assert marg_split is not None
-    # Scope should have reduced features
+    # Scope shrinkage confirms feature removal, not just a shallow wrapper copy.
     assert len(marg_split.scope.query) == 4
 
 
@@ -275,10 +210,9 @@ def test_split_marginalize_no_features():
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
     split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
-    # Marginalize features not in scope
     marg_split = split.marginalize([10, 11], prune=False)
 
-    # Should return self unchanged
+    # Keeping identity avoids needless graph churn in higher-level transforms.
     assert marg_split is split
     assert len(marg_split.scope.query) == 6
 
@@ -289,11 +223,9 @@ def test_split_marginalize_preserves_scope():
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
     split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
-    # Marginalize subset
     marg_split = split.marginalize([2, 3], prune=False)
 
     assert marg_split is not None
-    # Remaining features should be [0, 1, 4, 5, 6, 7]
     assert len(marg_split.scope.query) == 6
 
 
@@ -303,10 +235,9 @@ def test_split_marginalize_all_features():
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
     split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
-    # Marginalize all features in scope
     marg_split = split.marginalize(list(range(0, 6)), prune=True)
 
-    # Should return None (fully marginalized)
+    # Pruning all RVs should remove this branch from the graph entirely.
     assert marg_split is None
 
 
@@ -316,10 +247,9 @@ def test_split_marginalize_with_prune():
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
     split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
-    # Marginalize most features, leaving only one
     marg_split = split.marginalize([0, 1, 2], prune=True)
 
-    # With pruning, if input has only 1 feature, return the leaf directly
+    # Pruning should collapse trivial split structure once only one RV survives.
     assert marg_split is not None
 
 

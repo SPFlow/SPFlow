@@ -35,6 +35,7 @@ def test_pairwise_marginal_binary_weighted_path() -> None:
 
 def test_as_float_tensor_device_conversion_branch() -> None:
     x = torch.tensor([1.0, 2.0], dtype=torch.float32)
+    # Meta device check keeps this branch allocation-free while still verifying routing logic.
     y = _as_float_tensor(x, dtype=torch.float32, device=torch.device("meta"))
     assert y.device.type == "meta"
 
@@ -81,4 +82,5 @@ def test_pairwise_mi_categorical_weighted_and_single_feature_paths() -> None:
     assert torch.isfinite(mi).all()
 
     mi_single = pairwise_mi_categorical(torch.tensor([[0], [1], [2]], dtype=torch.float32), num_cats=3)
+    # Single-feature categorical MI should reduce to a 1x1 self-information matrix.
     assert tuple(mi_single.shape) == (1, 1)

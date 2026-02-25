@@ -72,7 +72,7 @@ class StubModule(Module):
     def log_likelihood(self, data, cache: Optional[Cache] = None):
         """Return fake log-likelihood with appropriate shape."""
         batch_size = data.shape[0]
-        # Return zeros so replacements are visibly different
+        # Baseline zeros make replacement outputs easy to detect in assertions.
         return torch.zeros(batch_size, self.out_shape.channels, 1)
 
     def sample(self, num_samples=None, data=None, is_mpe=False, cache=None):
@@ -137,7 +137,7 @@ class StubCat(StubModule):
     """Stub concatenation module that accepts list of inputs."""
 
     def __init__(self, inputs, dim: int = 0):
-        # Combine scopes from all inputs
+        # Mirror Cat semantics so hierarchy tests keep realistic scopes.
         all_query = set()
         for inp in inputs:
             all_query.update(inp._scope.query)
@@ -151,7 +151,7 @@ class StubCat(StubModule):
         results = []
         for inp in self.inputs:
             results.append(inp.log_likelihood(data, cache))
-        # Stack results along a new dimension
+        # Preserve per-input identity so tests can observe both branches.
         return torch.stack(results, dim=1)
 
 
@@ -166,14 +166,12 @@ class TestBasicReplacement:
 
         mock = MockModule()
 
-        # Before replacement
+        # Verify context manager fully restores patched methods on exit.
         assert mock.non_cached_method() == "original"
 
-        # With replacement
         with replace(MockModule.non_cached_method, custom_method):
             assert mock.non_cached_method() == "custom"
 
-        # After replacement
         assert mock.non_cached_method() == "original"
 
     def test_replace_cached_method(self):
@@ -184,16 +182,14 @@ class TestBasicReplacement:
 
         mock = MockModule()
 
-        # Before replacement
+        # Baseline proves the test is not accidentally using custom output already.
         result_before = mock.log_likelihood(torch.tensor([1.0]))
         assert torch.equal(result_before, torch.tensor([1.0, 2.0, 3.0]))
 
-        # With replacement
         with replace(MockModule.log_likelihood, custom_ll):
             result_custom = mock.log_likelihood(torch.tensor([1.0]))
             assert torch.equal(result_custom, torch.tensor([4.0, 5.0, 6.0]))
 
-        # After replacement
         result_after = mock.log_likelihood(torch.tensor([1.0]))
         assert torch.equal(result_after, torch.tensor([1.0, 2.0, 3.0]))
 
@@ -206,13 +202,12 @@ class TestBasicReplacement:
         mock1 = MockModule("mock1")
         mock2 = MockModule("mock2")
 
-        # Before replacement - both use original
+        # Replacement is class-level, so both instances must move together.
         result1_before = mock1.log_likelihood(torch.tensor([1.0]))
         result2_before = mock2.log_likelihood(torch.tensor([1.0]))
         assert torch.equal(result1_before, torch.tensor([1.0, 2.0, 3.0]))
         assert torch.equal(result2_before, torch.tensor([1.0, 2.0, 3.0]))
 
-        # With replacement - both use custom
         with replace(MockModule.log_likelihood, custom_ll):
             result1_custom = mock1.log_likelihood(torch.tensor([1.0]))
             result2_custom = mock2.log_likelihood(torch.tensor([1.0]))
@@ -237,14 +232,13 @@ class TestCachingBehavior:
         mock = MockModule()
 
         with replace(MockModule.log_likelihood, custom_ll):
-            # First call should compute
+            # First call warms cache; second call confirms wrapper remains cache-aware.
             result1 = mock.log_likelihood(torch.tensor([1.0]), cache=cache)
             assert call_count == 1
 
-            # Second call should use cache
             result2 = mock.log_likelihood(torch.tensor([1.0]), cache=cache)
-            assert call_count == 1  # Not incremented
-            assert result1 is result2  # Same object (cached)
+            assert call_count == 1
+            assert result1 is result2
 
     def test_cache_key_with_replacement(self):
         """Test that cache keys work correctly with replaced methods."""
@@ -258,10 +252,9 @@ class TestCachingBehavior:
         with replace(MockModule.log_likelihood, custom_ll):
             result1 = mock.log_likelihood(torch.tensor([1.0]), cache=cache)
 
-            # Call again - should use cached value
+            # Identity check guards that cache key generation is unchanged by replacement.
             result2 = mock.log_likelihood(torch.tensor([1.0]), cache=cache)
 
-            # Results should be the same object (cached)
             assert result1 is result2
             assert torch.equal(result1, torch.tensor([11.0]))
 
@@ -277,11 +270,10 @@ class TestRestorationAndCleanup:
 
         mock = MockModule()
 
-        # Use replacement
+        # Exercise no-op body: restoration must not depend on method invocation.
         with replace(MockModule.non_cached_method, custom_method):
             pass
 
-        # Original should be restored
         assert mock.non_cached_method() == "original"
 
     def test_original_restored_on_exception(self):
@@ -297,7 +289,7 @@ class TestRestorationAndCleanup:
                 assert mock.non_cached_method() == "custom"
                 raise ValueError("Test exception")
 
-        # Original should still be restored
+        # Exception safety is the main contract of the context manager.
         assert mock.non_cached_method() == "original"
 
     def test_multiple_sequential_replacements(self):
@@ -311,15 +303,13 @@ class TestRestorationAndCleanup:
 
         mock = MockModule()
 
-        # First replacement
+        # Sequential contexts should not leak previous replacements.
         with replace(MockModule.non_cached_method, custom1):
             assert mock.non_cached_method() == "custom1"
 
-        # Second replacement
         with replace(MockModule.non_cached_method, custom2):
             assert mock.non_cached_method() == "custom2"
 
-        # Back to original
         assert mock.non_cached_method() == "original"
 
 
@@ -335,13 +325,13 @@ class TestErrorHandling:
     def test_invalid_method_reference_no_name(self):
         """Test error when method reference has no __name__."""
 
-        # Lambda functions have __name__, so we test with a class instance
+        # Use callable object to hit the branch where __name__ metadata is missing.
         class NoName:
             def __call__(self):
                 pass
 
         obj = NoName()
-        # Remove __name__ attribute by deleting it
+        # Keep setup robust if runtime injects __name__ dynamically.
         if hasattr(obj, "__name__"):
             delattr(obj, "__name__")
 
@@ -355,10 +345,9 @@ class TestErrorHandling:
         def func():
             pass
 
-        # Remove __qualname__ if possible
+        # This branch is intentionally hard to reach on real functions.
         if hasattr(func, "__qualname__"):
-            # Can't actually remove __qualname__ from functions in Python,
-            # but we can test the error message
+            # Document intent without mutating interpreter-level function metadata.
             pass
 
 
@@ -367,30 +356,28 @@ class TestIntegrationWithModuleStubs:
 
     def test_replace_sum_log_likelihood(self):
         """Test replacing log_likelihood on Sum module."""
-        # Create a simple structure: Sum(StubModule)
+        # Small hierarchy keeps assertions focused on replacement behavior.
         scope = Scope([0, 1])
         stub = StubModule(scope=scope, out_channels=2)
         sum_module = StubSum(inputs=stub, out_channels=2)
 
         def custom_ll(self, data, cache=None):
-            # Custom implementation that returns ones
+            # Distinct output confirms the patched implementation is active.
             batch_size = data.shape[0]
             return torch.ones(batch_size, 2, 1)
 
-        data = torch.randn(3, 2)  # 3 samples, 2 features
+        data = torch.randn(3, 2)
 
-        # Get original result
+        # Preserve baseline to verify full restoration after context exit.
         original_result = sum_module.log_likelihood(data)
         original_shape = original_result.shape
-        assert original_shape[0] == 3  # batch size
+        assert original_shape[0] == 3
 
-        # Use custom implementation
         with replace(StubSum.log_likelihood, custom_ll):
             custom_result = sum_module.log_likelihood(data)
-            assert custom_result.shape[0] == 3  # batch size preserved
+            assert custom_result.shape[0] == 3
             assert torch.equal(custom_result, torch.ones(3, 2, 1))
 
-        # Original restored
         restored_result = sum_module.log_likelihood(data)
         assert torch.equal(restored_result, original_result)
 
@@ -406,21 +393,19 @@ class TestIntegrationWithModuleStubs:
         def custom_sum_ll(self, data, cache=None):
             nonlocal call_count
             call_count += 1
-            # Return ones with the correct shape
+            # Keep shape valid so failures point to replacement dispatch, not broadcasting.
             batch_size = data.shape[0]
             return torch.ones(batch_size, 2, 1)
 
         data = torch.randn(2, 2)
 
-        # Original behavior
+        # Baseline comparison ensures the patched path actually changes behavior.
         original_result = product_module.log_likelihood(data)
 
-        # With replacement - the custom Sum.log_likelihood should be called
         with replace(StubSum.log_likelihood, custom_sum_ll):
             custom_result = product_module.log_likelihood(data)
-            assert call_count == 1  # Sum.log_likelihood was called once
+            assert call_count == 1
 
-        # Verify the replacement affected the sum module
         assert not torch.equal(custom_result, original_result)
 
     def test_replace_multiple_instances_same_class(self):
@@ -428,14 +413,14 @@ class TestIntegrationWithModuleStubs:
         scope1 = Scope([0, 1])
         scope2 = Scope([2, 3])
 
-        # Create a tree with multiple Sum nodes
+        # Two Sum instances verify class-level patching across sibling branches.
         stub1 = StubModule(scope=scope1, out_channels=2)
         sum1 = StubSum(inputs=stub1, out_channels=2)
 
         stub2 = StubModule(scope=scope2, out_channels=2)
         sum2 = StubSum(inputs=stub2, out_channels=2)
 
-        # Cat both sums together
+        # Cat forces traversal through both children in one forward pass.
         combined = StubCat(inputs=[sum1, sum2], dim=1)
 
         call_count = 0
@@ -443,17 +428,14 @@ class TestIntegrationWithModuleStubs:
         def custom_ll(self, data, cache=None):
             nonlocal call_count
             call_count += 1
-            # Return the correct shape based on the Sum's out_channels
+            # Shape compatibility keeps this a dispatch test rather than shape test.
             batch_size = data.shape[0]
             return torch.zeros(batch_size, 2, 1)
 
-        # Use data that matches the combined scope
-        data = torch.randn(2, 4)  # 4 features for scopes [0,1,2,3]
+        data = torch.randn(2, 4)
 
-        # With replacement, both Sum instances should use custom
         with replace(StubSum.log_likelihood, custom_ll):
             combined.log_likelihood(data)
-            # Both sum1 and sum2 should have called the custom function
             assert call_count == 2
 
 
@@ -464,7 +446,7 @@ class TestEdgeCases:
         """Test that custom function can have different implementation details."""
 
         def custom_ll(self, data, cache=None):
-            # Different computation
+            # Branching here proves custom logic can diverge from original implementation.
             if data.shape[0] > 1:
                 return torch.tensor([100.0])
             else:
@@ -493,7 +475,7 @@ class TestEdgeCases:
             mock.log_likelihood(torch.tensor([1.0]))
             assert mock.call_count == 10
 
-        # call_count should remain modified (only method is restored)
+        # replace() restores methods only; it must not roll back side effects on state.
         assert mock.call_count == 10
 
     def test_empty_context(self):
@@ -504,9 +486,8 @@ class TestEdgeCases:
 
         mock = MockModule()
 
-        # Enter and exit without calling
+        # Ensure context enter/exit itself is safe when patched method is unused.
         with replace(MockModule.non_cached_method, custom_method):
             pass
 
-        # Original should be available
         assert mock.non_cached_method() == "original"

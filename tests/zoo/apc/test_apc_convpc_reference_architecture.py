@@ -35,16 +35,18 @@ def test_convpc_reference_default_topology_matches_expected_stage_counts() -> No
 
     assert encoder.architecture == "reference"
     assert encoder.latent_sum_layer is not None
-    assert encoder._latent_target_features == 64  # 8x8 injection plane for 32x32 depth=4 setup.
+    assert (
+        encoder._latent_target_features == 64
+    )  # Guards the reference-depth contract for latent injection width.
     assert len(encoder.latent_prod_layers) == 0
 
     prod_layers = [m for m in encoder.layers if isinstance(m, ProdConv)]
     sum_layers = [m for m in encoder.layers if isinstance(m, Sum)]
     fusion_layers = [m for m in encoder.layers if isinstance(m, ElementwiseProduct)]
 
-    # Reference depth=4 has one bottom reducer + three internal prod transitions.
+    # Keep stage counts fixed so architecture refactors cannot silently drift.
     assert len(prod_layers) == 4
-    # One internal sum is replaced by fusion node, leaving two internal sums plus root sum.
+    # Fusion should replace exactly one internal sum in reference mode.
     assert len(sum_layers) == 3
     assert len(fusion_layers) == 1
 
@@ -56,7 +58,9 @@ def test_convpc_reference_default_topology_matches_expected_stage_counts() -> No
 
 def test_convpc_reference_latent_dim_larger_than_injection_uses_latent_prod_layers() -> None:
     encoder = _build_reference_encoder(latent_dim=256)
-    assert len(encoder.latent_prod_layers) == 2  # 256 -> 128 -> 64
+    assert (
+        len(encoder.latent_prod_layers) == 2
+    )  # Verifies down-projection depth when latent_dim exceeds injection width.
 
     x = torch.randn(4, 1, 32, 32)
     with pytest.raises(UnsupportedOperationError):
@@ -79,6 +83,7 @@ def test_convpc_reference_latent_dim_smaller_than_injection_uses_packing_and_per
     assert with_perm.latent_perm_inv is not None
     assert with_perm.latent_perm.shape == with_perm.latent_perm_inv.shape
     assert with_perm.latent_perm.shape[0] == with_perm._latent_target_features
+    # Round-trip identity ensures packed latents can be permuted and restored losslessly.
     roundtrip = with_perm.latent_perm[with_perm.latent_perm_inv]
     assert torch.equal(roundtrip, torch.arange(with_perm._latent_target_features))
 

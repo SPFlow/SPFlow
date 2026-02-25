@@ -17,53 +17,6 @@ from tests.modules.einsum.layer_test_utils import make_linsum_single_input, make
 from tests.utils.leaves import CachingDummyInput, DummyLeaf, make_leaf, make_normal_data, make_normal_leaf
 
 
-class TestLinsumLayerGradientDescent:
-    def test_gradient_flow(self):
-        module = make_linsum_single_input(2, 3, 4, 1)
-        data = make_normal_data(out_features=4, num_samples=20)
-
-        lls = module.log_likelihood(data)
-        loss = -lls.mean()
-        loss.backward()
-
-        assert module.logits.grad is not None
-        assert torch.isfinite(module.logits.grad).all()
-
-    def test_optimization_changes_weights(self):
-        module = make_linsum_single_input(2, 3, 4, 1)
-        data = make_normal_data(out_features=4, num_samples=50)
-
-        weights_before = module.weights.clone()
-
-        optimizer = torch.optim.Adam(module.parameters(), lr=0.1)
-        for _ in range(5):
-            optimizer.zero_grad()
-            lls = module.log_likelihood(data)
-            loss = -lls.mean()
-            loss.backward()
-            optimizer.step()
-
-        assert not torch.allclose(module.weights, weights_before, rtol=0.0, atol=0.0)
-
-
-class TestLinsumLayerExpectationMaximization:
-    @pytest.mark.parametrize(
-        "in_channels,out_channels,in_features,num_reps",
-        product([2], [3], [4], [1, 2]),
-    )
-    def test_em_weights_normalized_after_update_single_input(
-        self, in_channels: int, out_channels: int, in_features: int, num_reps: int
-    ):
-        module = make_linsum_single_input(in_channels, out_channels, in_features, num_reps)
-        data = make_normal_data(out_features=in_features, num_samples=50)
-
-        expectation_maximization(module, data, max_steps=3)
-
-        weights = module.weights
-        sums = weights.sum(dim=-1)
-        torch.testing.assert_close(sums, torch.ones_like(sums), rtol=1e-5, atol=1e-5)
-
-
 class TestLinsumLayerEMTwoInputs:
     def make_linsum_with_caching_inputs(
         self, in_channels: int, out_channels: int, in_features: int, num_reps: int
@@ -103,6 +56,7 @@ class TestLinsumLayerEMTwoInputs:
 
         ll_history = expectation_maximization(module, data, max_steps=5)
 
+        # Use exact inequality so we catch no-op EM updates, not just tiny floating drift.
         assert not torch.allclose(module.weights, original_weights, rtol=0.0, atol=0.0)
         assert len(ll_history) >= 1
         assert torch.isfinite(ll_history).all()
@@ -121,6 +75,7 @@ class TestLinsumLayerEMTwoInputs:
         expectation_maximization(module, data, max_steps=3)
 
         weights = module.weights
+        # Linsum normalizes over the single input-channel axis for each output slot.
         sums = weights.sum(dim=-1)
         torch.testing.assert_close(sums, torch.ones_like(sums), rtol=1e-5, atol=1e-5)
 
@@ -262,6 +217,7 @@ class TestLinsumLayerCoverageBranches:
         data = make_normal_data(out_features=4, num_samples=6)
         cache = Cache()
 
+        # The EM M-step depends on cached module likelihoods from the forward E-step.
         with pytest.raises(MissingCacheError):
             module._expectation_maximization_step(data, cache=cache)
 
@@ -274,6 +230,7 @@ class TestLinsumLayerCoverageBranches:
     def test_marginalize_two_inputs_branch_outcomes(self, monkeypatch):
         module = make_linsum_two_inputs(2, 3, 4, 1)
 
+        # Cover all return branches: drop-all, keep-right, keep-left, or reconstruct layer.
         monkeypatch.setattr(module.inputs[0], "marginalize", lambda *args, **kwargs: None)
         monkeypatch.setattr(module.inputs[1], "marginalize", lambda *args, **kwargs: None)
         assert module.marginalize([0]) is None

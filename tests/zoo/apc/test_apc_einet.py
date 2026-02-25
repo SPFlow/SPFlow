@@ -35,6 +35,7 @@ def test_einet_apc_encode_decode_and_likelihood_shapes():
 
     ll_joint = encoder.joint_log_likelihood(x, z)
     ll_x = encoder.log_likelihood_x(x)
+    # APC training/eval code consumes one score per sample from each likelihood term.
     assert ll_joint.shape == (6,)
     assert ll_x.shape == (6,)
     assert torch.isfinite(ll_joint).all()
@@ -69,6 +70,7 @@ def test_einet_apc_decode_fill_evidence_keeps_observed_entries():
 
     x_rec = encoder.decode(z, x=x_partial, fill_evidence=True)
     observed = torch.isfinite(x_partial)
+    # Conditioning should only impute NaNs, never overwrite provided evidence.
     assert torch.equal(x_rec[observed], x_partial[observed].to(x_rec.dtype))
 
 
@@ -76,6 +78,7 @@ def test_einet_apc_encode_with_missing_x_values():
     torch.manual_seed(3)
     encoder = _build_encoder()
     x = torch.randn(5, 4)
+    # Missing-at-input support is required for APC-style partial-observation workflows.
     x[:, 0] = float("nan")
 
     z = encoder.encode(x, tau=0.8)

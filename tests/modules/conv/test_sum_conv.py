@@ -15,15 +15,15 @@ from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.sampling_context_helpers import patch_simple_as_categorical_one_hot
 
-# Test parameter values
+# Small parameter grid keeps branch coverage while runtime stays low.
 in_channels_values = [1, 3]
 out_channels_values = [1, 5]
 height_width_values = [(4, 4), (8, 8)]
 
-# For EM tests, only test with in_channels > 1 to ensure weights can change
+# EM update assertions need at least two incoming channels to move probabilities.
 em_in_channels_values = [3]
 
-# Combined parameter lists
+# Reuse identical sweeps so behavior stays comparable across test groups.
 construction_params = list(product(in_channels_values, out_channels_values, height_width_values))
 ll_params = list(product(in_channels_values, out_channels_values, height_width_values))
 sample_params = list(product(in_channels_values, out_channels_values, height_width_values))
@@ -79,7 +79,6 @@ class TestSumConvConstruction:
         leaf = make_normal_leaf(height, width, out_channels=in_channels, num_repetitions=num_reps)
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2, num_repetitions=num_reps)
 
-        # Shape: (out_c, in_c, k, k, reps)
         assert module.weights.shape == (out_channels, in_channels, 2, 2, num_reps)
 
     @pytest.mark.parametrize("in_channels,out_channels,hw", construction_params)
@@ -89,7 +88,7 @@ class TestSumConvConstruction:
         leaf = make_normal_leaf(height, width, out_channels=in_channels)
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
-        weights_sum = module.weights.sum(dim=1)  # Sum over in_channels
+        weights_sum = module.weights.sum(dim=1)
         torch.testing.assert_close(weights_sum, torch.ones_like(weights_sum), rtol=1e-5, atol=1e-8)
 
     @pytest.mark.parametrize("in_channels,out_channels,hw", construction_params)
@@ -159,7 +158,6 @@ class TestSumConvLogLikelihood:
         data = _randn(batch_size, height * width)
         ll = module.log_likelihood(data)
 
-        # Output shape: (batch, features, out_channels, reps)
         assert ll.shape == (batch_size, height * width, out_channels, num_reps)
 
     @pytest.mark.parametrize("in_channels,out_channels,hw", ll_params)
@@ -187,7 +185,7 @@ class TestSumConvLogLikelihood:
         ll1 = module.log_likelihood(data, cache=cache)
         ll2 = module.log_likelihood(data, cache=cache)
 
-        # Should return same object from cache
+        # Identity check verifies cache reuse instead of recomputation.
         assert ll1 is ll2
 
     def test_log_likelihood_broadcasts_input_repetitions(self):
@@ -395,8 +393,7 @@ class TestSumConvSample:
         sampling_ctx2 = self._make_sampling_context(module=module, batch_size=5, is_mpe=True)
         samples2 = module._sample(data=data2, sampling_ctx=sampling_ctx2, cache=Cache())
 
-        # MPE should give deterministic results (same selection)
-        # Note: actual values may vary due to leaf sampling
+        # This guards route determinism only; leaf noise can still change values.
         assert samples1.shape == samples2.shape
 
     def test_sample_defaults_to_single_sample(self):
@@ -599,7 +596,7 @@ class TestSumConvFeatureToScope:
         leaf = make_normal_leaf(height, width, out_channels=in_channels)
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
-        # SumConv should preserve input scopes
+        # SumConv changes channel mixing only, so variable scopes should remain unchanged.
         assert np.array_equal(module.feature_to_scope, leaf.feature_to_scope)
 
     @pytest.mark.parametrize("in_channels,out_channels,hw", construction_params)
@@ -611,7 +608,7 @@ class TestSumConvFeatureToScope:
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2, num_repetitions=num_reps)
 
         f2s = module.feature_to_scope
-        assert f2s.shape == (height * width, num_reps)  # (features, repetitions)
+        assert f2s.shape == (height * width, num_reps)
 
 
 class TestSumConvEM:
@@ -624,23 +621,19 @@ class TestSumConvEM:
         leaf = make_normal_leaf(height, width, out_channels=in_channels)
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
-        # Store original weights
         original_weights = module.weights.clone()
 
-        # Run forward pass to populate cache
         data = _randn(50, height * width)
         cache = Cache()
         ll = module.log_likelihood(data, cache=cache)
 
-        # Manually set gradient for module_lls (simulating EM upward pass)
-        # In real EM, this comes from the parent's expectations
+        # Simulate parent responsibilities to isolate SumConv's EM weight update path.
         cache["log_likelihood"][module].grad = torch.ones_like(cache["log_likelihood"][module])
 
-        # Run EM with mocked leaf EM to avoid leaf gradient issues
+        # Mocking child EM keeps this test focused on local weight updates.
         with patch.object(leaf, "_expectation_maximization_step"):
             module._expectation_maximization_step(data, cache=cache)
 
-        # Check weights changed (only possible if in_channels > 1)
         assert not torch.allclose(module.weights, original_weights, rtol=0.0, atol=0.0)
 
     @pytest.mark.parametrize("in_channels,out_channels,hw", em_params)
@@ -650,18 +643,16 @@ class TestSumConvEM:
         leaf = make_normal_leaf(height, width, out_channels=in_channels)
         module = SumConv(inputs=leaf, out_channels=out_channels, kernel_size=2)
 
-        # Run forward pass and EM
         data = _randn(50, height * width)
         cache = Cache()
         ll = module.log_likelihood(data, cache=cache)
 
-        # Set gradient
         cache["log_likelihood"][module].grad = torch.ones_like(cache["log_likelihood"][module])
 
         with patch.object(leaf, "_expectation_maximization_step"):
             module._expectation_maximization_step(data, cache=cache)
 
-        # Check weights still sum to 1 over in_channels
+        # EM must preserve simplex normalization along incoming-channel axis.
         weights_sum = module.weights.sum(dim=1)
         torch.testing.assert_close(weights_sum, torch.ones_like(weights_sum), rtol=1e-5, atol=1e-5)
 

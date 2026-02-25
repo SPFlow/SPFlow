@@ -18,7 +18,7 @@ from spflow.meta import Scope
 from spflow.modules.module import Module
 
 
-# Define a DummyModel class for testing
+# Minimal Module stub to exercise generic gradient-descent paths.
 class DummyModel(Module):
     @property
     def feature_to_scope(self) -> np.array:
@@ -161,7 +161,7 @@ def test_negative_log_likelihood_loss(model, dataloader):
     data = next(iter(dataloader))[0]
     loss = negative_log_likelihood_loss(model, data)
     assert isinstance(loss, torch.Tensor)
-    assert loss.ndim == 0  # scalar
+    assert loss.ndim == 0
 
 
 def test_train_gradient_descent_basic(model, dataloader):
@@ -175,7 +175,7 @@ def test_train_gradient_descent_basic(model, dataloader):
 def test_train_gradient_descent_custom_optimizer(model, dataloader):
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
     train_gradient_descent(model, dataloader, epochs=1, optimizer=optimizer)
-    assert isinstance(model.linear.weight.grad, torch.Tensor)  # gradients should be computed
+    assert isinstance(model.linear.weight.grad, torch.Tensor)
 
 
 def test_train_gradient_descent_custom_loss_fn(model, dataloader):
@@ -183,7 +183,7 @@ def test_train_gradient_descent_custom_loss_fn(model, dataloader):
         return torch.sum(model(data) ** 2)
 
     train_gradient_descent(model, dataloader, epochs=1, loss_fn=custom_loss_fn)
-    assert isinstance(model.linear.weight.grad, torch.Tensor)  # gradients should be computed
+    assert isinstance(model.linear.weight.grad, torch.Tensor)
 
 
 def test_train_gradient_descent_callbacks(model, dataloader):
@@ -200,16 +200,17 @@ def test_train_gradient_descent_callbacks(model, dataloader):
         model, dataloader, epochs=2, callback_batch=batch_callback, callback_epoch=epoch_callback
     )
 
-    assert len(batch_calls) == 20  # 2 epochs * 10 batches
-    assert len(epoch_calls) == 2  # 2 epochs
-    assert epoch_calls[0][0] == 10  # 10 losses per epoch
-    assert epoch_calls[1][1] == 1  # second epoch index
+    # Callback counts encode the public callback contract for steps/epochs.
+    assert len(batch_calls) == 20
+    assert len(epoch_calls) == 2
+    assert epoch_calls[0][0] == 10
+    assert epoch_calls[1][1] == 1
 
 
 def test_train_gradient_descent_verbose(model, dataloader, caplog):
     caplog.set_level(logging.INFO)
     train_gradient_descent(model, dataloader, epochs=2, verbose=True)
-    assert len(caplog.records) == 2  # 2 log messages for 2 epochs
+    assert len(caplog.records) == 2
     for record in caplog.records:
         assert "Epoch" in record.message
         assert "Loss:" in record.message
@@ -220,7 +221,8 @@ def test_train_gradient_descent_multiple_epochs(model, dataloader, epochs):
     initial_loss = negative_log_likelihood_loss(model, next(iter(dataloader))[0])
     train_gradient_descent(model, dataloader, epochs=epochs)
     final_loss = negative_log_likelihood_loss(model, next(iter(dataloader))[0])
-    assert final_loss < initial_loss  # loss should decrease after training
+    # Basic optimization sanity check: training should improve objective value.
+    assert final_loss < initial_loss
 
 
 def test_train_gradient_descent_custom_scheduler(model, dataloader):
@@ -246,14 +248,14 @@ def test_train_gradient_descent_custom_scheduler(model, dataloader):
         loss_fn=negative_log_likelihood_loss,
     )
 
-    assert scheduler.calls == epochs  # scheduler.step should be called once per epoch
+    assert scheduler.calls == epochs
 
 
 def test_train_gradient_descent_requires_classifier_for_classification_mode(model, dataloader):
     """Ensure TypeError is raised when using is_classification=True with non-Classifier model."""
     with pytest.raises(TypeError):
         train_gradient_descent(
-            model,  # DummyModel doesn't implement Classifier
+            model,
             dataloader,
             epochs=1,
             is_classification=True,
@@ -360,11 +362,11 @@ class TestTrainingMetrics:
     @pytest.mark.parametrize(
         "predictions,targets,expected_correct,expected_total",
         [
-            ([0, 1, 1, 0], [0, 0, 1, 0], 3, 4),  # 3/4 correct
-            ([1, 0, 1], [1, 1, 1], 2, 3),  # 2/3 correct
-            ([0, 1, 2], [0, 1, 2], 3, 3),  # 3/3 correct
-            ([0, 1, 2], [2, 1, 0], 1, 3),  # 1/3 correct
-            ([], [], 0, 0),  # Empty tensors
+            ([0, 1, 1, 0], [0, 0, 1, 0], 3, 4),
+            ([1, 0, 1], [1, 1, 1], 2, 3),
+            ([0, 1, 2], [0, 1, 2], 3, 3),
+            ([0, 1, 2], [2, 1, 0], 1, 3),
+            ([], [], 0, 0),
         ],
     )
     def test_update_train_batch_classification_accuracy(
@@ -387,7 +389,7 @@ class TestTrainingMetrics:
         loss = torch.tensor(1.0)
         predictions = torch.tensor([0, 1, 0])
 
-        # Only predictions provided, no targets
+        # Accuracy must remain untouched unless both predictions and targets are present.
         training_metrics.update_train_batch(loss, predictions, None)
 
         assert training_metrics.train_total == 0
@@ -410,9 +412,9 @@ class TestTrainingMetrics:
     @pytest.mark.parametrize(
         "predictions,targets,expected_correct,expected_total",
         [
-            ([1, 0, 1], [1, 1, 1], 2, 3),  # 2/3 correct
-            ([0, 1, 0], [0, 1, 0], 3, 3),  # 3/3 correct
-            ([1, 1, 1], [0, 0, 0], 0, 3),  # 0/3 correct
+            ([1, 0, 1], [1, 1, 1], 2, 3),
+            ([0, 1, 0], [0, 1, 0], 3, 3),
+            ([1, 1, 1], [0, 0, 0], 0, 3),
         ],
     )
     def test_update_val_batch_classification_accuracy(
@@ -433,12 +435,12 @@ class TestTrainingMetrics:
     @pytest.mark.parametrize(
         "correct,total,expected_accuracy",
         [
-            (0, 0, 0.0),  # No samples
-            (0, 10, 0.0),  # All incorrect
-            (5, 10, 50.0),  # Half correct
-            (8, 10, 80.0),  # 80% correct
-            (10, 10, 100.0),  # All correct
-            (1, 3, 33.33333333333333),  # Repeating decimal
+            (0, 0, 0.0),
+            (0, 10, 0.0),
+            (5, 10, 50.0),
+            (8, 10, 80.0),
+            (10, 10, 100.0),
+            (1, 3, 33.33333333333333),
         ],
     )
     def test_get_train_accuracy_various_scenarios(self, training_metrics, correct, total, expected_accuracy):
@@ -452,10 +454,10 @@ class TestTrainingMetrics:
     @pytest.mark.parametrize(
         "correct,total,expected_accuracy",
         [
-            (0, 0, 0.0),  # No samples
-            (3, 10, 30.0),  # 30% correct
-            (7, 7, 100.0),  # All correct
-            (2, 8, 25.0),  # 25% correct
+            (0, 0, 0.0),
+            (3, 10, 30.0),
+            (7, 7, 100.0),
+            (2, 8, 25.0),
         ],
     )
     def test_get_val_accuracy_various_scenarios(self, training_metrics, correct, total, expected_accuracy):
@@ -468,7 +470,7 @@ class TestTrainingMetrics:
 
     def test_reset_epoch_metrics_comprehensive_reset(self, training_metrics, sample_tensors):
         """Test that reset_epoch_metrics properly resets all per-epoch metrics while preserving cumulative ones."""
-        # Populate all metrics with data
+        # Seed non-default state so reset behavior is observable.
         training_metrics.train_losses = [sample_tensors["loss_small"], sample_tensors["loss_medium"]]
         training_metrics.val_losses = [sample_tensors["loss_large"]]
         training_metrics.train_correct = 5
@@ -478,10 +480,8 @@ class TestTrainingMetrics:
         training_metrics.training_steps = 5
         training_metrics.validation_steps = 2
 
-        # Reset epoch metrics
         training_metrics.reset_epoch_metrics()
 
-        # Verify all per-epoch metrics are reset to initial state
         assert training_metrics.train_losses == []
         assert training_metrics.val_losses == []
         assert training_metrics.train_correct == 0
@@ -489,95 +489,85 @@ class TestTrainingMetrics:
         assert training_metrics.val_correct == 0
         assert training_metrics.val_total == 0
 
-        # Verify cumulative metrics are preserved (critical bug fix verification)
+        # Invariant: counters across epochs survive per-epoch resets.
         assert training_metrics.training_steps == 5
         assert training_metrics.validation_steps == 2
 
     def test_multiple_batches_accuracy_accumulation_across_batches(self, training_metrics):
         """Test accuracy calculation across multiple training batches."""
-        # First batch: 4/5 correct
+        # Mixed accuracies ensure counters accumulate across multiple updates.
         training_metrics.update_train_batch(
             torch.tensor(1.0), torch.tensor([0, 1, 1, 0, 1]), torch.tensor([0, 0, 1, 0, 1])
         )
 
-        # Second batch: 2/4 correct
         training_metrics.update_train_batch(
             torch.tensor(1.5), torch.tensor([1, 0, 1, 0]), torch.tensor([1, 1, 0, 0])
         )
 
-        # Third batch: 3/3 correct
         training_metrics.update_train_batch(
             torch.tensor(0.8), torch.tensor([2, 1, 0]), torch.tensor([2, 1, 0])
         )
 
-        assert training_metrics.train_total == 12  # 5 + 4 + 3
-        assert training_metrics.train_correct == 9  # 4 + 2 + 3
-        assert training_metrics.get_train_accuracy() == 75.0  # 9/12 * 100
+        assert training_metrics.train_total == 12
+        assert training_metrics.train_correct == 9
+        assert training_metrics.get_train_accuracy() == 75.0
         assert len(training_metrics.train_losses) == 3
         assert training_metrics.training_steps == 3
 
     def test_multiple_validation_batches_accuracy_accumulation(self, training_metrics):
         """Test accuracy calculation across multiple validation batches."""
-        # First validation batch: 2/3 correct
+        # Two batches guard against accidental overwrite instead of accumulation.
         training_metrics.update_val_batch(torch.tensor(0.5), torch.tensor([1, 0, 1]), torch.tensor([1, 1, 1]))
 
-        # Second validation batch: 1/2 correct
         training_metrics.update_val_batch(torch.tensor(0.7), torch.tensor([0, 1]), torch.tensor([0, 0]))
 
-        assert training_metrics.val_total == 5  # 3 + 2
-        assert training_metrics.val_correct == 3  # 2 + 1
-        assert training_metrics.get_val_accuracy() == 60.0  # 3/5 * 100
+        assert training_metrics.val_total == 5
+        assert training_metrics.val_correct == 3
+        assert training_metrics.get_val_accuracy() == 60.0
         assert len(training_metrics.val_losses) == 2
         assert training_metrics.validation_steps == 2
 
     def test_reset_between_epochs_with_different_performance(self, training_metrics):
         """Test that metrics reset correctly between epochs with different performance characteristics."""
-        # Simulate first epoch with poor performance
+        # Contrasting epochs verify that reset isolates epoch-local statistics.
         training_metrics.update_train_batch(
             torch.tensor(2.0), torch.tensor([0, 1, 1, 0]), torch.tensor([1, 0, 1, 0])
         )
         first_epoch_accuracy = training_metrics.get_train_accuracy()
         first_epoch_losses = len(training_metrics.train_losses)
 
-        # Reset for next epoch
         training_metrics.reset_epoch_metrics()
 
-        # Simulate second epoch with better performance
         training_metrics.update_train_batch(
             torch.tensor(0.5), torch.tensor([1, 1, 1, 1, 1]), torch.tensor([1, 1, 1, 1, 1])
         )
         second_epoch_accuracy = training_metrics.get_train_accuracy()
         second_epoch_losses = len(training_metrics.train_losses)
 
-        # Verify epoch isolation
-        assert first_epoch_accuracy == 50.0  # 2/4 correct
-        assert second_epoch_accuracy == 100.0  # 5/5 correct
+        assert first_epoch_accuracy == 50.0
+        assert second_epoch_accuracy == 100.0
         assert first_epoch_losses == 1
         assert second_epoch_losses == 1
-        assert training_metrics.train_total == 5  # Only second epoch counts
-        assert training_metrics.train_correct == 5  # Only second epoch counts
+        assert training_metrics.train_total == 5
+        assert training_metrics.train_correct == 5
 
     def test_mixed_regression_classification_batches_in_single_epoch(self, training_metrics):
         """Test handling of mixed regression and classification batches within the same epoch."""
-        # Regression batch (no predictions/targets)
+        # Regression batches should not pollute classification accuracy counters.
         training_metrics.update_train_batch(torch.tensor(2.0))
 
-        # Classification batch with partial accuracy
         training_metrics.update_train_batch(
             torch.tensor(1.0), torch.tensor([0, 1, 1]), torch.tensor([0, 0, 1])
         )
 
-        # Another regression batch
         training_metrics.update_train_batch(torch.tensor(1.5))
 
-        # Classification batch with perfect accuracy
         training_metrics.update_train_batch(torch.tensor(0.8), torch.tensor([1, 0]), torch.tensor([1, 0]))
 
-        # Verify mixed batch handling
         assert len(training_metrics.train_losses) == 4
-        assert training_metrics.train_total == 5  # 3 + 2 from classification batches
-        assert training_metrics.train_correct == 4  # 2 + 2 from classification batches
-        assert training_metrics.get_train_accuracy() == 80.0  # 4/5 * 100
+        assert training_metrics.train_total == 5
+        assert training_metrics.train_correct == 4
+        assert training_metrics.get_train_accuracy() == 80.0
         assert training_metrics.training_steps == 4
 
     def test_edge_case_empty_tensors_in_classification(self, training_metrics):
@@ -607,31 +597,29 @@ class TestTrainingMetrics:
 
     def test_multiple_reset_calls_idempotency(self, training_metrics, sample_tensors):
         """Test that multiple calls to reset_epoch_metrics are idempotent."""
-        # Add some data
         training_metrics.train_losses = [sample_tensors["loss_small"]]
         training_metrics.train_correct = 5
         training_metrics.train_total = 10
         training_metrics.training_steps = 3
 
-        # Reset multiple times
+        # Repeated resets should be safe in callback-heavy loops.
         training_metrics.reset_epoch_metrics()
         training_metrics.reset_epoch_metrics()
         training_metrics.reset_epoch_metrics()
 
-        # Verify state remains consistent
         assert training_metrics.train_losses == []
         assert training_metrics.train_correct == 0
         assert training_metrics.train_total == 0
-        assert training_metrics.training_steps == 3  # Preserved
+        assert training_metrics.training_steps == 3
 
     def test_accuracy_calculation_precision(self, training_metrics):
         """Test accuracy calculation precision with edge cases."""
-        # Test case that produces repeating decimal
+        # Regression guard for float precision on non-terminating ratios.
         training_metrics.train_correct = 1
         training_metrics.train_total = 3
 
         accuracy = training_metrics.get_train_accuracy()
-        expected = 100 * 1 / 3  # 33.33333333333333...
+        expected = 100 * 1 / 3
 
         assert accuracy == expected
         assert isinstance(accuracy, float)

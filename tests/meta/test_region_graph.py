@@ -11,9 +11,11 @@ def test_add_partition_validates_disjoint_and_scope_match():
     root.add_partition((left, right))
     assert len(root.children) == 1
 
+    # Overlapping child scopes violate decomposability constraints.
     with pytest.raises(ValueError):
         root.add_partition((Region(Scope([0])), Region(Scope([0]))))
 
+    # Child scopes must jointly cover the parent scope exactly.
     with pytest.raises(ValueError):
         root.add_partition((Region(Scope([0])),))
 
@@ -25,9 +27,11 @@ def test_regions_traversal_deduplicates_repeated_nodes():
     root = Region(Scope([0, 1]))
 
     mid.add_partition((leaf0, leaf1))
+    # Unary partitions are valid and model region refinements in the DAG.
     root.add_partition((mid,))
     root.add_partition((leaf0, leaf1))
 
+    # A DAG can reference the same region multiple ways; traversal returns unique nodes.
     rg = RegionGraph(root)
     seen = rg.regions
     assert seen == {root, mid, leaf0, leaf1}

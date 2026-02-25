@@ -122,10 +122,10 @@ class TestFunctionGroup:
 
         func = group.get_function(0)
 
-        # Should return a callable
+        # Returned object must be reusable as a drop-in function factory output.
         assert callable(func)
 
-        # Should work with tensor inputs
+        # This shape guards broadcast conventions used by PIC integral evaluation.
         z = _randn(3, 3, 1)
         y = _randn(3, 3, 1)
         out = func(z, y)
@@ -152,6 +152,7 @@ class TestFunctionGroup:
         y = _randn(4, 5, 1)
 
         batched = group.evaluate_batched(z, y)
+        # First axis is head order; this guards against accidental head permutation.
         assert batched.shape == (2, 4, 5)
 
         f0 = group.get_function(idx0)

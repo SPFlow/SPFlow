@@ -19,7 +19,7 @@ from spflow.modules.sos.socs import _signed_eval
 
 
 def test_exp_socs_discrete_bernoulli_matches_exact_enumeration():
-    # One-variable case: p(x) ∝ m(x) * c(x)^2, x in {0,1}.
+    # This closed-form two-state case acts as a regression oracle for normalization math.
     p1 = 0.2
     p2 = 0.8
     v1 = 0.35
@@ -59,7 +59,7 @@ def test_exp_socs_discrete_bernoulli_matches_exact_enumeration():
 
 
 def test_exp_socs_continuous_normal_partition_matches_scipy_quad():
-    # Compare the exact DP partition vs numerical integration for a 1D Normal-based ExpSOCS.
+    # Independent quadrature guards against algebraic mistakes in the DP partition routine.
     mu1, s1 = -0.7, 1.2
     mu2, s2 = 0.8, 0.6
     v1, v2 = 0.4, 0.6
@@ -188,6 +188,7 @@ def test_exp_socs_partition_cache_and_marginalize_branches():
     cache = Cache()
     model.log_likelihood(x, cache=cache)
     first_logz = cache.extras["exp_socs_logZ"]
+    # Reusing cache should keep the same partition value across repeated evaluations.
     model.log_likelihood(x, cache=cache)
     second_logz = cache.extras["exp_socs_logZ"]
     torch.testing.assert_close(first_logz, second_logz)

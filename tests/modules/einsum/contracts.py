@@ -126,6 +126,21 @@ class EinsumLikeContractTests(ABC):
 
     @pytest.mark.contract
     @pytest.mark.parametrize("num_reps", [1, 2])
+    def test_two_input_sampling_contract(self, num_reps: int) -> None:
+        module = self.make_two_inputs(in_channels=2, out_channels=3, in_features=4, num_reps=num_reps)
+        n = 20
+        total_features = 8
+        data = torch.full((n, total_features), torch.nan)
+        channel_index = torch.randint(low=0, high=3, size=(n, module.out_shape.features))
+        mask = torch.ones((n, module.out_shape.features), dtype=torch.bool)
+        repetition_index = torch.randint(low=0, high=num_reps, size=(n,))
+        ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+        samples = module._sample(data=data, sampling_ctx=ctx, cache=Cache())
+        assert samples.shape == (n, total_features)
+        assert torch.isfinite(samples[:, module.scope.query]).all()
+
+    @pytest.mark.contract
+    @pytest.mark.parametrize("num_reps", [1, 2])
     def test_differentiable_sampling_contract(self, num_reps: int) -> None:
         module = self.make_single_input(in_channels=2, out_channels=3, in_features=4, num_reps=num_reps)
         n = 20
@@ -139,6 +154,38 @@ class EinsumLikeContractTests(ABC):
             repetition_index=to_one_hot(int_repetition_index, dim=-1, dim_size=num_reps),
             is_differentiable=True,
         )
+        samples = module._sample(data=data, sampling_ctx=ctx, cache=Cache())
+        assert samples.shape == (n, 4)
+        assert torch.isfinite(samples[:, module.scope.query]).all()
+
+    @pytest.mark.contract
+    @pytest.mark.parametrize("num_reps", [1, 2])
+    def test_two_input_differentiable_sampling_contract(self, num_reps: int) -> None:
+        module = self.make_two_inputs(in_channels=2, out_channels=3, in_features=4, num_reps=num_reps)
+        n = 20
+        total_features = 8
+        data = torch.full((n, total_features), torch.nan)
+        int_channel_index = torch.randint(low=0, high=3, size=(n, module.out_shape.features))
+        int_repetition_index = torch.randint(low=0, high=num_reps, size=(n,))
+        mask = torch.ones((n, module.out_shape.features), dtype=torch.bool)
+        ctx = SamplingContext(
+            channel_index=to_one_hot(int_channel_index, dim=-1, dim_size=module.out_shape.channels),
+            mask=mask,
+            repetition_index=to_one_hot(int_repetition_index, dim=-1, dim_size=num_reps),
+            is_differentiable=True,
+        )
+        samples = module._sample(data=data, sampling_ctx=ctx, cache=Cache())
+        assert samples.shape == (n, total_features)
+        assert torch.isfinite(samples[:, module.scope.query]).all()
+
+    @pytest.mark.contract
+    def test_mpe_sampling_contract(self) -> None:
+        module = self.make_single_input(in_channels=2, out_channels=3, in_features=4, num_reps=1)
+        n = 20
+        data = torch.full((n, 4), torch.nan)
+        channel_index = torch.zeros((n, module.out_shape.features), dtype=torch.long)
+        mask = torch.ones((n, module.out_shape.features), dtype=torch.bool)
+        ctx = SamplingContext(channel_index=channel_index, mask=mask, is_mpe=True)
         samples = module._sample(data=data, sampling_ctx=ctx, cache=Cache())
         assert samples.shape == (n, 4)
         assert torch.isfinite(samples[:, module.scope.query]).all()
@@ -160,6 +207,30 @@ class EinsumLikeContractTests(ABC):
         assert ll_history.ndim == 1
         assert ll_history.numel() >= 1
         assert torch.isfinite(ll_history).all()
+        assert not torch.allclose(module.weights, before, rtol=0.0, atol=0.0)
+
+    @pytest.mark.contract
+    def test_gradient_flow_contract(self) -> None:
+        module = self.make_single_input(in_channels=2, out_channels=3, in_features=4, num_reps=1)
+        data = make_normal_data(out_features=4, num_samples=20)
+        lls = module.log_likelihood(data)
+        loss = -lls.mean()
+        loss.backward()
+        assert module.logits.grad is not None
+        assert torch.isfinite(module.logits.grad).all()
+
+    @pytest.mark.contract
+    def test_optimization_changes_weights_contract(self) -> None:
+        module = self.make_single_input(in_channels=2, out_channels=3, in_features=4, num_reps=1)
+        data = make_normal_data(out_features=4, num_samples=50)
+        before = module.weights.clone()
+        optimizer = torch.optim.Adam(module.parameters(), lr=0.1)
+        for _ in range(5):
+            optimizer.zero_grad()
+            lls = module.log_likelihood(data)
+            loss = -lls.mean()
+            loss.backward()
+            optimizer.step()
         assert not torch.allclose(module.weights, before, rtol=0.0, atol=0.0)
 
     @pytest.mark.contract

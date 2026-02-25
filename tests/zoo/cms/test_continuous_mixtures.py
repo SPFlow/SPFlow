@@ -52,7 +52,7 @@ def test_joint_log_likelihood_wrapper_reduces_feature_axis():
 
 def test_learn_continuous_mixture_factorized_bernoulli_smoke_with_lo():
     torch.manual_seed(0)
-    # Simple independent Bernoulli data with NaNs sprinkled in.
+    # Missing entries exercise NaN-masking paths during factorized training.
     N, F = 200, 6
     probs = torch.linspace(0.1, 0.9, F)
     data = torch.bernoulli(probs.expand(N, F)).to(torch.float32)
@@ -79,7 +79,7 @@ def test_learn_continuous_mixture_factorized_bernoulli_smoke_with_lo():
 def test_learn_continuous_mixture_factorized_categorical_smoke():
     torch.manual_seed(0)
     N, F, K = 150, 5, 4
-    # Independent categorical.
+    # Independent categories keep this a leaf-likelihood smoke test, not a dependency test.
     logits = torch.randn(F, K)
     probs = torch.softmax(logits, dim=-1)
     x = torch.multinomial(probs, num_samples=N, replacement=True).T.contiguous().to(torch.float32)
@@ -128,7 +128,7 @@ def test_learn_continuous_mixture_factorized_normal_smoke():
 def test_learn_continuous_mixture_cltree_smoke_with_lo():
     torch.manual_seed(0)
     K = 3
-    # Use a fixed simple CLTree to generate data.
+    # Fixed topology keeps this smoke test stable across random seeds and platforms.
     scope = Scope([0, 1, 2])
     parents = torch.tensor([-1, 0, 1], dtype=torch.long)
     log_cpt = torch.rand((3, 1, 1, K, K), dtype=torch.float64)
@@ -216,6 +216,7 @@ def test_joint_log_likelihood_feature_to_scope_and_delegation_paths():
     wrapped = JointLogLikelihood(base)
 
     f2s = wrapped.feature_to_scope
+    # Wrapper collapses features into one joint event, so scope also collapses.
     assert f2s.shape == (1, 2)
     assert f2s[0, 0] == Scope([0, 1, 2])
     assert f2s[0, 1] == Scope([0, 1, 2])
@@ -260,6 +261,7 @@ def test_cms_helpers_and_weight_validation_paths():
     wb = _broadcast_component_weights(weights=torch.tensor([0.2, 0.3, 0.5]), num_features=2)
     assert wb.shape == (2, 3, 1, 1)
 
+    # Explicit failures prevent silently renormalizing malformed user-provided priors.
     with pytest.raises(InvalidParameterError):
         _broadcast_component_weights(weights=torch.ones(2, 2), num_features=2)
     with pytest.raises(InvalidParameterError):
@@ -496,6 +498,7 @@ def test_factorized_early_stopping_break_and_val_data_cast(monkeypatch):
     def _flat_mix(component_ll: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
         return component_ll.mean(dim=0) * 0.0
 
+    # Flat validation signal forces the patience early-stop branch deterministically.
     monkeypatch.setattr(cms_mod, "_mixture_log_likelihood_from_component_ll", _flat_mix)
     data = torch.tensor([[0.0, 1.0], [1.0, 0.0], [0.0, 0.0], [1.0, 1.0]], dtype=torch.float32)
     model = learn_continuous_mixture_factorized(
@@ -520,6 +523,7 @@ def test_cltree_early_stopping_break_branch(monkeypatch):
     def _flat_mix(component_ll: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
         return component_ll.mean(dim=0) * 0.0
 
+    # Mirror the factorized setup to verify CLTree shares the same stop criterion.
     monkeypatch.setattr(cms_mod, "_mixture_log_likelihood_from_component_ll", _flat_mix)
     data = torch.tensor([[0.0, 1.0], [1.0, 0.0], [1.0, 1.0], [0.0, 0.0]], dtype=torch.float32)
     model = learn_continuous_mixture_cltree(

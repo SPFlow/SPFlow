@@ -11,7 +11,7 @@ from spflow.zoo.conv import ConvPc
 from spflow.modules.leaves import Normal
 from spflow.utils.cache import Cache
 
-# Test parameter values
+# Small grid keeps runtime low while still covering key ConvPc branches.
 out_channels_values = [1, 3]
 depth_values = [1, 2]
 height_width_values = [(4, 4), (8, 8)]
@@ -32,7 +32,7 @@ all_params = list(
 )
 valid_params = [p for p in all_params if _is_valid_spatial_depth(p[1], p[2])]
 
-# Combined parameter lists (only valid combinations).
+# Reuse one validated grid so parametrized suites stay behaviorally aligned.
 construction_params = valid_params
 ll_params = valid_params
 sample_params = valid_params
@@ -69,7 +69,7 @@ class TestConvPcConstruction:
         assert model.kernel_size == 2
         assert model.input_height == height
         assert model.input_width == width
-        # Output repetitions always 1 due to mixing layer
+        # Mixing at the root collapses repetitions; this guards that contract.
         assert model.out_shape.repetitions == 1
 
     @pytest.mark.parametrize("num_repetitions", num_repetitions_unsupported_values)
@@ -104,8 +104,7 @@ class TestConvPcConstruction:
             use_sum_conv=use_sum_conv,
         )
 
-        # Traverse the recursive structure: inputs (Sum) -> ProdConv -> SumConv -> ... -> leaf
-        # Count layers by walking the .inputs chain from the root Sum
+        # Walk the recursive chain to catch accidental topology rewires.
         layer_count = 0
         current = model.inputs.inputs  # Skip the root Sum layer
         layer_types = []
@@ -114,16 +113,13 @@ class TestConvPcConstruction:
             current = current.inputs
             layer_count += 1
 
-        # With bottom-up architecture: depth*(ProdConv + SumConv) + optional final ProdConv
-        # The final ProdConv only exists if there are remaining spatial dims > 1
-        # Expected: ProdConv, SumConv, ProdConv, SumConv, ..., possibly final ProdConv
+        # Lower bound is enough here: exact count varies with whether spatial dims collapse early.
         assert layer_count >= 2 * depth  # At minimum depth pairs of (Prod, Sum)
 
     @pytest.mark.parametrize("out_channels", out_channels_values)
     def test_arbitrary_input_sizes(self, out_channels):
         """Test that valid square input sizes work."""
-        # With kernel_size=2, dimensions must be divisible at each depth
-        # 8x8 with depth=2: 8 -> 4 -> 2 (all divisible by 2)
+        # This shape guarantees two clean downsampling steps without padding edge cases.
         leaf = make_normal_leaf(8, 8, out_channels=out_channels)
 
         model = ConvPc(
@@ -135,7 +131,7 @@ class TestConvPcConstruction:
             kernel_size=2,
         )
 
-        # Should produce 1x1 output
+        # ConvPc should end in a scalar event no matter the intermediate width.
         assert model.out_shape.features == 1
         assert model.out_shape.channels == 1
 
@@ -185,9 +181,7 @@ class TestConvPcLogLikelihood:
         data = torch.randn(batch_size, height * width)
         ll = model.log_likelihood(data)
 
-        # Output should be (batch, 1, 1, reps) - but ConvPc ends at the root Sum layer
-        # which has shape (batch, out_features, out_channels, reps)
-        # For a full ConvPc, we expect scalar output
+        # Shape checks pin down the API contract expected by downstream wrappers.
         assert ll.dim() == 4
         assert ll.shape[0] == batch_size
         assert ll.shape[2] == 1  # Final out_channels = 1
@@ -321,19 +315,19 @@ class TestConvPcConditionalSample:
         num_features = height * width
         half_features = num_features // 2
 
-        # Create evidence: first half pixels observed
+        # Half-observed evidence stresses selective fill without overconstraining values.
         evidence = torch.randn(10, num_features)
         evidence[:, half_features:] = float("nan")
         evidence_copy = evidence.clone()
 
-        # Run conditional sampling
+        # Explicit cache use covers that branch in sample_with_evidence.
         cache = Cache()
         samples = model.sample_with_evidence(evidence=evidence, cache=cache)
 
         assert samples.shape == evidence.shape
         assert torch.isfinite(samples).all()
 
-        # Observed values should be unchanged
+        # Regression guard: conditional sampling must preserve observed evidence exactly.
         torch.testing.assert_close(
             samples[:, :half_features],
             evidence_copy[:, :half_features],
@@ -343,7 +337,7 @@ class TestConvPcConditionalSample:
         )
 
 
-# Additional branch-focused conv_pc tests
+# These tests lock down less common delegate/guard branches.
 from spflow.zoo.conv.conv_pc import compute_non_overlapping_kernel_and_padding
 
 
@@ -367,12 +361,12 @@ def test_feature_scope_repr_cache_and_delegate_paths(monkeypatch):
     assert model.feature_to_scope.shape[0] == 1
     assert "depth=1" in model.extra_repr()
 
-    # log_likelihood cache=None branch
+    # cache=None must stay supported for lightweight callers.
     x = torch.randn(3, 16)
     ll = model.log_likelihood(x, cache=None)
     assert ll.shape[0] == 3
 
-    # sample data=None/num_samples=None branch
+    # Default sampling path should still emit a single draw.
     s = model.sample(num_samples=None, data=None)
     assert s.shape == (1, 16)
 

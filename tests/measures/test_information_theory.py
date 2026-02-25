@@ -144,6 +144,7 @@ def test_conditional_mutual_information_errors():
     z = Categorical(scope=Scope([2]), K=2, probs=p)
     model = Product([x, y, z])
 
+    # Conditioning set must be disjoint from both measured variable sets.
     with pytest.raises(InvalidParameterError):
         conditional_mutual_information(model, Scope([0]), Scope([1]), Scope([0]), method="exact")
 

@@ -13,10 +13,10 @@ from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.utils.leaves import make_normal_leaf, make_normal_data
 from tests.utils.sampling_context_helpers import patch_simple_as_categorical_one_hot
 
-# Test parameter combinations
+# Sweep dimensions/repetitions to catch shape-dependent equivalence regressions.
 in_channels_values = [1, 3]
 out_channels_values = [1, 4]
-in_features_values = [2, 4]  # D (Must be even for splitting if using simple split logic)
+in_features_values = [2, 4]  # The reference graph splits features into two equal halves.
 num_repetitions_values = [1, 2]
 
 params = list(product(in_channels_values, out_channels_values, in_features_values, num_repetitions_values))
@@ -50,8 +50,8 @@ class TestEinsumLayerEquivalence:
 
         sum_layer = Sum(inputs=prod_layer, out_channels=out_channels, num_repetitions=num_reps)
 
-        # Sync Weights
-        # (D, O, R, I, J) -> (D, I*J, O, R)
+        # Align parameter layout so this test compares operator behavior, not weight indexing.
+        # Einsum stores pairwise channels separately, Sum flattens them into one channel axis.
         w_einsum = einsum.weights
         w_permuted = w_einsum.permute(0, 3, 4, 1, 2)
         w_sum = w_permuted.reshape(half_features, in_channels * in_channels, out_channels, num_reps)

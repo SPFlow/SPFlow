@@ -41,6 +41,7 @@ def test_einet_latent_stats_paths_are_unsupported() -> None:
     encoder = _build_einet_encoder()
     x = torch.randn(8, 4)
 
+    # Both public entry points should fail so callers cannot bypass the rollback guard.
     with pytest.raises(UnsupportedOperationError):
         encoder.encode(x, return_latent_stats=True)
 
@@ -52,6 +53,7 @@ def test_convpc_latent_stats_paths_are_unsupported() -> None:
     encoder = _build_convpc_encoder()
     x = torch.randn(8, 1, 4, 4)
 
+    # Keep Conv-PC behavior aligned with Einet to avoid backend-specific API surprises.
     with pytest.raises(UnsupportedOperationError):
         encoder.encode(x, return_latent_stats=True)
 

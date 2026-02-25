@@ -4,7 +4,7 @@ from spflow.zoo.hclt.topk_mst import topk_mst
 
 
 def test_topk_mst_matches_chowliutrees_jl_fixture() -> None:
-    # Ported from ChowLiuTrees.jl/test/chow_liu_trees_tests.jl (0-based indices).
+    # Mirror the Julia fixture so cross-implementation ordering stays aligned.
     mi = np.array(
         [
             [0, 1, 3, 4],
@@ -16,7 +16,7 @@ def test_topk_mst_matches_chowliutrees_jl_fixture() -> None:
     )
 
     msts1 = topk_mst(mi, num_trees=10, minimize=True)
-    # ChowLiuTrees.jl's first 8 trees are unambiguous for this fixture.
+    # Only the prefix is deterministic; later slots can permute because of equal scores.
     expected_prefix = [
         [(0, 1), (1, 2), (0, 3)],
         [(0, 1), (0, 2), (0, 3)],
@@ -31,7 +31,7 @@ def test_topk_mst_matches_chowliutrees_jl_fixture() -> None:
     assert len(msts1) == 10
     assert msts1[:8] == expected_prefix
 
-    # The last two slots have a three-way tie at total weight 11 for this graph.
+    # Accept any two tied trees to avoid overfitting to internal tie-break behavior.
     tie11 = {
         tuple([(0, 1), (0, 3), (2, 3)]),
         tuple([(0, 2), (1, 2), (2, 3)]),
@@ -42,7 +42,7 @@ def test_topk_mst_matches_chowliutrees_jl_fixture() -> None:
     assert len(last_two) == 2
 
 
-# Additional branch-focused topk_mst tests
+# Cover validation/dropout/infeasible branches not exercised by the parity fixture.
 import pytest
 
 from spflow.exceptions import InvalidParameterError, ShapeError

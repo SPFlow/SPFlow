@@ -15,13 +15,12 @@ from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext, to_one_hot
 
 
-
 def _make_chain_cltree(*, K: int = 3) -> CLTree:
-    # Scope order matches CLTree internal feature order.
+    # Keep scope aligned with CPT indexing so manual checks are interpretable.
     scope = Scope([0, 1, 2])
     parents = torch.tensor([-1, 0, 1], dtype=torch.long)
 
-    # Define a simple, non-degenerate distribution.
+    # Non-degenerate probabilities keep MAP and likelihood assertions informative.
     p_root = torch.tensor([0.2, 0.5, 0.3])
     p_1_given_0 = torch.tensor(
         [
@@ -29,14 +28,14 @@ def _make_chain_cltree(*, K: int = 3) -> CLTree:
             [0.2, 0.6, 0.2],
             [0.1, 0.2, 0.7],
         ]
-    )  # rows: x1, cols: x0
+    )
     p_2_given_1 = torch.tensor(
         [
             [0.6, 0.3, 0.1],
             [0.2, 0.6, 0.2],
             [0.1, 0.3, 0.6],
         ]
-    )  # rows: x2, cols: x1
+    )
 
     log_cpt = torch.empty((3, 1, 1, K, K), dtype=torch.float64)
     log_cpt[0, 0, 0, :, :] = p_root.log().unsqueeze(-1).expand(K, K)
@@ -52,10 +51,10 @@ def _joint_log_prob_chain(log_cpt: torch.Tensor, x: tuple[int, int, int]) -> tor
 
 
 def _bruteforce_log_prob_with_nans(log_cpt: torch.Tensor, evidence: torch.Tensor, K: int) -> torch.Tensor:
-    # evidence shape: (3,), float with NaNs
+    # NaN denotes marginalized variables in this brute-force reference.
     choices: list[list[int]] = []
     for v in evidence.tolist():
-        if v != v:  # NaN
+        if v != v:
             choices.append(list(range(K)))
         else:
             choices.append([int(v)])
@@ -70,7 +69,7 @@ def test_log_likelihood_matches_bruteforce_on_tiny_scope():
     K = 3
     node = _make_chain_cltree(K=K)
 
-    # Build a batch with both complete and partially missing rows.
+    # Mix complete and missing rows to exercise exact and marginalized paths together.
     data = torch.tensor(
         [
             [0.0, 1.0, 2.0],
@@ -80,7 +79,7 @@ def test_log_likelihood_matches_bruteforce_on_tiny_scope():
         dtype=torch.float64,
     )
 
-    ll = node.log_likelihood(data).sum(dim=1).squeeze(-1).squeeze(-1)  # (N,)
+    ll = node.log_likelihood(data).sum(dim=1).squeeze(-1).squeeze(-1)
     expected = torch.stack(
         [
             _bruteforce_log_prob_with_nans(node.log_cpt.detach(), data[0], K),
@@ -99,7 +98,7 @@ def test_mpe_fills_missing_values_consistently():
     mpe = node.sample(data=evidence.clone(), is_mpe=True)
     mpe_vals = tuple(int(v) for v in mpe[0].tolist())
 
-    # Brute force MAP under evidence x1=2
+    # Use exhaustive MAP as a regression oracle for conditional MPE.
     best_x = None
     best_lp = None
     for x0 in range(K):
@@ -140,7 +139,7 @@ def test_sample_rejects_differentiable_routing():
             cache=Cache(),
         )
 
-    # Conditional sampling preserves evidence.
+    # Conditional sampling must never overwrite observed evidence.
     evidence = torch.tensor([[1.0, float("nan"), 0.0]] * 50, dtype=torch.float64)
     filled = node.sample(data=evidence.clone(), is_mpe=False)
     torch.testing.assert_close(filled[:, 0], torch.ones(50, dtype=torch.float64))
@@ -152,15 +151,15 @@ def test_mle_update_improves_likelihood_on_training_data():
     torch.manual_seed(0)
     K = 3
 
-    # Generate synthetic data from a known model.
+    # Sample from a known model so MLE has a meaningful optimum.
     true_node = _make_chain_cltree(K=K)
     data = true_node.sample(num_samples=500).to(torch.float64)
 
-    # Fit structure once, then compare random CPT vs MLE CPT.
+    # Hold structure fixed so the test isolates CPT parameter learning.
     model = CLTree(scope=Scope([0, 1, 2]), out_channels=1, num_repetitions=1, K=K)
     model.fit_structure(data)
 
-    # Random valid CPT initialization.
+    # Start from a valid random CPT to verify the update improves likelihood.
     rand = torch.rand((3, 1, 1, K, K), dtype=torch.float64)
     rand = rand / rand.sum(dim=3, keepdim=True).clamp_min(1e-12)
     with torch.no_grad():

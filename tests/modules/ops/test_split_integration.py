@@ -21,25 +21,21 @@ def test_split_operations_log_likelihood_consistency():
     out_channels = 3
     num_repetitions = 2
 
-    # Create identical leaves for both split types
+    # Shared parameters isolate split strategy effects from leaf randomness.
     mean = torch.randn(num_features, out_channels, num_repetitions)
     std = torch.rand(num_features, out_channels, num_repetitions) + 0.1
 
     leaf1 = make_normal_leaf(scope, mean=mean, std=std)
     leaf2 = make_normal_leaf(scope, mean=mean, std=std)
 
-    # Create splits
     split_consecutive = SplitConsecutive(inputs=leaf1, num_splits=2, dim=1)
     split_interleaved = SplitInterleaved(inputs=leaf2, num_splits=2, dim=1)
 
-    # Both should work with products
     prod1 = ElementwiseProduct(inputs=split_consecutive)
     prod2 = ElementwiseProduct(inputs=split_interleaved)
 
-    # Generate test data
     data = make_normal_data(out_features=num_features)
 
-    # Both should produce valid log likelihoods
     ll1 = prod1.log_likelihood(data)
     ll2 = prod2.log_likelihood(data)
 
@@ -63,10 +59,9 @@ def test_split_operations_sampling():
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=rep_index)
     samples = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
-    # Verify samples
     assert samples.shape == (n_samples, num_features)
     assert torch.isfinite(samples).all()
-    # Verify samples are not all the same
+    # Nonzero variance catches degenerate broadcasting/fill bugs.
     assert samples.std() > 0
 
 
@@ -77,19 +72,16 @@ def test_split_operations_gradients():
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
     split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
-    # Create product to get scalar output
+    # Product node gives a compact scalar objective for backprop wiring checks.
     prod = ElementwiseProduct(inputs=split)
 
     data = make_normal_data(out_features=num_features)
     ll = prod.log_likelihood(data)
 
-    # Compute sum for scalar loss
     loss = ll.sum()
 
-    # Check gradients flow through
     loss.backward()
 
-    # Verify leaf parameters have gradients
     for param in leaf.parameters():
         if param.requires_grad:
             assert param.grad is not None
@@ -102,7 +94,6 @@ def test_split_operations_batched():
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
     split = SplitInterleaved(inputs=leaf, num_splits=3, dim=1)
 
-    # Different batch sizes
     batch_sizes = [1, 10, 50]
 
     for batch_size in batch_sizes:
@@ -123,10 +114,9 @@ def test_split_operations_with_products():
     leaf1 = make_normal_leaf(scope1, out_channels=3, num_repetitions=1)
     leaf2 = make_normal_leaf(scope2, out_channels=3, num_repetitions=1)
 
-    # Create product from separate leaves (avoids split broadcasting issues)
+    # Separate scopes avoid confounding split internals with product broadcasting quirks.
     prod = ElementwiseProduct(inputs=[leaf1, leaf2])
 
-    # Test it works
     data = make_normal_data(out_features=num_features)
     ll = prod.log_likelihood(data)
 
@@ -141,14 +131,13 @@ def test_split_with_outer_product():
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
     split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
-    # Use with outer product
     outer_prod = OuterProduct(inputs=split)
 
     data = make_normal_data(out_features=num_features)
     ll = outer_prod.log_likelihood(data)
 
     assert torch.isfinite(ll).all()
-    # OuterProduct should increase channels
+    # Channel expansion verifies compatibility with combinatorial product semantics.
     assert outer_prod.out_shape.channels > split.out_shape.channels
 
 
@@ -157,19 +146,17 @@ def test_split_alternating_pattern_verification():
     num_features = 8
     scope = Scope(list(range(0, num_features)))
 
-    # Create leaf with known values
+    # Monotonic means make feature-order mistakes easy to spot during debugging.
     mean = torch.arange(num_features).float().reshape(num_features, 1, 1)
     std = torch.ones(num_features, 1, 1) * 0.1
 
     leaf = make_normal_leaf(scope, mean=mean, std=std)
     split = SplitInterleaved(inputs=leaf, num_splits=2, dim=1)
 
-    # Get log likelihoods
     data = make_normal_data(out_features=num_features)
     lls = split.log_likelihood(data)
 
-    # First split should have features 0, 2, 4, 6
-    # Second split should have features 1, 3, 5, 7
+    # Explicit partition sizes guard the even/odd routing contract.
     assert lls[0].shape[1] == 4
     assert lls[1].shape[1] == 4
 
@@ -179,19 +166,16 @@ def test_split_consecutive_pattern_verification():
     num_features = 8
     scope = Scope(list(range(0, num_features)))
 
-    # Create leaf with known values
     mean = torch.arange(num_features).float().reshape(num_features, 1, 1)
     std = torch.ones(num_features, 1, 1) * 0.1
 
     leaf = make_normal_leaf(scope, mean=mean, std=std)
     split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
-    # Get log likelihoods
     data = make_normal_data(out_features=num_features)
     lls = split.log_likelihood(data)
 
-    # First split should have features 0-3
-    # Second split should have features 4-7
+    # Half-and-half widths encode the intended consecutive partition behavior.
     assert lls[0].shape[1] == 4
     assert lls[1].shape[1] == 4
 
@@ -216,7 +200,6 @@ def test_split_sampling_mpe_mode(split_type):
         is_mpe=True,
     )
 
-    # Sample in MPE mode
     samples = split._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
     assert samples.shape == (n_samples, num_features)
@@ -232,7 +215,7 @@ def test_split_consistent_results():
 
     data = make_normal_data(out_features=num_features)
 
-    # Multiple calls should produce identical results
+    # Determinism is important for reproducible structure-level debugging.
     lls1 = split.log_likelihood(data)
     lls2 = split.log_likelihood(data)
 
@@ -248,7 +231,6 @@ def test_split_different_num_splits(num_splits):
     scope = Scope(list(range(0, num_features)))
     leaf = make_normal_leaf(scope, out_channels=2, num_repetitions=1)
 
-    # Test both split types
     split_consecutive = SplitConsecutive(inputs=leaf, num_splits=num_splits, dim=1)
     split_alt = SplitInterleaved(inputs=leaf, num_splits=num_splits, dim=1)
 
@@ -267,11 +249,10 @@ def test_split_scope_inheritance():
     leaf = make_normal_leaf(scope, out_channels=3, num_repetitions=1)
     split = SplitConsecutive(inputs=leaf, num_splits=2, dim=1)
 
-    # Split should inherit scope from leaf
+    # Scope inheritance is a hard requirement for correct variable bookkeeping.
     assert split.scope == leaf.scope
     assert len(split.scope.query) == 8
 
-    # Should be able to compute log likelihoods
     data = make_normal_data(out_features=8)
     lls = split.log_likelihood(data)
     assert len(lls) >= 1

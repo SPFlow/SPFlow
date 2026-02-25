@@ -12,7 +12,7 @@ from spflow.zoo.hclt.mi import pairwise_mi_binary, pairwise_marginal_binary
 
 
 def test_pairwise_mi_binary_matches_chowliutrees_jl_values() -> None:
-    # Ported from ChowLiuTrees.jl/test/information_tests.jl
+    # Keep numerical parity with the Julia reference fixture to catch MI regressions.
     x = torch.tensor(
         [
             [0, 0, 0, 0],
@@ -42,6 +42,7 @@ def test_pairwise_mi_binary_matches_chowliutrees_jl_values() -> None:
 def test_pairwise_marginal_binary_shapes() -> None:
     x = torch.randint(0, 2, (17, 5))
     pxy = pairwise_marginal_binary(x, pseudocount=1.0)
+    # Last axis stores flattened 2x2 joint states for each feature pair.
     assert tuple(pxy.shape) == (5, 5, 4)
 
 
@@ -68,6 +69,7 @@ def test_learn_chow_liu_categorical_validation_errors() -> None:
 def test_learn_chow_liu_single_tree_wrappers() -> None:
     xb = torch.randint(0, 2, (24, 5), dtype=torch.long)
     tree_b = learn_chow_liu_tree_binary(xb)
+    # Tree on d variables always has d-1 edges; this guards wrapper return format.
     assert len(tree_b) == 4
 
     xc = torch.randint(0, 4, (24, 5), dtype=torch.long)

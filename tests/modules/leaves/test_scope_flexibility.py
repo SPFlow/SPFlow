@@ -7,7 +7,7 @@ from spflow.modules.leaves import Normal
 
 
 def test_scope_initialization_flexibility():
-    # Test Scope with various input types
+    # Scope should normalize common scalar/iterable inputs into the same query tuple.
     s1 = Scope(0)
     assert s1.query == (0,)
 
@@ -25,7 +25,7 @@ def test_scope_initialization_flexibility():
 
 
 def test_normal_scope_flexibility():
-    # Test Normal module with various scope input types
+    # Leaf constructors should accept the same scope forms as Scope itself.
     n1 = Normal(scope=0)
     assert n1.scope.query == (0,)
 
@@ -43,7 +43,7 @@ def test_normal_scope_flexibility():
 
 
 def test_scope_with_evidence_flexibility():
-    # Test Scope with evidence using various input types
+    # Query/evidence normalization must stay consistent across input container types.
     s1 = Scope(query=np.array([0, 1]), evidence=torch.tensor([2, 3]))
     assert s1.query == (0, 1)
     assert s1.evidence == (2, 3)

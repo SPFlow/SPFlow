@@ -19,11 +19,13 @@ def _make_histogram(*, bin_edges: torch.Tensor, probs: torch.Tensor) -> Histogra
 
 def test_log_likelihood_matches_manual_bin_density():
     bin_edges = torch.tensor([0.0, 1.0, 3.0])
-    probs = torch.tensor([[[[0.2, 0.8]]]])  # (F=1, C=1, R=1, B=2)
+    # Keep axis layout explicit to guard feature/channel/repetition ordering.
+    probs = torch.tensor([[[[0.2, 0.8]]]])
     leaf = _make_histogram(bin_edges=bin_edges, probs=probs)
 
     data = torch.tensor([[0.5], [2.5]])
-    ll = leaf.log_likelihood(data).squeeze(-1).squeeze(-1).squeeze(1)  # (N,)
+    # Collapse singleton leaf axes so we can compare per-sample manual densities.
+    ll = leaf.log_likelihood(data).squeeze(-1).squeeze(-1).squeeze(1)
 
     widths = torch.tensor([1.0, 2.0])
     densities = torch.tensor([0.2, 0.8]) / widths
@@ -63,6 +65,24 @@ def test_sampling_values_in_support():
     assert torch.isfinite(samples).all()
     assert (samples >= bin_edges[0]).all()
     assert (samples < bin_edges[-1]).all()
+
+
+def test_differentiable_distribution_rsample_in_support_and_produces_grads():
+    torch.manual_seed(0)
+    leaf = Histogram(
+        scope=Scope([0]), bin_edges=torch.tensor([0.0, 1.0, 3.0]), out_channels=2, num_repetitions=1
+    )
+    dist = leaf.distribution(with_differentiable_sampling=True)
+    samples = dist.rsample((7,))
+
+    assert samples.shape == (7, 1, 2, 1)
+    assert torch.isfinite(samples).all()
+    assert (samples >= 0.0).all()
+    assert (samples < 3.0).all()
+
+    samples.mean().backward()
+    assert leaf.logits.grad is not None
+    assert torch.isfinite(leaf.logits.grad).all()
 
 
 def test_mpe_returns_mode_value():

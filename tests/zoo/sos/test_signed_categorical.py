@@ -28,6 +28,7 @@ def test_signed_categorical_signed_eval_and_inner_product():
     logabs, sign = leaf.signed_logabs_and_sign(x, cache=Cache())
 
     vals = sign.to(dtype=torch.get_default_dtype()) * torch.exp(logabs)
+    # Recombining sign/logabs should recover original signed weights exactly.
     expected = torch.tensor([0.2, -0.5], dtype=vals.dtype)
     torch.testing.assert_close(vals.squeeze(-1).squeeze(-1).squeeze(1), expected)
 
@@ -57,6 +58,8 @@ def test_signed_categorical_triple_product_path_in_exp_socs():
     cache = Cache()
     ll = model.log_likelihood(x, cache=cache).squeeze(-1).squeeze(-1).squeeze(1)
 
+    # Squared signed component contribution makes negative weights affect magnitude,
+    # not normalized probability sign.
     z = 0.7 * (1.0**2) + 0.3 * ((-0.2) ** 2)
     expected = torch.tensor(
         [math.log((0.7 * (1.0**2)) / z), math.log((0.3 * ((-0.2) ** 2)) / z)],

@@ -8,7 +8,7 @@ from spflow.zoo.sos import inner_product_matrix
 
 
 def test_inner_product_matrix_cache_reuses_results_for_shared_submodules():
-    # Build a tiny DAG: the same child leaf is re-used twice under Sum inputs.
+    # Reusing one leaf under both inputs forces shared-subgraph memoization paths.
     leaf = Normal(scope=Scope([0]), out_channels=1, num_repetitions=1)
     root = Sum(
         inputs=[leaf, leaf], out_channels=1, num_repetitions=1, weights=torch.tensor([[[[0.3]], [[0.7]]]])
@@ -20,7 +20,7 @@ def test_inner_product_matrix_cache_reuses_results_for_shared_submodules():
     assert isinstance(memo, dict)
     size_after_first = len(memo)
 
-    # Second call should hit memoization and not grow it.
+    # A second identical query should read from memo, not allocate new entries.
     k2 = inner_product_matrix(root, root, cache=cache)
     size_after_second = len(memo)
 

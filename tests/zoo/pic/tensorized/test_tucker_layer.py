@@ -25,6 +25,7 @@ class TestTuckerLayerInit:
 
     def test_arity_must_be_2(self):
         """Test that arity != 2 raises error."""
+        # Current Tucker implementation models binary interactions only.
         with pytest.raises(NotImplementedError):
             TuckerLayer(
                 num_input_units=4,
@@ -95,27 +96,23 @@ class TestTuckerLayerEquivalence:
         F, I, O, B = 1, 3, 2, 4
         layer = TuckerLayer(num_input_units=I, num_output_units=O, num_folds=F)
 
-        # Set simple weights
+        # Fixed params make the numerical baseline deterministic.
         W = torch.rand(F, I, I, O)
         layer._params.data = W
 
-        # Input log-probabilities
+        # Use log-domain inputs to mirror how SPFlow layers are evaluated.
         x = torch.randn(F, 2, I, B)
         left_log = x[:, 0]  # (F, I, B)
         right_log = x[:, 1]  # (F, I, B)
 
-        # Tucker layer output
         tucker_out = layer(x)
 
-        # Explicit computation:
-        # prob = sum_{i,j} W[f,i,j,o] * exp(left[f,i,b]) * exp(right[f,j,b])
+        # Compare against direct probability-space contraction to catch algebra regressions.
         left_prob = torch.exp(left_log)  # (F, I, B)
         right_prob = torch.exp(right_log)  # (F, I, B)
 
-        # Outer product: (F, I, J, B)
         outer = left_prob.unsqueeze(2) * right_prob.unsqueeze(1)
 
-        # Weighted sum: einsum "fijb,fijo->fob"
         explicit_prob = torch.einsum("fijb,fijo->fob", outer, W)
         explicit_log = torch.log(explicit_prob)
 
@@ -128,6 +125,6 @@ class TestTuckerLayerEquivalence:
 
         out = layer(x)
 
-        # Should produce finite, reasonable values
+        # Large batches guard vectorization paths from shape-only correctness.
         assert out.shape == (1, 3, 100)
         assert torch.isfinite(out).all()
