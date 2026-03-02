@@ -1,3 +1,5 @@
+:orphan:
+
 Autoencoding Probabilistic Circuits (APC)
 =========================================
 
@@ -18,7 +20,7 @@ Status Note
 -----------
 
 APC inference APIs remain available (encode/decode/sampling/likelihood). Latent-stat extraction and KL-style
-training helpers are currently unsupported.
+training helpers are currently unsupported and raise :class:`spflow.exceptions.UnsupportedOperationError`.
 
 Main Components
 ---------------
@@ -50,8 +52,12 @@ Decoders
 .. autoclass:: spflow.zoo.apc.decoders.ConvDecoder2D
    :members:
 
-Trainer Helpers
-~~~~~~~~~~~~~~~
+Trainer Helpers (Currently Unavailable)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. warning::
+   The helper functions below are documented for API completeness but currently raise
+   :class:`spflow.exceptions.UnsupportedOperationError`.
 
 .. autofunction:: spflow.zoo.apc.train.train_apc_step
 
@@ -65,11 +71,10 @@ Minimal Example (Einet APC)
 .. code-block:: python
 
     import torch
-    from spflow.zoo.apc.config import ApcConfig, ApcLossWeights, ApcTrainConfig
+    from spflow.zoo.apc.config import ApcConfig, ApcLossWeights
     from spflow.zoo.apc.decoders import MLPDecoder1D
     from spflow.zoo.apc.encoders.einet_joint_encoder import EinetJointEncoder
     from spflow.zoo.apc.model import AutoencodingPC
-    from spflow.zoo.apc.train import fit_apc
 
     encoder = EinetJointEncoder(
         num_x_features=32,
@@ -91,8 +96,12 @@ Minimal Example (Einet APC)
     )
     model = AutoencodingPC(encoder=encoder, decoder=decoder, config=cfg)
 
-    data = torch.randn(512, 32)
-    history = fit_apc(model, data, config=ApcTrainConfig(epochs=5, batch_size=64))
+    data = torch.randn(64, 32)
+    z = model.encode(data)
+    recon = model.decode(z)
+    log_px = model.log_likelihood_x(data)
+
+    print(z.shape, recon.shape, log_px.shape)
 
 Conv-PC APC Note
 ----------------

@@ -1,6 +1,5 @@
-=====================================
 Probabilistic Integral Circuits (PICs)
-=====================================
+======================================
 
 Probabilistic Integral Circuits (PICs) are a framework for scaling continuous latent variable models by representing them as integrals over tractable circuits. They allow for flexible neural functional sharing while maintaining tractability via quadrature-based materialization.
 
@@ -61,25 +60,42 @@ Minimal Example
 .. code-block:: python
 
     import torch
-    from spflow.meta.region_graph import RegionGraph
+    from torch import nn
+    from spflow.meta import Scope
+    from spflow.meta.region_graph import Region, RegionGraph
     from spflow.zoo.pic import rg2pic, pic2qpc, QuadratureRule, PICInput
 
     # 1. Define a simple RegionGraph
-    rg = RegionGraph.from_nested_list([[0, 1]])
+    root = Region(Scope([0, 1]))
+    left = Region(Scope([0]))
+    right = Region(Scope([1]))
+    root.add_partition((left, right))
+    rg = RegionGraph(root)
 
     # 2. Define a leaf factory
-    class MyInput(PICInput):
+    class MyInput(nn.Module):
         def __init__(self, scope, latent_scope):
+            super().__init__()
             self.scope = scope
             self.latent_scope = latent_scope
         def materialize(self, quadrature_rule):
             # Return a standard SPFlow module (e.g. Gaussian leaves)
             from spflow.modules.leaves import Normal
             K = quadrature_rule.points.shape[0]
-            return Normal(scope=self.scope, channels=K)
+            if len(self.latent_scope.query) == 0:
+                return Normal(scope=self.scope, out_channels=1)
+            return Normal(scope=self.scope, out_channels=K)
+
+    class ConstantOneFunction(nn.Module):
+        def forward(self, z, y):
+            return torch.ones(z.shape[:-1], device=z.device, dtype=z.dtype)
 
     # 3. Build symbolic PIC
-    pic = rg2pic(rg, leaf_factory=lambda x, z: MyInput(x, z))
+    pic = rg2pic(
+        rg,
+        leaf_factory=lambda x, z: MyInput(x, z),
+        function_factory=lambda z_dim, y_dim: ConstantOneFunction(),
+    )
 
     # 4. Materialize to QPC
     q_rule = QuadratureRule(

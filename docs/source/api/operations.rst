@@ -26,14 +26,14 @@ Factory class for creating split configurations.
    :members: consecutive, interleaved, by_index, create
 
 SplitConsecutive
------------
+----------------
 
 Splits features into consecutive halves (or n parts).
 
 .. autoclass:: spflow.modules.ops.SplitConsecutive
 
 SplitInterleaved
---------------
+----------------
 
 Splits features in alternating fashion.
 

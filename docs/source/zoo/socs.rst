@@ -57,7 +57,7 @@ Rather than building an explicit "squared circuit", SPFlow computes these terms 
 bottom-up **inner-product dynamic program** implemented in :mod:`spflow.utils.inner_product`.
 
 The implementation supports exact inner products for common leaves (and can be extended by adding
-new closed-form formulas in ``spflow/exp/sos/inner_product.py``). Currently supported include:
+new closed-form formulas in ``spflow/utils/inner_product_core.py``). Currently supported include:
 
 - ``Normal``, ``Bernoulli``, ``Categorical``
 - ``Exponential``, ``Laplace``, ``LogNormal``

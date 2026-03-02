@@ -4,7 +4,7 @@ Concepts
 
 This page is a stable, linkable reference for SPFlow concepts (separate from the API reference and notebooks).
 
-See also :doc:`SOCS <exp/socs>` for details on signed circuits and compatibility.
+See also :doc:`SOCS <zoo/socs>` for details on signed circuits and compatibility.
 
 .. _concepts-shapes-and-dimensions:
 
@@ -26,7 +26,7 @@ Where shapes appear
 -------------------
 
 - **Input data**: ``data`` is shaped ``(batch, num_features)``.
-- **Log-likelihood outputs**: ``log_likelihood`` returns ``(batch, out_features, out_channels)``.
+- **Log-likelihood outputs**: ``log_likelihood`` returns ``(batch, out_features, out_channels, repetitions)``.
 - **Module metadata**: :class:`spflow.modules.module_shape.ModuleShape` stores ``(features, channels, repetitions)``.
 
 Practical tips
@@ -118,10 +118,12 @@ Related references
 Differentiable Sampling
 =======================
 
-Differentiable sampling support has been removed from SPFlow.
+The main public sampling APIs are ``sample``, ``sample_with_evidence``, and ``mpe``.
 
-Use ``sample`` for stochastic generation and ``mpe`` for deterministic decoding.
-For APC models, latent-stat extraction and KL-style training helpers are currently unavailable.
+SPFlow also contains differentiable routing/sampling paths for selected modules and leaves, but this is an
+advanced interface and not uniformly supported across all components.
+For APC models specifically, inference APIs (encode/decode/sampling/likelihood) remain available, while
+latent-stat extraction and KL-style training helpers are currently unavailable.
 
 .. _concepts-caching-and-dispatch:
 

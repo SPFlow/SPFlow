@@ -44,7 +44,7 @@ SPFlow provides several core module types:
 - **Leaves**: Probability distributions at the terminals (Normal, Categorical, Bernoulli, etc.)
 - **Products**: Combine independent distributions (Product, OuterProduct, ElementwiseProduct)
 - **Sums**: Weighted mixtures of distributions (Sum, ElementwiseSum)
-    - **Specialized architectures**: RAT-SPN, ConvPc for images (see :doc:`Paper Zoo <zoo/index>`)
+- **Specialized architectures**: RAT-SPN, ConvPc for images (see :doc:`Paper Zoo <zoo/index>`)
 
 
 See the :doc:`API Reference <api/index>` for complete documentation.
@@ -116,7 +116,7 @@ What leaf distributions are available?
 
 SPFlow includes many univariate distributions:
 
-**Continuous**: Normal, LogNormal, Exponential, Gamma, Uniform
+**Continuous**: Normal, LogNormal, Exponential, Laplace, Gamma, Uniform
 
 **Discrete**: Categorical, Bernoulli, Binomial, Poisson, Geometric, NegativeBinomial, Hypergeometric
 
@@ -151,14 +151,15 @@ Does SPFlow have image-specific modules?
 
 Yes! Use the ``ConvPc`` module for image data with spatial structure::
 
+    import torch
     from spflow.zoo.conv import ConvPc
-    from spflow.modules.leaves import Binomial
+    from spflow.modules.leaves import Normal
     from spflow.meta import Scope
 
     # Create leaf layer for 28x28 grayscale images (e.g., MNIST)
     height, width = 28, 28
     scope = Scope(list(range(height * width)))
-    leaf = Binomial(scope=scope, total_count=torch.tensor(255), out_channels=8, num_repetitions=2)
+    leaf = Normal(scope=scope, out_channels=8, num_repetitions=1)
 
     # Build convolutional PC
     model = ConvPc(
@@ -168,7 +169,7 @@ Yes! Use the ``ConvPc`` module for image data with spatial structure::
         depth=3,
         channels=16,
         kernel_size=2,
-        num_repetitions=2,
+        num_repetitions=1,
     )
 
 For adapting existing models to image data, use ``ImageWrapper``::
@@ -181,6 +182,8 @@ For adapting existing models to image data, use ``ImageWrapper``::
     # Now works with 4D tensors: (batch, channels, height, width)
     image_data = torch.randn(32, 1, 28, 28)
     log_ll = wrapped.log_likelihood(image_data)
+
+``ConvPc`` currently supports ``num_repetitions == 1`` only.
 
 See :doc:`api/conv`, :doc:`zoo/conv_pc` and :doc:`api/wrappers` for complete documentation.
 
@@ -196,11 +199,14 @@ SPFlow provides two main training approaches:
 
 **Gradient Descent**::
 
+    from torch.utils.data import DataLoader, TensorDataset
     from spflow.learn import train_gradient_descent
+
+    dataloader = DataLoader(TensorDataset(train_data), batch_size=64, shuffle=True)
 
     train_gradient_descent(
         model,
-        train_data,
+        dataloader,
         epochs=100,
         lr=0.01
     )
@@ -209,7 +215,7 @@ SPFlow provides two main training approaches:
 
     from spflow.learn import expectation_maximization
 
-    expectation_maximization(model, train_data, epochs=50)
+    expectation_maximization(model, train_data, max_steps=50)
 
 What is the difference between gradient descent and EM?
 -------------------------------------------------------
@@ -254,7 +260,7 @@ How do I compute log-likelihood?
 Call the ``log_likelihood`` method on your model::
 
     log_likelihood = model.log_likelihood(data)
-    # Returns tensor of shape [batch_size, ...]
+    # Returns tensor of shape (batch_size, features, channels, repetitions)
 
 How do I sample from a model?
 -----------------------------

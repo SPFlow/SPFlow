@@ -27,6 +27,13 @@ Exponential distribution with learnable rate parameter.
 
 .. autoclass:: spflow.modules.leaves.Exponential
 
+Laplace
+^^^^^^^
+
+Laplace distribution with learnable location and scale parameters.
+
+.. autoclass:: spflow.modules.leaves.Laplace
+
 Gamma
 ^^^^^
 
