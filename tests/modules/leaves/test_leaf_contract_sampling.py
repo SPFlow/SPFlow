@@ -3,6 +3,7 @@ import torch
 
 from spflow.exceptions import UnsupportedOperationError
 from spflow.modules import leaves
+from spflow.modules.sums import Sum
 from spflow.utils.cache import Cache
 from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.modules.leaves.leaf_contract_data import (
@@ -46,6 +47,19 @@ def test_sample(leaf_cls, out_features: int, out_channels: int, num_reps, is_mpe
     samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
     assert samples.shape == (n_samples, out_features)
+    assert torch.isfinite(samples).all()
+
+
+def test_categorical_sampling_with_zero_routed_rows_does_not_crash():
+    # A Sum with two Categorical children routes each sample to exactly one child.
+    # The non-selected child receives zero routed rows and must be a no-op.
+    left = make_leaf(leaves.Categorical, out_features=1, out_channels=1, num_repetitions=1)
+    right = make_leaf(leaves.Categorical, out_features=1, out_channels=1, num_repetitions=1)
+    module = Sum(inputs=[left, right], out_channels=1)
+
+    samples = module.sample(num_samples=1)
+
+    assert samples.shape == (1, 1)
     assert torch.isfinite(samples).all()
 
 

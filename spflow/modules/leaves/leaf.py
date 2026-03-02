@@ -648,6 +648,10 @@ class LeafModule(Module, ABC):
         # Count number of samples to draw
         instance_mask = samples_mask.sum(1) > 0
         n_samples = instance_mask.sum()  # count number of rows which have at least one true value
+        # Routing can legitimately send zero rows to a branch. In that case, there is nothing to
+        # sample for this leaf and we should return without touching the data tensor.
+        if int(n_samples.item()) == 0:
+            return data
 
         if sampling_ctx.is_mpe:
             if self.is_conditional:
