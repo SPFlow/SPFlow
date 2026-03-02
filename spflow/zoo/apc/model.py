@@ -153,6 +153,12 @@ class AutoencodingPC(nn.Module):
         )
         return kld_per_sample.mean()
 
+    @staticmethod
+    def _float_scalar_zero(x: Tensor) -> Tensor:
+        """Create a floating scalar zero on ``x``'s device."""
+        dtype = x.dtype if x.is_floating_point() else torch.get_default_dtype()
+        return torch.zeros((), device=x.device, dtype=dtype)
+
     def loss_components(self, x: Tensor) -> dict[str, Tensor]:
         """Compute APC loss components and intermediate tensors.
 
@@ -163,18 +169,93 @@ class AutoencodingPC(nn.Module):
             Dictionary with scalar terms ``rec``, ``kld``, ``nll``, ``total``
             and helpful intermediates ``z``, ``x_rec``, ``mu``, ``logvar``.
         """
-        del x
-        raise UnsupportedOperationError(
-            "APC KL-style training is unavailable after sample rollback. "
-            "loss_components() is currently unsupported."
-        )
+        tau_eff = self.config.sample_tau
+        weights = self.config.loss_weights
+
+        need_stats = (weights.kld > 0.0) or self.config.train_decode_mpe
+        need_z_samples = (weights.rec > 0.0) or (weights.nll > 0.0)
+
+        stats: LatentStats | None = None
+        z_samples: Tensor | None = None
+        components: dict[str, Tensor] = {}
+
+        if need_stats or need_z_samples:
+            encoded = self.encoder.encode(
+                x,
+                mpe=False,
+                tau=tau_eff,
+                return_latent_stats=need_stats,
+            )
+            if need_stats:
+                if (
+                    not isinstance(encoded, tuple)
+                    or len(encoded) != 2
+                    or not isinstance(encoded[0], LatentStats)
+                    or not isinstance(encoded[1], Tensor)
+                ):
+                    raise UnsupportedOperationError(
+                        "Encoder must return (LatentStats, z_samples) when return_latent_stats=True."
+                    )
+                stats = encoded[0]
+                z_samples = encoded[1]
+                components["mu"] = stats.mu
+                components["logvar"] = stats.logvar
+            else:
+                if not isinstance(encoded, Tensor):
+                    raise UnsupportedOperationError(
+                        "Encoder must return latent samples as a Tensor when return_latent_stats=False."
+                    )
+                z_samples = encoded
+
+        if z_samples is not None:
+            components["z"] = z_samples
+
+        rec = self._float_scalar_zero(x)
+        if weights.rec > 0.0:
+            if z_samples is None:
+                raise RuntimeError("Reconstruction loss requested but latent samples were not computed.")
+            if self.config.train_decode_mpe:
+                if stats is None:
+                    raise UnsupportedOperationError(
+                        "train_decode_mpe=True requires encoder latent stats; "
+                        "disable train_decode_mpe or use an encoder that supports latent stats."
+                    )
+                z_to_decode = stats.mu
+            else:
+                z_to_decode = z_samples
+            x_rec = self.decode(z_to_decode, mpe=False, tau=tau_eff)
+            rec = self._reconstruction_loss(x, x_rec)
+            components["x_rec"] = x_rec
+
+        nll = self._float_scalar_zero(x)
+        if weights.nll > 0.0:
+            if self.config.nll_x_and_z:
+                if z_samples is None:
+                    raise RuntimeError("Joint NLL requested but latent samples were not computed.")
+                lls = self.joint_log_likelihood(x, z_samples)
+            else:
+                lls = self.log_likelihood_x(x)
+            nll = -lls.sum() / x.shape[0]
+
+        kld = self._float_scalar_zero(x)
+        if weights.kld > 0.0:
+            if stats is None:
+                raise UnsupportedOperationError(
+                    "KL loss requires encoder latent stats, but they are unavailable. "
+                    "Set loss_weights.kld=0 or use an encoder that supports return_latent_stats=True."
+                )
+            kld = self._kld_from_stats(stats)
+
+        total = weights.rec * rec + weights.kld * kld + weights.nll * nll
+        components["rec"] = rec
+        components["kld"] = kld
+        components["nll"] = nll
+        components["total"] = total
+        return components
 
     def loss(self, x: Tensor) -> Tensor:
         """Return only the weighted total APC loss."""
-        del x
-        raise UnsupportedOperationError(
-            "APC KL-style training is unavailable after sample rollback. loss() is currently unsupported."
-        )
+        return self.loss_components(x)["total"]
 
     def log_likelihood_x(self, x: Tensor) -> Tensor:
         """Compute encoder marginal log-likelihood ``log p(x)`` per sample."""
@@ -185,7 +266,7 @@ class AutoencodingPC(nn.Module):
         return self.encoder.joint_log_likelihood(x, z)
 
     def forward(self, x: Tensor) -> dict[str, Tensor]:
-        """Alias for :meth:`loss_components` to integrate with training loops."""
+        """Alias for :math:`loss_components` to integrate with training loops."""
         return self.loss_components(x)
 
     def extra_repr(self) -> str:

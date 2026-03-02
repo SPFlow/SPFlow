@@ -19,8 +19,11 @@ APC is described in:
 Status Note
 -----------
 
-APC inference APIs remain available (encode/decode/sampling/likelihood). Latent-stat extraction and KL-style
-training helpers are currently unsupported and raise :class:`spflow.exceptions.UnsupportedOperationError`.
+APC inference APIs remain available (encode/decode/sampling/likelihood), and the high-level
+``AutoencodingPC.loss_components``/``loss`` objective is available.
+For configurations that use the KL term (or ``train_decode_mpe=True``), the selected encoder must provide latent
+stats via ``encode(..., return_latent_stats=True)``; otherwise APC raises
+:class:`spflow.exceptions.UnsupportedOperationError`.
 
 Main Components
 ---------------

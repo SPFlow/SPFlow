@@ -123,7 +123,10 @@ The main public sampling APIs are ``sample``, ``sample_with_evidence``, and ``mp
 SPFlow also contains differentiable routing/sampling paths for selected modules and leaves, but this is an
 advanced interface and not uniformly supported across all components.
 For APC models specifically, inference APIs (encode/decode/sampling/likelihood) remain available, while
-latent-stat extraction and KL-style training helpers are currently unavailable.
+the model objective APIs (``AutoencodingPC.loss_components`` / ``loss``) are available.
+When the APC KL term is enabled, the selected encoder must provide latent stats; otherwise APC raises
+an explicit :class:`spflow.exceptions.UnsupportedOperationError`.
+APC trainer helper functions in ``spflow.zoo.apc.train`` remain unavailable.
 
 .. _concepts-caching-and-dispatch:
 

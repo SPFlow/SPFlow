@@ -37,6 +37,8 @@ class ApcConfig:
         rec_loss: Reconstruction criterion used by :class:`AutoencodingPC`.
         n_bits: Bit-depth used by reference-style image reconstruction scaling.
         sample_tau: Temperature for differentiable sampling (SIMPLE/Gumbel style paths).
+        train_decode_mpe: Whether reconstruction loss should decode from posterior means.
+        nll_x_and_z: Whether the NLL term uses joint likelihood ``p(x,z)`` (vs marginal ``p(x)``).
         loss_weights: Weights for ``rec``, ``kld``, and ``nll`` objective terms.
     """
 
@@ -44,6 +46,8 @@ class ApcConfig:
     rec_loss: Literal["mse", "bce"] = "mse"
     n_bits: int = 8
     sample_tau: float = 1.0
+    train_decode_mpe: bool = False
+    nll_x_and_z: bool = True
     loss_weights: ApcLossWeights = field(default_factory=ApcLossWeights)
 
     def __post_init__(self) -> None:
