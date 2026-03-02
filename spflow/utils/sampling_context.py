@@ -182,7 +182,6 @@ class SamplingContext:
         repetition_index: Tensor | None = None,
         is_mpe: bool = False,
         is_differentiable: bool = False,
-        hard: bool = True,
         tau: float = 1.0,
     ) -> None:
         """Initialize SamplingContext for managing sampling operations.
@@ -213,8 +212,6 @@ class SamplingContext:
                 stochastic sampling. Defaults to False.
             is_differentiable (bool, optional): If True, sampling operations will be
                 differentiable. Defaults to False.
-            hard (bool, optional): If True, differentiable sampling returns hard
-                one-hot vectors via straight-through estimation. Defaults to True.
             tau (float, optional): Temperature parameter for differentiable sampling. Defaults to 1.0.
 
         Raises:
@@ -224,7 +221,6 @@ class SamplingContext:
         device_was_provided = device is not None
         self.is_differentiable = is_differentiable
         self.is_mpe = is_mpe
-        self.hard = hard
         if tau <= 0.0:
             raise InvalidParameterError(f"tau must be > 0, got {tau}.")
         self.tau = float(tau)
@@ -432,7 +428,6 @@ class SamplingContext:
             repetition_index=repetition_index,
             is_mpe=self.is_mpe,
             is_differentiable=self.is_differentiable,
-            hard=self.hard,
             tau=self.tau,
         )
 
@@ -966,9 +961,7 @@ def to_one_hot(
     return one_hot
 
 
-def SIMPLE(
-    logits=None, log_weights=None, dim=-1, is_mpe=False, hard: bool = True, tau: float = 1.0
-) -> torch.Tensor:
+def SIMPLE(logits=None, log_weights=None, dim=-1, is_mpe=False, tau: float = 1.0) -> torch.Tensor:
     """
     Sample from the distribution using SIMPLE[1].
 
@@ -981,7 +974,6 @@ def SIMPLE(
         log_weights (torch.Tensor): Input log weights (normalized log probabilities) of shape [*, n_class].
         dim (int): Dimension along which to sample.
         is_mpe (bool): Whether to perform MPE sampling.
-        hard (bool): Whether to return hard one-hot assignments (straight-through) or soft probabilities.
         tau (float): Sampling temperature. Must be > 0.
 
     Returns:
@@ -1008,9 +1000,6 @@ def SIMPLE(
 
     # Keep hard decisions from the perturbed distribution as in original SIMPLE.
     y_soft = F.softmax(base, dim=dim)
-    if not hard:
-        return y
-
     index = y_soft.max(dim=dim, keepdim=True)[1]
     y_hard = torch.zeros_like(y_soft)
     y_hard.scatter_(dim, index, 1)
@@ -1020,7 +1009,6 @@ def SIMPLE(
 def sample_categorical_differentiably(
     dim: int,
     is_mpe: bool,
-    hard: bool,
     tau: float,
     logits: torch.Tensor = None,
     log_weights: torch.Tensor = None,
@@ -1033,8 +1021,7 @@ def sample_categorical_differentiably(
     Args:
       dim(int): Dimension along which to sample from.
       is_mpe(bool): Whether to perform MPE sampling.
-      hard(bool): Whether to perform hard or soft sampling.
-      tau(float): Temperature for soft sampling.
+      tau(float): Temperature for differentiable sampling.
       logits(torch.Tensor): Logits (unnormalized log probabilities) from which the sampling should be done.
       log_weights(torch.Tensor): Log weights (normalized log probabilities) from which the sampling should be done.
       method(DiffSampleMethod): Method to use for differentiable sampling. Must be either DiffSampleMethod.SIMPLE or DiffSampleMethod.GUMBEL.
@@ -1044,7 +1031,7 @@ def sample_categorical_differentiably(
     """
     assert xor(logits is not None, log_weights is not None), "Either logits or log_weights must be given."
 
-    return SIMPLE(logits=logits, log_weights=log_weights, dim=dim, is_mpe=is_mpe, hard=hard, tau=tau)
+    return SIMPLE(logits=logits, log_weights=log_weights, dim=dim, is_mpe=is_mpe, tau=tau)
 
 
 def index_one_hot(tensor: torch.Tensor, index: torch.Tensor, dim: int) -> torch.Tensor:
@@ -1115,7 +1102,6 @@ def sample_from_logits(
     dim: int,
     is_mpe: bool,
     is_differentiable: bool,
-    hard: bool,
     tau: float = 1.0,
 ):
     """
@@ -1129,8 +1115,6 @@ def sample_from_logits(
             maximum value along the specified dimension. Otherwise, performs stochastic sampling.
         is_differentiable (bool): If True, uses SIMPLE for differentiable sampling. If False,
             performs non-differentiable sampling.
-        hard (bool): Flag specifying whether hard one-hot vectors are required for differentiable
-            sampling. This is relevant only in differentiable mode.
         tau (float): Temperature for differentiable sampling.
 
     Returns:
@@ -1145,4 +1129,4 @@ def sample_from_logits(
             return logits.argmax(dim=dim)
     else:
         # Use SIMPLE to sample differentiably from the distribution defined by logits
-        return SIMPLE(logits=logits, dim=dim, is_mpe=is_mpe, hard=hard, tau=tau)
+        return SIMPLE(logits=logits, dim=dim, is_mpe=is_mpe, tau=tau)

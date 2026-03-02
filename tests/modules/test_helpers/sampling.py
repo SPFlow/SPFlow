@@ -31,7 +31,6 @@ def make_sampling_context_diff(
     num_channels: int,
     num_repetitions: int,
     is_mpe: bool = False,
-    hard: bool = True,
 ) -> SamplingContext:
     channel_index = torch.randint(0, num_channels, (num_samples, num_features))
     repetition_index = torch.randint(0, num_repetitions, (num_samples,))
@@ -41,5 +40,4 @@ def make_sampling_context_diff(
         repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_repetitions),
         is_mpe=is_mpe,
         is_differentiable=True,
-        hard=hard,
     )

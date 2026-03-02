@@ -160,7 +160,7 @@ def test_sample_dim2_rejects_out_of_range_global_channel_id_internal_context():
         module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
 
-def test_sample_dim2_differentiable_hard_routes_child_offsets():
+def test_sample_dim2_differentiable_routes_child_offsets():
     scope = Scope([0, 1])
     num_samples = 5
     child_a = Normal(
@@ -186,7 +186,6 @@ def test_sample_dim2_differentiable_hard_routes_child_offsets():
         mask=torch.ones((num_samples, 2), dtype=torch.bool),
         repetition_index=to_one_hot(torch.zeros((num_samples,), dtype=torch.long), dim=-1, dim_size=1),
         is_differentiable=True,
-        hard=True,
     )
     samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == (num_samples, 2)
@@ -229,7 +228,6 @@ def test_sample_dim2_differentiable_equals_non_diff_sampling():
         mask=mask.clone(),
         repetition_index=to_one_hot(repetition_ids, dim=-1, dim_size=1),
         is_differentiable=True,
-        hard=True,
     )
 
     samples_a = module._sample(
@@ -250,22 +248,6 @@ def test_sample_dim2_differentiable_equals_non_diff_sampling():
         rtol=0.0,
         atol=0.0,
     )
-
-
-def test_sample_dim2_differentiable_soft_rejected():
-    module = make_cat(out_channels=2, out_features=3, num_repetitions=1, dim=2)
-    num_samples = 4
-    data = torch.full((num_samples, module.out_shape.features), torch.nan)
-    channel_ids = torch.zeros((num_samples, module.out_shape.features), dtype=torch.long)
-    sampling_ctx = SamplingContext(
-        channel_index=to_one_hot(channel_ids, dim=-1, dim_size=module.out_shape.channels),
-        mask=torch.ones((num_samples, module.out_shape.features), dtype=torch.bool),
-        repetition_index=to_one_hot(torch.zeros((num_samples,), dtype=torch.long), dim=-1, dim_size=1),
-        is_differentiable=True,
-        hard=False,
-    )
-    with pytest.raises(InvalidParameterError, match="requires hard=True"):
-        module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
 
 def test_sample_dim2_differentiable_multi_child_routing_rejected():
@@ -299,7 +281,6 @@ def test_sample_dim2_differentiable_multi_child_routing_rejected():
         mask=torch.ones((num_samples, 2), dtype=torch.bool),
         repetition_index=to_one_hot(torch.zeros((num_samples,), dtype=torch.long), dim=-1, dim_size=1),
         is_differentiable=True,
-        hard=True,
     )
 
     with pytest.raises(InvalidParameterError, match="select exactly one child"):

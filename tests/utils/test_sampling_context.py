@@ -520,7 +520,6 @@ def test_route_channel_offsets_differentiable_one_hot_is_exclusive_and_normalize
         repetition_index=to_one_hot(torch.zeros((batch,), dtype=torch.long), dim=-1, dim_size=1),
         mask=torch.ones((batch, features), dtype=torch.bool),
         is_differentiable=True,
-        hard=True,
     )
 
     routes = ctx.route_channel_offsets(child_channel_counts=child_channel_counts)
@@ -742,8 +741,7 @@ def test_repeat_channel_index_diff_preserves_channel_width():
     torch.testing.assert_close(actual[:, :, :, 0, 0], channel_index, rtol=0.0, atol=0.0)
 
 
-@pytest.mark.parametrize("hard", [True, False])
-def test_simple_logits_backpropagates_to_logits(hard):
+def test_simple_logits_backpropagates_to_logits():
     logits = torch.tensor(
         [[1.0, -0.5, 0.2], [0.1, 0.3, -0.4]],
         dtype=torch.float32,
@@ -751,7 +749,7 @@ def test_simple_logits_backpropagates_to_logits(hard):
     )
     loss_weights = torch.tensor([[1.0, 2.0, 0.5], [0.7, 1.5, 3.0]], dtype=torch.float32)
 
-    out = SIMPLE(logits=logits, dim=-1, is_mpe=True, hard=hard, tau=0.7)
+    out = SIMPLE(logits=logits, dim=-1, is_mpe=True, tau=0.7)
     loss = (out * loss_weights).sum()
     loss.backward()
 
@@ -760,8 +758,7 @@ def test_simple_logits_backpropagates_to_logits(hard):
     assert torch.count_nonzero(logits.grad).item() > 0
 
 
-@pytest.mark.parametrize("hard", [True, False])
-def test_simple_logits_backpropagates_to_log_weights(hard):
+def test_simple_logits_backpropagates_to_log_weights():
     probs = torch.tensor(
         [[0.2, 0.5, 0.3], [0.6, 0.1, 0.3]],
         dtype=torch.float32,
@@ -769,7 +766,7 @@ def test_simple_logits_backpropagates_to_log_weights(hard):
     log_weights = probs.log().detach().clone().requires_grad_(True)
     loss_weights = torch.tensor([[1.2, 0.4, 2.5], [0.3, 1.7, 0.8]], dtype=torch.float32)
 
-    out = SIMPLE(log_weights=log_weights, dim=-1, is_mpe=True, hard=hard, tau=0.9)
+    out = SIMPLE(log_weights=log_weights, dim=-1, is_mpe=True, tau=0.9)
     loss = (out * loss_weights).sum()
     loss.backward()
 

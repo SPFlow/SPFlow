@@ -220,7 +220,6 @@ def test_split_alternate_differentiable_equals_non_diff_sampling():
         mask=mask.clone(),
         repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=1),
         is_differentiable=True,
-        hard=True,
     )
 
     samples_a = split._sample(
@@ -234,7 +233,7 @@ def test_split_alternate_differentiable_equals_non_diff_sampling():
         cache=Cache(),
     )
 
-    # Hard one-hot routing should be numerically equivalent to integer routing.
+    # Differentiable one-hot routing should be numerically equivalent to integer routing.
     torch.testing.assert_close(samples_a, samples_b, rtol=0.0, atol=1e-4)
 
 

@@ -474,7 +474,6 @@ class EinsumLayer(Module):
             dim=-1,
             is_mpe=sampling_ctx.is_mpe,
             is_differentiable=sampling_ctx.is_differentiable,
-            hard=sampling_ctx.hard,
             tau=sampling_ctx.tau,
         )
 

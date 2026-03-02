@@ -52,7 +52,6 @@ def test_split_sampling_differentiable_equals_non_diff_sampling(split_type):
         mask=mask.clone(),
         repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
         is_differentiable=True,
-        hard=True,
     )
 
     # Shared RNG seed isolates representation differences from stochastic leaf draws.
@@ -98,7 +97,6 @@ def test_split_sampling_differentiable_gradients_flow(split_type):
         mask=torch.ones((n_samples, module.out_shape.features), dtype=torch.bool),
         repetition_index=repetition_index,
         is_differentiable=True,
-        hard=False,
     )
 
     out = module._sample(

@@ -8,7 +8,6 @@ from einops import rearrange, repeat
 from torch import Tensor, nn
 
 from spflow.exceptions import (
-    InvalidParameterError,
     InvalidParameterCombinationError,
     InvalidWeightsError,
     MissingCacheError,
@@ -155,7 +154,7 @@ class ElementwiseSum(Module):
             dtype=torch.long,
         )
         self.register_buffer(name="unraveled_channel_indices", tensor=unraveled_channel_indices)
-        # Differentiable sampling routes parent channels as one-hot/soft vectors over the
+        # Differentiable sampling routes parent channels as one-hot vectors over the
         # flattened channel axis (ci * co). These projection matrices map that flattened
         # distribution to child-local marginals over ci and co without integer indexing.
         self.register_buffer(
@@ -313,11 +312,6 @@ class ElementwiseSum(Module):
             allowed_feature_widths=(1, self.out_shape.features),
         )
         sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
-        if sampling_ctx.is_differentiable and not sampling_ctx.hard:
-            raise InvalidParameterError(
-                "ElementwiseSum differentiable sampling requires hard=True because routing masks are boolean."
-            )
-
         # Index into the correct weight channels given by parent module
         # (stay in logits space since Categorical distribution accepts logits directly)
         batch_size = int(sampling_ctx.channel_index.shape[0])
@@ -439,7 +433,6 @@ class ElementwiseSum(Module):
             dim=-1,
             is_mpe=sampling_ctx.is_mpe,
             is_differentiable=sampling_ctx.is_differentiable,
-            hard=sampling_ctx.hard,
             tau=sampling_ctx.tau,
         )
         if sampling_ctx.is_differentiable:

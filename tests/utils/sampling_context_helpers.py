@@ -8,7 +8,7 @@ import torch
 from torch import Tensor
 
 from spflow.exceptions import InvalidParameterError
-from spflow.utils.sampling_context import SamplingContext, to_one_hot
+from spflow.utils.sampling_context import SIMPLE, SamplingContext, to_one_hot
 
 
 def make_sampling_context(
@@ -71,11 +71,9 @@ def patch_simple_as_categorical_one_hot(monkeypatch: Any) -> None:
         log_weights: Tensor | None = None,
         dim: int = -1,
         is_mpe: bool = False,
-        hard: bool = True,
         tau: float = 1.0,
     ) -> Tensor:
         del is_mpe
-        del hard
         del tau
         x = logits if logits is not None else log_weights
         if x is None:
@@ -128,6 +126,6 @@ def make_diff_routing_from_logits(
         dtype=dtype,
         requires_grad=True,
     )
-    channel_index = channel_logits.softmax(dim=-1)
-    repetition_index = repetition_logits.softmax(dim=-1)
+    channel_index = SIMPLE(logits=channel_logits, dim=-1, is_mpe=True)
+    repetition_index = SIMPLE(logits=repetition_logits, dim=-1, is_mpe=True)
     return channel_logits, repetition_logits, channel_index, repetition_index

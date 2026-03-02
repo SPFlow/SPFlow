@@ -128,7 +128,6 @@ def test_sample_differentiable_broadcasting_channels(cls):
         mask=torch.ones((n_samples, module.out_shape.features), dtype=torch.bool),
         repetition_index=to_one_hot(torch.zeros((n_samples,), dtype=torch.long), dim=-1, dim_size=num_reps),
         is_differentiable=True,
-        hard=True,
     )
     samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == data.shape

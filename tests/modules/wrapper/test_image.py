@@ -98,7 +98,6 @@ def test_wrapper_sample_differentiable_equals_non_diff_sampling():
         mask=mask.clone(),
         repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
         is_differentiable=True,
-        hard=True,
     )
 
     # Shared RNG seed makes route/value differences attributable to context mode only.
@@ -138,7 +137,6 @@ def test_wrapper_sample_differentiable_gradients_flow():
         mask=torch.ones((n_samples, num_features), dtype=torch.bool),
         repetition_index=repetition_index,
         is_differentiable=True,
-        hard=False,
     )
 
     out = module._sample(

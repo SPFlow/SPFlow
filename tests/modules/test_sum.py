@@ -513,8 +513,7 @@ class TestDifferentiableSampling:
             mask=torch.full((n_samples, out_features), True),
             repetition_index=repetition_index,
             is_differentiable=True,
-            hard=True,
-            tau=1.0,
+                tau=1.0,
         )
 
         # Make `data` require grad (and be non-leaf) so in-place sampling writes
@@ -554,8 +553,7 @@ class TestDifferentiableSampling:
             num_samples=n_samples,
             device=data.device,
             is_differentiable=True,
-            hard=True,
-            tau=0.7,
+                tau=0.7,
         )
         out = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 

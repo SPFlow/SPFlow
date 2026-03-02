@@ -97,7 +97,6 @@ def test_sample_differentiable():
         mask=torch.ones((n_samples, factorization_layer.out_shape.features), dtype=torch.bool),
         repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
         is_differentiable=True,
-        hard=True,
     )
     samples = factorization_layer._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == data.shape
@@ -130,7 +129,6 @@ def test_sample_differentiable_with_conditional_cache():
         mask=torch.ones((n_samples, factorization_layer.out_shape.features), dtype=torch.bool),
         repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
         is_differentiable=True,
-        hard=True,
     )
     samples = factorization_layer._sample(
         data=torch.full((n_samples, out_features), torch.nan),
@@ -169,7 +167,6 @@ def test_sample_differentiable_equals_non_diff_sampling():
         mask=mask.clone(),
         repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
         is_differentiable=True,
-        hard=True,
     )
 
     torch.manual_seed(1337)

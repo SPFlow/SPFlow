@@ -398,8 +398,7 @@ class TestSplitByIndexSamplingContextExpansion:
             mask=mask.clone(),
             repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
             is_differentiable=True,
-            hard=True,
-        )
+            )
 
         torch.manual_seed(1337)
         samples_a = split._sample(
@@ -441,8 +440,7 @@ class TestSplitByIndexSamplingContextExpansion:
             mask=torch.ones((n, 3), dtype=torch.bool),
             repetition_index=repetition_index,
             is_differentiable=True,
-            hard=False,
-        )
+            )
         out = split._sample(
             data=torch.full((n, 6), torch.nan),
             sampling_ctx=sampling_ctx,

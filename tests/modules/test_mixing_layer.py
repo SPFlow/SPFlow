@@ -97,7 +97,6 @@ def test_sample_differentiable(out_channels: int, out_features: int, num_reps):
         mask=torch.ones((n_samples, module.out_shape.features), dtype=torch.bool),
         repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
         is_differentiable=True,
-        hard=True,
     )
     out = module._sample(
         data=torch.full((n_samples, module.out_shape.features), torch.nan),
@@ -137,7 +136,6 @@ def test_sample_differentiable_with_conditional_cache(out_channels: int, out_fea
         mask=torch.ones((n_samples, module.out_shape.features), dtype=torch.bool),
         repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
         is_differentiable=True,
-        hard=True,
     )
     out = module._sample(
         data=torch.full((n_samples, module.out_shape.features), torch.nan),
@@ -178,7 +176,6 @@ def test_sample_differentiable_equals_non_diff_sampling(monkeypatch: pytest.Monk
         repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
         is_mpe=False,
         is_differentiable=True,
-        hard=True,
     )
 
     patch_simple_as_categorical_one_hot(monkeypatch)
@@ -242,7 +239,6 @@ def test_sample_differentiable_equals_non_diff_sampling_with_conditional_cache(
         mask=mask.clone(),
         repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
         is_differentiable=True,
-        hard=True,
     )
 
     patch_simple_as_categorical_one_hot(monkeypatch)

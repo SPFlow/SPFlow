@@ -48,7 +48,6 @@ def test_product_diff_sampling_equals_non_diff_contract(in_channels: int, out_fe
         mask=torch.ones((n_samples, 1), dtype=torch.bool),
         repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=num_reps),
         is_differentiable=True,
-        hard=True,
     )
 
     # Matching seeds make stochastic tie-breaking identical across both routes.
@@ -78,7 +77,6 @@ def test_base_products_diff_sampling_smoke_contract(cls):
         mask=torch.ones((n_samples, module.out_shape.features), dtype=torch.bool),
         repetition_index=to_one_hot(torch.zeros((n_samples,), dtype=torch.long), dim=-1, dim_size=1),
         is_differentiable=True,
-        hard=True,
     )
     out = module._sample(
         data=torch.full((n_samples, 6), torch.nan),

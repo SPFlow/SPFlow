@@ -134,11 +134,6 @@ class Cat(Module):
         )
         sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
 
-        if self.dim == 2 and sampling_ctx.is_differentiable and not sampling_ctx.hard:
-            raise InvalidParameterError(
-                "Cat(dim=2) differentiable sampling requires hard=True to avoid ambiguous multi-child routing writes."
-            )
-
         if self.dim == 1:
             ranges: list[tuple[int, int]] = []
             feature_offset = 0

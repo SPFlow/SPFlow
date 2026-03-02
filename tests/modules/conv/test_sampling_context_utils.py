@@ -55,7 +55,6 @@ def test_upsample_sampling_context_diff_matches_non_diff() -> None:
         mask=mask.clone(),
         repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=1),
         is_differentiable=True,
-        hard=True,
     )
 
     upsample_sampling_context(ctx_a, current_height=2, current_width=2, scale_h=2, scale_w=2)
