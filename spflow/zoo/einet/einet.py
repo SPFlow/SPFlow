@@ -25,6 +25,7 @@ from spflow.modules.einsum.linsum_layer import LinsumLayer
 from spflow.modules.leaves.leaf import LeafModule
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
+from spflow.modules.ops.split import SplitMode
 from spflow.modules.rat.factorize import Factorize
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.modules.sums.sum import Sum
@@ -207,6 +208,7 @@ class Einet(Module, Classifier):
                     inputs=current,
                     out_channels=layer_info["out_channels"],
                     num_repetitions=self.num_repetitions,
+                    split_mode=SplitMode.interleaved(num_splits=2),
                 )
 
             root = current
@@ -258,6 +260,7 @@ class Einet(Module, Classifier):
                 inputs=current,
                 out_channels=self.num_sums,
                 num_repetitions=self.num_repetitions,
+                split_mode=SplitMode.interleaved(num_splits=2),
             )
 
         # Handle depth=0 case

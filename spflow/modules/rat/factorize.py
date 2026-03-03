@@ -65,6 +65,8 @@ class Factorize(BaseProduct):
             depth, num_repetitions
         )  # shape: [num_features_in, num_features_out, num_repetitions]
         self.register_buffer("indices", indices.to(torch.get_default_dtype()))
+        # Sampling can optionally use a dedicated mapping (defaults to forward mapping).
+        self.register_buffer("sampling_indices", self.indices.clone())
 
         # Shape computation
         self.in_shape = self.inputs[0].out_shape
@@ -158,9 +160,9 @@ class Factorize(BaseProduct):
         lls = self._get_input_log_likelihoods(
             data,
             cache=cache,
-        )  # lls[0] shape: [batch_size, num_features, num_channel]
-        output = torch.einsum("bicr, ior->bocr", lls[0], self.indices)
+        )  # lls[0] shape: [batch_size, num_features, num_channel, num_repetitions]
 
+        output = torch.einsum("bicr, ior->bocr", lls[0], self.indices)
         return output
 
     def _sample(
@@ -192,10 +194,11 @@ class Factorize(BaseProduct):
         )
         sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
 
-        num_input_features = self.indices.shape[0]
-        num_output_features = self.indices.shape[1]
+        sampling_indices = self.sampling_indices
+        num_input_features = sampling_indices.shape[0]
+        num_output_features = sampling_indices.shape[1]
         batch_size = data.shape[0]
-        indices = repeat(rearrange(self.indices, "i o r -> 1 i o r"), "1 i o r -> b i o r", b=batch_size)
+        indices = repeat(rearrange(sampling_indices, "i o r -> 1 i o r"), "1 i o r -> b i o r", b=batch_size)
         rep_indices = repeat_repetition_index(
             sampling_ctx.repetition_index,
             "b r -> b i o r",
@@ -208,7 +211,7 @@ class Factorize(BaseProduct):
             dim=-1,
             is_differentiable=sampling_ctx.is_differentiable,
         )
-        indices = indices.to(device=sampling_ctx.channel_index.device, dtype=torch.get_default_dtype())
+        indices = indices.to(device=sampling_ctx.channel_index.device, dtype=sampling_ctx.channel_index.dtype)
 
         if sampling_ctx.is_differentiable:
             channel_index = torch.einsum("bio,boc->bic", indices, sampling_ctx.channel_index)

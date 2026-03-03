@@ -51,6 +51,16 @@ class _ReconstructionSummaryWrapper(nn.Module):
         return self.model.reconstruct(x)
 
 
+class QuantizeToNBits:
+    """Picklable torchvision transform for n-bit integer quantization."""
+
+    def __init__(self, n_bits: int) -> None:
+        self.n_bits = int(n_bits)
+
+    def __call__(self, x: torch.Tensor) -> torch.Tensor:
+        return scale_to_n_bits(x, n_bits=self.n_bits)
+
+
 def flatten_image_tensor(x: torch.Tensor) -> torch.Tensor:
     """Flatten image tensor from ``(C, H, W)`` to ``(C*H*W,)``."""
     return x.view(-1)
@@ -228,6 +238,16 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument("--val-size", type=int, default=10_000, help="Validation split size from train set.")
+    parser.add_argument(
+        "--classes",
+        type=int,
+        nargs="+",
+        default=None,
+        help=(
+            "Optional MNIST digit subset (e.g. --classes 0 1 2). "
+            "When set, train/val/test are filtered to the selected digits."
+        ),
+    )
     parser.add_argument(
         "--max-train-samples",
         type=int,
@@ -444,7 +464,7 @@ def build_mnist_loaders(
     if normalize_data:
         transforms_list.append(transforms.Normalize([0.5], [0.5]))
     else:
-        transforms_list.append(transforms.Lambda(lambda tensor: scale_to_n_bits(tensor, n_bits=args.n_bits)))
+        transforms_list.append(QuantizeToNBits(args.n_bits))
 
     if flatten:
         transforms_list.append(transforms.Lambda(flatten_image_tensor))
@@ -464,11 +484,25 @@ def build_mnist_loaders(
         download=args.download,
     )
 
+    if args.classes is not None:
+        classes = sorted(set(int(c) for c in args.classes))
+        if len(classes) == 0:
+            raise ValueError("--classes must contain at least one digit.")
+        invalid_classes = [c for c in classes if c < 0 or c > 9]
+        if invalid_classes:
+            raise ValueError(
+                f"--classes only supports MNIST digits in [0, 9], got invalid values: {invalid_classes}."
+            )
+        train_full = _subset_mnist_by_classes(train_full, classes=classes)
+        test_full = _subset_mnist_by_classes(test_full, classes=classes)
+
     val_size = args.val_size
     if val_size <= 0:
         raise ValueError(f"--val-size must be >= 1, got {val_size}.")
     if val_size >= len(train_full):
-        raise ValueError(f"--val-size must be in [1, {len(train_full) - 1}], got {val_size}.")
+        raise ValueError(
+            f"--val-size must be in [1, {len(train_full) - 1}] after optional class filtering, got {val_size}."
+        )
 
     split_gen = torch.Generator()
     split_gen.manual_seed(args.seed)
@@ -513,6 +547,7 @@ def build_mnist_loaders(
 def make_leaf_factory(dist: str, *, total_count: float) -> LeafFactory:
     """Create a leaf factory for APC encoder blocks."""
     if dist == "normal":
+
         def _normal_factory(scope_indices: list[int], out_channels: int, num_repetitions: int) -> LeafModule:
             # Reference APC initializes Normal leaves via (mu, logvar), not via
             # uniformly sampled scales.
@@ -537,7 +572,10 @@ def make_leaf_factory(dist: str, *, total_count: float) -> LeafFactory:
         )
     if dist == "binomial":
         total_count_tensor = torch.tensor(float(total_count))
-        def _binomial_factory(scope_indices: list[int], out_channels: int, num_repetitions: int) -> LeafModule:
+
+        def _binomial_factory(
+            scope_indices: list[int], out_channels: int, num_repetitions: int
+        ) -> LeafModule:
             # Match reference APC Binomial init: p ~ Uniform(0.4, 0.6).
             event_shape = (len(scope_indices), out_channels, num_repetitions)
             probs = 0.5 + (torch.rand(event_shape) - 0.5) * 0.2
@@ -945,9 +983,6 @@ def train_apc_iters(
 
 def main() -> None:
     """Run APC training on MNIST and persist artifacts."""
-    raise RuntimeError(
-        "APC KL-style training is unavailable after the differentiable-sampling rollback."
-    )
     args = parse_args()
     seed_everything(args.seed)
 
@@ -988,6 +1023,7 @@ def main() -> None:
         f"encoder={args.encoder}, decoder={args.decoder}, latent_dim={args.latent_dim}, "
         f"image_size={args.image_size}, batch_size={args.batch_size}, iters={effective_iters}, rec_loss={args.rec_loss}, "
         f"dist_data={args.dist_data}, dist_latent={args.dist_latent}, "
+        f"classes={None if args.classes is None else sorted(set(int(c) for c in args.classes))}, "
         f"normalize_data={normalize_data}, debug={args.debug}, "
         f"optim={args.optim}, lr_scheduler={args.lr_scheduler}, "
         f"lr_encoder={args.learning_rate_encoder}, lr_decoder={args.learning_rate_decoder}, "

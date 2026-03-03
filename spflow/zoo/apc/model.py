@@ -116,6 +116,11 @@ class AutoencodingPC(nn.Module):
         For image-like tensors (rank > 2), this applies the same legacy scaling
         used in the reference implementation before the reconstruction criterion.
         """
+        if not x_rec.is_floating_point():
+            x_rec = x_rec.to(dtype=torch.get_default_dtype())
+        if not x.is_floating_point():
+            x = x.to(dtype=x_rec.dtype)
+
         if x.dim() > 2:
             # Preserve the reference APC's historical scaling behavior exactly.
             # NOTE: This uses n_bits**2 - 1 (not 2**n_bits - 1).

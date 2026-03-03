@@ -21,9 +21,9 @@ Status Note
 
 APC inference APIs remain available (encode/decode/sampling/likelihood), and the high-level
 ``AutoencodingPC.loss_components``/``loss`` objective is available.
-For configurations that use the KL term (or ``train_decode_mpe=True``), the selected encoder must provide latent
-stats via ``encode(..., return_latent_stats=True)``; otherwise APC raises
-:class:`spflow.exceptions.UnsupportedOperationError`.
+APC encoders provide latent stats via ``encode(..., return_latent_stats=True)`` and ``latent_stats(...)``.
+For Normal latent leaves, stats are extracted from selected leaf parameters (reference-style ``mu/logvar``).
+For other latent leaf families, APC falls back to posterior moment estimation from repeated posterior samples.
 
 Main Components
 ---------------
@@ -55,12 +55,8 @@ Decoders
 .. autoclass:: spflow.zoo.apc.decoders.ConvDecoder2D
    :members:
 
-Trainer Helpers (Currently Unavailable)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. warning::
-   The helper functions below are documented for API completeness but currently raise
-   :class:`spflow.exceptions.UnsupportedOperationError`.
+Trainer Helpers
+~~~~~~~~~~~~~~~
 
 .. autofunction:: spflow.zoo.apc.train.train_apc_step
 

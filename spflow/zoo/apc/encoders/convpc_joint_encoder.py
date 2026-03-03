@@ -120,7 +120,10 @@ class _PairwiseLatentProduct(Module):
             return self.inputs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
         if ctx_features == 1:
             num_parent_features = self.out_shape.features
-            parent_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_parent_features)
+            if sampling_ctx.is_differentiable:
+                parent_idx = repeat(sampling_ctx.channel_index, "b 1 c -> b f c", f=num_parent_features)
+            else:
+                parent_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_parent_features)
             parent_mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=num_parent_features)
         elif ctx_features == self.out_shape.features:
             parent_idx = sampling_ctx.channel_index
@@ -131,7 +134,10 @@ class _PairwiseLatentProduct(Module):
                 f"got {ctx_features}, expected 1, {self.out_shape.features}, or {self.in_shape.features}."
             )
 
-        child_idx = repeat(parent_idx, "b f -> b (f two)", two=2)
+        if sampling_ctx.is_differentiable:
+            child_idx = repeat(parent_idx, "b f c -> b (f two) c", two=2)
+        else:
+            child_idx = repeat(parent_idx, "b f -> b (f two)", two=2)
         child_mask = repeat(parent_mask, "b f -> b (f two)", two=2)
         sampling_ctx.channel_index = child_idx
         sampling_ctx.mask = child_mask
@@ -229,7 +235,10 @@ class _LatentFeaturePacking(Module):
             return self.inputs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
         if ctx_features == 1:
             num_target_features = self.target_features
-            parent_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_target_features)
+            if sampling_ctx.is_differentiable:
+                parent_idx = repeat(sampling_ctx.channel_index, "b 1 c -> b f c", f=num_target_features)
+            else:
+                parent_idx = repeat(sampling_ctx.channel_index, "b 1 -> b f", f=num_target_features)
             parent_mask = repeat(sampling_ctx.mask, "b 1 -> b f", f=num_target_features)
         elif ctx_features == self.target_features:
             parent_idx = sampling_ctx.channel_index
@@ -242,10 +251,16 @@ class _LatentFeaturePacking(Module):
 
         if self.perm_inv is not None:
             perm_inv = self.perm_inv.to(device=parent_idx.device)
-            parent_idx = parent_idx[:, perm_inv]
+            if sampling_ctx.is_differentiable:
+                parent_idx = parent_idx[:, perm_inv, :]
+            else:
+                parent_idx = parent_idx[:, perm_inv]
             parent_mask = parent_mask[:, perm_inv]
 
-        child_idx = parent_idx[:, : self.in_shape.features]
+        if sampling_ctx.is_differentiable:
+            child_idx = parent_idx[:, : self.in_shape.features, :]
+        else:
+            child_idx = parent_idx[:, : self.in_shape.features]
         child_mask = parent_mask[:, : self.in_shape.features]
         sampling_ctx.channel_index = child_idx
         sampling_ctx.mask = child_mask
@@ -283,7 +298,7 @@ class _LatentSelectionCapture(Module):
     def feature_to_scope(self) -> np.ndarray:
         return self.inputs.feature_to_scope
 
-    def _align_feature_width_2d(
+    def _align_feature_width(
         self,
         tensor: Tensor,
         *,
@@ -292,15 +307,39 @@ class _LatentSelectionCapture(Module):
         scope_cols: list[int],
         kind: str,
     ) -> Tensor:
+        if tensor.dim() not in (2, 3):
+            raise ShapeError(
+                f"Latent selection capture {kind} tensor must have rank 2 or 3, got rank {tensor.dim()}."
+            )
         if tensor.shape[1] == 1:
+            if tensor.dim() == 3:
+                return repeat(tensor, "b 1 c -> b f c", f=target_features)
             return repeat(tensor, "b 1 -> b f", f=target_features)
         if tensor.shape[1] == target_features:
             return tensor
         if tensor.shape[1] == data_num_features:
+            if tensor.dim() == 3:
+                return tensor[:, scope_cols, :]
             return tensor[:, scope_cols]
         raise ShapeError(
             f"Latent selection capture {kind} width mismatch: "
             f"got {tensor.shape[1]}, expected 1, {target_features}, or {data_num_features}."
+        )
+
+    def _resolve_channel_index(
+        self,
+        channel_index: Tensor,
+        *,
+        target_features: int,
+        data_num_features: int,
+        scope_cols: list[int],
+    ) -> Tensor:
+        return self._align_feature_width(
+            channel_index,
+            target_features=target_features,
+            data_num_features=data_num_features,
+            scope_cols=scope_cols,
+            kind="channel",
         )
 
     def _resolve_repetition_index(
@@ -313,6 +352,8 @@ class _LatentSelectionCapture(Module):
     ) -> Tensor | None:
         if rep_idx is None:
             return None
+        if rep_idx.dim() == 2 and rep_idx.is_floating_point() and rep_idx.shape[1] == self.out_shape.repetitions:
+            return rep_idx
         if rep_idx.dim() == 1:
             return repeat(rep_idx, "b -> b f", f=target_features)
         if rep_idx.dim() != 2:
@@ -320,7 +361,7 @@ class _LatentSelectionCapture(Module):
                 "Latent selection capture repetition index must have rank 1 or 2, "
                 f"got rank {rep_idx.dim()}."
             )
-        return self._align_feature_width_2d(
+        return self._align_feature_width(
             rep_idx,
             target_features=target_features,
             data_num_features=data_num_features,
@@ -332,12 +373,11 @@ class _LatentSelectionCapture(Module):
         target_features = self.in_shape.features
         scope_cols = list(self.scope.query)
 
-        channel_idx = self._align_feature_width_2d(
+        channel_idx = self._resolve_channel_index(
             sampling_ctx.channel_index,
             target_features=target_features,
             data_num_features=data_num_features,
             scope_cols=scope_cols,
-            kind="channel",
         )
         repetition_index = self._resolve_repetition_index(
             sampling_ctx.repetition_index,
@@ -347,8 +387,8 @@ class _LatentSelectionCapture(Module):
         )
 
         self._capture_fn(
-            channel_idx.detach().clone().to(dtype=torch.long),
-            None if repetition_index is None else repetition_index.detach().clone().to(dtype=torch.long),
+            channel_idx.clone(),
+            None if repetition_index is None else repetition_index.clone(),
         )
 
     @cached
@@ -432,9 +472,9 @@ class ConvPcJointEncoder(nn.Module):
         if architecture == "reference":
             if depth < 2:
                 raise InvalidParameterError(f"reference architecture requires depth >= 2, got depth={depth}.")
-            if latent_depth < 0 or latent_depth >= (depth - 1):
+            if latent_depth < 0 or latent_depth >= depth:
                 raise InvalidParameterError(
-                    f"latent_depth must be in [0, {depth - 2}] for reference architecture, got {latent_depth}."
+                    f"latent_depth must be in [0, {depth - 1}] for reference architecture, got {latent_depth}."
                 )
         else:
             if latent_depth < 0 or latent_depth >= depth:
@@ -479,8 +519,8 @@ class ConvPcJointEncoder(nn.Module):
         self.layers = nn.ModuleList()
         self.latent_sum_layer: Module | None = None
         self.latent_prod_layers = nn.ModuleList()
-        self.latent_perm: Tensor | None = None
-        self.latent_perm_inv: Tensor | None = None
+        self.register_buffer("latent_perm", None)
+        self.register_buffer("latent_perm_inv", None)
         self._latent_target_features = latent_dim
 
         self._last_latent_leaf_channel_index: Tensor | None = None
@@ -728,16 +768,10 @@ class ConvPcJointEncoder(nn.Module):
         layer_specs: list[tuple[str, dict[str, int]]] = [("sum_root", {"out_channels": 1})]
 
         h, w = 1, 1
-        latent_target_features: int | None = None
-        for top_idx in reversed(range(0, depth - 1)):
+        for _ in reversed(range(0, depth - 1)):
             layer_specs.append(("prod", {"kernel_size": kernel_size}))
             h, w = h * kernel_size, w * kernel_size
             layer_specs.append(("sum", {"out_channels": channels, "kernel_size": kernel_size}))
-            if top_idx == latent_depth:
-                latent_target_features = h * w
-
-        if latent_target_features is None:
-            raise RuntimeError("Failed to infer latent injection feature width for reference architecture.")
 
         (kh, kw), (ph, pw) = compute_non_overlapping_kernel_and_padding(
             H_data=self.input_height,
@@ -753,18 +787,11 @@ class ConvPcJointEncoder(nn.Module):
         )
         layer_specs = list(reversed(layer_specs))
 
-        latent_stream = self._build_reference_latent_stream(
-            z_leaf=z_leaf,
-            target_features=latent_target_features,
-            channels=channels,
-            num_repetitions=num_repetitions,
-            perm_latents=perm_latents,
-        )
-
         current: Module = x_leaf
         layers_built: list[Module] = []
         latent_injected = False
-        sum_stage = -1
+        prod_stage = -1
+        latent_stream: Module | None = None
 
         for layer_type, params in layer_specs:
             if layer_type == "prod_bottom":
@@ -789,12 +816,6 @@ class ConvPcJointEncoder(nn.Module):
                         out_channels=params["out_channels"],
                         num_repetitions=num_repetitions,
                     )
-                sum_stage += 1
-
-                if sum_stage == latent_depth:
-                    # Additive fusion in log-space is equivalent to elementwise product in probability space.
-                    current = ElementwiseProduct(inputs=[current, latent_stream])
-                    latent_injected = True
 
             elif layer_type == "prod":
                 current = ProdConv(
@@ -810,6 +831,36 @@ class ConvPcJointEncoder(nn.Module):
                 )
             else:
                 raise RuntimeError(f"Unexpected layer type '{layer_type}'.")
+
+            if layer_type in {"prod_bottom", "prod"}:
+                prod_stage += 1
+                if prod_stage == latent_depth:
+                    if latent_stream is None:
+                        latent_stream = self._build_reference_latent_stream(
+                            z_leaf=z_leaf,
+                            target_features=current.out_shape.features,
+                            channels=channels,
+                            num_repetitions=num_repetitions,
+                            perm_latents=perm_latents,
+                        )
+                    if current.out_shape.features != latent_stream.out_shape.features:
+                        raise ShapeError(
+                            "Latent fusion feature mismatch in reference Conv-PC: "
+                            f"pc features={current.out_shape.features}, latent features={latent_stream.out_shape.features}."
+                        )
+                    if current.out_shape.channels != latent_stream.out_shape.channels:
+                        raise ShapeError(
+                            "Latent fusion channel mismatch in reference Conv-PC: "
+                            f"pc channels={current.out_shape.channels}, latent channels={latent_stream.out_shape.channels}."
+                        )
+                    if current.out_shape.repetitions != latent_stream.out_shape.repetitions:
+                        raise ShapeError(
+                            "Latent fusion repetition mismatch in reference Conv-PC: "
+                            f"pc reps={current.out_shape.repetitions}, latent reps={latent_stream.out_shape.repetitions}."
+                        )
+                    # Additive fusion in log-space is equivalent to elementwise product in probability space.
+                    current = ElementwiseProduct(inputs=[current, latent_stream])
+                    latent_injected = True
 
             layers_built.append(current)
 
@@ -936,116 +987,218 @@ class ConvPcJointEncoder(nn.Module):
         self, x_flat: Tensor, *, mpe: bool, tau: float, return_sampling_ctx: bool = False
     ) -> Tensor | tuple[Tensor, SamplingContext]:
         """Sample ``z ~ p(Z|X=x)`` and optionally return sampling context."""
-        del tau
         self._reset_latent_leaf_selection()
         evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
-        if return_sampling_ctx:
-            sampling_ctx = SamplingContext(num_samples=x_flat.shape[0], device=x_flat.device, is_mpe=mpe)
-            joint = self.pc._sample(data=evidence, cache=Cache(), sampling_ctx=sampling_ctx)
-        else:
-            sampling_ctx = None
-            joint = self.pc.sample(data=evidence, is_mpe=mpe)
+        joint, sampling_ctx = self._sample_joint(
+            evidence=evidence,
+            mpe=mpe,
+            tau=tau,
+            return_sampling_ctx=return_sampling_ctx,
+        )
         z = joint[:, self._z_cols]
         if return_sampling_ctx:
             assert sampling_ctx is not None
             return z, sampling_ctx
         return z
 
-    def _resolve_latent_channel_indices(
+    def _sample_joint(
+        self,
+        *,
+        evidence: Tensor,
+        mpe: bool,
+        tau: float,
+        return_sampling_ctx: bool,
+    ) -> tuple[Tensor, SamplingContext | None]:
+        """Sample the joint Conv-PC with differentiable routing semantics."""
+        cache = Cache()
+        # Populate evidence-conditioned likelihood cache before top-down sampling.
+        self.pc.log_likelihood(evidence, cache=cache)
+        batch_size = evidence.shape[0]
+        channel_index = torch.ones((batch_size, 1, 1), dtype=torch.get_default_dtype(), device=evidence.device)
+        mask = torch.full((batch_size, 1), True, dtype=torch.bool, device=evidence.device)
+        num_repetitions = int(self.pc.out_shape.repetitions)
+        repetition_index = torch.zeros(
+            (batch_size, num_repetitions),
+            dtype=torch.get_default_dtype(),
+            device=evidence.device,
+        )
+        repetition_index[:, 0] = 1.0
+        sampling_ctx: SamplingContext | None = SamplingContext(
+            channel_index=channel_index,
+            mask=mask,
+            device=evidence.device,
+            repetition_index=repetition_index,
+            is_mpe=mpe,
+            is_differentiable=True,
+            tau=tau,
+        )
+        joint = self.pc._sample(data=evidence, cache=cache, sampling_ctx=sampling_ctx)
+        if return_sampling_ctx:
+            return joint, sampling_ctx
+        return joint, None
+
+    @staticmethod
+    def _normalize_probs(probs: Tensor, *, dim: int) -> Tensor:
+        """Normalize non-negative probabilities along ``dim``."""
+        eps = torch.finfo(probs.dtype).eps
+        return probs / probs.sum(dim=dim, keepdim=True).clamp_min(eps)
+
+    def _align_latent_feature_width(
+        self,
+        tensor: Tensor,
+        *,
+        target_features: int,
+        total_features: int,
+    ) -> Tensor:
+        """Align feature axis to latent width for routing tensors."""
+        if tensor.shape[1] == target_features:
+            return tensor
+        if tensor.shape[1] == 1:
+            if tensor.dim() == 3:
+                return repeat(tensor, "b 1 c -> b f c", f=target_features)
+            return repeat(tensor, "b 1 -> b f", f=target_features)
+        if tensor.shape[1] == total_features:
+            if tensor.dim() == 3:
+                return tensor[:, self._z_cols, :]
+            return tensor[:, self._z_cols]
+        raise ShapeError(
+            "Latent routing feature mismatch: "
+            f"got {tensor.shape[1]}, expected 1, {target_features}, or {total_features}."
+        )
+
+    def _resolve_latent_channel_weights(
         self,
         *,
         sampling_ctx: SamplingContext,
         batch_size: int,
         loc: Tensor,
     ) -> Tensor:
-        """Resolve leaf-level latent component indices for posterior stats."""
-        if self._last_latent_leaf_channel_index is not None:
-            channel_idx = self._last_latent_leaf_channel_index.to(device=loc.device, dtype=torch.long)
-            if channel_idx.shape[0] != batch_size:
-                raise ShapeError(
-                    "Captured latent leaf channel index batch mismatch: "
-                    f"expected {batch_size}, got {channel_idx.shape[0]}."
-                )
-            if channel_idx.shape[1] == 1:
-                num_latent_features = self.latent_dim
-                channel_idx = repeat(channel_idx, "b 1 -> b f", f=num_latent_features)
-            elif channel_idx.shape[1] == self.latent_dim:
-                pass
-            else:
-                raise ShapeError(
-                    "Captured latent leaf channel index feature mismatch: "
-                    f"expected 1 or {self.latent_dim}, got {channel_idx.shape[1]}."
-                )
-            return channel_idx.clamp(min=0, max=loc.shape[1] - 1)
+        """Resolve latent channel routing as probabilities of shape ``(B, F, C)``."""
+        channels = self._last_latent_leaf_channel_index
+        if channels is None:
+            channels = sampling_ctx.channel_index
 
-        channels = sampling_ctx.channel_index
-        ctx_features = channels.shape[1]
-        if ctx_features == 1:
-            num_latent_features = self.latent_dim
-            channel_idx = repeat(channels, "b 1 -> b f", f=num_latent_features)
-        elif ctx_features == self.latent_dim:
-            channel_idx = channels
-        elif ctx_features == (self.num_x_features + self.latent_dim):
-            channel_idx = channels[:, self._z_cols]
-        else:
-            raise InvalidParameterError(
-                f"Unexpected sampling context feature width {ctx_features} for latent stats extraction."
-            )
-        return channel_idx.to(device=loc.device, dtype=torch.long).clamp(min=0, max=loc.shape[1] - 1)
-
-    def _resolve_latent_repetition_indices(
-        self,
-        *,
-        sampling_ctx: SamplingContext,
-        batch_size: int,
-        loc: Tensor,
-    ) -> Tensor:
-        """Resolve leaf-level latent repetition indices for posterior stats."""
-        rep = self._last_latent_leaf_repetition_index
-        if rep is not None:
-            repetition_index = rep.to(device=loc.device, dtype=torch.long)
-            if repetition_index.shape[0] != batch_size:
-                raise ShapeError(
-                    "Captured latent repetition index batch mismatch: "
-                    f"expected {batch_size}, got {repetition_index.shape[0]}."
-                )
-            if repetition_index.shape[1] == 1:
-                num_latent_features = self.latent_dim
-                repetition_index = repeat(repetition_index, "b 1 -> b f", f=num_latent_features)
-            elif repetition_index.shape[1] == self.latent_dim:
-                pass
-            else:
-                raise ShapeError(
-                    "Captured latent repetition index feature mismatch: "
-                    f"expected 1 or {self.latent_dim}, got {repetition_index.shape[1]}."
-                )
-            return repetition_index.clamp(min=0, max=loc.shape[2] - 1)
-
-        if sampling_ctx.repetition_index is None:
-            return torch.zeros((batch_size, self.latent_dim), dtype=torch.long, device=loc.device)
-
-        rep = sampling_ctx.repetition_index
-        if rep.dim() == 1:
-            num_latent_features = self.latent_dim
-            repetition_index = repeat(rep, "b -> b f", f=num_latent_features)
-        elif rep.shape[1] == 1:
-            num_latent_features = self.latent_dim
-            repetition_index = repeat(rep, "b 1 -> b f", f=num_latent_features)
-        elif rep.shape[1] == self.latent_dim:
-            repetition_index = rep
-        elif rep.shape[1] == (self.num_x_features + self.latent_dim):
-            repetition_index = rep[:, self._z_cols]
-        else:
+        if channels.shape[0] != batch_size:
             raise ShapeError(
-                "Latent repetition index feature mismatch: "
-                f"got {rep.shape[1]}, expected 1, {self.latent_dim}, or {self.num_x_features + self.latent_dim}."
+                f"Latent channel routing batch mismatch: expected {batch_size}, got {channels.shape[0]}."
             )
-        return repetition_index.to(device=loc.device, dtype=torch.long).clamp(min=0, max=loc.shape[2] - 1)
+        channels = self._align_latent_feature_width(
+            channels,
+            target_features=self.latent_dim,
+            total_features=self.num_x_features + self.latent_dim,
+        )
+        if channels.dim() == 2:
+            if channels.dtype == torch.bool or channels.is_floating_point() or channels.is_complex():
+                raise InvalidParameterError("Integer latent channel indices are required for rank-2 channel routing.")
+            channels_long = channels.to(device=loc.device, dtype=torch.long).clamp(min=0, max=loc.shape[1] - 1)
+            return torch.nn.functional.one_hot(channels_long, num_classes=loc.shape[1]).to(dtype=loc.dtype)
+        if channels.dim() != 3:
+            raise ShapeError(
+                f"Latent channel routing must have rank 2 or 3, got rank {channels.dim()}."
+            )
+        if channels.shape[2] == 1 and loc.shape[1] > 1:
+            expanded = channels.new_zeros((channels.shape[0], channels.shape[1], loc.shape[1]))
+            expanded[:, :, 0] = channels[:, :, 0]
+            channels = expanded
+        elif channels.shape[2] != loc.shape[1]:
+            raise ShapeError(
+                "Latent channel routing channel-axis mismatch: "
+                f"got {channels.shape[2]}, expected {loc.shape[1]}."
+            )
+        return self._normalize_probs(channels.to(device=loc.device, dtype=loc.dtype), dim=-1)
+
+    def _resolve_latent_repetition_weights(
+        self,
+        *,
+        sampling_ctx: SamplingContext,
+        batch_size: int,
+        loc: Tensor,
+    ) -> Tensor:
+        """Resolve latent repetition routing as probabilities of shape ``(B, F, R)``."""
+        rep = self._last_latent_leaf_repetition_index
+        if rep is None:
+            rep = sampling_ctx.repetition_index
+
+        if rep is None:
+            base = torch.zeros((batch_size,), dtype=torch.long, device=loc.device)
+            rep_probs = torch.nn.functional.one_hot(base, num_classes=loc.shape[2]).to(dtype=loc.dtype)
+            return repeat(rep_probs, "b r -> b f r", f=self.latent_dim)
+
+        if rep.shape[0] != batch_size:
+            raise ShapeError(
+                f"Latent repetition routing batch mismatch: expected {batch_size}, got {rep.shape[0]}."
+            )
+
+        if rep.dim() == 1:
+            rep_long = rep.to(device=loc.device, dtype=torch.long).clamp(min=0, max=loc.shape[2] - 1)
+            rep_probs = torch.nn.functional.one_hot(rep_long, num_classes=loc.shape[2]).to(dtype=loc.dtype)
+            return repeat(rep_probs, "b r -> b f r", f=self.latent_dim)
+
+        if rep.dim() != 2:
+            raise ShapeError(f"Latent repetition routing must have rank 1 or 2, got rank {rep.dim()}.")
+
+        if rep.is_floating_point() and rep.shape[1] == loc.shape[2]:
+            rep_probs = self._normalize_probs(rep.to(device=loc.device, dtype=loc.dtype), dim=-1)
+            return repeat(rep_probs, "b r -> b f r", f=self.latent_dim)
+
+        rep_aligned = self._align_latent_feature_width(
+            rep,
+            target_features=self.latent_dim,
+            total_features=self.num_x_features + self.latent_dim,
+        )
+        if rep_aligned.dim() != 2:
+            raise ShapeError(
+                "Latent repetition feature routing must be rank-2 after alignment, "
+                f"got rank {rep_aligned.dim()}."
+            )
+        rep_long = rep_aligned.to(device=loc.device, dtype=torch.long).clamp(min=0, max=loc.shape[2] - 1)
+        return torch.nn.functional.one_hot(rep_long, num_classes=loc.shape[2]).to(dtype=loc.dtype)
 
     def _latent_stats_from_leaf_params(self, sampling_ctx: SamplingContext, batch_size: int) -> LatentStats:
         """Extract posterior ``mu/logvar`` from selected latent leaf parameters."""
-        del sampling_ctx, batch_size
-        raise UnsupportedOperationError("APC latent stats are not available after sample rollback.")
+        if not isinstance(self._z_leaf, Normal):
+            raise UnsupportedOperationError(
+                "Latent leaf is not Normal; falling back to Monte Carlo latent stats estimation."
+            )
+
+        loc = self._z_leaf.loc
+        log_scale = self._z_leaf.log_scale
+        if loc.dim() != 3 or log_scale.dim() != 3:
+            raise ShapeError(
+                "Expected Normal latent leaf params to have shape (features, channels, repetitions), "
+                f"got loc {tuple(loc.shape)} and log_scale {tuple(log_scale.shape)}."
+            )
+        if loc.shape != log_scale.shape:
+            raise ShapeError(
+                f"Normal latent leaf params shape mismatch: loc {tuple(loc.shape)} vs log_scale {tuple(log_scale.shape)}."
+            )
+        if loc.shape[0] != self.latent_dim:
+            raise ShapeError(
+                f"Normal latent leaf feature mismatch: expected latent_dim={self.latent_dim}, got {loc.shape[0]}."
+            )
+
+        channel_weights = self._resolve_latent_channel_weights(
+            sampling_ctx=sampling_ctx,
+            batch_size=batch_size,
+            loc=loc,
+        )
+        repetition_weights = self._resolve_latent_repetition_weights(
+            sampling_ctx=sampling_ctx,
+            batch_size=batch_size,
+            loc=loc,
+        )
+        mu = torch.einsum("bfc,bfr,fcr->bf", channel_weights, repetition_weights, loc)
+        logvar = 2.0 * torch.einsum("bfc,bfr,fcr->bf", channel_weights, repetition_weights, log_scale)
+
+        if mu.shape != (batch_size, self.latent_dim):
+            raise ShapeError(
+                f"Unexpected latent mean shape {tuple(mu.shape)}; expected ({batch_size}, {self.latent_dim})."
+            )
+        if logvar.shape != mu.shape:
+            raise ShapeError(
+                f"Unexpected latent logvar shape {tuple(logvar.shape)}; expected {tuple(mu.shape)}."
+            )
+        return LatentStats(mu=mu, logvar=logvar)
 
     def _latent_stats_mc_fallback(
         self,
@@ -1076,15 +1229,36 @@ class ConvPcJointEncoder(nn.Module):
         tau: float = 1.0,
         return_latent_stats: bool = False,
     ) -> Tensor | tuple[LatentStats, Tensor]:
-        """Encode observations into latent samples."""
-        if return_latent_stats:
-            raise UnsupportedOperationError(
-                "APC latent stats are not available after sample rollback. "
-                "Use encode(return_latent_stats=False)."
-            )
+        """Encode observations into latent samples.
+
+        When ``mpe=True``, returned ``z`` is deterministic even when
+        ``return_latent_stats=True``. When ``mpe=False``, returned ``z`` is
+        sampled stochastically from the estimated latent moments.
+        """
         x_flat = self._flatten_x(x)
-        z = self._posterior_sample(x_flat, mpe=mpe, tau=tau, return_sampling_ctx=False)
-        return z
+        if not return_latent_stats:
+            z = self._posterior_sample(x_flat, mpe=mpe, tau=tau, return_sampling_ctx=False)
+            return z
+
+        z_and_ctx = self._posterior_sample(x_flat, mpe=mpe, tau=tau, return_sampling_ctx=True)
+        if not isinstance(z_and_ctx, tuple):
+            raise RuntimeError("Expected (z, sampling_ctx) from posterior sampling.")
+        z_first, sampling_ctx = z_and_ctx
+        batch_size = z_first.shape[0]
+        try:
+            stats = self._latent_stats_from_leaf_params(sampling_ctx=sampling_ctx, batch_size=batch_size)
+        except UnsupportedOperationError:
+            stats = self._latent_stats_mc_fallback(
+                x_flat=x_flat,
+                first_sample=z_first,
+                mpe=mpe,
+                tau=tau,
+            )
+        if mpe:
+            z_samples = z_first
+        else:
+            z_samples = tau * torch.randn_like(stats.mu) * torch.exp(0.5 * stats.logvar) + stats.mu
+        return stats, z_samples
 
     def decode(
         self,
@@ -1099,11 +1273,7 @@ class ConvPcJointEncoder(nn.Module):
         z_flat = self._flatten_z(z)
         x_flat = None if x is None else self._flatten_x(x)
         evidence = self._build_evidence(x_flat=x_flat, z_flat=z_flat)
-
-        if mpe:
-            joint = self.pc.sample(data=evidence, is_mpe=True)
-        else:
-            joint = self.pc.sample(data=evidence, is_mpe=False)
+        joint, _ = self._sample_joint(evidence=evidence, mpe=mpe, tau=tau, return_sampling_ctx=False)
 
         x_rec_flat = joint[:, self._x_cols]
         if fill_evidence and x_flat is not None:
@@ -1133,11 +1303,23 @@ class ConvPcJointEncoder(nn.Module):
         evidence = self._build_evidence(
             x_flat=None, z_flat=None, num_samples=num_samples, device=self.pc.device
         )
-        joint = self.pc.sample(data=evidence, is_mpe=False)
+        joint, _ = self._sample_joint(evidence=evidence, mpe=False, tau=tau, return_sampling_ctx=False)
         z = joint[:, self._z_cols]
         return z
 
     def latent_stats(self, x: Tensor, *, tau: float = 1.0) -> LatentStats:
         """Return latent posterior stats for ``x``."""
-        del x, tau
-        raise UnsupportedOperationError("APC latent stats are not available after sample rollback.")
+        x_flat = self._flatten_x(x)
+        z_and_ctx = self._posterior_sample(x_flat, mpe=False, tau=tau, return_sampling_ctx=True)
+        if not isinstance(z_and_ctx, tuple):
+            raise RuntimeError("Expected (z, sampling_ctx) from posterior sampling.")
+        z_first, sampling_ctx = z_and_ctx
+        try:
+            return self._latent_stats_from_leaf_params(sampling_ctx=sampling_ctx, batch_size=z_first.shape[0])
+        except UnsupportedOperationError:
+            return self._latent_stats_mc_fallback(
+                x_flat=x_flat,
+                first_sample=z_first,
+                mpe=False,
+                tau=tau,
+            )

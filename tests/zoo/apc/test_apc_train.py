@@ -1,10 +1,10 @@
-"""Tests for APC training helper rollback behavior."""
+"""Tests for APC training helpers."""
 
-import pytest
+from __future__ import annotations
+
 import torch
 from torch.optim import Adam
 
-from spflow.exceptions import UnsupportedOperationError
 from spflow.zoo.apc.config import ApcConfig, ApcLossWeights, ApcTrainConfig
 from spflow.zoo.apc.decoders import MLPDecoder1D
 from spflow.zoo.apc.encoders.einet_joint_encoder import EinetJointEncoder
@@ -33,33 +33,64 @@ def _build_model() -> AutoencodingPC:
     return AutoencodingPC(encoder=encoder, decoder=decoder, config=config)
 
 
-def test_train_apc_step_is_unsupported():
+def test_train_apc_step_returns_metrics_and_updates_parameters() -> None:
+    torch.manual_seed(21)
     model = _build_model()
-    # Pass a real optimizer so failure comes from the disabled training path itself.
     optimizer = Adam(model.parameters(), lr=1e-2)
     batch = torch.randn(12, 4)
 
-    with pytest.raises(UnsupportedOperationError):
-        train_apc_step(model=model, batch=batch, optimizer=optimizer)
+    first_param_before = next(model.parameters()).detach().clone()
+    metrics = train_apc_step(model=model, batch=batch, optimizer=optimizer)
+    first_param_after = next(model.parameters()).detach().clone()
+
+    for key in ("rec", "kld", "nll", "total"):
+        assert key in metrics
+        assert metrics[key].shape == ()
+        assert torch.isfinite(metrics[key])
+        assert not metrics[key].requires_grad
+    assert not torch.equal(first_param_before, first_param_after)
 
 
-def test_evaluate_apc_is_unsupported():
+def test_evaluate_apc_returns_mean_metrics() -> None:
+    torch.manual_seed(22)
     model = _build_model()
     data = torch.randn(40, 4)
 
-    # Evaluation helpers were rolled back with training; keep this failure mode explicit.
-    with pytest.raises(UnsupportedOperationError):
-        evaluate_apc(model, data, batch_size=8)
+    metrics = evaluate_apc(model, data, batch_size=8)
+    assert set(metrics.keys()) == {"rec", "kld", "nll", "total"}
+    for value in metrics.values():
+        assert isinstance(value, float)
+        assert torch.isfinite(torch.tensor(value))
 
 
-def test_fit_apc_is_unsupported():
+def test_fit_apc_returns_epoch_metrics_with_optional_val() -> None:
+    torch.manual_seed(23)
     model = _build_model()
     train = torch.randn(64, 4)
+    val = torch.randn(24, 4)
 
-    # fit_apc is the highest-level helper, so this guards the full rollback boundary.
-    with pytest.raises(UnsupportedOperationError):
-        fit_apc(
-            model=model,
-            train_data=train,
-            config=ApcTrainConfig(epochs=3, batch_size=16, learning_rate=5e-3),
-        )
+    history = fit_apc(
+        model=model,
+        train_data=train,
+        val_data=val,
+        config=ApcTrainConfig(
+            epochs=3,
+            batch_size=16,
+            learning_rate=5e-3,
+        ),
+    )
+    assert len(history) == 3
+    for epoch_idx, row in enumerate(history, start=1):
+        assert row["epoch"] == float(epoch_idx)
+        for key in (
+            "train_rec",
+            "train_kld",
+            "train_nll",
+            "train_total",
+            "val_rec",
+            "val_kld",
+            "val_nll",
+            "val_total",
+        ):
+            assert key in row
+            assert torch.isfinite(torch.tensor(row[key]))

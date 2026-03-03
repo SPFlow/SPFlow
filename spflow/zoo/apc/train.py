@@ -10,7 +10,7 @@ from torch import nn
 from torch.optim import Adam, Optimizer
 from torch.utils.data import DataLoader, TensorDataset
 
-from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
+from spflow.exceptions import InvalidParameterError
 from spflow.zoo.apc.config import ApcTrainConfig
 from spflow.zoo.apc.model import AutoencodingPC
 
@@ -64,10 +64,15 @@ def train_apc_step(
     Returns:
         Detached tensor metrics produced by ``model.loss_components``.
     """
-    del model, batch, optimizer, grad_clip_norm
-    raise UnsupportedOperationError(
-        "APC training helpers are unavailable after sample rollback."
-    )
+    model.train()
+    x = _extract_batch_tensor(batch).to(_model_device(model))
+    optimizer.zero_grad(set_to_none=True)
+    metrics = model.loss_components(x)
+    metrics["total"].backward()
+    if grad_clip_norm is not None:
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=grad_clip_norm)
+    optimizer.step()
+    return {key: value.detach() for key, value in metrics.items() if isinstance(value, Tensor)}
 
 
 def evaluate_apc(
@@ -86,10 +91,30 @@ def evaluate_apc(
     Returns:
         Mean ``rec``, ``kld``, ``nll``, and ``total`` metrics.
     """
-    del model, data, batch_size
-    raise UnsupportedOperationError(
-        "APC training helpers are unavailable after sample rollback."
-    )
+    loader = _to_loader(data, batch_size=batch_size, shuffle=False)
+    was_training = model.training
+    model.eval()
+
+    totals = {"rec": 0.0, "kld": 0.0, "nll": 0.0, "total": 0.0}
+    n_samples = 0
+    device = _model_device(model)
+
+    with torch.no_grad():
+        for batch in loader:
+            x = _extract_batch_tensor(batch).to(device)
+            metrics = model.loss_components(x)
+            batch_size_eff = int(x.shape[0])
+            n_samples += batch_size_eff
+            for key in totals:
+                totals[key] += float(metrics[key].item()) * batch_size_eff
+
+    if was_training:
+        model.train()
+
+    if n_samples <= 0:
+        raise InvalidParameterError("Cannot evaluate APC on empty data.")
+
+    return {key: value / n_samples for key, value in totals.items()}
 
 
 def fit_apc(
@@ -113,7 +138,46 @@ def fit_apc(
         Per-epoch metric dictionaries including train metrics and, when provided,
         validation metrics.
     """
-    del model, train_data, config, optimizer, val_data
-    raise UnsupportedOperationError(
-        "APC training helpers are unavailable after sample rollback."
+    train_loader = _to_loader(train_data, batch_size=config.batch_size, shuffle=True)
+    val_loader = (
+        None if val_data is None else _to_loader(val_data, batch_size=config.batch_size, shuffle=False)
     )
+
+    if optimizer is None:
+        optimizer = Adam(
+            model.parameters(),
+            lr=config.learning_rate,
+            weight_decay=config.weight_decay,
+        )
+
+    history: list[dict[str, float]] = []
+    for epoch in range(config.epochs):
+        totals = {"rec": 0.0, "kld": 0.0, "nll": 0.0, "total": 0.0}
+        n_samples = 0
+
+        for batch in train_loader:
+            metrics = train_apc_step(
+                model=model,
+                batch=batch,
+                optimizer=optimizer,
+                grad_clip_norm=config.grad_clip_norm,
+            )
+            x = _extract_batch_tensor(batch)
+            batch_size_eff = int(x.shape[0])
+            n_samples += batch_size_eff
+            for key in totals:
+                totals[key] += float(metrics[key].item()) * batch_size_eff
+
+        if n_samples <= 0:
+            raise InvalidParameterError("Cannot fit APC on empty training data.")
+
+        row: dict[str, float] = {"epoch": float(epoch + 1)}
+        row.update({f"train_{key}": value / n_samples for key, value in totals.items()})
+
+        if val_loader is not None:
+            val_metrics = evaluate_apc(model=model, data=val_loader, batch_size=config.batch_size)
+            row.update({f"val_{key}": value for key, value in val_metrics.items()})
+
+        history.append(row)
+
+    return history

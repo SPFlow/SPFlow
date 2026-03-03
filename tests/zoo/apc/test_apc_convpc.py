@@ -3,7 +3,8 @@
 import pytest
 import torch
 
-from spflow.exceptions import InvalidParameterError, UnsupportedOperationError
+from spflow.exceptions import InvalidParameterError
+from spflow.zoo.apc.encoders.base import LatentStats
 from spflow.zoo.apc.encoders.convpc_joint_encoder import ConvPcJointEncoder
 
 
@@ -48,16 +49,44 @@ def test_convpc_apc_encode_decode_and_likelihood_shapes():
     assert torch.isfinite(z_prior).all()
 
 
-def test_convpc_apc_encode_latent_stats_is_unsupported():
+def test_convpc_apc_encode_latent_stats_shapes_and_finiteness():
     torch.manual_seed(11)
     encoder = _build_encoder()
     x = torch.randn(4, 1, 4, 4)
 
-    with pytest.raises(UnsupportedOperationError):
-        encoder.encode(x, return_latent_stats=True)
+    stats, z = encoder.encode(x, return_latent_stats=True)
+    assert isinstance(stats, LatentStats)
+    assert stats.mu.shape == (4, 4)
+    assert stats.logvar.shape == (4, 4)
+    assert z.shape == (4, 4)
+    assert torch.isfinite(stats.mu).all()
+    assert torch.isfinite(stats.logvar).all()
+    assert torch.isfinite(z).all()
 
-    with pytest.raises(UnsupportedOperationError):
-        encoder.latent_stats(x)
+    stats_direct = encoder.latent_stats(x)
+    assert stats_direct.mu.shape == (4, 4)
+    assert stats_direct.logvar.shape == (4, 4)
+    assert torch.isfinite(stats_direct.mu).all()
+    assert torch.isfinite(stats_direct.logvar).all()
+
+
+def test_convpc_apc_encode_latent_stats_mpe_is_deterministic_and_matches_nonstats() -> None:
+    torch.manual_seed(14)
+    encoder = _build_encoder()
+    x = torch.randn(5, 1, 4, 4)
+
+    stats_first, z_stats_first = encoder.encode(x, mpe=True, tau=0.9, return_latent_stats=True)
+    stats_second, z_stats_second = encoder.encode(x, mpe=True, tau=0.9, return_latent_stats=True)
+    z_nonstats = encoder.encode(x, mpe=True, tau=0.9, return_latent_stats=False)
+
+    assert isinstance(stats_first, LatentStats)
+    assert isinstance(stats_second, LatentStats)
+    assert torch.equal(z_stats_first, z_stats_second)
+    assert torch.equal(z_stats_first, z_nonstats)
+    assert torch.isfinite(stats_first.mu).all()
+    assert torch.isfinite(stats_first.logvar).all()
+    assert torch.isfinite(stats_second.mu).all()
+    assert torch.isfinite(stats_second.logvar).all()
 
 
 def test_convpc_apc_decode_fill_evidence_keeps_observed_entries():

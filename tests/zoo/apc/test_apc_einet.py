@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from spflow.exceptions import UnsupportedOperationError
+from spflow.zoo.apc.encoders.base import LatentStats
 from spflow.zoo.apc.encoders.einet_joint_encoder import EinetJointEncoder
 
 
@@ -46,16 +46,44 @@ def test_einet_apc_encode_decode_and_likelihood_shapes():
     assert torch.isfinite(z_prior).all()
 
 
-def test_einet_apc_encode_latent_stats_is_unsupported():
+def test_einet_apc_encode_latent_stats_shapes_and_finiteness():
     torch.manual_seed(1)
     encoder = _build_encoder()
     x = torch.randn(4, 4)
 
-    with pytest.raises(UnsupportedOperationError):
-        encoder.encode(x, return_latent_stats=True)
+    stats, z = encoder.encode(x, return_latent_stats=True)
+    assert isinstance(stats, LatentStats)
+    assert stats.mu.shape == (4, 2)
+    assert stats.logvar.shape == (4, 2)
+    assert z.shape == (4, 2)
+    assert torch.isfinite(stats.mu).all()
+    assert torch.isfinite(stats.logvar).all()
+    assert torch.isfinite(z).all()
 
-    with pytest.raises(UnsupportedOperationError):
-        encoder.latent_stats(x)
+    stats_direct = encoder.latent_stats(x)
+    assert stats_direct.mu.shape == (4, 2)
+    assert stats_direct.logvar.shape == (4, 2)
+    assert torch.isfinite(stats_direct.mu).all()
+    assert torch.isfinite(stats_direct.logvar).all()
+
+
+def test_einet_apc_encode_latent_stats_mpe_is_deterministic_and_matches_nonstats() -> None:
+    torch.manual_seed(13)
+    encoder = _build_encoder()
+    x = torch.randn(5, 4)
+
+    stats_first, z_stats_first = encoder.encode(x, mpe=True, tau=0.8, return_latent_stats=True)
+    stats_second, z_stats_second = encoder.encode(x, mpe=True, tau=0.8, return_latent_stats=True)
+    z_nonstats = encoder.encode(x, mpe=True, tau=0.8, return_latent_stats=False)
+
+    assert isinstance(stats_first, LatentStats)
+    assert isinstance(stats_second, LatentStats)
+    assert torch.equal(z_stats_first, z_stats_second)
+    assert torch.equal(z_stats_first, z_nonstats)
+    assert torch.isfinite(stats_first.mu).all()
+    assert torch.isfinite(stats_first.logvar).all()
+    assert torch.isfinite(stats_second.mu).all()
+    assert torch.isfinite(stats_second.logvar).all()
 
 
 def test_einet_apc_decode_fill_evidence_keeps_observed_entries():
@@ -84,3 +112,23 @@ def test_einet_apc_encode_with_missing_x_values():
     z = encoder.encode(x, tau=0.8)
     assert z.shape == (5, 2)
     assert torch.isfinite(z).all()
+
+
+def test_einet_posterior_sampling_ctx_is_differentiable() -> None:
+    encoder = _build_encoder()
+    x = torch.randn(4, 4)
+    x_flat = encoder._flatten_x(x)
+
+    z, sampling_ctx = encoder._posterior_sample(
+        x_flat,
+        mpe=False,
+        tau=0.6,
+        return_sampling_ctx=True,
+    )
+
+    assert z.shape == (4, 2)
+    assert sampling_ctx.is_differentiable
+    assert sampling_ctx.channel_index.is_floating_point()
+    assert sampling_ctx.channel_index.dim() == 3
+    assert sampling_ctx.repetition_index is not None
+    assert sampling_ctx.repetition_index.is_floating_point()

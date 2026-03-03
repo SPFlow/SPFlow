@@ -87,6 +87,21 @@ class _RecordingDecoder(nn.Module):
         return z
 
 
+class _NoStatsEncoder(_ToyStatsEncoder):
+    """Encoder stub that does not honor return_latent_stats contract."""
+
+    def encode(
+        self,
+        x: Tensor,
+        *,
+        mpe: bool = False,
+        tau: float = 1.0,
+        return_latent_stats: bool = False,
+    ) -> Tensor | tuple[LatentStats, Tensor]:
+        del return_latent_stats
+        return super().encode(x, mpe=mpe, tau=tau, return_latent_stats=False)
+
+
 def _build_einet_model(
     *, weights: ApcLossWeights, nll_x_and_z: bool = True, train_decode_mpe: bool = False
 ) -> AutoencodingPC:
@@ -237,7 +252,18 @@ def test_apc_loss_components_train_decode_mpe_uses_posterior_mean() -> None:
 
 
 def test_apc_loss_components_fails_fast_kl_without_latent_stats() -> None:
-    model = _build_einet_model(weights=ApcLossWeights(rec=0.0, kld=1.0, nll=0.0))
+    model = AutoencodingPC(
+        encoder=_NoStatsEncoder(),
+        decoder=_RecordingDecoder(),
+        config=ApcConfig(
+            latent_dim=2,
+            rec_loss="mse",
+            sample_tau=1.0,
+            nll_x_and_z=True,
+            train_decode_mpe=False,
+            loss_weights=ApcLossWeights(rec=0.0, kld=1.0, nll=0.0),
+        ),
+    )
     x = torch.randn(8, 4)
 
     with pytest.raises(UnsupportedOperationError):
