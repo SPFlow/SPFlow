@@ -36,6 +36,7 @@ Quick Navigation
 
     guides/user_guide
     guides/dev_guide
+    guides/apc_mnist_guide
     guides/sklearn
     api/index
     faq

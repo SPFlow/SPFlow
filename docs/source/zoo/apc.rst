@@ -12,18 +12,9 @@ APC combines a tractable probabilistic-circuit encoder over joint variables :mat
 Reference
 ---------
 
-APC is described in:
+APCs are described in:
 
-- `Autoencoding Probabilistic Circuits (ICLR 2025) <https://arxiv.org/abs/2502.05554>`_
-
-Status Note
------------
-
-APC inference APIs remain available (encode/decode/sampling/likelihood), and the high-level
-``AutoencodingPC.loss_components``/``loss`` objective is available.
-APC encoders provide latent stats via ``encode(..., return_latent_stats=True)`` and ``latent_stats(...)``.
-For Normal latent leaves, stats are extracted from selected leaf parameters (reference-style ``mu/logvar``).
-For other latent leaf families, APC falls back to posterior moment estimation from repeated posterior samples.
+- `Tractable Representation Learning with Probabilistic Circuits (TMLR 2026) <https://openreview.net/pdf?id=h8D75pVKja>`_
 
 Main Components
 ---------------
@@ -106,5 +97,3 @@ Conv-PC APC Note
 ----------------
 
 ``ConvPcJointEncoder`` supports image-shaped inputs and latent fusion at a configurable hierarchy depth.
-The Conv-PC APC path now uses the reference architecture only. Latent-width mismatches at the
-fusion depth are handled via latent feature reduction/packing when needed.
