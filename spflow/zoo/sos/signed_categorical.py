@@ -12,7 +12,7 @@ from spflow.meta.data.scope import Scope
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
 
 
 class SignedCategorical(Module):
@@ -171,7 +171,9 @@ class SignedCategorical(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-    ) -> Tensor:
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:
+        del num_samples, data, is_mpe, cache, return_leaf_params
         raise UnsupportedOperationError(
             "SignedCategorical.sample() is not supported. "
             "Convert to a monotone proposal first (e.g., via build_abs_weight_proposal)."

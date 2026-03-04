@@ -111,23 +111,11 @@ class AutoencodingPC(nn.Module):
         return rearrange(tensor, "b ... -> b (...)")
 
     def _reconstruction_loss(self, x: Tensor, x_rec: Tensor) -> Tensor:
-        """Compute reconstruction loss following the reference APC reduction.
+        """Compute reconstruction loss with feature-sum / batch-mean reduction.
 
-        For image-like tensors (rank > 2), this applies the same legacy scaling
-        used in the reference implementation before the reconstruction criterion.
+        Input preprocessing is intentionally caller-controlled. This method
+        compares ``x`` and ``x_rec`` directly.
         """
-        if not x_rec.is_floating_point():
-            x_rec = x_rec.to(dtype=torch.get_default_dtype())
-        if not x.is_floating_point():
-            x = x.to(dtype=x_rec.dtype)
-
-        if x.dim() > 2:
-            # Preserve the reference APC's historical scaling behavior exactly.
-            # NOTE: This uses n_bits**2 - 1 (not 2**n_bits - 1).
-            denom = float(self.config.n_bits**2 - 1)
-            x = x / denom * 2.0 - 1.0
-            x_rec = x_rec / denom * 2.0 - 1.0
-
         x_flat = self._flatten_tensor(x)
         x_rec_flat = self._flatten_tensor(x_rec)
 
@@ -145,18 +133,20 @@ class AutoencodingPC(nn.Module):
 
     @staticmethod
     def _kld_from_stats(stats: LatentStats) -> Tensor:
-        """Compute mean KL divergence to standard Normal from moment stats."""
-        if stats.mu.shape != stats.logvar.shape:
+        """Compute mean KL divergence from exact encoder-provided per-sample KL."""
+        if not isinstance(stats.kld_per_sample, Tensor):
+            raise InvalidParameterError("LatentStats.kld_per_sample must be a Tensor.")
+        if stats.kld_per_sample.dim() != 1:
             raise InvalidParameterError(
-                f"Latent stats shape mismatch: mu {tuple(stats.mu.shape)} vs logvar {tuple(stats.logvar.shape)}."
+                "LatentStats.kld_per_sample must have shape (batch,), "
+                f"got {tuple(stats.kld_per_sample.shape)}."
             )
-        reduce_dims = tuple(range(1, stats.mu.dim()))
-        if len(reduce_dims) == 0:
-            raise InvalidParameterError("Latent stats must include at least one latent dimension.")
-        kld_per_sample = 0.5 * (stats.mu.pow(2) + stats.logvar.exp() - 1.0 - stats.logvar).sum(
-            dim=reduce_dims
-        )
-        return kld_per_sample.mean()
+        if stats.mu.shape[0] != stats.kld_per_sample.shape[0]:
+            raise InvalidParameterError(
+                "Latent stats batch mismatch: "
+                f"mu batch {stats.mu.shape[0]} vs kld_per_sample batch {stats.kld_per_sample.shape[0]}."
+            )
+        return stats.kld_per_sample.mean()
 
     @staticmethod
     def _float_scalar_zero(x: Tensor) -> Tensor:
@@ -225,7 +215,11 @@ class AutoencodingPC(nn.Module):
                         "train_decode_mpe=True requires encoder latent stats; "
                         "disable train_decode_mpe or use an encoder that supports latent stats."
                     )
-                z_to_decode = stats.mu
+                if not isinstance(stats.decode_latent, Tensor):
+                    raise UnsupportedOperationError(
+                        "train_decode_mpe=True requires LatentStats.decode_latent to be a Tensor."
+                    )
+                z_to_decode = stats.decode_latent
             else:
                 z_to_decode = z_samples
             x_rec = self.decode(z_to_decode, mpe=False, tau=tau_eff)

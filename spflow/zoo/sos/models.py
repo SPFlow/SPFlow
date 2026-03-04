@@ -16,7 +16,7 @@ from spflow.modules.module import Module
 from spflow.modules.products.product import Product
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
 from spflow.zoo.sos.exp_socs import ExpSOCS
 from spflow.zoo.sos.signed_categorical import SignedCategorical
 from spflow.modules.sums.signed_sum import SignedSum
@@ -482,15 +482,24 @@ class SOSModel(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-    ) -> Tensor:
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:
         if data is None:
             if num_samples is None:
                 num_samples = 1
             data = torch.full((num_samples, len(self.scope.query)), float("nan"), device=self.device)
         if cache is None:
             cache = Cache()
-        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device, is_mpe=is_mpe)
-        return self.socs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
+        sampling_ctx = SamplingContext(
+            num_samples=data.shape[0],
+            device=data.device,
+            is_mpe=is_mpe,
+            return_leaf_params=return_leaf_params,
+        )
+        samples = self.socs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
+        if return_leaf_params:
+            return samples, sampling_ctx.leaf_param_records()
+        return samples
 
     def _sample(
         self,
@@ -633,15 +642,24 @@ class ExpSOSModel(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-    ) -> Tensor:
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:
         if data is None:
             if num_samples is None:
                 num_samples = 1
             data = torch.full((num_samples, len(self.scope.query)), float("nan"), device=self.device)
         if cache is None:
             cache = Cache()
-        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device, is_mpe=is_mpe)
-        return self.exp_socs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
+        sampling_ctx = SamplingContext(
+            num_samples=data.shape[0],
+            device=data.device,
+            is_mpe=is_mpe,
+            return_leaf_params=return_leaf_params,
+        )
+        samples = self.exp_socs._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
+        if return_leaf_params:
+            return samples, sampling_ctx.leaf_param_records()
+        return samples
 
     def _sample(
         self,

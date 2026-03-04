@@ -25,9 +25,11 @@ class _ChildRecorder(Module):
     def log_likelihood(self, data: torch.Tensor, cache=None) -> torch.Tensor:
         return torch.zeros((data.shape[0], 1, 1, 1), dtype=data.dtype, device=data.device)
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None):
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, return_leaf_params=False):
         data = self._prepare_sample_data(num_samples, data)
         data[:] = torch.nan_to_num(data, nan=0.0)
+        if return_leaf_params:
+            return data, []
         return data
 
     def _sample(
@@ -75,9 +77,11 @@ class _ParentDispatch(Module):
     def log_likelihood(self, data: torch.Tensor, cache=None) -> torch.Tensor:
         return torch.zeros((data.shape[0], 1, 1, 1), dtype=data.dtype, device=data.device)
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None):
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, return_leaf_params=False):
         data = self._prepare_sample_data(num_samples, data)
         data[:] = torch.nan_to_num(data, nan=0.0)
+        if return_leaf_params:
+            return data, []
         return data
 
     def _sample(
@@ -112,10 +116,19 @@ class _SuperPassProbe(Module):
         Module.log_likelihood(self, data, cache=cache)
         return torch.zeros((data.shape[0], 1, 1, 1), dtype=data.dtype, device=data.device)
 
-    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None):
-        Module.sample(self, num_samples=num_samples, data=data, cache=cache)
+    def sample(self, num_samples=None, data=None, is_mpe=False, cache=None, return_leaf_params=False):
+        Module.sample(
+            self,
+            num_samples=num_samples,
+            data=data,
+            is_mpe=is_mpe,
+            cache=cache,
+            return_leaf_params=return_leaf_params,
+        )
         data = self._prepare_sample_data(num_samples, data)
         data[:] = torch.nan_to_num(data, nan=0.0)
+        if return_leaf_params:
+            return data, []
         return data
 
     def _sample(

@@ -20,7 +20,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.modules.sums import Sum
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
 
 
 def compute_non_overlapping_kernel_and_padding(
@@ -283,7 +283,8 @@ class ConvPc(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-    ) -> Tensor:
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:
         """Generate samples by sampling top-down through layers.
 
         Delegates sampling to the root module (RepetitionMixingLayer when
@@ -295,6 +296,7 @@ class ConvPc(Module):
             data: Data tensor with NaN values to fill with samples.
             is_mpe: Whether to perform maximum a posteriori estimation.
             cache: Optional cache dictionary.
+            return_leaf_params: Whether to return leaf-parameter records from sampling.
 
         Returns:
             Tensor: Sampled values of shape (num_samples, num_pixels).
@@ -302,12 +304,20 @@ class ConvPc(Module):
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
             cache = Cache()
-        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device, is_mpe=is_mpe)
-        return self._sample(
+        sampling_ctx = SamplingContext(
+            num_samples=data.shape[0],
+            device=data.device,
+            is_mpe=is_mpe,
+            return_leaf_params=return_leaf_params,
+        )
+        samples = self._sample(
             data=data,
             sampling_ctx=sampling_ctx,
             cache=cache,
         )
+        if return_leaf_params:
+            return samples, sampling_ctx.leaf_param_records()
+        return samples
 
     def _sample(
         self,

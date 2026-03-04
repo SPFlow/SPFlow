@@ -15,8 +15,8 @@ from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.utils.cache import Cache, cached
 from spflow.utils.leaves import apply_nan_strategy, parse_leaf_args
-from spflow.utils.sampling_context import SamplingContext
-from spflow.utils.sampling_context import index_tensor, repeat_repetition_index
+from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
+from spflow.utils.sampling_context import index_one_hot, index_tensor, repeat_repetition_index
 
 
 class LeafModule(Module, ABC):
@@ -85,9 +85,7 @@ class LeafModule(Module, ABC):
         """Indicates if the leaf uses a parameter network for conditional parameters."""
         return self.parameter_fn is not None
 
-    def distribution(
-        self, with_differentiable_sampling: bool = False
-    ) -> torch.distributions.Distribution:
+    def distribution(self, with_differentiable_sampling: bool = False) -> torch.distributions.Distribution:
         """Return this leaf's distribution.
 
         Args:
@@ -95,7 +93,9 @@ class LeafModule(Module, ABC):
                 differentiable distribution when sampling requires gradient flow.
                 Ignored by the base implementation.
         """
-        return self.__make_distribution(self.params(), with_differentiable_sampling=with_differentiable_sampling)
+        return self.__make_distribution(
+            self.params(), with_differentiable_sampling=with_differentiable_sampling
+        )
 
     @property
     @abstractmethod
@@ -103,13 +103,17 @@ class LeafModule(Module, ABC):
         pass
 
     @property
-    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+    def _torch_distribution_class_with_differentiable_sampling(
+        self,
+    ) -> type[torch.distributions.Distribution]:
         raise NotImplementedError(
             f"{self.__class__.__name__} does not implement an alternative distribution with differentiable sampling. "
             f"Override _torch_distribution_class_with_differentiable_sampling or set with_differentiable_sampling=False when calling distribution()."
         )
 
-    def __make_distribution(self, params: Dict[str, Tensor], with_differentiable_sampling: bool = False) -> torch.distributions.Distribution:
+    def __make_distribution(
+        self, params: Dict[str, Tensor], with_differentiable_sampling: bool = False
+    ) -> torch.distributions.Distribution:
         """Helper method to create distribution from given parameters.
 
         Args:
@@ -653,9 +657,12 @@ class LeafModule(Module, ABC):
         if int(n_samples.item()) == 0:
             return data
 
+        evidence = None
+        if self.is_conditional:
+            evidence = data[instance_mask][:, self.scope.evidence]
+
         if sampling_ctx.is_mpe:
             if self.is_conditional:
-                evidence = data[instance_mask][:, self.scope.evidence]
                 dist = self.conditional_distribution(
                     evidence=evidence,
                     with_differentiable_sampling=sampling_ctx.is_differentiable,
@@ -695,9 +702,7 @@ class LeafModule(Module, ABC):
                 )
 
             elif samples.ndim != 4:
-                raise ValueError(
-                    "The samples are not 4-dimensional. This should not happen."
-                )
+                raise ValueError("The samples are not 4-dimensional. This should not happen.")
 
             else:
                 if not self.is_conditional:
@@ -737,20 +742,33 @@ class LeafModule(Module, ABC):
             )
 
             # Index into samples with r_idx to select the correct repetition for each sample
-            samples = index_tensor(samples, index=r_idx, dim=-1, is_differentiable=sampling_ctx.is_differentiable)
+            samples = index_tensor(
+                samples, index=r_idx, dim=-1, is_differentiable=sampling_ctx.is_differentiable
+            )
 
         if samples.shape[0] != sampling_ctx.channel_index[instance_mask].shape[0]:
             raise ValueError(
                 f"Sample shape mismatch: got {samples.shape[0]}, expected {sampling_ctx.channel_index[instance_mask].shape[0]}"
             )
 
-        c_idx = c_idx[instance_mask]
+        c_idx_active = c_idx[instance_mask]
+        c_idx = c_idx_active
         if not sampling_ctx.is_differentiable:
             c_idx = rearrange(c_idx, "b f -> b f 1")
 
         samples = index_tensor(
             tensor=samples, index=c_idx, dim=2, is_differentiable=sampling_ctx.is_differentiable
         )
+
+        if sampling_ctx.return_leaf_params:
+            self._collect_leaf_param_record(
+                sampling_ctx=sampling_ctx,
+                instance_mask=instance_mask,
+                scope_cols=scope_cols,
+                samples_mask=samples_mask,
+                channel_index_active=c_idx_active,
+                evidence=evidence,
+            )
 
         # Ensure, that no data is overwritten
         if data[samples_mask].isfinite().any():
@@ -781,6 +799,214 @@ class LeafModule(Module, ABC):
         data[rows[mask_subset], cols[mask_subset]] = samples[mask_subset].to(data.dtype)
 
         return data
+
+    def _normalize_param_tensor_for_routing(self, param: Tensor, n_active: int) -> Tensor:
+        """Normalize parameter tensor to shape (N_active, F, C, R, *tail)."""
+        if param.dim() < 3:
+            raise ShapeError(
+                f"Leaf parameter tensors must have rank >= 3 (features, channels, repetitions), got rank {param.dim()}."
+            )
+
+        num_features = self.out_shape.features
+        num_channels = self.out_shape.channels
+        num_repetitions = self.out_shape.repetitions
+
+        if param.dim() >= 4 and param.shape[0] == n_active and param.shape[1] == num_features:
+            routed = param
+        elif param.shape[0] == num_features:
+            if param.dim() == 3:
+                routed = repeat(param, "f c r -> n f c r", n=n_active)
+            else:
+                routed = repeat(param, "f c r ... -> n f c r ...", n=n_active)
+        else:
+            raise ShapeError(
+                "Leaf parameter tensor has incompatible leading dimensions: "
+                f"got {tuple(param.shape)}, expected ({num_features}, C, R, ...) or "
+                f"({n_active}, {num_features}, C, R, ...)."
+            )
+
+        if routed.dim() < 4:
+            raise ShapeError(
+                f"Leaf parameter tensor must include channels and repetitions after normalization, got {tuple(routed.shape)}."
+            )
+
+        if routed.shape[2] not in (1, num_channels):
+            raise ShapeError(
+                f"Leaf parameter tensor channel dimension mismatch: got {routed.shape[2]}, expected 1 or {num_channels}."
+            )
+        if routed.shape[3] not in (1, num_repetitions):
+            raise ShapeError(
+                f"Leaf parameter tensor repetition dimension mismatch: got {routed.shape[3]}, expected 1 or {num_repetitions}."
+            )
+
+        if routed.shape[2] == 1 and num_channels > 1:
+            if routed.dim() == 4:
+                routed = repeat(routed, "n f 1 r -> n f c r", c=num_channels)
+            else:
+                routed = repeat(routed, "n f 1 r ... -> n f c r ...", c=num_channels)
+        if routed.shape[3] == 1 and num_repetitions > 1:
+            if routed.dim() == 4:
+                routed = repeat(routed, "n f c 1 -> n f c r", r=num_repetitions)
+            else:
+                routed = repeat(routed, "n f c 1 ... -> n f c r ...", r=num_repetitions)
+        return routed
+
+    def _select_param_repetition(
+        self,
+        *,
+        params: Tensor,
+        sampling_ctx: SamplingContext,
+        instance_mask: Tensor,
+    ) -> Tensor:
+        """Select routed repetition dimension, yielding shape (N, F, C, *tail)."""
+        params_flat = rearrange(params, "n f c r ... -> n f c r (...)")
+        tail_shape = params.shape[4:]
+
+        if sampling_ctx.is_differentiable:
+            repetition_weights = sampling_ctx.repetition_index[instance_mask]
+            if repetition_weights.dim() != 2 or repetition_weights.shape[1] != params.shape[3]:
+                raise ShapeError(
+                    "Differentiable repetition routing has incompatible shape for leaf parameters: "
+                    f"got {tuple(repetition_weights.shape)}, expected ({params.shape[0]}, {params.shape[3]})."
+                )
+            one_hot_sums = repetition_weights.sum(dim=1)
+            if not torch.allclose(one_hot_sums, torch.ones_like(one_hot_sums), rtol=0.0, atol=1e-6):
+                raise ShapeError(
+                    "Differentiable repetition routing for leaf parameters must be one-hot encoded per sample."
+                )
+            repetition_weights = repetition_weights.to(device=params.device, dtype=params.dtype)
+            repetition_weights = rearrange(repetition_weights, "n r -> n 1 1 r 1")
+            selected_flat = index_one_hot(params_flat, index=repetition_weights, dim=3)
+            return selected_flat.reshape(params.shape[0], params.shape[1], params.shape[2], *tail_shape)
+
+        repetition_index = sampling_ctx.repetition_index[instance_mask]
+        if repetition_index.dim() == 2:
+            if repetition_index.shape[1] != 1:
+                raise ShapeError(
+                    "Non-differentiable repetition routing must be shape (batch,) or (batch, 1), "
+                    f"got {tuple(repetition_index.shape)}."
+                )
+            repetition_index = repetition_index[:, 0]
+        repetition_index = repetition_index.to(device=params.device, dtype=torch.long)
+        repetition_weights = torch.nn.functional.one_hot(
+            repetition_index,
+            num_classes=params.shape[3],
+        ).to(dtype=params.dtype)
+        repetition_weights = rearrange(repetition_weights, "n r -> n 1 1 r 1")
+        selected_flat = index_one_hot(params_flat, index=repetition_weights, dim=3)
+        return selected_flat.reshape(params.shape[0], params.shape[1], params.shape[2], *tail_shape)
+
+    def _select_param_channel(
+        self, *, params: Tensor, channel_index: Tensor, is_differentiable: bool
+    ) -> Tensor:
+        """Select routed channel dimension, yielding shape (N, F, *tail)."""
+        params_flat = rearrange(params, "n f c ... -> n f c (...)")
+        tail_shape = params.shape[3:]
+
+        if is_differentiable:
+            channel_weights = channel_index
+            if channel_weights.dim() != 3 or channel_weights.shape[2] != params.shape[2]:
+                raise ShapeError(
+                    "Differentiable channel routing has incompatible shape for leaf parameters: "
+                    f"got {tuple(channel_weights.shape)}, expected ({params.shape[0]}, {params.shape[1]}, {params.shape[2]})."
+                )
+            if channel_weights.shape[1] == 1 and params.shape[1] > 1:
+                channel_weights = repeat(channel_weights, "n 1 c -> n f c", f=params.shape[1])
+            elif channel_weights.shape[1] != params.shape[1]:
+                raise ShapeError(
+                    "Differentiable channel routing feature width mismatch for leaf parameters: "
+                    f"got {channel_weights.shape[1]}, expected 1 or {params.shape[1]}."
+                )
+            one_hot_sums = channel_weights.sum(dim=2)
+            if not torch.allclose(one_hot_sums, torch.ones_like(one_hot_sums), rtol=0.0, atol=1e-6):
+                raise ShapeError(
+                    "Differentiable channel routing for leaf parameters must be one-hot encoded per (sample, feature)."
+                )
+            channel_weights = channel_weights.to(device=params.device, dtype=params.dtype)
+            channel_weights = rearrange(channel_weights, "n f c -> n f c 1")
+            selected_flat = index_one_hot(params_flat, index=channel_weights, dim=2)
+            return selected_flat.reshape(params.shape[0], params.shape[1], *tail_shape)
+
+        if channel_index.dim() != 2:
+            raise ShapeError(
+                "Non-differentiable channel routing for leaf parameters expects rank-2 indices, "
+                f"got rank {channel_index.dim()}."
+            )
+        gather_index = channel_index.to(device=params.device, dtype=torch.long)
+        if gather_index.shape[1] == 1 and params.shape[1] > 1:
+            gather_index = repeat(gather_index, "n 1 -> n f", f=params.shape[1])
+        elif gather_index.shape[1] != params.shape[1]:
+            raise ShapeError(
+                "Channel routing feature width mismatch for leaf parameters: "
+                f"got {gather_index.shape[1]}, expected 1 or {params.shape[1]}."
+            )
+        channel_weights = torch.nn.functional.one_hot(gather_index, num_classes=params.shape[2]).to(
+            dtype=params.dtype,
+            device=params.device,
+        )
+        channel_weights = rearrange(channel_weights, "n f c -> n f c 1")
+        selected_flat = index_one_hot(params_flat, index=channel_weights, dim=2)
+        return selected_flat.reshape(params.shape[0], params.shape[1], *tail_shape)
+
+    def _collect_leaf_param_record(
+        self,
+        *,
+        sampling_ctx: SamplingContext,
+        instance_mask: Tensor,
+        scope_cols: list[int],
+        samples_mask: Tensor,
+        channel_index_active: Tensor,
+        evidence: Tensor | None,
+    ) -> None:
+        """Collect routed leaf parameters into the sampling context."""
+        n_active = int(instance_mask.sum().item())
+        if n_active == 0:
+            return
+
+        if self.is_conditional:
+            if evidence is None:
+                raise RuntimeError("Conditional leaf parameter collection requires evidence.")
+            params_dict = self.parameter_fn(evidence)
+        else:
+            params_dict = self.params()
+        if "scale" in params_dict and "log_scale" not in params_dict:
+            log_scale_tensor = getattr(self, "log_scale", None)
+            if isinstance(log_scale_tensor, Tensor):
+                params_dict = dict(params_dict)
+                params_dict["log_scale"] = log_scale_tensor
+
+        active_mask = samples_mask[:, scope_cols].clone()
+        routed_params: dict[str, Tensor] = {}
+        for key, value in params_dict.items():
+            if not isinstance(value, Tensor):
+                raise UnsupportedOperationError(
+                    f"Leaf parameter '{key}' must be a Tensor when return_leaf_params=True, got {type(value)}."
+                )
+            params = self._normalize_param_tensor_for_routing(value, n_active=n_active)
+            params = self._select_param_repetition(
+                params=params,
+                sampling_ctx=sampling_ctx,
+                instance_mask=instance_mask,
+            )
+            params = self._select_param_channel(
+                params=params,
+                channel_index=channel_index_active,
+                is_differentiable=sampling_ctx.is_differentiable,
+            )
+            full_shape = (int(instance_mask.shape[0]), len(scope_cols), *params.shape[2:])
+            full_params = params.new_zeros(full_shape)
+            full_params[instance_mask] = params
+            routed_params[key] = full_params
+
+        sampling_ctx.add_leaf_param_record(
+            LeafParamRecord(
+                leaf_id=id(self),
+                leaf_type=self.__class__.__name__,
+                scope_cols=tuple(scope_cols),
+                active_mask=active_mask,
+                params=routed_params,
+            )
+        )
 
     def _resolve_scope_columns(self, num_features: int) -> list[int]:
         """Resolve the column indices in `data` that correspond to this leaf's scope.
@@ -833,6 +1059,11 @@ class LeafModule(Module, ABC):
             return sampling_ctx.channel_index, sampling_ctx.mask
 
         if ctx_features == 1:
+            if sampling_ctx.is_differentiable:
+                return (
+                    repeat(sampling_ctx.channel_index, "b 1 c -> b f c", f=scope_size),
+                    repeat(sampling_ctx.mask, "b 1 -> b f", f=scope_size),
+                )
             return (
                 repeat(sampling_ctx.channel_index, "b 1 -> b f", f=scope_size),
                 repeat(sampling_ctx.mask, "b 1 -> b f", f=scope_size),

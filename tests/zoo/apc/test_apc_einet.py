@@ -55,16 +55,24 @@ def test_einet_apc_encode_latent_stats_shapes_and_finiteness():
     assert isinstance(stats, LatentStats)
     assert stats.mu.shape == (4, 2)
     assert stats.logvar.shape == (4, 2)
+    assert stats.kld_per_sample.shape == (4,)
+    assert stats.decode_latent.shape == (4, 2)
     assert z.shape == (4, 2)
     assert torch.isfinite(stats.mu).all()
     assert torch.isfinite(stats.logvar).all()
+    assert torch.isfinite(stats.kld_per_sample).all()
+    assert torch.isfinite(stats.decode_latent).all()
     assert torch.isfinite(z).all()
 
     stats_direct = encoder.latent_stats(x)
     assert stats_direct.mu.shape == (4, 2)
     assert stats_direct.logvar.shape == (4, 2)
+    assert stats_direct.kld_per_sample.shape == (4,)
+    assert stats_direct.decode_latent.shape == (4, 2)
     assert torch.isfinite(stats_direct.mu).all()
     assert torch.isfinite(stats_direct.logvar).all()
+    assert torch.isfinite(stats_direct.kld_per_sample).all()
+    assert torch.isfinite(stats_direct.decode_latent).all()
 
 
 def test_einet_apc_encode_latent_stats_mpe_is_deterministic_and_matches_nonstats() -> None:

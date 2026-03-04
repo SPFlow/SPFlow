@@ -35,9 +35,10 @@ class ApcConfig:
     Attributes:
         latent_dim: Dimensionality of the latent variable block ``Z``.
         rec_loss: Reconstruction criterion used by :class:`AutoencodingPC`.
-        n_bits: Bit-depth used by reference-style image reconstruction scaling.
+        n_bits: Bit-depth used for decoder image-range mapping when decoding
+            image-like outputs.
         sample_tau: Temperature for differentiable sampling (SIMPLE/Gumbel style paths).
-        train_decode_mpe: Whether reconstruction loss should decode from posterior means.
+        train_decode_mpe: Whether reconstruction loss should decode from deterministic latent stats.
         nll_x_and_z: Whether the NLL term uses joint likelihood ``p(x,z)`` (vs marginal ``p(x)``).
         loss_weights: Weights for ``rec``, ``kld``, and ``nll`` objective terms.
     """

@@ -31,7 +31,7 @@ from spflow.modules.ops.cat import Cat
 from spflow.modules.products.elementwise_product import ElementwiseProduct
 from spflow.modules.products.outer_product import OuterProduct
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
 from spflow.zoo.pic.integral import Integral
 from spflow.zoo.pic.weighted_sum import WeightedSum
 from spflow.zoo.pic.functional_sharing import FunctionGroup
@@ -118,7 +118,15 @@ class PICSum(Module):
     def log_likelihood(self, data: Tensor, cache=None) -> Tensor:  # pragma: no cover
         raise NotImplementedError("PICSum is symbolic; materialize to QPC with pic2qpc().")
 
-    def sample(self, num_samples=None, data=None, is_mpe: bool = False, cache=None) -> Tensor:  # pragma: no cover
+    def sample(
+        self,
+        num_samples=None,
+        data=None,
+        is_mpe: bool = False,
+        cache=None,
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:  # pragma: no cover
+        del num_samples, data, is_mpe, cache, return_leaf_params
         raise NotImplementedError("PICSum is symbolic; materialize to QPC with pic2qpc().")
 
     def _sample(
@@ -167,7 +175,15 @@ class PICProduct(Module):
     def log_likelihood(self, data: Tensor, cache=None) -> Tensor:  # pragma: no cover
         raise NotImplementedError("PICProduct is symbolic; materialize to QPC with pic2qpc().")
 
-    def sample(self, num_samples=None, data=None, is_mpe: bool = False, cache=None) -> Tensor:  # pragma: no cover
+    def sample(
+        self,
+        num_samples=None,
+        data=None,
+        is_mpe: bool = False,
+        cache=None,
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:  # pragma: no cover
+        del num_samples, data, is_mpe, cache, return_leaf_params
         raise NotImplementedError("PICProduct is symbolic; materialize to QPC with pic2qpc().")
 
     def _sample(

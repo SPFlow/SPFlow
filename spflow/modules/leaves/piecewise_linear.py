@@ -612,6 +612,11 @@ class PiecewiseLinear(LeafModule):
         Returns:
             Sampled data tensor.
         """
+        if sampling_ctx.return_leaf_params:
+            raise UnsupportedOperationError(
+                "PiecewiseLinear.sample() does not support return_leaf_params=True yet."
+            )
+
         if sampling_ctx.is_differentiable:
             raise UnsupportedOperationError(
                 "PiecewiseLinear.sample() does not support differentiable routing yet."

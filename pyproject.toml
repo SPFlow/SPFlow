@@ -85,6 +85,15 @@ sklearn = [
   "scikit-learn>=1.0",
 ]
 
+simple-einet-parity = [
+  "omegaconf>=2.3",
+  "pandas>=2.2",
+  "mnist1d",
+  "icecream>=2.1.3",
+  "tqdm>=4.66",
+  "torchvision>=0.20",
+]
+
 
 [tool.pytest.ini_options]
 addopts = "--color=yes --doctest-modules"

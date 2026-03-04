@@ -13,6 +13,7 @@ The sampling context is essential for:
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from operator import xor
 from typing import Sequence
 
@@ -22,6 +23,17 @@ from torch import Tensor
 from torch.nn import functional as F
 
 from spflow.exceptions import InvalidParameterError, ShapeError
+
+
+@dataclass
+class LeafParamRecord:
+    """Leaf-parameter snapshot collected during sampling traversal."""
+
+    leaf_id: int
+    leaf_type: str
+    scope_cols: tuple[int, ...]
+    active_mask: Tensor
+    params: dict[str, Tensor]
 
 
 class SamplingContext:
@@ -183,6 +195,8 @@ class SamplingContext:
         is_mpe: bool = False,
         is_differentiable: bool = False,
         tau: float = 1.0,
+        return_leaf_params: bool = False,
+        leaf_param_records: list[LeafParamRecord] | None = None,
     ) -> None:
         """Initialize SamplingContext for managing sampling operations.
 
@@ -221,6 +235,8 @@ class SamplingContext:
         device_was_provided = device is not None
         self.is_differentiable = is_differentiable
         self.is_mpe = is_mpe
+        self.return_leaf_params = bool(return_leaf_params)
+        self._leaf_param_records: list[LeafParamRecord] = [] if leaf_param_records is None else leaf_param_records
         if tau <= 0.0:
             raise InvalidParameterError(f"tau must be > 0, got {tau}.")
         self.tau = float(tau)
@@ -405,6 +421,18 @@ class SamplingContext:
             clone_repetition=True,
         )
 
+    def add_leaf_param_record(self, record: LeafParamRecord) -> None:
+        """Append a leaf-parameter record collected during traversal."""
+        self._leaf_param_records.append(record)
+
+    def leaf_param_records(self) -> list[LeafParamRecord]:
+        """Return collected leaf-parameter records."""
+        return list(self._leaf_param_records)
+
+    def leaf_param_records_for(self, leaf_id: int) -> list[LeafParamRecord]:
+        """Return collected leaf-parameter records for a specific leaf id."""
+        return [record for record in self._leaf_param_records if record.leaf_id == int(leaf_id)]
+
     def with_routing(
         self,
         *,
@@ -429,6 +457,8 @@ class SamplingContext:
             is_mpe=self.is_mpe,
             is_differentiable=self.is_differentiable,
             tau=self.tau,
+            return_leaf_params=self.return_leaf_params,
+            leaf_param_records=self._leaf_param_records,
         )
 
     def require_feature_width(self, expected_features: int) -> None:
@@ -811,6 +841,8 @@ class SamplingContext:
             f"channel_index.shape={tuple(self.channel_index.shape)}, "
             f"mask.shape={tuple(self.mask.shape)}, "
             f"repetition_index.shape={tuple(self.repetition_index.shape)}, "
+            f"return_leaf_params={self.return_leaf_params}, "
+            f"leaf_param_records={len(self._leaf_param_records)}, "
             f"num_samples={self.channel_index.shape[0]}"
             ")"
         )

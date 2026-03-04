@@ -24,7 +24,7 @@ from spflow.meta.data.scope import Scope
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.wrapper.base import Wrapper
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
 
 
 class JointLogLikelihood(Wrapper):
@@ -53,7 +53,8 @@ class JointLogLikelihood(Wrapper):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-    ) -> Tensor:
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
             cache = Cache()
@@ -66,8 +67,16 @@ class JointLogLikelihood(Wrapper):
                     context_device = next(self.module.buffers()).device
                 except StopIteration:
                     context_device = None
-        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=context_device, is_mpe=is_mpe)
-        return self.module._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
+        sampling_ctx = SamplingContext(
+            num_samples=data.shape[0],
+            device=context_device,
+            is_mpe=is_mpe,
+            return_leaf_params=return_leaf_params,
+        )
+        samples = self.module._sample(data=data, cache=cache, sampling_ctx=sampling_ctx)
+        if return_leaf_params:
+            return samples, sampling_ctx.leaf_param_records()
+        return samples
 
     def _sample(
         self,

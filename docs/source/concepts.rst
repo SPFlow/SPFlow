@@ -119,13 +119,16 @@ Differentiable Sampling
 =======================
 
 The main public sampling APIs are ``sample``, ``sample_with_evidence``, and ``mpe``.
+All three APIs support ``return_leaf_params=True`` and then return
+``(samples, leaf_param_records)``.
 
 SPFlow also contains differentiable routing/sampling paths for selected modules and leaves, but this is an
 advanced interface and not uniformly supported across all components.
 For APC models specifically, inference APIs (encode/decode/sampling/likelihood) remain available, while
 the model objective APIs (``AutoencodingPC.loss_components`` / ``loss``) are available.
-Latent stats are available from APC encoders; Normal latent leaves use exact selected leaf parameters
-and other latent leaves use posterior-moment fallback estimation.
+Latent stats are available from APC encoders via exact selected latent leaf parameters.
+Exact latent KL/stat extraction is supported for Normal, Bernoulli, Binomial, and Categorical leaves
+against fixed canonical priors; unsupported latent families raise explicit errors (no fallback path).
 APC trainer helper functions in ``spflow.zoo.apc.train`` are available for lightweight training loops.
 
 .. _concepts-caching-and-dispatch:

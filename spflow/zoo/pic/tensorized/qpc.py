@@ -33,7 +33,7 @@ from spflow.modules.module_shape import ModuleShape
 from spflow.zoo.pic.pipeline import QuadratureRule
 from spflow.zoo.pic.tensorized.utils import eval_collapsed_cp, eval_mixing, eval_tucker
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
 
 
 @dataclasses.dataclass(frozen=True)
@@ -538,7 +538,9 @@ class TensorizedQPC(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-    ) -> Tensor:
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:
+        del num_samples, data, is_mpe, cache, return_leaf_params
         raise NotImplementedError("Sampling is not implemented for TensorizedQPC yet.")
 
     def _sample(

@@ -30,7 +30,7 @@ from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
 from spflow.utils.inference import log_posterior
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
 
 
 class RatSPN(Module, Classifier):
@@ -265,7 +265,8 @@ class RatSPN(Module, Classifier):
         data: torch.Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-    ) -> torch.Tensor:
+        return_leaf_params: bool = False,
+    ) -> torch.Tensor | tuple[torch.Tensor, list[LeafParamRecord]]:
         """Generate samples from the RAT-SPN.
 
         Args:
@@ -273,6 +274,7 @@ class RatSPN(Module, Classifier):
             data: Data tensor with NaN values to fill with samples.
             is_mpe: Whether to perform maximum a posteriori estimation.
             cache: Optional cache dictionary.
+            return_leaf_params: Whether to return leaf-parameter records from sampling.
 
         Returns:
             Sampled values.
@@ -281,7 +283,12 @@ class RatSPN(Module, Classifier):
         if cache is None:
             cache = Cache()
         batch_size = data.shape[0]
-        sampling_ctx = SamplingContext(num_samples=batch_size, device=data.device, is_mpe=is_mpe)
+        sampling_ctx = SamplingContext(
+            num_samples=batch_size,
+            device=data.device,
+            is_mpe=is_mpe,
+            return_leaf_params=return_leaf_params,
+        )
 
         # Draw root routing for public sampling entrypoint.
         if self.n_root_nodes > 1:
@@ -300,11 +307,14 @@ class RatSPN(Module, Classifier):
             else:
                 sampling_ctx.channel_index = torch.distributions.Categorical(logits=logits).sample()
 
-        return self._sample(
+        samples = self._sample(
             data=data,
             sampling_ctx=sampling_ctx,
             cache=cache,
         )
+        if return_leaf_params:
+            return samples, sampling_ctx.leaf_param_records()
+        return samples
 
     def _sample(
         self,

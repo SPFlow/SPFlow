@@ -10,15 +10,19 @@ from torch import Tensor
 
 @dataclass(frozen=True)
 class LatentStats:
-    """Latent distribution moments used in KL regularization.
+    """Latent posterior statistics used in APC training.
 
     Attributes:
-        mu: Approximate posterior mean, typically shaped ``(B, latent_dim)``.
-        logvar: Approximate posterior log-variance with the same shape as ``mu``.
+        mu: Posterior mean-like moment, typically shaped ``(B, latent_dim)``.
+        logvar: Posterior log-variance-like moment with same shape as ``mu``.
+        kld_per_sample: Exact posterior KL to the fixed prior, shaped ``(B,)``.
+        decode_latent: Deterministic latent for decode-time MPE behavior.
     """
 
     mu: Tensor
     logvar: Tensor
+    kld_per_sample: Tensor
+    decode_latent: Tensor
 
 
 @runtime_checkable
@@ -63,4 +67,4 @@ class ApcEncoder(Protocol):
         """Sample latent variables from the encoder prior."""
 
     def latent_stats(self, x: Tensor, *, tau: float = 1.0) -> LatentStats:
-        """Return latent Gaussian statistics (mu, logvar) for x."""
+        """Return latent posterior statistics for ``x``."""

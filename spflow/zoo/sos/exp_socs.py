@@ -12,7 +12,7 @@ from spflow.modules.module import Module
 from spflow.utils.inner_product import triple_product_scalar
 from spflow.utils.cache import Cache, cached
 from spflow.modules.sos.socs import _signed_eval
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
 
 
 class ExpSOCS(Module):
@@ -131,7 +131,9 @@ class ExpSOCS(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-    ) -> Tensor:
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:
+        del num_samples, data, is_mpe, cache, return_leaf_params
         raise UnsupportedOperationError("ExpSOCS.sample() is not supported.")
 
     def _sample(

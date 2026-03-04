@@ -17,7 +17,7 @@ from spflow.modules.sums.signed_sum import SignedSum
 from spflow.modules.sums.sum import Sum
 from spflow.utils.cache import Cache, cached
 from spflow.utils.inner_product import inner_product_matrix, log_self_inner_product_scalar
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
 
 
 def _is_signed_categorical(module: Module) -> bool:
@@ -188,7 +188,8 @@ class SOCS(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-    ) -> Tensor:
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
 
         if is_mpe:
@@ -211,6 +212,7 @@ class SOCS(Module):
             data=data,
             is_mpe=is_mpe,
             cache=cache,
+            return_leaf_params=return_leaf_params,
         )
 
     def _sample(
@@ -220,9 +222,7 @@ class SOCS(Module):
         cache: Cache,
     ) -> Tensor:
         if sampling_ctx.is_differentiable:
-            raise UnsupportedOperationError(
-                "SOCS.sample() does not support differentiable routing yet."
-            )
+            raise UnsupportedOperationError("SOCS.sample() does not support differentiable routing yet.")
 
         if sampling_ctx.is_mpe:
             raise UnsupportedOperationError("SOCS.mpe() is not supported (use MAP on components if needed).")

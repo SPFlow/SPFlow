@@ -16,7 +16,7 @@ from torch import Tensor, nn
 
 from spflow.meta.data.scope import Scope
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
 from spflow.modules.module_shape import ModuleShape
 
 
@@ -202,7 +202,8 @@ class Module(nn.Module, ABC):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-    ) -> Tensor:
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:
         """Generate samples from the module's probability distribution.
 
         Supports both random sampling and MAP inference (via is_mpe flag).
@@ -215,9 +216,12 @@ class Module(nn.Module, ABC):
             is_mpe (bool, optional): If True, returns most probable values instead of
                 random samples. Defaults to False.
             cache (Cache | None, optional): Cache for intermediate computations. Defaults to None.
+            return_leaf_params (bool, optional): If ``True``, also return leaf
+                distribution parameters gathered during traversal.
 
         Returns:
-            Tensor: Sampled values of shape (batch_size, num_features).
+            Sampled values of shape (batch_size, num_features), optionally with
+            collected leaf-parameter records.
 
         Raises:
             ValueError: If sampling parameters are incompatible.
@@ -225,12 +229,20 @@ class Module(nn.Module, ABC):
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
             cache = Cache()
-        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device, is_mpe=is_mpe)
-        return self._sample(
+        sampling_ctx = SamplingContext(
+            num_samples=data.shape[0],
+            device=data.device,
+            is_mpe=is_mpe,
+            return_leaf_params=return_leaf_params,
+        )
+        samples = self._sample(
             data=data,
             sampling_ctx=sampling_ctx,
             cache=cache,
         )
+        if return_leaf_params:
+            return samples, sampling_ctx.leaf_param_records()
+        return samples
 
     @abstractmethod
     def _sample(
@@ -252,7 +264,8 @@ class Module(nn.Module, ABC):
         num_samples: int | None = None,
         data: Tensor | None = None,
         cache: Cache | None = None,
-    ) -> Tensor:
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:
         """Generate most probable explanation from the module's probability distribution.
 
         This is a convenience method that calls sample with is_mpe=True.
@@ -264,6 +277,8 @@ class Module(nn.Module, ABC):
             data (Tensor | None, optional): Pre-allocated tensor with NaN values indicating
                 where to sample. If None, creates new tensor. Defaults to None.
             cache (Cache | None, optional): Cache for intermediate computations. Defaults to None.
+            return_leaf_params (bool, optional): If ``True``, also return leaf
+                distribution parameters gathered during traversal.
 
         Returns:
             Tensor: MPE values of shape (batch_size, num_features).
@@ -276,6 +291,7 @@ class Module(nn.Module, ABC):
             data=data,
             is_mpe=True,
             cache=cache,
+            return_leaf_params=return_leaf_params,
         )
 
     def sample_with_evidence(
@@ -283,7 +299,8 @@ class Module(nn.Module, ABC):
         evidence: Tensor,
         is_mpe: bool = False,
         cache: Cache | None = None,
-    ) -> Tensor:
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:
         """Samples from module with evidence.
 
         This is effectively calling log_likelihood then sampling from the module with a populated cache.
@@ -293,6 +310,8 @@ class Module(nn.Module, ABC):
             is_mpe: Boolean value indicating whether to perform maximum a posteriori estimation (MPE).
                 Defaults to False.
             cache: Optional cache dictionary to reuse across calls.
+            return_leaf_params: If ``True``, also return leaf distribution
+                parameters gathered during traversal.
 
         Returns:
             Tensor containing the sampled values. Each row corresponds to a sample.
@@ -306,6 +325,7 @@ class Module(nn.Module, ABC):
             data=evidence,
             is_mpe=is_mpe,
             cache=cache,
+            return_leaf_params=return_leaf_params,
         )
 
     def __input_is_a_list(self):

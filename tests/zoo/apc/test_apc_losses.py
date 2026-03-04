@@ -36,7 +36,17 @@ class _ToyStatsEncoder(nn.Module):
             return z_samples
         mu = torch.full_like(z_samples, 1.5)
         logvar = torch.full_like(z_samples, -0.2)
-        return LatentStats(mu=mu, logvar=logvar), z_samples
+        kld_per_sample = torch.full((x.shape[0],), 0.7, dtype=z_samples.dtype, device=z_samples.device)
+        decode_latent = torch.full_like(z_samples, -2.0)
+        return (
+            LatentStats(
+                mu=mu,
+                logvar=logvar,
+                kld_per_sample=kld_per_sample,
+                decode_latent=decode_latent,
+            ),
+            z_samples,
+        )
 
     def decode(
         self,
@@ -72,7 +82,8 @@ class _ToyStatsEncoder(nn.Module):
         del x, tau
         mu = torch.ones((1, self.latent_dim), dtype=torch.get_default_dtype())
         logvar = torch.zeros_like(mu)
-        return LatentStats(mu=mu, logvar=logvar)
+        kld_per_sample = torch.zeros((1,), dtype=mu.dtype, device=mu.device)
+        return LatentStats(mu=mu, logvar=logvar, kld_per_sample=kld_per_sample, decode_latent=mu)
 
 
 class _RecordingDecoder(nn.Module):
@@ -229,7 +240,7 @@ def test_apc_loss_components_switches_nll_mode(
     assert calls["marginal"] == expected_calls[1]
 
 
-def test_apc_loss_components_train_decode_mpe_uses_posterior_mean() -> None:
+def test_apc_loss_components_train_decode_mpe_uses_decode_latent() -> None:
     decoder = _RecordingDecoder()
     model = AutoencodingPC(
         encoder=_ToyStatsEncoder(),
@@ -247,8 +258,10 @@ def test_apc_loss_components_train_decode_mpe_uses_posterior_mean() -> None:
     losses = model.loss_components(x)
 
     assert decoder.last_input is not None
+    expected_decode_latent = torch.full_like(decoder.last_input, -2.0)
+    torch.testing.assert_close(decoder.last_input, expected_decode_latent, rtol=0.0, atol=0.0)
     assert "mu" in losses
-    torch.testing.assert_close(decoder.last_input, losses["mu"], rtol=0.0, atol=0.0)
+    assert not torch.equal(decoder.last_input, losses["mu"])
 
 
 def test_apc_loss_components_fails_fast_kl_without_latent_stats() -> None:

@@ -493,10 +493,10 @@ class CLTree(LeafModule):
         cache: Cache,
     ) -> Tensor:
         del cache
+        if sampling_ctx.return_leaf_params:
+            raise UnsupportedOperationError("CLTree.sample() does not support return_leaf_params=True yet.")
         if sampling_ctx.is_differentiable:
-            raise UnsupportedOperationError(
-                "CLTree.sample() does not support differentiable routing yet."
-            )
+            raise UnsupportedOperationError("CLTree.sample() does not support differentiable routing yet.")
 
         if not self._has_learned_structure():
             raise RuntimeError(

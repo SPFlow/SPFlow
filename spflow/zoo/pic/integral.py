@@ -7,7 +7,7 @@ import torch
 from torch import Tensor, nn
 
 from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.meta.data.scope import Scope
@@ -88,7 +88,9 @@ class Integral(Module):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-    ) -> Tensor:
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:
+        del num_samples, data, is_mpe, cache, return_leaf_params
         raise NotImplementedError("Sampling from Integral nodes is not implemented.")
 
     def _sample(

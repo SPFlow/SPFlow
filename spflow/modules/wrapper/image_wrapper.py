@@ -8,7 +8,7 @@ from spflow.exceptions import ShapeError, StructureError
 from spflow.modules.module import Module
 from spflow.modules.wrapper.base import Wrapper
 from spflow.utils.cache import Cache, cached
-from spflow.utils.sampling_context import SamplingContext
+from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
 
 
 class MarginalizationContext:
@@ -243,7 +243,8 @@ class ImageWrapper(Wrapper):
         data: Tensor | None = None,
         is_mpe: bool = False,
         cache: Cache | None = None,
-    ) -> Tensor:
+        return_leaf_params: bool = False,
+    ) -> Tensor | tuple[Tensor, list[LeafParamRecord]]:
         r"""Samples from the wrapped module, returning results in image format.
 
         Args:
@@ -257,6 +258,8 @@ class ImageWrapper(Wrapper):
                 Defaults to False.
             cache:
                 Optional cache dictionary for memoization.
+            return_leaf_params:
+                Whether to return leaf distribution parameters collected during traversal.
 
         Returns:
             Four-dimensional PyTorch tensor in image format containing the sampled values.
@@ -267,7 +270,12 @@ class ImageWrapper(Wrapper):
         if cache is None:
             cache = Cache()
 
-        sampling_ctx = SamplingContext(num_samples=data.shape[0], device=data.device, is_mpe=is_mpe)
+        sampling_ctx = SamplingContext(
+            num_samples=data.shape[0],
+            device=data.device,
+            is_mpe=is_mpe,
+            return_leaf_params=return_leaf_params,
+        )
 
         # Flatten data to 2D for processing
         flat_data = self.flatten(data)
@@ -277,7 +285,10 @@ class ImageWrapper(Wrapper):
             cache=cache,
             sampling_ctx=sampling_ctx,
         )
-        return self.to_image_format(flat_data)
+        image = self.to_image_format(flat_data)
+        if return_leaf_params:
+            return image, sampling_ctx.leaf_param_records()
+        return image
 
     def _sample(
         self,

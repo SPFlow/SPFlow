@@ -61,6 +61,17 @@ class QuantizeToNBits:
         return scale_to_n_bits(x, n_bits=self.n_bits)
 
 
+class ScaleByNBits:
+    """Picklable torchvision transform applying 1 / (2^n_bits - 1) scaling."""
+
+    def __init__(self, n_bits: int) -> None:
+        self.n_bits = int(n_bits)
+        self._scale = 1.0 / float(2**self.n_bits - 1)
+
+    def __call__(self, x: torch.Tensor) -> torch.Tensor:
+        return x * self._scale
+
+
 def flatten_image_tensor(x: torch.Tensor) -> torch.Tensor:
     """Flatten image tensor from ``(C, H, W)`` to ``(C*H*W,)``."""
     return x.view(-1)
@@ -465,6 +476,7 @@ def build_mnist_loaders(
         transforms_list.append(transforms.Normalize([0.5], [0.5]))
     else:
         transforms_list.append(QuantizeToNBits(args.n_bits))
+    transforms_list.append(ScaleByNBits(args.n_bits))
 
     if flatten:
         transforms_list.append(transforms.Lambda(flatten_image_tensor))

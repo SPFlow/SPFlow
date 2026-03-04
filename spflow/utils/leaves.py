@@ -1,10 +1,11 @@
-from collections.abc import Iterable
+from __future__ import annotations
+
 from typing import Callable, Any
 
 import torch
 from torch import Tensor
 
-from spflow.exceptions import InvalidParameterCombinationError, InvalidParameterError
+from spflow.exceptions import InvalidParameterCombinationError
 from spflow.meta import Scope
 
 
@@ -34,13 +35,14 @@ def validate_all_or_none(**params: Any) -> bool:
 
 
 def apply_nan_strategy(
-    nan_strategy: str | None, scope_data: Tensor, weights: Tensor | None
+    nan_strategy: str | None, scope_data: Tensor, device: torch.device, weights: Tensor | None
 ) -> tuple[Tensor, Tensor]:
     """Apply NaN handling strategy for MLE.
 
     Args:
         nan_strategy: None (strict), 'ignore' (drop rows), or callable.
         scope_data: Data tensor.
+        device: Device for operations.
         weights: Optional sample weights.
 
     Returns:
@@ -51,11 +53,11 @@ def apply_nan_strategy(
     """
     # Initialize weights if not provided
     if weights is None:
-        raise InvalidParameterError("Weights tensor must be provided for MLE estimation.")
+        raise ValueError("Weights tensor must be provided for MLE estimation.")
 
     # Validate weights shape
     if weights.shape[0] != scope_data.shape[0]:
-        raise InvalidParameterError(
+        raise ValueError(
             f"Weights shape {weights.shape} does not match number of data points {scope_data.shape[0]}. "
             f"Expected shape ({scope_data.shape[0]},) for maximum-likelihood estimation."
         )
@@ -64,11 +66,11 @@ def apply_nan_strategy(
     nan_mask = torch.isnan(scope_data)
 
     if torch.all(nan_mask):
-        raise InvalidParameterError("Cannot compute maximum-likelihood estimation: all data is NaN.")
+        raise ValueError("Cannot compute maximum-likelihood estimation: all data is NaN.")
 
     if torch.any(nan_mask):
         if nan_strategy is None:
-            raise InvalidParameterError(
+            raise ValueError(
                 "Cannot perform maximum-likelihood estimation on data with missing (NaN) values. "
                 "Set 'nan_strategy' parameter to specify how to handle missing values (e.g., 'ignore')."
             )
@@ -79,9 +81,7 @@ def apply_nan_strategy(
             scope_data = scope_data[valid_rows]
             weights = weights[valid_rows]
         else:
-            raise InvalidParameterError(
-                f"Unknown nan_strategy '{nan_strategy}'. Supported strategies: 'ignore'"
-            )
+            raise ValueError(f"Unknown nan_strategy '{nan_strategy}'. Supported strategies: 'ignore'")
 
     # Normalize weights to sum to the number of samples
     weights = weights * (scope_data.shape[0] / weights.sum())
@@ -107,18 +107,17 @@ def init_parameter(param: Tensor | None, event_shape: tuple[int, ...], init: Cal
         return init(event_shape)
     else:
         if not torch.isfinite(param).all():
-            raise InvalidParameterError("Parameter must be finite.")
+            raise ValueError("Parameter must be finite.")
         return param
 
 
 def parse_leaf_args(
-    scope: int | Iterable[int] | Scope, out_channels, num_repetitions, params
+    scope: int | list[int] | Scope, out_channels, num_repetitions, params
 ) -> tuple[int, int, int]:
     """Parse leaf arguments and return event_shape.
 
     Args:
-        scope: Variable scope. Can be a Scope object, a single integer,
-            or an iterable of integers (list, tuple, numpy array, torch tensor, etc.).
+        scope: Variable scope (int, list[int], or Scope).
         out_channels: Number of output channels.
         num_repetitions: Number of repetitions.
         params: Distribution parameters.
@@ -135,18 +134,12 @@ def parse_leaf_args(
     match scope:
         case Scope():
             query_length = len(scope.query)
-        case str():
-            raise InvalidParameterError(
-                f"scope must be of type Scope, int, or Iterable[int], got {type(scope)}."
-            )
         case int():
             query_length = 1
-        case Iterable():
-            query_length = len(scope)  # type: ignore[arg-type]
+        case list():
+            query_length = len(scope)
         case _:
-            raise InvalidParameterError(
-                f"scope must be of type Scope, int, or Iterable[int], got {type(scope)}."
-            )
+            raise ValueError("scope must be of type Scope, int, or list of int.")
 
     # Either all params are None or no params are None
     if params and not (all(param is None for param in params) ^ all(param is not None for param in params)):
@@ -159,7 +152,7 @@ def parse_leaf_args(
             )
         event_shape = (query_length, out_channels)
     else:
-        if out_channels is not None and out_channels != 1:
+        if out_channels is not None:
             if any(param.shape[1] != out_channels for param in params):
                 raise InvalidParameterCombinationError(
                     "If out_channels is given, it must match the second dimension of all parameter tensors."

@@ -172,7 +172,7 @@ uv.lock
 *ubyte
 *ubyte.gz
 
-reference-repos/
+#reference-repos/
 PLANS/
 results/
 pdfs/
