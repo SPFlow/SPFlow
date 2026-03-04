@@ -1,0 +1,38 @@
+# List of papers to could be relevant to SPFlow
+- [ ] Training and Inference on Any-Order Autoregressive Models the Right Way [https://arxiv.org/pdf/2205.13554.pdf](https://arxiv.org/pdf/2205.13554.pdf)
+- [ ] [2404.09674v1.pdf](https://arxiv.org/pdf/2404.09674)
+- [ ] [Is Complex Query Answering Really Complex?](https://scholar.google.com/scholar_url?url=https://arxiv.org/pdf/2410.12537&hl=en&sa=X&d=3123441227839068714&ei=hTgWZ_XtG5uJ6rQP6aHFmAU&scisig=AFWwaeYNRNyozICNYMWl5-lCt3DP&oi=scholaralrt&hist=XUHKrb4AAAAJ:909386815568247919:AFWwaeY_Av_U-fbNXsCblvXvUHF5&html=&pos=0&folt=art)
+- [ ] [Optimal Transport for Probabilistic Circuits](https://mail.google.com/mail?extsrc=sync&client=docs&plid=ACUX6DOsxNlK_y0qu4I6-af9eYm3aQivyL7CVvY)
+- [ ] [What is the Relationship between Tensor Factorizations and Circuits (and How Can We Exploit it)?](https://mail.google.com/mail?extsrc=sync&client=docs&plid=ACUX6DMmHPMv6Rb0BzHf78YLbGVqZoIh2N78Jko)
+- [ ] [(PDF) Sum of Squares Circuits](https://mail.google.com/mail?extsrc=sync&client=docs&plid=ACUX6DPSIvfAYnJg0J201JE-TnX_NBKamBS3tss)
+- [ ] [A Compositional Atlas for Algebraic Circuits](https://mail.google.com/mail?extsrc=sync&client=docs&plid=ACUX6DNODmQw2HnXfuFlI5ccWwh3e_UTUWE1QQ8)
+- [ ] Sparse SPNs Paper [https://openreview.net/pdf?id=KieCChVB6mN](https://openreview.net/pdf?id=KieCChVB6mN)
+- [ ] Read [https://arxiv.org/pdf/2207.08414.pdf](https://arxiv.org/pdf/2207.08414.pdf) SPN outlier detection
+- [ ] Read Closing the gap: Exact maximum likelihood training of generative autoencoders using invertible layers [Machine Learning Papers](https://papers.labml.ai/paper/07cf3e5ad7e311ecac827bce58715ee7)
+- [ ] Negative weight GMM [https://dl.ifip.org/db/conf/mldm/mldm2005/ZhangZ05.pdf](https://dl.ifip.org/db/conf/mldm/mldm2005/ZhangZ05.pdf) When:
+- [ ] Read Emebbings from prob circuits? [https://openreview.net/pdf?id=qhAeZjs7dCL](https://openreview.net/pdf?id=qhAeZjs7dCL)
+- [ ] A Compositional Atlas of Tractable Circuit Operations for Probabilistic Inference [A Compositional Atlas of Tractable Circuit Operations for Probabilistic Inference](https://papers.nips.cc/paper/2021/hash/6e01383fd96a17ae51cc3e15447e7533-Abstract.html)
+- [ ] Optimisation of Overparametrized Sum-Product Networks [https://arxiv.org/pdf/1905.08196.pdf](https://arxiv.org/pdf/1905.08196.pdf)
+- [ ] LOSSLESS COMPRESSION WITH PROBABILISTIC CIRCUITS [https://openreview.net/pdf?id=X_hByk2-5je](https://openreview.net/pdf?id=X_hByk2-5je)
+- [ ] Your Knowledge Graph Embeddings are Secretly Circuits and You Should Treat Them as Such [https://openreview.net/pdf?id=2bjCZdGyEGE](https://openreview.net/pdf?id=2bjCZdGyEGE)
+- [ ] Gaussian Bernoulli RBMs [Jakub Tomczak on Twitter](https://twitter.com/jmtomczak/status/1583529185271721985?s=12&t=bqyS4iHhx7HdYGaXxH0Fkg)
+- [ ] Bayesian Structure Scores for Probabilistic Circuits
+- [ ] Continuous mixtures of TPMs [https://arxiv.org/pdf/2209.10584.pdf](https://arxiv.org/pdf/2209.10584.pdf) When:
+- [ ] Mixture of All Trees
+- [ ] Semantic Strengthening of Neuro-Symbolic Learning
+- [ ] Joint Probability Trees
+- [ ] How to Turn Your Knowledge Graph Embeddings into Generative Models [https://openreview.net/pdf?id=RSGNGiB1q4](https://openreview.net/pdf?id=RSGNGiB1q4)
+- [ ] [Polynomial Semantics of Tractable Probabilistic Circuits](https://arxiv.org/pdf/2402.09085.pdf)
+- [ ] [Scalable Analysis of Probabilistic Models and Programs](https://drops.dagstuhl.de/storage/04dagstuhl-reports/volume13/issue06/23241/DagRep.13.6.1/DagRep.13.6.1.pdf)
+- [ ] [NEURAL NETWORK APPROXIMATORS FOR MARGINAL MAP IN
+PROBABILISTIC CIRCUITS](https://arxiv.org/pdf/2402.03621.pdf)
+- [ ] [Building Expressive and Tractable Probabilistic Generative Models: A Review](https://arxiv.org/pdf/2402.00759.pdf)
+- [ ] [Benefits of Non-Linear Scale Parameterizations in Black Box Variational Inference through Smoothness Results and Gradient Variance Bounds](https://proceedings.mlr.press/v238/hotti24a.html)
+- [ ] [On the Independence Assumption in Neurosymbolic Learning - 2404.08458v1.pdf](https://arxiv.org/pdf/2404.08458) #Paper Reading List
+- [ ] [Scaling Tractable Probabilistic Circuits: A Systems Perspective - 2406.00766v1.pdf](https://arxiv.org/pdf/2406.00766)
+- [ ] [455_Learning_Distributionally_.pdf](https://openreview.net/pdf?id=SlxO1NpLiE) Learning Distributionally Robust Tractable Probabilistic Models in Continuous Domain
+- [ ] [A top-down tractable inference method for Sum-Product Networks by pruning ineffective Subnetworks - v1_covered_9d42f7c4-4ecb-4a34-8e46-1a2e6816bbe2.pdf](https://assets-eu.researchsquare.com/files/rs-4323095/v1_covered_9d42f7c4-4ecb-4a34-8e46-1a2e6816bbe2.pdf?c=1718008252)
+- [ ] [11_A_Neural_Network_Approach_f.pdf](https://openreview.net/pdf?id=Gn7mpdBqqf)
+- [ ] [Top-Down Bayesian Posterior Sampling for Sum-Product Networks - 2406.12353v1.pdf](https://arxiv.org/pdf/2406.12353)
+- [ ] [On the Expressive Power of Tree-Structured Probabilistic Circuits - 75_On_the_Expressive_Power_of_.pdf](https://openreview.net/pdf?id=QUQ5ciFMyU)
+- [ ] [2408.00876v1.pdf](https://arxiv.org/pdf/2408.00876)
