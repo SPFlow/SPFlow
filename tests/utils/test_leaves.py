@@ -350,6 +350,20 @@ class TestParseLeafArgs:
         # Should infer from params
         assert event_shape == (3, 5)
 
+    def test_parse_leaf_args_with_params_default_out_channels_compat(self):
+        """Test parse_leaf_args keeps compatibility for default out_channels=1 with provided params."""
+        scope = Scope([0, 1, 2])
+        out_channels = 1
+        num_repetitions = None
+        param1 = torch.randn(3, 5)
+        param2 = torch.randn(3, 5)
+        params = [param1, param2]
+
+        event_shape = parse_leaf_args(scope, out_channels, num_repetitions, params)
+
+        # Should infer channels from params despite default out_channels=1
+        assert event_shape == (3, 5)
+
     def test_parse_leaf_args_params_mismatch_scope(self):
         """Test parse_leaf_args with params that don't match scope."""
         scope = Scope([0, 1, 2])  # 3 features

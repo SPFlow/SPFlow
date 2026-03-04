@@ -152,7 +152,8 @@ def parse_leaf_args(
             )
         event_shape = (query_length, out_channels)
     else:
-        if out_channels is not None:
+        # Keep backward compatibility for default out_channels=1 call sites when params define channels.
+        if out_channels is not None and out_channels != 1:
             if any(param.shape[1] != out_channels for param in params):
                 raise InvalidParameterCombinationError(
                     "If out_channels is given, it must match the second dimension of all parameter tensors."
