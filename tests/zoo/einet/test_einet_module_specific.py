@@ -115,18 +115,69 @@ def test_extra_repr(layer_type: str, structure: str):
     assert f"structure={structure}" in repr_str
 
 
-def test_bottom_up_sampling_not_implemented():
+@pytest.mark.parametrize("layer_type", EINET_LAYER_TYPE_VALUES)
+@pytest.mark.parametrize("depth", [0, 1])
+def test_bottom_up_sampling_shallow_multi_repetition(layer_type: str, depth: int):
+    num_features = max(4, 2**depth)
     model = make_einet(
-        num_features=4,
+        num_features=num_features,
         num_classes=1,
         num_sums=5,
         num_leaves=3,
-        depth=1,
-        num_repetitions=2,
+        depth=depth,
+        num_repetitions=3,
+        layer_type=layer_type,
         structure="bottom-up",
     )
-    with pytest.raises(NotImplementedError):
-        model.sample(num_samples=10)
+    samples = model.sample(num_samples=10)
+    assert samples.shape == (10, num_features)
+    assert torch.isfinite(samples).all()
+
+
+@pytest.mark.parametrize("layer_type,structure", product(EINET_LAYER_TYPE_VALUES, EINET_STRUCTURE_VALUES))
+def test_multiclass_multirepetition_sampling_supported(layer_type: str, structure: str):
+    model = make_einet(
+        num_features=4,
+        num_classes=3,
+        num_sums=5,
+        num_leaves=3,
+        depth=1,
+        num_repetitions=3,
+        layer_type=layer_type,
+        structure=structure,
+    )
+    data = torch.full((6, 4), torch.nan)
+
+    mpe_samples = model.sample(data=data.clone(), is_mpe=True)
+    random_samples = model.sample(data=data.clone(), is_mpe=False)
+
+    assert mpe_samples.shape == (6, 4)
+    assert random_samples.shape == (6, 4)
+    assert torch.isfinite(mpe_samples).all()
+    assert torch.isfinite(random_samples).all()
+
+
+@pytest.mark.parametrize("layer_type,structure", product(EINET_LAYER_TYPE_VALUES, EINET_STRUCTURE_VALUES))
+def test_multiclass_multirepetition_log_posterior_supported(layer_type: str, structure: str):
+    model = make_einet(
+        num_features=4,
+        num_classes=3,
+        num_sums=5,
+        num_leaves=3,
+        depth=1,
+        num_repetitions=3,
+        layer_type=layer_type,
+        structure=structure,
+    )
+    data = torch.randn(5, 4)
+
+    log_post = model.log_posterior(data)
+    proba = model.predict_proba(data)
+
+    assert log_post.shape == (5, 3)
+    assert proba.shape == (5, 3)
+    assert torch.isfinite(log_post).all()
+    assert torch.allclose(proba.sum(dim=-1), torch.ones(5), atol=1e-5)
 
 
 def test_more_invalid_constructor_parameters():

@@ -26,6 +26,7 @@ from spflow.modules.leaves.leaf import LeafModule
 from spflow.modules.module import Module
 from spflow.modules.module_shape import ModuleShape
 from spflow.modules.ops.split import SplitMode
+from spflow.modules.products.product import Product
 from spflow.modules.rat.factorize import Factorize
 from spflow.modules.sums.repetition_mixing_layer import RepetitionMixingLayer
 from spflow.modules.sums.sum import Sum
@@ -140,6 +141,35 @@ class Einet(Module, Classifier):
         else:
             return LinsumLayer
 
+    def _finalize_root(
+        self,
+        current: Module,
+        *,
+        collapse_features_if_needed: bool,
+    ) -> None:
+        """Finalize root stack to a canonical sampling-compatible shape."""
+        if collapse_features_if_needed and current.out_shape.features > 1:
+            current = Product(inputs=current)
+
+        if current.out_shape.channels != self.num_classes:
+            current = Sum(
+                inputs=current,
+                out_channels=self.num_classes,
+                num_repetitions=self.num_repetitions,
+            )
+
+        if self.num_repetitions > 1:
+            current = RepetitionMixingLayer(
+                inputs=current,
+                out_channels=self.num_classes,
+                num_repetitions=self.num_repetitions,
+            )
+
+        if self.num_classes > 1:
+            current = Sum(inputs=current, out_channels=1, num_repetitions=1)
+
+        self.root_node = current
+
     def _build_structure_top_down(self) -> None:
         """Build Einet structure from top (root) to bottom (leaves).
 
@@ -213,19 +243,7 @@ class Einet(Module, Classifier):
 
             root = current
 
-        # Mix repetitions if we have multiple
-        if self.num_repetitions > 1:
-            root = RepetitionMixingLayer(
-                inputs=root,
-                out_channels=self.num_classes,
-                num_repetitions=self.num_repetitions,
-            )
-
-        # Final root sum if multiple classes
-        if self.num_classes > 1 and not isinstance(root, RepetitionMixingLayer):
-            self.root_node = Sum(inputs=root, out_channels=1, num_repetitions=1)
-        else:
-            self.root_node = root
+        self._finalize_root(root, collapse_features_if_needed=False)
 
         # Store layers for access
         self.factorize = fac_layer
@@ -272,33 +290,7 @@ class Einet(Module, Classifier):
                 num_repetitions=self.num_repetitions,
             )
 
-        # Add sum layer to get features down to 1 if needed
-        if current.out_shape.features > 1:
-            current = Sum(
-                inputs=current,
-                out_channels=self.num_sums,
-                num_repetitions=self.num_repetitions,
-            )
-
-        # Add final sum layer to convert from num_sums to num_classes
-        if current.out_shape.channels != self.num_classes:
-            current = Sum(
-                inputs=current,
-                out_channels=self.num_classes,
-                num_repetitions=self.num_repetitions,
-            )
-
-        # Mix repetitions if we have multiple
-        if self.num_repetitions > 1:
-            root = RepetitionMixingLayer(
-                inputs=current,
-                out_channels=self.num_classes,
-                num_repetitions=self.num_repetitions,
-            )
-        else:
-            root = current
-
-        self.root_node = root
+        self._finalize_root(current, collapse_features_if_needed=True)
 
         # Store layers for access
         self.factorize = fac_layer
@@ -406,16 +398,7 @@ class Einet(Module, Classifier):
         Returns:
             Sampled tensor.
 
-        Raises:
-            NotImplementedError: If structure is "bottom-up" (not yet supported).
         """
-        # Bottom-up sampling not yet supported due to shape propagation complexity
-        if self.structure == "bottom-up":
-            raise NotImplementedError(
-                "Sampling from bottom-up Einet structure is not yet implemented. "
-                "Use structure='top-down' for sampling, or use log_likelihood() which "
-                "works for both structures."
-            )
 
         data = self._prepare_sample_data(num_samples=num_samples, data=data)
         if cache is None:
@@ -458,7 +441,8 @@ class Einet(Module, Classifier):
 
         batch_size = data.shape[0]
 
-        # Handle class sampling for multi-class models
+        # Root canonicalization guarantees class routing logits at (1, C, 1).
+        # Handle class sampling for multi-class models.
         if self.num_classes > 1:
             logits = self.root_node.logits
             if logits.ndim == 4 and logits.shape[-1] == 1:

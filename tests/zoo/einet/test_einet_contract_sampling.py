@@ -43,8 +43,8 @@ def test_mpe_sampling_contract(layer_type: str):
         structure="top-down",
     )
 
-    # MPE is currently implemented through the top-down path; pinning structure here
-    # avoids accidental fallback to unsupported bottom-up behavior.
+    # Keep this contract pinned to top-down to limit matrix size; bottom-up MPE
+    # coverage is exercised in module-specific regression tests.
     samples = model.sample(num_samples=10, is_mpe=True)
     assert samples.shape == (10, 4)
     assert_finite_tensor(samples)
