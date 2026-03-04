@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Callable, Any
 
 import torch
@@ -112,12 +113,12 @@ def init_parameter(param: Tensor | None, event_shape: tuple[int, ...], init: Cal
 
 
 def parse_leaf_args(
-    scope: int | list[int] | Scope, out_channels, num_repetitions, params
+    scope: int | Iterable[int] | Scope, out_channels, num_repetitions, params
 ) -> tuple[int, int, int]:
     """Parse leaf arguments and return event_shape.
 
     Args:
-        scope: Variable scope (int, list[int], or Scope).
+        scope: Variable scope (int, iterable of ints, or Scope).
         out_channels: Number of output channels.
         num_repetitions: Number of repetitions.
         params: Distribution parameters.
@@ -129,17 +130,16 @@ def parse_leaf_args(
         ValueError: If scope type is invalid.
         InvalidParameterCombinationError: If parameter combinations are invalid.
     """
-    # We need to accept different types for scope here since parse_leaf_args is called before the LeafModule constructor
-    # which turns the scope variable (may be an int or list of ints for convenience) into a Scope object.
-    match scope:
-        case Scope():
-            query_length = len(scope.query)
-        case int():
-            query_length = 1
-        case list():
-            query_length = len(scope)
-        case _:
-            raise ValueError("scope must be of type Scope, int, or list of int.")
+    # We need to accept different scope-like types here since parse_leaf_args is called before the LeafModule
+    # constructor, which normalizes scope to Scope.
+    if isinstance(scope, Scope):
+        query_length = len(scope.query)
+    elif isinstance(scope, int):
+        query_length = 1
+    elif isinstance(scope, Iterable) and not isinstance(scope, (str, bytes)):
+        query_length = len(list(scope))
+    else:
+        raise ValueError("scope must be of type Scope, int, or iterable of int.")
 
     # Either all params are None or no params are None
     if params and not (all(param is None for param in params) ^ all(param is not None for param in params)):
