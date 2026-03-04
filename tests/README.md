@@ -51,9 +51,9 @@ Suite-specific READMEs (for example `tests/modules/README.md`, `tests/zoo/README
 - Assert explicit error types with `pytest.raises(...)` for invalid paths.
 
 ## Validation commands
-- Collection parity: `.venv/bin/pytest --collect-only -q tests`
-- Focused suite run: `.venv/bin/pytest -q tests/<suite_or_file>`
-- Full suite parity: `.venv/bin/pytest -n 4 tests`
+- Collection parity: `uv run pytest --collect-only -q tests`
+- Focused suite run: `uv run pytest -q tests/<suite_or_file>`
+- Full suite parity: `uv run pytest -n 4 tests`
 
 ## PR checklist for test changes
 - Added/updated tests are in the correct ownership location.

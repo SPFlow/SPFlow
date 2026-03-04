@@ -89,7 +89,7 @@ Contract tests should be marked with `@pytest.mark.contract`.
 3. Reuse helpers from `tests/modules/test_helpers/` for new contract tests.
 
 ## Quick Checks Before Opening A PR
-1. `pytest --collect-only -q tests/modules`
-2. `.venv/bin/pytest -n 4 tests/modules`
+1. `uv run pytest --collect-only -q tests/modules`
+2. `uv run pytest -n 4 tests/modules`
 3. `rg "Cross-module.*moved to|contracts moved to" tests/modules -g 'test_*.py'` to verify ownership hints remain explicit in module-specific files.
 4. For removed tests, document replacement owner(s) in PR notes (contract file or specific module file).

@@ -2,9 +2,14 @@
 
 This document describes the release process for SPFlow maintainers.
 
+SPFlow uses a two-branch model:
+- `develop`: integration branch for regular feature and bug-fix work
+- `main`: stable release branch and hotfix target
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
+- [Branch Model](#branch-model)
 - [Release Types](#release-types)
 - [Pre-Release Checklist](#pre-release-checklist)
 - [Release Steps](#release-steps)
@@ -48,6 +53,13 @@ cd SPFlow
 uv sync --extra dev
 source .venv/bin/activate
 ```
+
+## Branch Model
+
+This runbook assumes releases are prepared from `develop` and promoted to `main`.
+
+- Regular release flow: `develop` -> tag/release -> merge/promotion to `main`
+- Hotfix flow: start from `main` release tag, then merge the fix back into `develop`
 
 ## Release Types
 
@@ -97,6 +109,8 @@ Before starting the release process, ensure:
 - [ ] Version number is appropriate for changes being released
 
 ## Release Steps
+
+Before Step 1, determine whether the release is MAJOR/MINOR/PATCH using [VERSIONING.md](VERSIONING.md).
 
 ### Step 1: Prepare Release Branch
 
@@ -157,11 +171,11 @@ git commit -m "chore: bump version to X.Y.Z"
 
 ```bash
 # Run complete test suite
-.venv/bin/uv run pytest -n 4 --cov=spflow
+uv run pytest -n 4 --cov=spflow
 
 # Test on clean install
 deactivate
-uv run venv test_venv
+uv venv test_venv
 source test_venv/bin/activate
 pip install -e .
 uv run pytest -n 4
@@ -224,7 +238,7 @@ rm -rf test_dist
 
 ```bash
 # Upload to production PyPI
-twine upload dist/*
+uv run twine upload dist/*
 
 # Verify upload
 # Visit: https://pypi.org/project/spflow/X.Y.Z/
@@ -283,4 +297,3 @@ git add spflow/__init__.py CHANGELOG.md
 git commit -m "chore: prepare for next development cycle"
 git push origin develop
 ```
-

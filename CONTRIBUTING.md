@@ -5,6 +5,7 @@ Thank you for considering contributing to SPFlow! This document provides guideli
 ## Table of Contents
 
 - [Getting Started](#getting-started)
+- [Branch Model](#branch-model)
 - [Development Setup](#development-setup)
 - [Making Changes](#making-changes)
 - [Commit Conventions](#commit-conventions)
@@ -26,6 +27,15 @@ Thank you for considering contributing to SPFlow! This document provides guideli
    ```bash
    git remote add upstream git@github.com:SPFlow/SPFlow.git
    ```
+
+## Branch Model
+
+SPFlow uses a two-branch model:
+
+- `develop`: Integration branch for regular feature and bug-fix pull requests
+- `main`: Stable branch for releases and hotfixes
+
+When contributing, target `develop` by default. Only target `main` for maintainer-directed hotfixes.
 
 ## Development Setup
 
@@ -233,13 +243,13 @@ uv run pytest tests/modules/test_sum.py::test_sum_log_likelihood
 
 ```bash
 # Generate HTML coverage report in htmlcov/
-.venv/bin/pytest -n 4 --cov=spflow --cov-report=html
+uv run pytest -n 4 --cov=spflow --cov-report=html
 
 # Overview low-coverage files
-.venv/bin/python scripts/coverage_inspect.py list --limit 30
+uv run python scripts/coverage_inspect.py list --limit 30
 
 # Show missed line chunks for a file
-.venv/bin/python scripts/coverage_inspect.py show spflow/exceptions.py --context 3
+uv run python scripts/coverage_inspect.py show spflow/exceptions.py --context 3
 ```
 
 ### Writing Tests
@@ -290,7 +300,7 @@ No manual deployment is needed — just merge your documentation changes to `mai
 
 SPFlow follows [Semantic Versioning 2.0.0](https://semver.org/).
 
-See [VERSIONING.md](VERSIONING.md) for a detailed guide.
+See [VERSIONING.md](VERSIONING.md) for the authoritative versioning and deprecation policy.
 
 **Quick Reference:**
 - **MAJOR**: Breaking changes (incompatible API changes)

@@ -60,157 +60,17 @@ Increment when making **backward-compatible bug fixes**:
 - Security: Patching vulnerability in dependencies
 - Docs: Fixing incorrect docstrings or type annotations
 
-## Version Update Process
+## Determining the Next Version
 
-### 1. Determine Version Bump
+To choose the next version number, review the set of changes since the last release and classify them with the MAJOR/MINOR/PATCH rules above.
 
-Review all changes since the last release:
+Release execution steps (editing version files, changelog updates, tagging, build, and publish) are documented in [RELEASE.md](RELEASE.md).
 
-```bash
-# View commits since last tag
-git log $(git describe --tags --abbrev=0)..HEAD --oneline
+## Commit Conventions
 
-# View changes since last tag
-git diff $(git describe --tags --abbrev=0)..HEAD
-```
+SPFlow uses [Conventional Commits](https://www.conventionalcommits.org/) to make release intent explicit.
 
-Ask yourself:
-- Are there any breaking changes? → **MAJOR**
-- Are there new features? → **MINOR**
-- Only bug fixes? → **PATCH**
-
-### 2. Update Version Number
-
-Edit `spflow/__init__.py`:
-
-```python
-__version__ = "X.Y.Z"
-```
-
-### 3. Update CHANGELOG.md
-
-Add entry under `## [Unreleased]` or create new version section:
-
-```markdown
-## [X.Y.Z] - YYYY-MM-DD
-
-### Added
-- New features and capabilities
-
-### Changed
-- Changes to existing functionality
-
-### Deprecated
-- Soon-to-be removed features
-
-### Removed
-- Removed features
-
-### Fixed
-- Bug fixes
-
-### Security
-- Security patches
-```
-
-### 4. Commit Version Bump
-
-```bash
-git add spflow/__init__.py CHANGELOG.md
-git commit -m "chore: bump version to X.Y.Z"
-```
-
-### 5. Create Git Tag
-
-```bash
-git tag -a vX.Y.Z -m "Release version X.Y.Z"
-git push origin vX.Y.Z
-```
-
-### 6. Build and Publish
-
-```bash
-# Clean previous builds
-rm -rf dist/ build/ *.egg-info
-
-# Build distribution
-python -m build
-
-# Upload to PyPI (requires credentials)
-python -m twine upload dist/*
-```
-
-## Commit Message Conventions
-
-SPFlow follows [Conventional Commits](https://www.conventionalcommits.org/) for automatic changelog generation and semantic release:
-
-### Format
-```
-<type>[optional scope]: <description>
-
-[optional body]
-
-[optional footer(s)]
-```
-
-### Types
-
-- `feat:` - New feature (MINOR version bump)
-- `fix:` - Bug fix (PATCH version bump)
-- `docs:` - Documentation changes (PATCH version bump)
-- `style:` - Code style changes (formatting, no logic change) (PATCH)
-- `refactor:` - Code refactoring without feature/bug changes (PATCH)
-- `perf:` - Performance improvements (PATCH/MINOR depending on scope)
-- `test:` - Adding or updating tests (no version bump)
-- `chore:` - Maintenance tasks (no version bump)
-- `ci:` - CI/CD changes (no version bump)
-- `build:` - Build system changes (no version bump)
-- `revert:` - Revert previous commit (depends on reverted change)
-
-### Breaking Changes
-
-Add `BREAKING CHANGE:` in commit footer or `!` after type to indicate MAJOR version bump:
-
-```
-feat!: remove deprecated maximum_likelihood_estimation function
-
-BREAKING CHANGE: Use mle() instead of maximum_likelihood_estimation()
-```
-
-### Scopes
-
-Optional scopes to specify what changed:
-
-- `modules:` - Changes to module implementations
-- `learn:` - Learning algorithms
-- `leaf:` - Leaf distributions
-- `rat:` - RAT-SPN specific
-- `deps:` - Dependency updates
-
-### Examples
-
-```bash
-# New feature (MINOR bump)
-git commit -m "feat(modules): add Gamma leaf distribution"
-
-# Bug fix (PATCH bump)
-git commit -m "fix(dispatch): correct cache initialization bug"
-
-# Breaking change (MAJOR bump)
-git commit -m "feat(modules)!: remove deprecated Sum module
-
-BREAKING CHANGE: Use ElementwiseSum instead of Sum"
-
-# Documentation (PATCH bump)
-git commit -m "docs: update RAT-SPN usage examples"
-
-# Refactoring (PATCH bump)
-git commit -m "refactor(leaf): simplify Normal distribution implementation"
-
-# No version bump
-git commit -m "test: add integration tests for EM algorithm"
-git commit -m "chore: update development dependencies"
-```
+The authoritative commit format, types, scopes, and examples are documented in [CONTRIBUTING.md](CONTRIBUTING.md#commit-conventions).
 
 ## Dependency Version Policy
 
@@ -268,19 +128,8 @@ def old_function():
 
 For critical bugs in production:
 
-1. Create branch from release tag
+1. Create branch from the stable `main` release tag
 2. Apply minimal fix
 3. Bump PATCH version
 4. Create new tag and release
-5. Merge back to main branch
-
-## Release Checklist
-
-Before each release:
-
-- [ ] All tests pass (`pytest -n 4`)
-- [ ] Code is formatted (`black spflow tests`)
-- [ ] CHANGELOG.md is updated
-- [ ] Version in `spflow/__init__.py` is updated
-- [ ] Git tag created
-- [ ] Package built and uploaded to PyPI
+5. Merge back to both `main` and `develop`

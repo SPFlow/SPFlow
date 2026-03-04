@@ -129,9 +129,9 @@ More examples can be found in the [User Guide](https://spflow.github.io/guides/u
 
 - **[User Guide](docs/source/guides/user_guide.ipynb)**: Comprehensive notebook with examples covering model
   construction, training, inference, and advanced use cases
-- **[Contributing Guide](CONTRIBUTING.md)**: Guidelines for contributing to SPFlow
-- **[Versioning Guide](VERSIONING.md)**: Semantic versioning and commit conventions
-- **[Release Guide](RELEASE.md)**: Release process documentation
+- **[Contributing Guide](CONTRIBUTING.md)**: Contributor workflow, coding standards, PR process, and commit conventions
+- **[Versioning Guide](VERSIONING.md)**: Semantic versioning and deprecation policy
+- **[Release Guide](RELEASE.md)**: Maintainer runbook for creating and publishing releases
 
 ## Development Status
 
