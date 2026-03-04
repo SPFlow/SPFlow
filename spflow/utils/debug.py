@@ -68,7 +68,7 @@ def _format_values(x: Tensor, max_values: int) -> str:
     if flat.is_floating_point():
         finite = flat[torch.isfinite(flat)]
         flat = finite if finite.numel() > 0 else flat
-    vals = flat[: max_values].tolist()
+    vals = flat[:max_values].tolist()
     return str([float(v) for v in vals])
 
 
@@ -155,8 +155,7 @@ def trace_tensor_delta(name: str, before: Tensor | None, after: Tensor | None) -
         before_shape = tuple(before.shape)
         after_shape = tuple(after.shape)
         print(
-            f"[{_TRACE_PREFIX}][TRACE] {name}: "
-            f"shape mismatch before={before_shape} after={after_shape}",
+            f"[{_TRACE_PREFIX}][TRACE] {name}: " f"shape mismatch before={before_shape} after={after_shape}",
             flush=True,
         )
         return

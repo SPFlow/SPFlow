@@ -173,13 +173,18 @@ class Binomial(LeafModule):
         self.probs = params_dict["probs"]  # Uses property setter
 
     @property
-    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+    def _torch_distribution_class_with_differentiable_sampling(
+        self,
+    ) -> type[torch.distributions.Distribution]:
         if self.differentiable_sampling_method == BinomialDifferentiableSamplingMethod.NORMAL:
             return BinomialWithDifferentiableSamplingNormal
         elif self.differentiable_sampling_method == BinomialDifferentiableSamplingMethod.SIMPLE:
             return BinomialWithDifferentiableSamplingSIMPLE
         else:
-            raise ValueError(f"Unsupported differentiable sampling method: {self.differentiable_sampling_method}")
+            raise ValueError(
+                f"Unsupported differentiable sampling method: {self.differentiable_sampling_method}"
+            )
+
 
 class BinomialWithDifferentiableSamplingNormal(torch.distributions.Binomial):
     """Binomial distribution with a differentiable rsample via Normal approximation.
@@ -216,6 +221,7 @@ class BinomialWithDifferentiableSamplingNormal(torch.distributions.Binomial):
         # Straight-through estimator: hard forward value, identity gradient.
         return (sample_hard - sample_cont).detach() + sample_cont
 
+
 class BinomialWithDifferentiableSamplingSIMPLE(torch.distributions.Binomial):
     """Binomial distribution with differentiable rsample via SIMPLE over counts {0..n}.
 
@@ -241,7 +247,9 @@ class BinomialWithDifferentiableSamplingSIMPLE(torch.distributions.Binomial):
             raise ValueError(f"total_count must be >= 0, got max(total_count)={max_total}.")
 
         k = torch.arange(max_total + 1, device=device, dtype=dtype)  # (K,)
-        value = k.reshape(max_total + 1, *([1] * len(self.batch_shape))).expand(max_total + 1, *self.batch_shape)
+        value = k.reshape(max_total + 1, *([1] * len(self.batch_shape))).expand(
+            max_total + 1, *self.batch_shape
+        )
 
         # Avoid torch.distributions validation failures by computing log-probs
         # through a base Binomial distribution with validate_args disabled.

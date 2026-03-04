@@ -95,7 +95,9 @@ class Geometric(LeafModule):
         return torch.distributions.Geometric
 
     @property
-    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+    def _torch_distribution_class_with_differentiable_sampling(
+        self,
+    ) -> type[torch.distributions.Distribution]:
         return GeometricWithDifferentiableSamplingSIMPLE
 
     def params(self) -> dict[str, Tensor]:
@@ -169,7 +171,9 @@ class GeometricWithDifferentiableSamplingSIMPLE(torch.distributions.Geometric):
         max_k_int = int(torch.clamp(max_k, min=0, max=self._MAX_SUPPORT).item())
 
         k = torch.arange(max_k_int + 1, device=device, dtype=dtype)  # (K,)
-        value = k.reshape(max_k_int + 1, *([1] * len(self.batch_shape))).expand(max_k_int + 1, *self.batch_shape)
+        value = k.reshape(max_k_int + 1, *([1] * len(self.batch_shape))).expand(
+            max_k_int + 1, *self.batch_shape
+        )
 
         base_dist = torch.distributions.Geometric(probs=probs, validate_args=False)
         logits = base_dist.log_prob(value).movedim(0, -1)

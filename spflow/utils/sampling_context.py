@@ -237,7 +237,9 @@ class SamplingContext:
         self.is_differentiable = is_differentiable
         self.is_mpe = is_mpe
         self.return_leaf_params = bool(return_leaf_params)
-        self._leaf_param_records: list[LeafParamRecord] = [] if leaf_param_records is None else leaf_param_records
+        self._leaf_param_records: list[LeafParamRecord] = (
+            [] if leaf_param_records is None else leaf_param_records
+        )
         if tau <= 0.0:
             raise InvalidParameterError(f"tau must be > 0, got {tau}.")
         self.tau = float(tau)

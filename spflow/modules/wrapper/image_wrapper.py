@@ -304,7 +304,6 @@ class ImageWrapper(Wrapper):
         )
         return self.to_image_format(flat_data)
 
-
     def marginalize(
         self,
         marg_ctx: MarginalizationContext,

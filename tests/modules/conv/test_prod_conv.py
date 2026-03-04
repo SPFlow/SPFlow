@@ -264,7 +264,7 @@ class TestProdConvSample:
             mask=torch.ones(batch_size, out_features, dtype=torch.bool),
             repetition_index=to_one_hot(torch.zeros((batch_size,), dtype=torch.long), dim=-1, dim_size=1),
             is_differentiable=True,
-            )
+        )
         data = torch.full((batch_size, height * width), float("nan"))
         samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
@@ -292,7 +292,7 @@ class TestProdConvSample:
             mask=mask.clone(),
             repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=1),
             is_differentiable=True,
-            )
+        )
 
         torch.manual_seed(1337)
         samples_a = module._sample(

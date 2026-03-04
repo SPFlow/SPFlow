@@ -175,7 +175,6 @@ class Uniform(LeafModule):
 
 
 class _Uniform(torch.distributions.Uniform):
-
     def mode(self):
         # We deviate from torch here, since torch returns NaN
         raise NotImplementedError("Mode is not defined (not unique) for Uniform distributions")

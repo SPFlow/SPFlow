@@ -262,7 +262,9 @@ def learn_cnet(
         n_features_out = branches[0].out_shape.features
         total_in_channels = sum(b.out_shape.channels for b in branches)
         weights = flat_weights.unsqueeze(0).unsqueeze(-1).unsqueeze(-1)  # (1, IC, 1, 1)
-        weights = repeat(weights, "1 ic 1 1 -> f ic co 1", f=n_features_out, co=out_channels)  # (F, IC, OC, R)
+        weights = repeat(
+            weights, "1 ic 1 1 -> f ic co 1", f=n_features_out, co=out_channels
+        )  # (F, IC, OC, R)
 
         # Normalize weights to sum to 1 along in_channels dimension
         weights = weights / weights.sum(dim=1, keepdim=True).clamp_min(1e-12)

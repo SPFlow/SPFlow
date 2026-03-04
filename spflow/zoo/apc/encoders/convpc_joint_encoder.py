@@ -319,8 +319,7 @@ class ConvPcJointEncoder(JointPcEncoderBase):
             raise InvalidParameterError(f"num_repetitions must be >= 1, got {num_repetitions}.")
         if architecture != "reference":
             raise InvalidParameterError(
-                f"Unsupported Conv-PC APC architecture '{architecture}'. "
-                "Only 'reference' is available."
+                f"Unsupported Conv-PC APC architecture '{architecture}'. " "Only 'reference' is available."
             )
         if depth < 2:
             raise InvalidParameterError(f"reference architecture requires depth >= 2, got depth={depth}.")

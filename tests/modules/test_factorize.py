@@ -322,9 +322,7 @@ def test_multidistribution_input():
 
     # Create data tensor to populate with samples
     data_to_sample = torch.full((1, out_features_1 + out_features_2), torch.nan)
-    channel_index = torch.randint(
-        low=0, high=module.out_shape.channels, size=(1, module.out_shape.features)
-    )
+    channel_index = torch.randint(low=0, high=module.out_shape.channels, size=(1, module.out_shape.features))
     mask = torch.full((1, module.out_shape.features), True, dtype=torch.bool)
     repetition_index = torch.randint(low=0, high=num_reps, size=(1,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
