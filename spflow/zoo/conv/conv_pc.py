@@ -339,7 +339,6 @@ class ConvPc(Module):
 
         return data
 
-
     def _expectation_maximization_step(
         self,
         data: Tensor,

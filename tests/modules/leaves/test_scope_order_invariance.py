@@ -288,9 +288,9 @@ class TestScopeOrderInvariance:
             )
             samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
-            assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
-                f"For permutation {list(perm)}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
-            )
+            assert torch.allclose(
+                samples, expected, rtol=0.0, atol=0.0
+            ), f"For permutation {list(perm)}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
 
     def test_scope_order_with_multiple_channels(self):
         """Test scope order invariance with multiple output channels."""
@@ -319,9 +319,9 @@ class TestScopeOrderInvariance:
             )
             samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
-            assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
-            )
+            assert torch.allclose(
+                samples, expected, rtol=0.0, atol=0.0
+            ), f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
 
     def test_scope_order_with_multiple_repetitions(self):
         """Test scope order invariance with multiple repetitions."""
@@ -350,9 +350,9 @@ class TestScopeOrderInvariance:
             )
             samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
-            assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
-            )
+            assert torch.allclose(
+                samples, expected, rtol=0.0, atol=0.0
+            ), f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
 
     def test_log_likelihood_always_one(self):
         """Test that the leaf always outputs probability 1 (log_prob 0) for all inputs."""
@@ -397,9 +397,9 @@ class TestScopeOrderInvariance:
             )
             samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
-            assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
-            )
+            assert torch.allclose(
+                samples, expected, rtol=0.0, atol=0.0
+            ), f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
 
     def test_mpe_sampling_with_scope_permutations(self):
         """Test MPE (most probable explanation) sampling with different scope orders."""
@@ -428,9 +428,9 @@ class TestScopeOrderInvariance:
             )
             samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
-            assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
-            )
+            assert torch.allclose(
+                samples, expected, rtol=0.0, atol=0.0
+            ), f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
 
     def test_non_contiguous_scope(self):
         """Test with non-contiguous scope indices (e.g., [0, 2, 5]).
@@ -497,6 +497,6 @@ class TestScopeOrderInvariance:
             )
             samples = leaf._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
 
-            assert torch.allclose(samples, expected, rtol=0.0, atol=0.0), (
-                f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"
-            )
+            assert torch.allclose(
+                samples, expected, rtol=0.0, atol=0.0
+            ), f"For permutation {perm}, expected {expected[0].tolist()}, got {samples[0].tolist()}"

@@ -92,7 +92,9 @@ class Bernoulli(LeafModule):
         return torch.distributions.Bernoulli
 
     @property
-    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+    def _torch_distribution_class_with_differentiable_sampling(
+        self,
+    ) -> type[torch.distributions.Distribution]:
         """Return a distribution class that supports differentiable sampling."""
         return BernoulliWithDifferentiableSampling
 

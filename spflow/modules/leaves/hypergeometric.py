@@ -230,7 +230,9 @@ class _HypergeometricDistributionWithDifferentiableSampling(_HypergeometricDistr
 
         k_values = torch.arange(global_min, global_max + 1, device=device, dtype=dtype)  # (K,)
         support_size = int(k_values.numel())
-        value = k_values.reshape(support_size, *([1] * len(self.event_shape))).expand(support_size, *self.event_shape)
+        value = k_values.reshape(support_size, *([1] * len(self.event_shape))).expand(
+            support_size, *self.event_shape
+        )
 
         base_dist = _HypergeometricDistribution(self.K, self.N, self.n, validate_args=False)
         logits = base_dist.log_prob(value).movedim(0, -1)  # (..., K)
@@ -355,7 +357,9 @@ class Hypergeometric(LeafModule):
         return _HypergeometricDistribution
 
     @property
-    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+    def _torch_distribution_class_with_differentiable_sampling(
+        self,
+    ) -> type[torch.distributions.Distribution]:
         return _HypergeometricDistributionWithDifferentiableSampling
 
     def params(self) -> dict[str, Tensor]:

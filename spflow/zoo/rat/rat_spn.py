@@ -322,7 +322,6 @@ class RatSPN(Module, Classifier):
         sampling_ctx: SamplingContext,
         cache: Cache,
     ) -> torch.Tensor:
-
         # if the model only has one root node, we can directly sample from the mixing layer
         if self.n_root_nodes > 1:
             sample_root = self.root_node.inputs

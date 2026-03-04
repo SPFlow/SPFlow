@@ -240,7 +240,7 @@ class TestSumConvSample:
         *,
         is_mpe: bool = False,
         is_differentiable: bool = False,
-        ) -> SamplingContext:
+    ) -> SamplingContext:
         channel_index_int = torch.randint(
             low=0,
             high=module.out_shape.channels,
@@ -308,7 +308,7 @@ class TestSumConvSample:
             module=module,
             batch_size=num_samples,
             is_differentiable=True,
-            )
+        )
         samples = module._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
         assert samples.shape == (num_samples, height * width)
         assert torch.isfinite(samples).all()
@@ -349,7 +349,7 @@ class TestSumConvSample:
             repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=module.out_shape.repetitions),
             is_mpe=False,
             is_differentiable=True,
-            )
+        )
 
         patch_simple_as_categorical_one_hot(monkeypatch)
 
@@ -435,7 +435,7 @@ class TestSumConvSample:
             module=module,
             batch_size=batch_size,
             is_differentiable=True,
-            )
+        )
         out = module._sample(
             data=torch.full((batch_size, 16), float("nan")),
             sampling_ctx=sampling_ctx,
@@ -488,7 +488,7 @@ class TestSumConvSample:
             mask=mask.clone(),
             repetition_index=to_one_hot(repetition_index, dim=-1, dim_size=module.out_shape.repetitions),
             is_differentiable=True,
-            )
+        )
 
         patch_simple_as_categorical_one_hot(monkeypatch)
 

@@ -313,25 +313,25 @@ def test_feature_to_scope():
 
     for i in range(3):
         for j in range(2):
-            assert isinstance(feature_scopes[i, j], Scope), (
-                f"Element at ({i}, {j}) is not a Scope object, got {type(feature_scopes[i, j])}"
-            )
+            assert isinstance(
+                feature_scopes[i, j], Scope
+            ), f"Element at ({i}, {j}) is not a Scope object, got {type(feature_scopes[i, j])}"
 
-    assert feature_scopes[0, 0] == Scope([0]), (
-        f"Feature 0 should map to Scope([0]), got {feature_scopes[0, 0]}"
-    )
-    assert feature_scopes[1, 0] == Scope([1]), (
-        f"Feature 1 should map to Scope([1]), got {feature_scopes[1, 0]}"
-    )
-    assert feature_scopes[2, 0] == Scope([2]), (
-        f"Feature 2 should map to Scope([2]), got {feature_scopes[2, 0]}"
-    )
+    assert feature_scopes[0, 0] == Scope(
+        [0]
+    ), f"Feature 0 should map to Scope([0]), got {feature_scopes[0, 0]}"
+    assert feature_scopes[1, 0] == Scope(
+        [1]
+    ), f"Feature 1 should map to Scope([1]), got {feature_scopes[1, 0]}"
+    assert feature_scopes[2, 0] == Scope(
+        [2]
+    ), f"Feature 2 should map to Scope([2]), got {feature_scopes[2, 0]}"
 
     for i in range(3):
         for j in range(1, 2):
-            assert feature_scopes[i, 0] == feature_scopes[i, j], (
-                f"Feature {i} has different scopes across repetitions: {feature_scopes[i, 0]} vs {feature_scopes[i, j]}"
-            )
+            assert (
+                feature_scopes[i, 0] == feature_scopes[i, j]
+            ), f"Feature {i} has different scopes across repetitions: {feature_scopes[i, 0]} vs {feature_scopes[i, j]}"
 
 
 def test_feature_to_scope_single_repetition():
@@ -387,9 +387,9 @@ def test_feature_to_scope_array_type():
 
     assert isinstance(feature_scopes, np.ndarray), f"Expected np.ndarray, got {type(feature_scopes)}"
 
-    assert feature_scopes.dtype == object or feature_scopes.dtype == Scope, (
-        f"Expected dtype object or Scope, got {feature_scopes.dtype}"
-    )
+    assert (
+        feature_scopes.dtype == object or feature_scopes.dtype == Scope
+    ), f"Expected dtype object or Scope, got {feature_scopes.dtype}"
 
 
 def test_inputs_setter_raises_attribute_error():

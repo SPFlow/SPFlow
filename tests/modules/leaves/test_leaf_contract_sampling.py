@@ -147,14 +147,14 @@ def test_distribution_rsample_produces_finite_values_and_gradients(leaf_ctor, ex
     assert trainable_params, f"{leaf.__class__.__name__} expected to have trainable parameters."
 
     loss = samples.mean()
-    assert loss.requires_grad, (
-        f"{leaf.__class__.__name__}.distribution(...).rsample() must be differentiable."
-    )
+    assert (
+        loss.requires_grad
+    ), f"{leaf.__class__.__name__}.distribution(...).rsample() must be differentiable."
     loss.backward()
 
-    assert any(p.grad is not None and torch.isfinite(p.grad).all() for p in trainable_params), (
-        f"{leaf.__class__.__name__} did not receive finite gradients from rsample()."
-    )
+    assert any(
+        p.grad is not None and torch.isfinite(p.grad).all() for p in trainable_params
+    ), f"{leaf.__class__.__name__} did not receive finite gradients from rsample()."
 
 
 @pytest.mark.parametrize("leaf_ctor", UNSUPPORTED_DIFF_DISTRIBUTION_LEAF_CASES)

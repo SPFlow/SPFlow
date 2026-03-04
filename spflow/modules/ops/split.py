@@ -282,7 +282,6 @@ class Split(Module, ABC):
         )
         return data
 
-
     def marginalize(
         self,
         marg_rvs: list[int],

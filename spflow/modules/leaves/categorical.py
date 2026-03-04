@@ -113,7 +113,9 @@ class Categorical(LeafModule):
         return torch.distributions.Categorical
 
     @property
-    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+    def _torch_distribution_class_with_differentiable_sampling(
+        self,
+    ) -> type[torch.distributions.Distribution]:
         return CategoricalWithDifferentiableSampling
 
     def params(self) -> dict[str, Tensor]:

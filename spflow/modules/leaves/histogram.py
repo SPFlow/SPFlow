@@ -114,7 +114,9 @@ class HistogramDist:
 
         bin_idx_safe = bin_idx.clamp(0, self.nbins - 1)
         densities = self._bin_densities.to(device=x_broadcast.device, dtype=x_broadcast.dtype)  # (F,C,R,B)
-        densities = repeat(rearrange(densities, "f c r b -> 1 f c r b"), "1 f c r b -> n f c r b", n=n_samples)
+        densities = repeat(
+            rearrange(densities, "f c r b -> 1 f c r b"), "1 f c r b -> n f c r b", n=n_samples
+        )
         gathered = rearrange(
             densities.gather(-1, rearrange(bin_idx_safe, "n f c r -> n f c r 1")),
             "n f c r 1 -> n f c r",
@@ -174,6 +176,7 @@ class HistogramDistWithDifferentiableSampling(HistogramDist):
 
         u = torch.rand_like(left)
         return left + u * (right - left)
+
 
 class Histogram(LeafModule):
     """Histogram leaf distribution (continuous piecewise-constant density).

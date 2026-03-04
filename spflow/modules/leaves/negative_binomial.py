@@ -124,7 +124,9 @@ class NegativeBinomial(LeafModule):
         return torch.distributions.NegativeBinomial
 
     @property
-    def _torch_distribution_class_with_differentiable_sampling(self) -> type[torch.distributions.Distribution]:
+    def _torch_distribution_class_with_differentiable_sampling(
+        self,
+    ) -> type[torch.distributions.Distribution]:
         return NegativeBinomialWithDifferentiableSamplingSIMPLE
 
     def params(self) -> dict[str, Tensor]:
@@ -202,7 +204,9 @@ class NegativeBinomialWithDifferentiableSamplingSIMPLE(torch.distributions.Negat
         max_k_int = int(torch.clamp(max_k, min=0, max=self._MAX_SUPPORT).item())
 
         k = torch.arange(max_k_int + 1, device=device, dtype=dtype)  # (K,)
-        value = k.reshape(max_k_int + 1, *([1] * len(self.batch_shape))).expand(max_k_int + 1, *self.batch_shape)
+        value = k.reshape(max_k_int + 1, *([1] * len(self.batch_shape))).expand(
+            max_k_int + 1, *self.batch_shape
+        )
 
         base_dist = torch.distributions.NegativeBinomial(
             total_count=self.total_count, logits=self.logits, validate_args=False

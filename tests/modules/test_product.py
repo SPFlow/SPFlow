@@ -136,9 +136,9 @@ def test_feature_to_scope():
     assert feature_scopes[0, 0] == expected_scope, f"Expected {expected_scope}, got {feature_scopes[0, 0]}"
 
     # Product must not drop feature IDs when collapsing to one output feature.
-    assert set(feature_scopes[0, 0].query) == set(range(out_features)), (
-        "Joined scope should contain all input features"
-    )
+    assert set(feature_scopes[0, 0].query) == set(
+        range(out_features)
+    ), "Joined scope should contain all input features"
 
 
 def test_feature_to_scope_multiple_repetitions():
@@ -165,12 +165,12 @@ def test_feature_to_scope_multiple_repetitions():
     # Repetition-specific bookkeeping must not alter the represented variable set.
     for r in range(num_reps):
         expected_scope = Scope.join_all(leaf.feature_to_scope[:, r])
-        assert feature_scopes[0, r] == expected_scope, (
-            f"Repetition {r}: expected {expected_scope}, got {feature_scopes[0, r]}"
-        )
-        assert set(feature_scopes[0, r].query) == set(range(out_features)), (
-            f"Repetition {r}: joined scope should contain all features"
-        )
+        assert (
+            feature_scopes[0, r] == expected_scope
+        ), f"Repetition {r}: expected {expected_scope}, got {feature_scopes[0, r]}"
+        assert set(feature_scopes[0, r].query) == set(
+            range(out_features)
+        ), f"Repetition {r}: joined scope should contain all features"
 
 
 def test_feature_to_scope_multiple_inputs():
@@ -202,6 +202,6 @@ def test_feature_to_scope_multiple_inputs():
     # Disjoint child scopes should union cleanly in the parent scope map.
     total_features = out_features_1 + out_features_2
     for r in range(num_reps):
-        assert set(feature_scopes[0, r].query) == set(range(total_features)), (
-            f"Repetition {r}: joined scope should contain all {total_features} features"
-        )
+        assert set(feature_scopes[0, r].query) == set(
+            range(total_features)
+        ), f"Repetition {r}: joined scope should contain all {total_features} features"

@@ -219,7 +219,9 @@ def test_leaf_log_likelihood_shape_check_and_categorical_param_check():
 
     data = torch.tensor([[1.0], [2.0]])
     with pytest.raises(ShapeError):
-        qpc_cat._leaf_log_likelihood(data, torch.zeros(2, qpc_cat.num_units, 3))  # pylint: disable=protected-access
+        qpc_cat._leaf_log_likelihood(
+            data, torch.zeros(2, qpc_cat.num_units, 3)
+        )  # pylint: disable=protected-access
 
     with pytest.raises(ShapeError):
         qpc_cat._leaf_log_likelihood(  # pylint: disable=protected-access
