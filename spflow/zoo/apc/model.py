@@ -72,7 +72,8 @@ class AutoencodingPC(nn.Module):
             tau: Optional sampling temperature override.
 
         Returns:
-            Reconstructed/sample ``x`` tensor.
+            Reconstructed/sample ``x`` tensor. Any output scaling is
+            caller-managed; this method does not apply range transforms.
         """
         trace_tensor("apc.decode.z_in", z)
         tau_eff = self.config.sample_tau if tau is None else tau
@@ -81,8 +82,6 @@ class AutoencodingPC(nn.Module):
             trace_tensor("apc.decode.x_rec", x_rec)
             return x_rec
         x_rec = self.decoder(z)
-        if x_rec.dim() > 2:
-            x_rec = (x_rec + 1.0) / 2.0 * (2**self.config.n_bits - 1)
         trace_tensor("apc.decode.x_rec", x_rec)
         return x_rec
 

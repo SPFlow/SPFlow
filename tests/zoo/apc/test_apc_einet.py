@@ -16,7 +16,6 @@ def _build_encoder() -> EinetJointEncoder:
         depth=1,
         num_repetitions=1,
         layer_type="linsum",
-        structure="top-down",
     )
 
 
@@ -127,11 +126,10 @@ def test_einet_posterior_sampling_ctx_is_differentiable() -> None:
     x = torch.randn(4, 4)
     x_flat = encoder._flatten_x(x)
 
-    z, sampling_ctx = encoder._posterior_sample(
+    z, sampling_ctx = encoder._posterior_sample_with_ctx(
         x_flat,
         mpe=False,
         tau=0.6,
-        return_sampling_ctx=True,
     )
 
     assert z.shape == (4, 2)

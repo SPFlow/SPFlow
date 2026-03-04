@@ -98,6 +98,14 @@ class _RecordingDecoder(nn.Module):
         return z
 
 
+class _FixedImageDecoder(nn.Module):
+    """Decoder stub returning a fixed image-like tensor to test decode scaling contract."""
+
+    def forward(self, z: Tensor) -> Tensor:
+        base = torch.tensor([-0.5, 0.0, 0.5, 1.0], dtype=z.dtype, device=z.device).view(1, 1, 2, 2)
+        return base.expand(z.shape[0], -1, -1, -1).clone()
+
+
 class _NoStatsEncoder(_ToyStatsEncoder):
     """Encoder stub that does not honor return_latent_stats contract."""
 
@@ -124,7 +132,6 @@ def _build_einet_model(
         depth=1,
         num_repetitions=1,
         layer_type="linsum",
-        structure="top-down",
     )
     decoder = MLPDecoder1D(latent_dim=2, output_dim=4, hidden_dims=(16,))
     config = ApcConfig(
@@ -262,6 +269,23 @@ def test_apc_loss_components_train_decode_mpe_uses_decode_latent() -> None:
     torch.testing.assert_close(decoder.last_input, expected_decode_latent, rtol=0.0, atol=0.0)
     assert "mu" in losses
     assert not torch.equal(decoder.last_input, losses["mu"])
+
+
+def test_apc_decode_does_not_rescale_decoder_output() -> None:
+    model = AutoencodingPC(
+        encoder=_ToyStatsEncoder(),
+        decoder=_FixedImageDecoder(),
+        config=ApcConfig(
+            latent_dim=2,
+            rec_loss="mse",
+            sample_tau=1.0,
+            loss_weights=ApcLossWeights(rec=0.0, kld=0.0, nll=0.0),
+        ),
+    )
+    z = torch.randn(3, 2)
+    x_rec = model.decode(z)
+    expected = _FixedImageDecoder()(z)
+    torch.testing.assert_close(x_rec, expected, rtol=0.0, atol=0.0)
 
 
 def test_apc_loss_components_fails_fast_kl_without_latent_stats() -> None:

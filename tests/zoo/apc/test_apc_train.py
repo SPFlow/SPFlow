@@ -21,7 +21,6 @@ def _build_model() -> AutoencodingPC:
         depth=1,
         num_repetitions=1,
         layer_type="linsum",
-        structure="top-down",
     )
     decoder = MLPDecoder1D(latent_dim=2, output_dim=4, hidden_dims=(16,))
     config = ApcConfig(

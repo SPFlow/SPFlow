@@ -61,30 +61,20 @@ class QuantizeToNBits:
         return scale_to_n_bits(x, n_bits=self.n_bits)
 
 
-class ScaleByNBits:
-    """Picklable torchvision transform applying 1 / (2^n_bits - 1) scaling."""
-
-    def __init__(self, n_bits: int) -> None:
-        self.n_bits = int(n_bits)
-        self._scale = 1.0 / float(2**self.n_bits - 1)
-
-    def __call__(self, x: torch.Tensor) -> torch.Tensor:
-        return x * self._scale
-
-
 def flatten_image_tensor(x: torch.Tensor) -> torch.Tensor:
     """Flatten image tensor from ``(C, H, W)`` to ``(C*H*W,)``."""
     return x.view(-1)
 
 
 def scale_to_n_bits(x: torch.Tensor, *, n_bits: int) -> torch.Tensor:
-    """Quantize tensor to integer counts in ``[0, 2^n_bits - 1]``.
+    """Quantize tensor to integer-valued counts in ``[0, 2^n_bits - 1]``.
 
     This mirrors the reference APC preprocessing (`to_255_int` for 8-bit MNIST),
     i.e. multiply then integer-cast.
     """
     max_value = float(2**n_bits - 1)
-    return (x * max_value).to(dtype=torch.int32)
+    # Keep floating dtype for downstream NaN handling while enforcing integer values.
+    return torch.floor(x * max_value)
 
 
 def parse_args() -> argparse.Namespace:
@@ -291,13 +281,6 @@ def parse_args() -> argparse.Namespace:
         help="Einet layer type.",
     )
     parser.add_argument(
-        "--structure",
-        type=str,
-        default="top-down",
-        choices=("top-down", "bottom-up"),
-        help="Einet structure mode.",
-    )
-    parser.add_argument(
         "--encoder",
         type=str,
         default="convpc",
@@ -367,9 +350,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--nn-decoder-out-activation",
         type=str,
-        default="tanh",
-        choices=("identity", "linear", "tanh", "sigmoid"),
-        help="NN decoder output activation (reference MNIST default: linear).",
+        default="auto",
+        choices=("auto", "identity", "linear", "tanh", "sigmoid"),
+        help=(
+            "NN decoder output activation. 'auto' picks identity for count-space data "
+            "and tanh for normalized [-1, 1] data."
+        ),
     )
     parser.add_argument(
         "--rec-loss",
@@ -457,12 +443,10 @@ def _subset_mnist_by_classes(
     return torch.utils.data.Subset(dataset, keep_indices)
 
 
-def build_mnist_loaders(
-    args: argparse.Namespace, *, flatten: bool, normalize_data: bool
-) -> tuple[DataLoader, DataLoader, DataLoader]:
-    """Create train/validation/test DataLoaders for MNIST."""
+def build_mnist_transform(args: argparse.Namespace, *, flatten: bool, normalize_data: bool) -> Any:
+    """Build the torchvision transform pipeline for MNIST preprocessing."""
     try:
-        from torchvision import datasets, transforms
+        from torchvision import transforms
     except ImportError as exc:
         raise RuntimeError(
             "torchvision is required for MNIST training script. Install it in the environment first."
@@ -472,16 +456,30 @@ def build_mnist_loaders(
         transforms.Resize((args.image_size, args.image_size)),
         transforms.ToTensor(),
     ]
+
     if normalize_data:
         transforms_list.append(transforms.Normalize([0.5], [0.5]))
-    else:
+    elif args.dist_data == "binomial":
         transforms_list.append(QuantizeToNBits(args.n_bits))
-    transforms_list.append(ScaleByNBits(args.n_bits))
 
     if flatten:
         transforms_list.append(transforms.Lambda(flatten_image_tensor))
 
-    transform = transforms.Compose(transforms_list)
+    return transforms.Compose(transforms_list)
+
+
+def build_mnist_loaders(
+    args: argparse.Namespace, *, flatten: bool, normalize_data: bool
+) -> tuple[DataLoader, DataLoader, DataLoader]:
+    """Create train/validation/test DataLoaders for MNIST."""
+    try:
+        from torchvision import datasets
+    except ImportError as exc:
+        raise RuntimeError(
+            "torchvision is required for MNIST training script. Install it in the environment first."
+        ) from exc
+
+    transform = build_mnist_transform(args, flatten=flatten, normalize_data=normalize_data)
 
     train_full = datasets.MNIST(
         root=str(args.data_dir),
@@ -554,6 +552,38 @@ def build_mnist_loaders(
         pin_memory=pin_memory,
     )
     return train_loader, val_loader, test_loader
+
+
+def resolve_nn_decoder_out_activation(*, requested: str, normalize_data: bool, rec_loss: str) -> str:
+    """Resolve NN decoder output activation, handling ``auto`` defaults."""
+    if requested != "auto":
+        return requested
+    if rec_loss == "bce":
+        return "sigmoid"
+    return "tanh" if normalize_data else "identity"
+
+
+def validate_data_and_decoder_scaling(
+    *,
+    dist_data: str,
+    rec_loss: str,
+    normalize_data: bool,
+    decoder_kind: str,
+    nn_out_activation: str,
+) -> None:
+    """Fail fast for incompatible data/decoder/loss range combinations."""
+    if rec_loss == "bce" and not normalize_data and dist_data == "binomial":
+        raise ValueError(
+            "BCE reconstruction with binomial count-space inputs is incompatible. "
+            "Use --normalize-data with dist_data=normal/bernoulli, or switch to --rec-loss mse."
+        )
+
+    if decoder_kind == "nn" and rec_loss == "mse" and not normalize_data and dist_data == "binomial":
+        if nn_out_activation in {"tanh", "sigmoid"}:
+            raise ValueError(
+                "NN decoder activation is range-bounded but binomial data is in count-space [0, 2^n_bits-1]. "
+                "Use --nn-decoder-out-activation identity (or linear), or enable normalization."
+            )
 
 
 def make_leaf_factory(dist: str, *, total_count: float) -> LeafFactory:
@@ -637,7 +667,6 @@ def build_model(args: argparse.Namespace) -> AutoencodingPC:
             depth=args.depth,
             num_repetitions=args.num_repetitions,
             layer_type=args.layer_type,
-            structure=args.structure,
             x_leaf_factory=x_leaf_factory,
             z_leaf_factory=z_leaf_factory,
         )
@@ -765,6 +794,33 @@ def _to_image_batch(x: torch.Tensor, *, image_size: int) -> torch.Tensor:
     )
 
 
+def collect_visualization_batch(
+    *,
+    loader: DataLoader,
+    device: torch.device,
+    num_vis: int,
+) -> torch.Tensor:
+    """Collect up to ``num_vis`` samples from the dataloader for visualization."""
+    if num_vis <= 0:
+        raise ValueError(f"--num-vis must be >= 1, got {num_vis}.")
+
+    chunks: list[torch.Tensor] = []
+    collected = 0
+    for batch in loader:
+        x = _extract_batch_tensor(batch).to(device)
+        if x.shape[0] <= 0:
+            continue
+        take = min(num_vis - collected, x.shape[0])
+        chunks.append(x[:take])
+        collected += take
+        if collected >= num_vis:
+            break
+
+    if not chunks:
+        raise RuntimeError("Unable to collect visualization samples from test loader.")
+    return torch.cat(chunks, dim=0)
+
+
 def save_reconstruction_visualization(
     *,
     model: AutoencodingPC,
@@ -773,6 +829,10 @@ def save_reconstruction_visualization(
     output_path: Path,
     num_vis: int,
     image_size: int,
+    dist_data: str,
+    normalize_data: bool,
+    n_bits: int,
+    x_batch: torch.Tensor | None = None,
 ) -> None:
     """Save a two-row reconstruction grid (data/reconstruction)."""
     if num_vis <= 0:
@@ -783,9 +843,10 @@ def save_reconstruction_visualization(
     except ImportError as exc:
         raise RuntimeError("torchvision is required to save reconstruction visualizations.") from exc
 
-    first_batch = next(iter(test_loader))
-    x_batch = _extract_batch_tensor(first_batch).to(device)
-    x_batch = x_batch[: min(num_vis, x_batch.shape[0])]
+    if x_batch is None:
+        x_batch = collect_visualization_batch(loader=test_loader, device=device, num_vis=num_vis)
+    else:
+        x_batch = x_batch.to(device)[: min(num_vis, x_batch.shape[0])]
 
     model.eval()
     with torch.no_grad():
@@ -799,11 +860,22 @@ def save_reconstruction_visualization(
 
     x_img = _to_image_batch(x_batch.detach().cpu(), image_size=image_size)
     x_rec_img = _to_image_batch(x_rec.detach().cpu(), image_size=image_size)
+    if normalize_data:
+        x_img = ((x_img.float() + 1.0) * 0.5).clamp(0.0, 1.0)
+        x_rec_img = ((x_rec_img.float() + 1.0) * 0.5).clamp(0.0, 1.0)
+    elif dist_data == "binomial":
+        denom = float(2**n_bits - 1)
+        x_img = (x_img.float() / denom).clamp(0.0, 1.0)
+        x_rec_img = (x_rec_img.float() / denom).clamp(0.0, 1.0)
+    else:
+        x_img = x_img.float().clamp(0.0, 1.0)
+        x_rec_img = x_rec_img.float().clamp(0.0, 1.0)
+
     grid = torch.cat([x_img, x_rec_img], dim=0)
     grid = make_grid(
-        grid.float(),
+        grid,
         nrow=x_img.shape[0],
-        normalize=True,
+        normalize=False,
         padding=1,
         pad_value=1.0,
     )
@@ -885,6 +957,20 @@ def _unwrap_fabric_module(model: nn.Module) -> nn.Module:
     return inner if isinstance(inner, nn.Module) else model
 
 
+def build_intermediate_vis_steps(iters: int) -> dict[int, str]:
+    """Return training steps for intermediate visualizations at 33/50/66%."""
+    if iters <= 0:
+        raise ValueError(f"iters must be >= 1, got {iters}.")
+
+    step_to_labels: dict[int, list[str]] = {}
+    for ratio, label in ((0.33, "33"), (0.50, "50"), (0.66, "66")):
+        step = int(round(iters * ratio))
+        step = max(1, min(iters, step))
+        step_to_labels.setdefault(step, []).append(label)
+
+    return {step: "-".join(labels) for step, labels in sorted(step_to_labels.items())}
+
+
 def train_apc_iters(
     *,
     fabric: "Fabric",
@@ -900,6 +986,8 @@ def train_apc_iters(
     scheduler: LRScheduler | ReduceLROnPlateau | None,
     warmup_enabled: bool,
     warmup_steps: int,
+    intermediate_vis_steps: dict[int, str] | None = None,
+    on_intermediate_vis: Callable[[int, str, nn.Module], None] | None = None,
 ) -> list[dict[str, float]]:
     """Train APC for a fixed number of optimization iterations."""
     if iters <= 0:
@@ -960,6 +1048,11 @@ def train_apc_iters(
             }
         )
 
+        if intermediate_vis_steps is not None and on_intermediate_vis is not None:
+            pct_label = intermediate_vis_steps.get(step)
+            if pct_label is not None:
+                on_intermediate_vis(step, pct_label, model)
+
         if log_every > 0 and step % log_every == 0:
             print(
                 "[APC] Iter {step}: train_total={total:.4f}, train_rec={rec:.4f}, "
@@ -1002,6 +1095,19 @@ def main() -> None:
         normalize_data = args.dist_data == "normal"
     else:
         normalize_data = args.normalize_data
+    decoder_kind = ("nn" if args.encoder == "convpc" else "mlp") if args.decoder == "auto" else args.decoder
+    args.nn_decoder_out_activation = resolve_nn_decoder_out_activation(
+        requested=args.nn_decoder_out_activation,
+        normalize_data=normalize_data,
+        rec_loss=args.rec_loss,
+    )
+    validate_data_and_decoder_scaling(
+        dist_data=args.dist_data,
+        rec_loss=args.rec_loss,
+        normalize_data=normalize_data,
+        decoder_kind=decoder_kind,
+        nn_out_activation=args.nn_decoder_out_activation,
+    )
 
     trace_enabled = args.debug if args.trace is None else bool(args.trace)
     configure_trace(
@@ -1014,6 +1120,9 @@ def main() -> None:
 
     device = resolve_device(args.device)
     fabric = build_fabric(device=device, precision=args.precision)
+    run_dir = args.output_dir
+    run_dir.mkdir(parents=True, exist_ok=True)
+
     model = build_model(args)
     train_loader, val_loader, test_loader = build_mnist_loaders(
         args,
@@ -1052,7 +1161,7 @@ def main() -> None:
         print(
             "[APC] Einet: "
             f"depth={args.depth}, num_sums={args.num_sums}, num_leaves={args.num_leaves}, "
-            f"layer_type={args.layer_type}, structure={args.structure}"
+            f"layer_type={args.layer_type}"
         )
     if args.decoder in {"auto", "nn"} and (args.decoder == "nn" or args.encoder == "convpc"):
         print(
@@ -1068,9 +1177,43 @@ def main() -> None:
     first_batch = next(iter(train_loader))
     first_x = _extract_batch_tensor(first_batch)
     trace_tensor("main.first_train_batch.x", first_x)
+    vis_batch = collect_visualization_batch(loader=test_loader, device=device, num_vis=args.num_vis)
+    if vis_batch.shape[0] < args.num_vis:
+        print(
+            "[APC] Visualization sample count reduced: "
+            f"requested={args.num_vis}, available={vis_batch.shape[0]}."
+        )
 
     model, optimizer = fabric.setup(model, optimizer)
     scheduler = build_scheduler(args, optimizer)
+    intermediate_vis_steps = build_intermediate_vis_steps(effective_iters)
+    print(
+        "[APC] Intermediate recon snapshots at "
+        + ", ".join(
+            f"{label}% (iter {step})" for step, label in intermediate_vis_steps.items()
+        )
+    )
+
+    def _save_intermediate_vis(step: int, pct_label: str, model_in_loop: nn.Module) -> None:
+        model_unwrapped = _unwrap_fabric_module(model_in_loop)
+        if not isinstance(model_unwrapped, AutoencodingPC):
+            raise RuntimeError(
+                f"Expected Fabric-wrapped module to be AutoencodingPC, got {type(model_unwrapped)}."
+            )
+        vis_path = run_dir / f"reconstructions_{pct_label}pct.png"
+        save_reconstruction_visualization(
+            model=model_unwrapped,
+            test_loader=test_loader,
+            device=device,
+            output_path=vis_path,
+            num_vis=args.num_vis,
+            image_size=args.image_size,
+            dist_data=args.dist_data,
+            normalize_data=normalize_data,
+            n_bits=args.n_bits,
+            x_batch=vis_batch,
+        )
+        print(f"[APC] Saved intermediate reconstruction visualization to {vis_path}")
 
     history = train_apc_iters(
         fabric=fabric,
@@ -1086,6 +1229,8 @@ def main() -> None:
         scheduler=scheduler,
         warmup_enabled=args.warmup_enabled,
         warmup_steps=warmup_steps,
+        intermediate_vis_steps=intermediate_vis_steps,
+        on_intermediate_vis=_save_intermediate_vis,
     )
 
     test_metrics = evaluate_apc(model, test_loader, batch_size=args.batch_size)
@@ -1096,9 +1241,6 @@ def main() -> None:
         raise RuntimeError(
             f"Expected Fabric-wrapped module to be AutoencodingPC, got {type(model_unwrapped)}."
         )
-
-    run_dir = args.output_dir
-    run_dir.mkdir(parents=True, exist_ok=True)
 
     args_dict = _to_serializable(vars(args))
     config_payload = {
@@ -1141,6 +1283,10 @@ def main() -> None:
         output_path=recon_path,
         num_vis=args.num_vis,
         image_size=args.image_size,
+        dist_data=args.dist_data,
+        normalize_data=normalize_data,
+        n_bits=args.n_bits,
+        x_batch=vis_batch,
     )
 
     print(f"[APC] Saved artifacts to {run_dir}")

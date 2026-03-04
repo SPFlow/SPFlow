@@ -12,18 +12,12 @@ from typing import Callable, Literal
 
 import torch
 from einops import rearrange
-from torch import Tensor, nn
+from torch import Tensor
 
 from spflow.exceptions import InvalidParameterError, ShapeError
 from spflow.modules.leaves import Normal
 from spflow.modules.leaves.leaf import LeafModule
-from spflow.utils.cache import Cache
-from spflow.utils.sampling_context import SamplingContext
-from spflow.zoo.apc.encoders.base import LatentStats
-from spflow.zoo.apc.encoders.latent_stats import (
-    find_unique_latent_record,
-    latent_stats_from_leaf_record,
-)
+from spflow.zoo.apc.encoders.joint_pc_base import JointPcEncoderBase
 from spflow.zoo.einet import Einet
 
 LeafFactory = Callable[[list[int], int, int], LeafModule]
@@ -44,7 +38,7 @@ def _default_normal_leaf(scope_indices: list[int], out_channels: int, num_repeti
     )
 
 
-class EinetJointEncoder(nn.Module):
+class EinetJointEncoder(JointPcEncoderBase):
     """Joint APC encoder using an Einet over concatenated features ``[x, z]``."""
 
     def __init__(
@@ -57,11 +51,8 @@ class EinetJointEncoder(nn.Module):
         depth: int = 1,
         num_repetitions: int = 5,
         layer_type: Literal["einsum", "linsum"] = "linsum",
-        structure: Literal["top-down", "bottom-up"] = "top-down",
         x_leaf_factory: LeafFactory | None = None,
         z_leaf_factory: LeafFactory | None = None,
-        posterior_stat_samples: int = 4,
-        posterior_var_floor: float = 1e-6,
     ) -> None:
         """Initialize a joint Einet-based APC encoder.
 
@@ -73,11 +64,8 @@ class EinetJointEncoder(nn.Module):
             depth: Number of internal Einet product/sum stages.
             num_repetitions: Number of repetitions/channels in the circuit.
             layer_type: Internal sum-product implementation type.
-            structure: Einet structure type. Must be ``"top-down"`` for APC sampling.
             x_leaf_factory: Factory to create the ``X`` leaf module.
             z_leaf_factory: Factory to create the ``Z`` leaf module.
-            posterior_stat_samples: Legacy argument retained for API compatibility.
-            posterior_var_floor: Legacy argument retained for API compatibility.
         """
         super().__init__()
 
@@ -85,19 +73,9 @@ class EinetJointEncoder(nn.Module):
             raise InvalidParameterError(f"num_x_features must be >= 1, got {num_x_features}.")
         if latent_dim <= 0:
             raise InvalidParameterError(f"latent_dim must be >= 1, got {latent_dim}.")
-        if posterior_stat_samples <= 0:
-            raise InvalidParameterError(f"posterior_stat_samples must be >= 1, got {posterior_stat_samples}.")
-        if posterior_var_floor <= 0.0:
-            raise InvalidParameterError(f"posterior_var_floor must be > 0, got {posterior_var_floor}.")
-        if structure != "top-down":
-            raise InvalidParameterError(
-                "EinetJointEncoder requires structure='top-down' because APC encoding/decoding uses sampling."
-            )
 
         self.num_x_features = num_x_features
         self.latent_dim = latent_dim
-        self.posterior_stat_samples = posterior_stat_samples
-        self.posterior_var_floor = posterior_var_floor
 
         self._x_cols = list(range(num_x_features))
         self._z_cols = list(range(num_x_features, num_x_features + latent_dim))
@@ -120,21 +98,8 @@ class EinetJointEncoder(nn.Module):
             depth=depth,
             num_repetitions=num_repetitions,
             layer_type=layer_type,
-            structure=structure,
+            structure="top-down",
         )
-
-    @staticmethod
-    def _validate_leaf_scope(*, leaf: LeafModule, expected_scope: list[int], role: str) -> None:
-        """Validate that a leaf covers exactly the expected variable scope."""
-        if not isinstance(leaf, LeafModule):
-            raise InvalidParameterError(
-                f"{role}_leaf_factory must return LeafModule instances, got {type(leaf)}."
-            )
-        scope_query = list(leaf.scope.query)
-        if set(scope_query) != set(expected_scope) or len(scope_query) != len(expected_scope):
-            raise InvalidParameterError(
-                f"{role}_leaf_factory returned scope {scope_query}, expected scope {expected_scope}."
-            )
 
     def _flatten_x(self, x: Tensor) -> Tensor:
         """Flatten ``x`` to ``(B, num_x_features)`` and validate dimensionality."""
@@ -155,257 +120,3 @@ class EinetJointEncoder(nn.Module):
         if z_flat.shape[1] != self.latent_dim:
             raise ShapeError(f"Expected z to have latent_dim={self.latent_dim}, got {z_flat.shape[1]}.")
         return z_flat
-
-    @staticmethod
-    def _evidence_dtype(*, x_flat: Tensor | None, z_flat: Tensor | None) -> torch.dtype:
-        """Select an evidence dtype from provided tensors, falling back to default dtype."""
-        if x_flat is not None and x_flat.is_floating_point():
-            return x_flat.dtype
-        if z_flat is not None and z_flat.is_floating_point():
-            return z_flat.dtype
-        return torch.get_default_dtype()
-
-    def _build_evidence(
-        self,
-        *,
-        x_flat: Tensor | None,
-        z_flat: Tensor | None,
-        num_samples: int | None = None,
-        device: torch.device | None = None,
-    ) -> Tensor:
-        """Build a joint evidence tensor over ``[X, Z]`` with ``NaN`` for missing blocks.
-
-        ``None`` inputs are converted to all-``NaN`` blocks, enabling conditional
-        likelihood/sampling in the underlying PC.
-        """
-        if x_flat is None and z_flat is None and num_samples is None:
-            raise InvalidParameterError("num_samples must be provided when x_flat and z_flat are None.")
-
-        inferred_batch = num_samples
-        if x_flat is not None:
-            inferred_batch = x_flat.shape[0]
-        if z_flat is not None:
-            if inferred_batch is None:
-                inferred_batch = z_flat.shape[0]
-            elif z_flat.shape[0] != inferred_batch:
-                raise ShapeError(
-                    f"x and z batch sizes must match, got {inferred_batch} and {z_flat.shape[0]}."
-                )
-
-        if inferred_batch is None:
-            raise RuntimeError("Failed to infer batch size for evidence construction.")
-
-        if device is None:
-            if x_flat is not None:
-                device = x_flat.device
-            elif z_flat is not None:
-                device = z_flat.device
-            else:
-                device = self.pc.device
-
-        dtype = self._evidence_dtype(x_flat=x_flat, z_flat=z_flat)
-
-        if x_flat is None:
-            x_flat = torch.full((inferred_batch, self.num_x_features), torch.nan, device=device, dtype=dtype)
-        else:
-            x_flat = x_flat.to(device=device, dtype=dtype)
-
-        if z_flat is None:
-            z_flat = torch.full((inferred_batch, self.latent_dim), torch.nan, device=device, dtype=dtype)
-        else:
-            z_flat = z_flat.to(device=device, dtype=dtype)
-
-        return torch.cat([x_flat, z_flat], dim=1)
-
-    @staticmethod
-    def _flatten_ll(ll: Tensor) -> Tensor:
-        """Normalize PC log-likelihood outputs to shape ``(B,)``."""
-        if ll.dim() < 1:
-            raise ShapeError(f"Expected log-likelihood with batch dimension, got shape {tuple(ll.shape)}.")
-        ll_flat = rearrange(ll, "b ... -> b (...)")
-        if ll_flat.shape[1] != 1:
-            raise ShapeError(
-                f"Expected scalar log-likelihood per sample, got trailing shape {tuple(ll_flat.shape[1:])}."
-            )
-        return ll_flat[:, 0]
-
-    def _posterior_sample(
-        self, x_flat: Tensor, *, mpe: bool, tau: float, return_sampling_ctx: bool = False
-    ) -> Tensor | tuple[Tensor, SamplingContext]:
-        """Sample ``z ~ p(Z|X=x)`` and optionally return sampling context."""
-        evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
-        joint, sampling_ctx = self._sample_joint(
-            evidence=evidence,
-            mpe=mpe,
-            tau=tau,
-            return_sampling_ctx=return_sampling_ctx,
-        )
-        z = joint[:, self._z_cols]
-        if return_sampling_ctx:
-            assert sampling_ctx is not None
-            return z, sampling_ctx
-        return z
-
-    def _sample_joint(
-        self,
-        *,
-        evidence: Tensor,
-        mpe: bool,
-        tau: float,
-        return_sampling_ctx: bool,
-    ) -> tuple[Tensor, SamplingContext | None]:
-        """Sample the joint Einet with differentiable routing semantics."""
-        cache = Cache()
-        # Populate evidence-conditioned likelihood cache before top-down sampling.
-        self.pc.log_likelihood(evidence, cache=cache)
-        batch_size = evidence.shape[0]
-        channel_index = torch.ones(
-            (batch_size, 1, 1), dtype=torch.get_default_dtype(), device=evidence.device
-        )
-        mask = torch.full((batch_size, 1), True, dtype=torch.bool, device=evidence.device)
-        repetition_index = torch.zeros(
-            (batch_size, self.pc.num_repetitions),
-            dtype=torch.get_default_dtype(),
-            device=evidence.device,
-        )
-        repetition_index[:, 0] = 1.0
-        sampling_ctx: SamplingContext | None = SamplingContext(
-            channel_index=channel_index,
-            mask=mask,
-            device=evidence.device,
-            repetition_index=repetition_index,
-            is_mpe=mpe,
-            is_differentiable=True,
-            tau=tau,
-            return_leaf_params=return_sampling_ctx,
-        )
-        joint = self.pc._sample(data=evidence, cache=cache, sampling_ctx=sampling_ctx)
-        if return_sampling_ctx:
-            return joint, sampling_ctx
-        return joint, None
-
-    def _latent_stats_from_leaf_params(self, sampling_ctx: SamplingContext, batch_size: int) -> LatentStats:
-        """Extract exact latent stats and KL from routed latent leaf parameters."""
-        record = find_unique_latent_record(
-            sampling_ctx,
-            leaf_id=id(self._z_leaf),
-            scope_cols=tuple(self._z_cols),
-            batch_size=batch_size,
-            latent_dim=self.latent_dim,
-        )
-        return latent_stats_from_leaf_record(
-            leaf=self._z_leaf,
-            record=record,
-            batch_size=batch_size,
-            latent_dim=self.latent_dim,
-        )
-
-    def encode(
-        self,
-        x: Tensor,
-        *,
-        mpe: bool = False,
-        tau: float = 1.0,
-        return_latent_stats: bool = False,
-    ) -> Tensor | tuple[LatentStats, Tensor]:
-        """Encode observations into latent samples.
-
-        Latent stats are extracted exactly from routed latent leaf parameters.
-        Supported latent leaf families are Normal, Bernoulli, Binomial, and
-        Categorical. Unsupported families raise ``UnsupportedOperationError``.
-
-        Args:
-            x: Observation tensor.
-            mpe: Whether to use deterministic MPE routing. When ``True``, returned
-                ``z`` is deterministic even if ``return_latent_stats=True``.
-            tau: Temperature for differentiable sampling. Used for stochastic
-                sampling when ``mpe=False``.
-            return_latent_stats: When ``True``, return ``(LatentStats, z)``.
-
-        Returns:
-            Either ``z`` or ``(LatentStats, z)``.
-        """
-        x_flat = self._flatten_x(x)
-        if not return_latent_stats:
-            z = self._posterior_sample(x_flat, mpe=mpe, tau=tau, return_sampling_ctx=False)
-            return z
-
-        z_and_ctx = self._posterior_sample(x_flat, mpe=mpe, tau=tau, return_sampling_ctx=True)
-        if not isinstance(z_and_ctx, tuple):
-            raise RuntimeError("Expected (z, sampling_ctx) from posterior sampling.")
-        z_first, sampling_ctx = z_and_ctx
-        batch_size = z_first.shape[0]
-        stats = self._latent_stats_from_leaf_params(sampling_ctx=sampling_ctx, batch_size=batch_size)
-        if mpe:
-            z_samples = z_first
-        elif isinstance(self._z_leaf, Normal):
-            # Keep historical Normal behavior for stochastic encoding parity.
-            z_samples = tau * torch.randn_like(stats.mu) * torch.exp(0.5 * stats.logvar) + stats.mu
-        else:
-            # For non-Normal leaves, expose traversal samples directly.
-            z_samples = z_first
-        return stats, z_samples
-
-    def decode(
-        self,
-        z: Tensor,
-        *,
-        x: Tensor | None = None,
-        mpe: bool = False,
-        tau: float = 1.0,
-        fill_evidence: bool = False,
-    ) -> Tensor:
-        """Decode latents by sampling/imputing the ``X`` block given ``Z`` evidence.
-
-        Args:
-            z: Latent tensor.
-            x: Optional partial data evidence. Finite values are observed entries.
-            mpe: Whether to use deterministic MPE routing.
-            tau: Temperature for differentiable sampling.
-            fill_evidence: If ``True``, preserve finite entries from ``x`` in output.
-        """
-        z_flat = self._flatten_z(z)
-        x_flat = None if x is None else self._flatten_x(x)
-        evidence = self._build_evidence(x_flat=x_flat, z_flat=z_flat)
-        joint, _ = self._sample_joint(evidence=evidence, mpe=mpe, tau=tau, return_sampling_ctx=False)
-
-        x_rec = joint[:, self._x_cols]
-        if fill_evidence and x_flat is not None:
-            finite_mask = torch.isfinite(x_flat)
-            x_rec = torch.where(finite_mask, x_flat.to(x_rec.dtype), x_rec)
-        return x_rec
-
-    def joint_log_likelihood(self, x: Tensor, z: Tensor) -> Tensor:
-        """Compute per-sample joint log-likelihood ``log p(x, z)``."""
-        x_flat = self._flatten_x(x)
-        z_flat = self._flatten_z(z)
-        evidence = self._build_evidence(x_flat=x_flat, z_flat=z_flat)
-        ll = self.pc.log_likelihood(evidence)
-        return self._flatten_ll(ll)
-
-    def log_likelihood_x(self, x: Tensor) -> Tensor:
-        """Compute per-sample marginal log-likelihood ``log p(x)``."""
-        x_flat = self._flatten_x(x)
-        evidence = self._build_evidence(x_flat=x_flat, z_flat=None)
-        ll = self.pc.log_likelihood(evidence)
-        return self._flatten_ll(ll)
-
-    def sample_prior_z(self, num_samples: int, *, tau: float = 1.0) -> Tensor:
-        """Sample latent variables from the model prior over ``Z``."""
-        if num_samples <= 0:
-            raise InvalidParameterError(f"num_samples must be >= 1, got {num_samples}.")
-        evidence = self._build_evidence(
-            x_flat=None, z_flat=None, num_samples=num_samples, device=self.pc.device
-        )
-        joint, _ = self._sample_joint(evidence=evidence, mpe=False, tau=tau, return_sampling_ctx=False)
-        z = joint[:, self._z_cols]
-        return z
-
-    def latent_stats(self, x: Tensor, *, tau: float = 1.0) -> LatentStats:
-        """Return exact latent stats from routed latent leaf parameters."""
-        x_flat = self._flatten_x(x)
-        z_and_ctx = self._posterior_sample(x_flat, mpe=False, tau=tau, return_sampling_ctx=True)
-        if not isinstance(z_and_ctx, tuple):
-            raise RuntimeError("Expected (z, sampling_ctx) from posterior sampling.")
-        z_first, sampling_ctx = z_and_ctx
-        return self._latent_stats_from_leaf_params(sampling_ctx=sampling_ctx, batch_size=z_first.shape[0])

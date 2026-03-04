@@ -15,10 +15,6 @@ from spflow.zoo.apc.encoders.base import LatentStats
 
 
 def _expect_matrix(param: Tensor, *, name: str, batch_size: int, latent_dim: int) -> Tensor:
-    if param.dim() != 2:
-        raise ShapeError(
-            f"Expected latent parameter '{name}' to have shape ({batch_size}, {latent_dim}), got {tuple(param.shape)}."
-        )
     if tuple(param.shape) != (batch_size, latent_dim):
         raise ShapeError(
             f"Expected latent parameter '{name}' to have shape ({batch_size}, {latent_dim}), got {tuple(param.shape)}."

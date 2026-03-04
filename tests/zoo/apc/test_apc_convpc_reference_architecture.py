@@ -107,11 +107,10 @@ def test_convpc_posterior_sampling_ctx_is_differentiable() -> None:
     x = torch.randn(3, 1, 32, 32)
     x_flat = encoder._flatten_x(x)
 
-    z, sampling_ctx = encoder._posterior_sample(
+    z, sampling_ctx = encoder._posterior_sample_with_ctx(
         x_flat,
         mpe=False,
         tau=0.7,
-        return_sampling_ctx=True,
     )
 
     assert z.shape == (3, 16)
