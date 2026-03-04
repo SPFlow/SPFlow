@@ -63,10 +63,7 @@ def test_sample(in_channels: int, out_features: int, num_reps, depth):
         size=(n_samples, factorization_layer.out_shape.features),
     )
     mask = torch.full((n_samples, factorization_layer.out_shape.features), True, dtype=torch.bool)
-    if num_reps is not None:
-        repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
-    else:
-        repetition_index = None
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,))
     sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
     samples = factorization_layer._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
     assert samples.shape == data.shape

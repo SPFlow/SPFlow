@@ -190,10 +190,10 @@ def test_sampling_context_assignment_rejects_non_column_rank2_repetitions():
         ctx.repetition_index = torch.tensor([[0, 1], [1, 0]], dtype=torch.long)
 
 
-def test_sampling_context_assignment_allows_clearing_repetitions():
+def test_sampling_context_assignment_rejects_clearing_repetitions():
     ctx = SamplingContext(channel_index=torch.zeros((2, 1), dtype=torch.long))
-    ctx.repetition_index = None
-    assert ctx.repetition_index is None
+    with pytest.raises(InvalidParameterError, match="cannot be None"):
+        ctx.repetition_index = None
 
 
 def test_sampling_context_samples_and_channels_masking():
@@ -575,19 +575,22 @@ def test_validate_sampling_context_rejects_feature_width_mismatch():
         )
 
 
-def test_validate_sampling_context_allows_missing_repetitions_for_single_repetition():
+def test_validate_sampling_context_rejects_missing_repetitions_for_single_repetition():
     ctx = SamplingContext(num_samples=2)
-    ctx.repetition_index = None
-    ctx.validate_sampling_context(
-        num_samples=2,
-        num_repetitions=1,
-    )
+    # Deliberately violate the runtime invariant to validate error behavior.
+    ctx._repetition_index = None  # type: ignore[attr-defined]
+    with pytest.raises(InvalidParameterError, match="must be provided when num_repetitions is specified"):
+        ctx.validate_sampling_context(
+            num_samples=2,
+            num_repetitions=1,
+        )
 
 
 def test_validate_sampling_context_rejects_missing_repetitions_for_multi_repetition():
     ctx = SamplingContext(num_samples=2)
-    ctx.repetition_index = None
-    with pytest.raises(InvalidParameterError, match="must be provided"):
+    # Deliberately violate the runtime invariant to validate error behavior.
+    ctx._repetition_index = None  # type: ignore[attr-defined]
+    with pytest.raises(InvalidParameterError, match="must be provided when num_repetitions is specified"):
         ctx.validate_sampling_context(
             num_samples=2,
             num_repetitions=2,

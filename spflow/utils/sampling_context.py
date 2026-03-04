@@ -53,7 +53,7 @@ class SamplingContext:
             instance and feature. Shape: (batch_size, num_features).
         mask (Tensor | None): Boolean mask indicating which instances/features
             should be sampled. Shape matches channel_index.
-        repetition_index (Tensor | None): Indices for repetition-based structures.
+        repetition_index (Tensor): Indices for repetition-based structures.
     """
 
     @staticmethod
@@ -221,7 +221,8 @@ class SamplingContext:
                 channel_index if provided. Defaults to None.
             repetition_index (Tensor | None, optional): Indices for repetition-based
                 sampling structures. Used by circuits with repeated computations.
-                Defaults to None.
+                When omitted, defaults are initialized explicitly to avoid nullable
+                routing state at runtime.
             is_mpe (bool, optional): If True, sampling uses MPE decisions instead of
                 stochastic sampling. Defaults to False.
             is_differentiable (bool, optional): If True, sampling operations will be
@@ -391,8 +392,10 @@ class SamplingContext:
     @repetition_index.setter
     def repetition_index(self, repetition_index: Tensor | None) -> None:
         if repetition_index is None:
-            self._repetition_index = None
-            return
+            raise InvalidParameterError(
+                "repetition_index cannot be None. Provide explicit repetition indices "
+                "(use zeros for single-repetition contexts)."
+            )
         self._repetition_index = self._normalize_repetition_index(
             repetition_index,
             batch_size=self._channel_index.shape[0],
@@ -791,12 +794,9 @@ class SamplingContext:
             if num_repetitions < 1:
                 raise InvalidParameterError(f"num_repetitions must be >= 1, got {num_repetitions}.")
             if self.repetition_index is None:
-                if num_repetitions > 1:
-                    raise InvalidParameterError(
-                        "sampling_ctx.repetition_index must be provided when sampling from a module with "
-                        "num_repetitions > 1."
-                    )
-                return
+                raise InvalidParameterError(
+                    "sampling_ctx.repetition_index must be provided when num_repetitions is specified."
+                )
 
             repetition_index = self.repetition_index
             self._check_repetition_index_tensor(repetition_index, name="sampling_ctx.repetition_index")
