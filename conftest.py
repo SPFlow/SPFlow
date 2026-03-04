@@ -31,6 +31,12 @@ def _get_test_device() -> str:
     return device
 
 
+@pytest.fixture(scope="session")
+def device() -> torch.device:
+    """Compatibility fixture providing the configured test device."""
+    return torch.device(_get_test_device())
+
+
 @pytest.fixture(scope="function")
 def test_seed() -> int:
     """Canonical deterministic seed for tests.
