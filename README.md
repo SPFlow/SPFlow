@@ -27,7 +27,31 @@ For contributor/development setup (from source), see [CONTRIBUTING.md](CONTRIBUT
 
 ## Quick Start
 
-This example builds a more complex circuit, runs likelihood evaluation and sampling, and (optionally) visualizes it.
+Let's start with a tiny DSL-based example that builds a simple circuit, evaluates log-likelihood, and visualizes the structure.
+
+```python
+import shutil
+
+import torch
+from spflow.dsl import dsl
+from spflow.modules.leaves import Normal
+from spflow.utils.visualization import visualize
+
+with dsl():
+    terms = 0.4 * Normal(0) * Normal(1) + 0.6 * Normal(0) * Normal(1)
+
+pc = terms.build()
+ll = pc.log_likelihood(torch.randn(8, 2))
+print(ll.shape)
+
+# Optional visualization (requires Graphviz `dot`)
+if shutil.which("dot") is not None:
+    visualize(pc, output_path="/tmp/dsl-structure", format="svg")
+```
+
+<img src="res/dsl-structure.svg" height="400"/>
+
+A more complex circuit with explicit products/sums, likelihood evaluation, and sampling could look like the following.
 
 ```python
 import shutil
@@ -96,26 +120,8 @@ print(f"samples.shape={samples.shape}")
 if shutil.which("dot") is not None:
     visualize(root, output_path="/tmp/spflow-structure", show_scope=True, show_shape=True, format="svg")
 ```
+
 <img src="res/structure.svg" height="400"/>
-
-## Example DSL (for demos)
-
-SPFlow also includes a tiny, example-oriented DSL for constructing small circuits in a readable algebraic form.
-It is intentionally non-invasive (it does not modify core modules) and returns a real `Module` via `.build()`.
-
-```python
-import torch
-
-from spflow.modules.leaves import Normal
-from spflow.dsl import dsl
-
-with dsl():
-    terms = 0.4 * Normal(0) * Normal(1) + 0.6 * Normal(0) * Normal(1)
-
-pc = terms.build()
-ll = pc.log_likelihood(torch.randn(8, 2))
-print(ll.shape)
-```
 
 More examples can be found in the [User Guide](https://spflow.github.io/guides/user_guide.html).
 
