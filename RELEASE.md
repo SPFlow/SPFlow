@@ -254,7 +254,7 @@ python -m venv verify_release
 source verify_release/bin/activate
 pip install spflow==X.Y.Z
 python -c "import spflow; print(spflow.__version__)"
-python -c "import spflow; from spflow import log_likelihood, sample"
+python -c "import spflow; import spflow.dsl; import spflow.modules; import spflow.learn; print('SPFlow imports OK')"
 deactivate
 rm -rf verify_release
 ```
