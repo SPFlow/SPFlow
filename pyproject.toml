@@ -51,7 +51,7 @@ version = { attr = "spflow.__version__" }
 
 [project.optional-dependencies]
 dev = [
-  "black~=23.12",
+  "black~=24.3",
   "ruff~=0.14.4",
   "mypy~=1.7",
   "pyrefly~=0.53",
