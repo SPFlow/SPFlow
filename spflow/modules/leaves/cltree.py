@@ -417,7 +417,7 @@ class CLTree(LeafModule):
 
         if nan_strategy is None:
             nan_strategy = "ignore"
-        scoped, weights = apply_nan_strategy(nan_strategy, scoped, weights)
+        scoped, weights = apply_nan_strategy(nan_strategy, scoped, self.device, weights)
         if scoped.shape[0] < 2:
             raise InvalidParameterError("CLTree requires at least 2 complete samples for MLE.")
 
