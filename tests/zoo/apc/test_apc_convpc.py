@@ -134,9 +134,8 @@ def test_convpc_reference_allows_latent_dim_mismatch_via_packing():
     assert torch.isfinite(z).all()
 
 
-def test_convpc_legacy_requires_matching_latent_dim_for_injection_depth():
-    # Legacy mode keeps the old strict contract to avoid silently changing historical behavior.
-    with pytest.raises(InvalidParameterError, match="latent_dim must match the feature count"):
+def test_convpc_rejects_unsupported_architecture():
+    with pytest.raises(InvalidParameterError, match="Only 'reference' is available"):
         ConvPcJointEncoder(
             input_height=4,
             input_width=4,

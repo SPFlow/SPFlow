@@ -1,8 +1,7 @@
 """Conv-PC-based APC joint encoder over data and latent variables.
 
-This encoder builds a joint Conv-PC over ``[X, Z]`` and supports two modes:
-- ``reference``: mirrors the reference APC Conv-PC topology and latent fusion.
-- ``legacy``: preserves the previous SPFlow latent-injection behavior.
+This encoder builds a joint Conv-PC over ``[X, Z]`` using the reference APC
+topology and latent fusion semantics.
 """
 
 from __future__ import annotations
@@ -292,7 +291,7 @@ class ConvPcJointEncoder(JointPcEncoderBase):
         num_repetitions: int = 1,
         use_sum_conv: bool = False,
         latent_depth: int = 0,
-        architecture: Literal["reference", "legacy"] = "reference",
+        architecture: Literal["reference"] = "reference",
         perm_latents: bool = False,
         latent_channels: int | None = None,
         x_leaf_channels: int | None = None,
@@ -318,28 +317,23 @@ class ConvPcJointEncoder(JointPcEncoderBase):
             raise InvalidParameterError(f"kernel_size must be >= 1, got {kernel_size}.")
         if num_repetitions <= 0:
             raise InvalidParameterError(f"num_repetitions must be >= 1, got {num_repetitions}.")
-        if architecture not in {"reference", "legacy"}:
+        if architecture != "reference":
             raise InvalidParameterError(
-                f"architecture must be one of {{'reference', 'legacy'}}, got '{architecture}'."
+                f"Unsupported Conv-PC APC architecture '{architecture}'. "
+                "Only 'reference' is available."
             )
-        if architecture == "reference":
-            if depth < 2:
-                raise InvalidParameterError(f"reference architecture requires depth >= 2, got depth={depth}.")
-            if latent_depth < 0 or latent_depth >= depth:
-                raise InvalidParameterError(
-                    f"latent_depth must be in [0, {depth - 1}] for reference architecture, got {latent_depth}."
-                )
-        else:
-            if latent_depth < 0 or latent_depth >= depth:
-                raise InvalidParameterError(
-                    f"latent_depth must be in [0, {depth - 1}] for legacy architecture, got {latent_depth}."
-                )
+        if depth < 2:
+            raise InvalidParameterError(f"reference architecture requires depth >= 2, got depth={depth}.")
+        if latent_depth < 0 or latent_depth >= depth:
+            raise InvalidParameterError(
+                f"latent_depth must be in [0, {depth - 1}] for reference architecture, got {latent_depth}."
+            )
         self.input_height = input_height
         self.input_width = input_width
         self.input_channels = input_channels
         self.num_x_features = input_height * input_width * input_channels
         self.latent_dim = latent_dim
-        self.architecture = architecture
+        self.architecture: Literal["reference"] = "reference"
         self.perm_latents = perm_latents
 
         self._x_cols = list(range(self.num_x_features))
@@ -369,142 +363,18 @@ class ConvPcJointEncoder(JointPcEncoderBase):
         self.register_buffer("latent_perm_inv", None)
         self._latent_target_features = latent_dim
 
-        if architecture == "reference":
-            self.pc = self._build_joint_convpc_reference(
-                x_leaf=x_leaf,
-                z_leaf=z_leaf,
-                channels=channels,
-                depth=depth,
-                kernel_size=kernel_size,
-                num_repetitions=num_repetitions,
-                use_sum_conv=use_sum_conv,
-                latent_depth=latent_depth,
-                latent_channels=latent_channels,
-                perm_latents=perm_latents,
-            )
-        else:
-            self.pc = self._build_joint_convpc_legacy(
-                x_leaf=x_leaf,
-                z_leaf=z_leaf,
-                channels=channels,
-                depth=depth,
-                kernel_size=kernel_size,
-                num_repetitions=num_repetitions,
-                use_sum_conv=use_sum_conv,
-                latent_depth=latent_depth,
-            )
-
-    def _build_joint_convpc_legacy(
-        self,
-        *,
-        x_leaf: LeafModule,
-        z_leaf: LeafModule,
-        channels: int,
-        depth: int,
-        kernel_size: int,
-        num_repetitions: int,
-        use_sum_conv: bool,
-        latent_depth: int,
-    ) -> Module:
-        """Build legacy Conv-PC architecture with strict latent feature matching."""
-        layer_specs: list[tuple[str, dict[str, int]]] = [("sum_root", {"out_channels": 1})]
-
-        h, w = 1, 1
-        for _ in reversed(range(depth)):
-            layer_specs.append(("prod", {"kernel_size": kernel_size}))
-            h, w = h * kernel_size, w * kernel_size
-            layer_specs.append(("sum", {"out_channels": channels, "kernel_size": kernel_size}))
-
-        (kh, kw), (ph, pw) = compute_non_overlapping_kernel_and_padding(
-            H_data=self.input_height,
-            W_data=self.input_width,
-            H_target=h,
-            W_target=w,
+        self.pc = self._build_joint_convpc_reference(
+            x_leaf=x_leaf,
+            z_leaf=z_leaf,
+            channels=channels,
+            depth=depth,
+            kernel_size=kernel_size,
+            num_repetitions=num_repetitions,
+            use_sum_conv=use_sum_conv,
+            latent_depth=latent_depth,
+            latent_channels=latent_channels,
+            perm_latents=perm_latents,
         )
-        layer_specs.append(
-            (
-                "prod_bottom",
-                {"kernel_size_h": kh, "kernel_size_w": kw, "padding_h": ph, "padding_w": pw},
-            )
-        )
-        layer_specs = list(reversed(layer_specs))
-
-        current: Module = x_leaf
-        layers_built: list[Module] = []
-        latent_injected = False
-        sum_stage = -1
-
-        for layer_type, params in layer_specs:
-            if layer_type == "prod_bottom":
-                current = ProdConv(
-                    inputs=current,
-                    kernel_size_h=params["kernel_size_h"],
-                    kernel_size_w=params["kernel_size_w"],
-                    padding_h=params["padding_h"],
-                    padding_w=params["padding_w"],
-                )
-            elif layer_type == "sum":
-                if use_sum_conv:
-                    current = SumConv(
-                        inputs=current,
-                        out_channels=params["out_channels"],
-                        kernel_size=params["kernel_size"],
-                        num_repetitions=num_repetitions,
-                    )
-                else:
-                    current = Sum(
-                        inputs=current,
-                        out_channels=params["out_channels"],
-                        num_repetitions=num_repetitions,
-                    )
-                sum_stage += 1
-
-                if sum_stage == latent_depth:
-                    target_features = current.out_shape.features
-                    if target_features != self.latent_dim:
-                        raise InvalidParameterError(
-                            "latent_dim must match the feature count at latent injection depth "
-                            f"in legacy architecture. Expected {target_features}, got {self.latent_dim}."
-                        )
-
-                    latent_stream: Module = z_leaf
-                    if z_leaf.out_shape.channels != current.out_shape.channels:
-                        latent_stream = Sum(
-                            inputs=latent_stream,
-                            out_channels=current.out_shape.channels,
-                            num_repetitions=num_repetitions,
-                        )
-                    current = ElementwiseProduct(inputs=[current, latent_stream])
-                    latent_injected = True
-
-            elif layer_type == "prod":
-                current = ProdConv(
-                    inputs=current,
-                    kernel_size_h=params["kernel_size"],
-                    kernel_size_w=params["kernel_size"],
-                )
-            elif layer_type == "sum_root":
-                current = Sum(
-                    inputs=current,
-                    out_channels=params["out_channels"],
-                    num_repetitions=num_repetitions,
-                )
-            else:
-                raise RuntimeError(f"Unexpected layer type '{layer_type}'.")
-
-            layers_built.append(current)
-
-        if not latent_injected:
-            raise RuntimeError("Latent branch was not injected. Check latent_depth configuration.")
-
-        if num_repetitions > 1:
-            current = RepetitionMixingLayer(inputs=current, out_channels=1, num_repetitions=num_repetitions)
-            layers_built.append(current)
-
-        self.layers = nn.ModuleList(layers_built)
-        self.latent_prod_layers = nn.ModuleList()
-        self.latent_sum_layer = None
-        return current
 
     def _build_reference_latent_stream(
         self,

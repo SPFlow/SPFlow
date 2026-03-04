@@ -300,8 +300,8 @@ def parse_args() -> argparse.Namespace:
         "--conv-architecture",
         type=str,
         default="reference",
-        choices=("reference", "legacy"),
-        help="Conv-PC architecture mode.",
+        choices=("reference",),
+        help="Conv-PC architecture mode (reference only).",
     )
     parser.add_argument(
         "--conv-perm-latents",

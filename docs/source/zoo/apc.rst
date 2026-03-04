@@ -105,4 +105,6 @@ Minimal Example (Einet APC)
 Conv-PC APC Note
 ----------------
 
-``ConvPcJointEncoder`` supports image-shaped inputs and latent fusion at a configurable hierarchy depth. In the current implementation, ``latent_dim`` must match the feature count at the selected latent fusion depth.
+``ConvPcJointEncoder`` supports image-shaped inputs and latent fusion at a configurable hierarchy depth.
+The Conv-PC APC path now uses the reference architecture only. Latent-width mismatches at the
+fusion depth are handled via latent feature reduction/packing when needed.
