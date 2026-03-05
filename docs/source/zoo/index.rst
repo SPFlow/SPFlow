@@ -7,6 +7,7 @@ The **Paper Zoo** (``spflow.zoo``) contains reference implementations of various
 .. toctree::
    :maxdepth: 1
 
+   apc
    rat_spn
    einet
    hclt
