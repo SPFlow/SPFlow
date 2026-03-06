@@ -1,5 +1,3 @@
-:orphan:
-
 Autoencoding Probabilistic Circuits (APC)
 =========================================
 

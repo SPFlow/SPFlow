@@ -123,12 +123,16 @@ if shutil.which("dot") is not None:
 
 <img src="res/structure.svg" height="400"/>
 
-More examples can be found in the [User Guide](https://spflow.github.io/guides/user_guide.html).
+More examples can be found in the [Guides](https://spflow.github.io/guides/index.html).
 
 ## Documentation
 
-- **[User Guide](docs/source/guides/user_guide.ipynb)**: Comprehensive notebook with examples covering model
+- **[Guides Index](https://spflow.github.io/guides/index.html)**: Landing page for end-to-end tutorials and workflow-oriented documentation
+- **[User Guide](https://spflow.github.io/guides/user_guide.html)**: Comprehensive notebook with examples covering model
   construction, training, inference, and advanced use cases
+- **[Developer Guide](https://spflow.github.io/guides/dev_guide.html)**: Developer-focused notebook for extending and working on SPFlow
+- **[APC MNIST Guide](https://spflow.github.io/guides/apc_mnist_guide.html)**: Notebook walkthrough for APC training on MNIST
+- **[sklearn Guide](https://spflow.github.io/guides/sklearn.html)**: Guide to the optional scikit-learn compatible wrappers
 - **[Contributing Guide](CONTRIBUTING.md)**: Contributor workflow, coding standards, PR process, and commit conventions
 - **[Versioning Guide](VERSIONING.md)**: Semantic versioning and deprecation policy
 - **[Release Guide](RELEASE.md)**: Maintainer runbook for creating and publishing releases

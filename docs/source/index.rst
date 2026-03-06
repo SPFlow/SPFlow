@@ -13,6 +13,7 @@ Quick Navigation
 
 - :doc:`Getting Started <getting_started>` — Installation and quick start guide
 - :doc:`Concepts <concepts>` — Core SPFlow concepts and semantics
+- :doc:`Guides <guides/index>` — End-to-end tutorials and workflow guides
 - :doc:`API Reference <api/index>` — Complete API documentation
 - :doc:`Paper Zoo <zoo/index>` — Research implementations and papers (PIC, SOCS, RAT-SPN, etc.)
 - :doc:`FAQ <faq>` — Frequently asked questions
@@ -28,16 +29,13 @@ Quick Navigation
     :maxdepth: 1
     :hidden:
 
+    guides/index
     zoo/index
 
 .. toctree::
     :maxdepth: 2
     :hidden:
 
-    guides/user_guide
-    guides/dev_guide
-    guides/apc_mnist_guide
-    guides/sklearn
     api/index
     faq
 
