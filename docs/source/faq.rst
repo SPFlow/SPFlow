@@ -392,7 +392,7 @@ SPFlow v1.0 is a **complete rewrite** using PyTorch as the primary backend. Key 
 
 The pre-v1.0.0 version is still available:
 
-- On PyPI: ``pip install spflow==0.0.46``
+- On PyPI: ``pip install spflow==0.0.48``
 - In the ``legacy`` branch of the GitHub repository
 
 Models from the legacy version are **not compatible** with v1.x and need to be rebuilt.
