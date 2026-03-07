@@ -23,6 +23,13 @@ from spflow.utils.sampling_context import (
 )
 
 
+def _default_torch_device() -> torch.device:
+    get_default_device = getattr(torch, "get_default_device", None)
+    if callable(get_default_device):
+        return torch.device(get_default_device())
+    return torch.device("cpu")
+
+
 class WeightedSum(Module):
     """Sum module with non-normalized weights for quadrature integration.
 
@@ -91,6 +98,8 @@ class WeightedSum(Module):
                 f"Weights for 'WeightedSum' must be 1D, 2D, 3D, or 4D tensor but was {weights.dim()}D."
             )
 
+        weights = weights.to(device=self.inputs.device)
+
         if not torch.all(weights >= 0):
             raise InvalidWeightsError("Weights for 'WeightedSum' must be non-negative.")
 
@@ -118,6 +127,9 @@ class WeightedSum(Module):
 
         # ========== 6. WEIGHT REGISTRATION ==========
         self._weights = nn.Parameter(weights)
+        default_device = _default_torch_device()
+        if default_device.type != "meta":
+            self.to(device=default_device)
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -176,11 +188,12 @@ class WeightedSum(Module):
             Tensor: Log-likelihood of shape (batch_size, num_features, out_channels, repetitions).
         """
         # Get input log-likelihoods
+        data = data.to(device=self.device)
         ll = self.inputs.log_likelihood(data, cache=cache)
 
         ll = rearrange(ll, "b f ci r -> b f ci 1 r")
 
-        log_weights = rearrange(self.log_weights, "f ci co r -> 1 f ci co r")
+        log_weights = rearrange(self.log_weights, "f ci co r -> 1 f ci co r").to(device=ll.device)
 
         # Weighted log-likelihoods
         weighted_lls = ll + log_weights  # shape: (B, F, IC, OC, R)

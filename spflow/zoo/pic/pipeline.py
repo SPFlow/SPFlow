@@ -591,11 +591,10 @@ def pic2qpc(
 
             # Eq. (4): W = ||_i w_i I_{K^|Z|}.
             W = torch.zeros((in_ch, out_ch), dtype=u.weights.dtype, device=cat.device)
+            weights = u.weights.to(device=W.device, dtype=W.dtype)
             for i in range(n):
                 start = i * out_ch
-                W[start : start + out_ch, :] = (
-                    torch.eye(out_ch, device=W.device, dtype=W.dtype) * u.weights[i]
-                )
+                W[start : start + out_ch, :] = torch.eye(out_ch, device=W.device, dtype=W.dtype) * weights[i]
 
             weights_full = repeat(
                 rearrange(W, "ci co -> 1 ci co 1"),
