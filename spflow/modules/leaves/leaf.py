@@ -429,7 +429,7 @@ class LeafModule(Module, ABC):
         if data.dim() != 2:
             raise ValueError(f"Data must be 2-dimensional (batch, num_features), got shape {data.shape}.")
         # get information relevant for the scope
-        data_q = data[:, self.scope.query].clone()
+        data_q = data[:, self.scope.query].to(device=self.device).clone()
         if self.event_shape[0] != len(self.scope.query):
             raise RuntimeError(
                 f"event_shape mismatch for {self.__class__.__name__}: event_shape={self.event_shape}, scope_len={len(self.scope.query)}"
@@ -453,7 +453,7 @@ class LeafModule(Module, ABC):
 
         if self.is_conditional:
             # Get evidence
-            data_e = data[:, self.scope.evidence]
+            data_e = data[:, self.scope.evidence].to(device=self.device)
             dist = self.conditional_distribution(data_e)
         else:
             dist = self.distribution()
@@ -499,8 +499,8 @@ class LeafModule(Module, ABC):
             NotImplementedError: If the distribution doesn't support CDF.
         """
         # Get scope-filtered bounds
-        low_scoped = low[:, self.scope.query]
-        high_scoped = high[:, self.scope.query]
+        low_scoped = low[:, self.scope.query].to(device=self.device)
+        high_scoped = high[:, self.scope.query].to(device=self.device)
 
         # Expand to match (batch, features, channels, repetitions)
         low_expanded = rearrange(low_scoped, "b f -> b f 1 1")
