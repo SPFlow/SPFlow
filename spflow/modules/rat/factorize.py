@@ -23,8 +23,6 @@ from spflow.modules.products.product import Product
 from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import (
     SamplingContext,
-    index_tensor,
-    repeat_repetition_index,
 )
 
 
@@ -193,25 +191,8 @@ class Factorize(BaseProduct):
             allowed_feature_widths=(1, self.out_shape.features),
         )
         sampling_ctx.broadcast_feature_width(target_features=self.out_shape.features, allow_from_one=True)
-
-        sampling_indices = self.sampling_indices
-        num_input_features = sampling_indices.shape[0]
-        num_output_features = sampling_indices.shape[1]
-        batch_size = data.shape[0]
-        indices = repeat(rearrange(sampling_indices, "i o r -> 1 i o r"), "1 i o r -> b i o r", b=batch_size)
-        rep_indices = repeat_repetition_index(
-            sampling_ctx.repetition_index,
-            "b r -> b i o r",
-            i=num_input_features,
-            o=num_output_features,
-        )
-        indices = index_tensor(
-            indices,
-            index=rep_indices,
-            dim=-1,
-            is_differentiable=sampling_ctx.is_differentiable,
-        )
-        indices = indices.to(device=sampling_ctx.channel_index.device, dtype=sampling_ctx.channel_index.dtype)
+        indices = self._select_sampling_indices(sampling_ctx=sampling_ctx)
+        indices = self._routing_indices_for_ctx(indices=indices, sampling_ctx=sampling_ctx)
 
         if sampling_ctx.is_differentiable:
             channel_index = torch.einsum("bio,boc->bic", indices, sampling_ctx.channel_index)
@@ -221,16 +202,20 @@ class Factorize(BaseProduct):
                 indices,
                 sampling_ctx.channel_index.to(dtype=indices.dtype),
             ).to(dtype=torch.long)
-        mask_score = torch.einsum(
-            "bio,bo->bi",
-            indices,
-            sampling_ctx.mask.to(dtype=indices.dtype),
+        mask = (
+            torch.einsum(
+                "bio,bo->bi",
+                indices,
+                sampling_ctx.mask.to(dtype=indices.dtype),
+            )
+            > 0
         )
-        mask = mask_score > 0
 
         child_ctx = sampling_ctx.with_routing(
             channel_index=channel_index,
             mask=mask,
+            clone_routing=False,
+            clone_repetition=False,
         )
 
         self.inputs[0]._sample(
@@ -240,6 +225,31 @@ class Factorize(BaseProduct):
         )
 
         return data
+
+    def _select_sampling_indices(self, sampling_ctx: SamplingContext) -> Tensor:
+        """Select the repetition-specific factorization tensor without batch repeats."""
+        sampling_indices = self.sampling_indices
+        if sampling_ctx.is_differentiable:
+            repetition_index = sampling_ctx.repetition_index.to(
+                device=sampling_indices.device,
+                dtype=sampling_indices.dtype,
+            )
+            return torch.einsum("ior,br->bio", sampling_indices, repetition_index)
+
+        repetition_index = sampling_ctx.repetition_index
+        if repetition_index.ndim == 2:
+            repetition_index = repetition_index[:, 0]
+        repetition_index = repetition_index.to(device=sampling_indices.device, dtype=torch.long)
+        return rearrange(sampling_indices, "i o r -> r i o")[repetition_index]
+
+    def _routing_indices_for_ctx(self, *, indices: Tensor, sampling_ctx: SamplingContext) -> Tensor:
+        """Move repetition-selected routing indices onto the active routing device and dtype."""
+        if sampling_ctx.is_differentiable:
+            target_dtype = sampling_ctx.channel_index.dtype
+        else:
+            # CUDA einsum does not support integer contraction.
+            target_dtype = self.sampling_indices.dtype
+        return indices.to(device=sampling_ctx.channel_index.device, dtype=target_dtype)
 
     def marginalize(
         self,

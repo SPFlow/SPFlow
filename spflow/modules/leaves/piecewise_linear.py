@@ -681,7 +681,7 @@ class PiecewiseLinear(LeafModule):
         # Handle channel index - gather on leaves dimension (dim=3)
         # samples shape after repetition handling: (N, C=1, F, L)
         if self.out_shape.channels == 1:
-            sampling_ctx.channel_index.zero_()
+            sampling_ctx.channel_index = torch.zeros_like(sampling_ctx.channel_index)
 
         # c_idxs needs shape (N, 1, F, 1) to gather on dim=3
         c_idxs = ctx_channel_index[instance_mask]

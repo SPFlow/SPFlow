@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 import torch
-
 from spflow.utils.cache import Cache
 from tests.contract_data import RAT_PARAMS
 from tests.test_helpers.builders import make_rat_spn

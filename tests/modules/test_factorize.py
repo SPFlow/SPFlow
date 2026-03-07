@@ -203,6 +203,36 @@ def test_sample_accepts_column_vector_repetition_idx():
     assert torch.isfinite(samples[:, factorization_layer.scope.query]).all()
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required for this regression test.")
+def test_sample_non_diff_runs_on_cuda():
+    n_samples = 10
+    out_features = 8
+    num_reps = 4
+    factorization_layer = make_product(
+        in_channels=3,
+        out_features=out_features,
+        num_repetitions=num_reps,
+        depth=2,
+    ).cuda()
+
+    data = torch.full((n_samples, out_features), torch.nan, device="cuda")
+    channel_index = torch.randint(
+        low=0,
+        high=factorization_layer.out_shape.channels,
+        size=(n_samples, factorization_layer.out_shape.features),
+        device="cuda",
+    )
+    mask = torch.full(
+        (n_samples, factorization_layer.out_shape.features), True, dtype=torch.bool, device="cuda"
+    )
+    repetition_index = torch.randint(low=0, high=num_reps, size=(n_samples,), device="cuda")
+    sampling_ctx = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+
+    samples = factorization_layer._sample(data=data, sampling_ctx=sampling_ctx, cache=Cache())
+    assert samples.shape == data.shape
+    assert torch.isfinite(samples[:, factorization_layer.scope.query]).all()
+
+
 def test_factorization():
     data = make_normal_data(out_features=4)
     factorization = make_product(in_channels=3, out_features=4, num_repetitions=5)

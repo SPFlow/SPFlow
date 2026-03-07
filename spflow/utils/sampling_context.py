@@ -11,6 +11,7 @@ The sampling context is essential for:
 - Tracking channel indices for multi-output modules
 - Supporting repetition-based sampling structures
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -500,12 +501,13 @@ class SamplingContext:
             return
 
         if allow_from_one and current_features == 1:
-            # Repeat along feature axis while preserving per-row batch semantics.
+            # Use read-only views; this avoids cloning large singleton-feature
+            # routings before a downstream module replaces them.
             if self.is_differentiable:
-                channel_index = self.channel_index.repeat(1, target_features, 1)
+                channel_index = self.channel_index.expand(-1, target_features, -1)
             else:
-                channel_index = self.channel_index.repeat(1, target_features)
-            mask = self.mask.repeat(1, target_features)
+                channel_index = self.channel_index.expand(-1, target_features)
+            mask = self.mask.expand(-1, target_features)
             self.update(
                 channel_index=channel_index,
                 mask=mask,

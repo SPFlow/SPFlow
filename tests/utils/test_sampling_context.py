@@ -244,6 +244,24 @@ def test_sampling_context_with_routing_does_not_alias_parent():
     assert torch.equal(parent.repetition_index, repetition_index)
 
 
+def test_sampling_context_with_routing_no_copy_fast_path_reuses_inputs():
+    channel_index = torch.tensor([[0, 1], [2, 3]], dtype=torch.long)
+    mask = torch.tensor([[True, False], [True, True]], dtype=torch.bool)
+    repetition_index = torch.tensor([0, 0], dtype=torch.long)
+    parent = SamplingContext(channel_index=channel_index, mask=mask, repetition_index=repetition_index)
+
+    child = parent.with_routing(
+        channel_index=channel_index[:, :1],
+        mask=mask[:, :1],
+        clone_routing=False,
+        clone_repetition=False,
+    )
+
+    assert child.channel_index.untyped_storage().data_ptr() == channel_index.untyped_storage().data_ptr()
+    assert child.mask.untyped_storage().data_ptr() == mask.untyped_storage().data_ptr()
+    assert child.repetition_index is repetition_index
+
+
 def test_sampling_context_repr_contains_shapes():
     ctx = SamplingContext(num_samples=2)
     repr_str = repr(ctx)
@@ -286,6 +304,26 @@ def test_broadcast_feature_width_from_singleton():
     assert ctx.channel_index.shape == (2, 4)
     assert ctx.mask.shape == (2, 4)
     assert torch.equal(ctx.channel_index[0], torch.tensor([1, 1, 1, 1]))
+
+
+def test_broadcast_feature_width_from_singleton_uses_view():
+    channel_index = torch.tensor([[1], [2]], dtype=torch.long)
+    mask = torch.tensor([[True], [False]], dtype=torch.bool)
+    ctx = SamplingContext(
+        channel_index=channel_index,
+        repetition_index=torch.zeros((2,), dtype=torch.long),
+        mask=mask,
+    )
+    channel_ptr = channel_index.untyped_storage().data_ptr()
+    mask_ptr = mask.untyped_storage().data_ptr()
+
+    ctx.broadcast_feature_width(target_features=4)
+
+    assert ctx.channel_index.shape == (2, 4)
+    assert ctx.mask.shape == (2, 4)
+    assert torch.equal(ctx.channel_index[0], torch.tensor([1, 1, 1, 1]))
+    assert ctx.channel_index.untyped_storage().data_ptr() == channel_ptr
+    assert ctx.mask.untyped_storage().data_ptr() == mask_ptr
 
 
 def test_broadcast_feature_width_is_noop_when_already_matching():

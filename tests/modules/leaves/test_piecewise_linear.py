@@ -368,6 +368,26 @@ class TestPiecewiseLinearSampling:
         assert samples.shape == (6, 2)
         assert torch.isfinite(samples).all()
 
+    def test_sample_accepts_broadcast_view_context(self):
+        leaf = PiecewiseLinear(scope=Scope([0, 1]), out_channels=1, num_repetitions=1)
+        leaf.initialize(_randn(80, 2), [Domain.continuous_inf_support(), Domain.continuous_inf_support()])
+
+        sampling_ctx = SamplingContext(
+            channel_index=torch.zeros((5, 1), dtype=torch.long),
+            mask=torch.ones((5, 1), dtype=torch.bool),
+            repetition_index=torch.zeros((5,), dtype=torch.long),
+        )
+        sampling_ctx.broadcast_feature_width(target_features=2)
+
+        samples = leaf._sample(
+            data=torch.full((5, 2), float("nan")),
+            sampling_ctx=sampling_ctx,
+            cache=Cache(),
+        )
+
+        assert samples.shape == (5, 2)
+        assert torch.isfinite(samples).all()
+
 
 class TestPiecewiseLinearParamsAndMode:
     """Test params/mode and unsupported MLE branches."""
