@@ -36,6 +36,14 @@ from spflow.utils.cache import Cache, cached
 from spflow.utils.sampling_context import LeafParamRecord, SamplingContext
 
 
+def _default_torch_device() -> torch.device:
+    """Return the active torch default device, falling back to CPU."""
+    get_default_device = getattr(torch, "get_default_device", None)
+    if callable(get_default_device):
+        return torch.device(get_default_device())
+    return torch.device("cpu")
+
+
 @dataclasses.dataclass(frozen=True)
 class TensorizedQPCConfig:
     """Configuration for folded tensorized QPC materialization."""
@@ -97,6 +105,7 @@ class FourierLayer(nn.Module):
 
     def forward(self, z: Tensor) -> Tensor:
         # Accept unbatched (L, D) or batched (..., L, D).
+        z = z.to(device=self.coeff.device, dtype=self.coeff.dtype)
         z_proj = 2 * torch.pi * z @ self.coeff  # (..., L, out/2)
         feats = torch.cat([z_proj.cos(), z_proj.sin()], dim=-1)  # (..., L, out)
         return rearrange(feats, "... l co -> ... co l")
@@ -154,6 +163,9 @@ class InputNet(nn.Module):
             self.net[-1].weight.data = self.net[-1].weight.data[:num_param].repeat(num_vars, 1, 1)
             if self.net[-1].bias is not None:
                 self.net[-1].bias.data = self.net[-1].bias.data[:num_param].repeat(num_vars)
+        default_device = _default_torch_device()
+        if default_device.type != "meta":
+            self.to(device=default_device)
 
     def forward(self, z_quad: Tensor, *, n_chunks: int = 1) -> Tensor:
         if z_quad.ndim != 1:
@@ -247,6 +259,9 @@ class InnerNet(nn.Module):
             self.net[-2].weight.data = self.net[-2].weight.data[:1].repeat(self.num_funcs, 1, 1)
             if self.net[-2].bias is not None:
                 self.net[-2].bias.data = self.net[-2].bias.data[:1].repeat(self.num_funcs)
+        default_device = _default_torch_device()
+        if default_device.type != "meta":
+            self.to(device=default_device)
 
     def forward(self, z_quad: Tensor, w_quad: Tensor, *, n_chunks: int = 1) -> Tensor:
         if z_quad.ndim != 1 or w_quad.ndim != 1 or z_quad.numel() != w_quad.numel():
@@ -404,6 +419,9 @@ class TensorizedQPC(Module):
         # Shape placeholders.
         self.in_shape = ModuleShape(features=len(self.scope.query), channels=1, repetitions=1)
         self.out_shape = ModuleShape(features=1, channels=1, repetitions=1)
+        default_device = _default_torch_device()
+        if default_device.type != "meta":
+            self.to(device=default_device)
 
     @classmethod
     def from_region_graph(
@@ -469,8 +487,9 @@ class TensorizedQPC(Module):
 
     @cached
     def log_likelihood(self, data: Tensor, cache: Cache | None = None) -> Tensor:
-        z_quad = self.quadrature_rule.points.to(device=data.device, dtype=data.dtype)
-        w_quad = self.quadrature_rule.weights.to(device=data.device, dtype=data.dtype)
+        data = data.to(device=self.device)
+        z_quad = self.quadrature_rule.points.to(device=self.device, dtype=data.dtype)
+        w_quad = self.quadrature_rule.weights.to(device=self.device, dtype=data.dtype)
 
         # Leaf parameterization and leaf log-likelihoods.
         leaf_param = self.input_net(z_quad, n_chunks=self.config.n_chunks)  # (V,K,P)
