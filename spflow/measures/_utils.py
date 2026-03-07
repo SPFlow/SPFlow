@@ -140,7 +140,7 @@ def infer_discrete_domains(
             continue
 
         if isinstance(module, Bernoulli):
-            values = torch.tensor([0.0, 1.0], dtype=torch.get_default_dtype(), device=model.device)
+            values = torch.tensor([0.0, 1.0], dtype=torch.get_default_dtype(), device=module.device)
             for rv in rvs:
                 domain_sizes[rv].add(2)
                 domains.setdefault(rv, values)
@@ -150,7 +150,7 @@ def infer_discrete_domains(
             k = int(module.K)
             if k < 1:
                 raise UnsupportedOperationError(f"Categorical leaf has invalid K={k} for exact enumeration.")
-            values = torch.arange(k, dtype=torch.get_default_dtype(), device=model.device)
+            values = torch.arange(k, dtype=torch.get_default_dtype(), device=module.device)
             for rv in rvs:
                 domain_sizes[rv].add(k)
                 domains.setdefault(rv, values)
