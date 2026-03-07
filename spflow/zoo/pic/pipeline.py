@@ -528,7 +528,7 @@ def pic2qpc(
                 # Skip scalar-output integrals (typically root).
                 continue
 
-            device = bucket[0].inputs.device
+            device = group.mlp.fourier.B.device
             dtype = quadrature_rule.points.dtype
 
             z_grid = grid_points(z_dim, device=device, dtype=dtype)  # (K^z, z_dim)
@@ -545,7 +545,7 @@ def pic2qpc(
 
             vals_all = group.evaluate_batched(z, y)  # (num_heads, out_ch, in_ch)
 
-            y_w = kron_weights(y_dim, device=device, dtype=dtype)  # (in_ch,)
+            y_w = kron_weights(y_dim, device=vals_all.device, dtype=vals_all.dtype)  # (in_ch,)
             vals_all = vals_all * rearrange(y_w, "ci -> 1 1 ci")
 
             for u in bucket:
@@ -638,7 +638,7 @@ def pic2qpc(
             if u.function is None:
                 raise StructureError("Integral unit missing weighting function.")
 
-            device = child.device
+            device = u.function.mlp.fourier.B.device if isinstance(u.function, FunctionGroup) else child.device
             dtype = quadrature_rule.points.dtype
             z_grid = grid_points(z_dim, device=device, dtype=dtype)
             y_grid = grid_points(y_dim, device=device, dtype=dtype)
@@ -654,7 +654,7 @@ def pic2qpc(
             else:
                 vals = u.function(z, y)  # type: ignore[misc]
 
-            y_w = kron_weights(y_dim, device=device, dtype=dtype)
+            y_w = kron_weights(y_dim, device=vals.device, dtype=vals.dtype)
             Wf = vals * rearrange(y_w, "ci -> 1 ci")  # (out_ch, in_ch)
 
             # WeightedSum expects (in_ch, out_ch) in its weights tensor.

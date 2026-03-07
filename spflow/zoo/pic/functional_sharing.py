@@ -18,6 +18,13 @@ from torch import Tensor, nn
 from torch.nn import functional as F
 
 
+def _default_torch_device() -> torch.device:
+    get_default_device = getattr(torch, "get_default_device", None)
+    if callable(get_default_device):
+        return torch.device(get_default_device())
+    return torch.device("cpu")
+
+
 class FourierFeatures(nn.Module):
     """Fourier feature encoding layer for positional encoding.
 
@@ -58,6 +65,7 @@ class FourierFeatures(nn.Module):
         Returns:
             Tensor of shape (..., out_features * 2).
         """
+        x = x.to(device=self.B.device, dtype=self.B.dtype)
         # x @ B: (..., out_features)
         projected = x @ self.B
         # Concatenate sin and cos for each frequency
@@ -116,6 +124,9 @@ class SharedMLP(nn.Module):
             layers.append(activation)
 
         self.layers = nn.Sequential(*layers)
+        default_device = _default_torch_device()
+        if default_device.type != "meta":
+            self.to(device=default_device)
 
     def forward(self, x: Tensor) -> Tensor:
         """Forward pass through shared MLP.
@@ -170,6 +181,9 @@ class MultiHeadedMLP(nn.Module):
         self.heads = nn.ModuleList([nn.Linear(hidden_dim, 1) for _ in range(num_heads)])
 
         self.output_activation = output_activation or nn.Softplus()
+        default_device = _default_torch_device()
+        if default_device.type != "meta":
+            self.to(device=default_device)
 
     def forward(self, x: Tensor, head_idx: Optional[int] = None) -> Tensor:
         """Forward pass through multi-headed MLP.
@@ -268,6 +282,9 @@ class FunctionGroup(nn.Module):
             )
         else:
             self._f_head = nn.Linear(self.mlp.hidden_dim, 1)
+        default_device = _default_torch_device()
+        if default_device.type != "meta":
+            self.to(device=default_device)
 
     def evaluate_batched(self, z: Tensor, y: Tensor) -> Tensor:
         """Evaluate all functions in the group in a single shared-backbone pass.
