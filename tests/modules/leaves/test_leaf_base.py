@@ -408,7 +408,10 @@ def test_inputs_setter_raises_attribute_error():
 def test_supported_value_for_imputation_tensor_success(supported_value, expected):
     leaf = SupportedValueLeaf(scope=Scope([0, 1]), supported_value=supported_value)
     scoped_data = torch.zeros((2, 2))
-    torch.testing.assert_close(leaf._supported_value_for_imputation(scoped_data), expected)
+    torch.testing.assert_close(
+        leaf._supported_value_for_imputation(scoped_data),
+        expected.to(device=scoped_data.device, dtype=scoped_data.dtype),
+    )
 
 
 def test_supported_value_for_imputation_raises_for_invalid_shapes_and_types():
