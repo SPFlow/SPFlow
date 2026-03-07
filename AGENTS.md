@@ -10,6 +10,17 @@
 - **Show missed line chunks (with context):** `.venv/bin/python scripts/coverage_inspect.py show spflow/path/to_file.py --context 3`
 - **Coverage runtime note (PyTorch):** Avoid module-targeted `pytest-cov` like `--cov=spflow.learn.prometheus` in this environment; it can trigger `RuntimeError: function '_has_torch_function' already has a docstring` during `import torch`. Use package-level coverage targets instead (for example `--cov=spflow` or `--cov=spflow.learn`).
 
+## Remote Execution with rr
+- Use `rr` for heavy test runs, benchmarks, or any workload that should run on a remote machine instead of locally.
+- **Check remote availability:** `rr status`
+- **Run a command remotely:** `rr run "<command>"`
+- **Run without syncing first:** `rr exec "<command>"`
+- **Remote pytest example:** `rr run ".venv/bin/pytest tests/modules/test_factorize.py::test_sample_non_diff_runs_on_cuda -q"`
+- **Remote benchmark example:** `rr run ".venv/bin/python scripts/profile_sampling_routing.py benchmark --workload factorize-int"`
+- **Verify CUDA remotely before GPU-specific work:** `rr run ".venv/bin/python -c 'import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"no-cuda\")'"`
+- Treat remote shell startup warnings as configuration issues, not benchmark results. If `rr` reaches the host but shell init breaks command execution, fix the host shell configuration before trusting failures.
+- Prefer `rr` for remote CUDA regression tests so local CPU-only environments do not mask GPU-specific failures.
+
 ## Code Style Guidelines
 - **Python version:** 3.10+ with type hints required
 - **Docstrings:** Google style convention
