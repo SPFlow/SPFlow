@@ -15,6 +15,16 @@ from spflow.zoo.apc.config import ApcTrainConfig
 from spflow.zoo.apc.model import AutoencodingPC
 
 
+def _loader_generator() -> torch.Generator:
+    """Create a shuffle generator compatible with the active torch default device."""
+    get_default_device = getattr(torch, "get_default_device", None)
+    default_device = torch.device(get_default_device()) if callable(get_default_device) else torch.device("cpu")
+    generator_device = default_device.type if default_device.type != "meta" else "cpu"
+    generator = torch.Generator(device=generator_device)
+    generator.manual_seed(torch.initial_seed())
+    return generator
+
+
 def _extract_batch_tensor(batch: Tensor | tuple | list) -> Tensor:
     """Extract the input tensor from a batch object.
 
@@ -34,7 +44,8 @@ def _extract_batch_tensor(batch: Tensor | tuple | list) -> Tensor:
 def _to_loader(data: Tensor | Iterable, batch_size: int, shuffle: bool) -> Iterable:
     """Convert tensor data into a DataLoader, otherwise pass iterables through."""
     if isinstance(data, Tensor):
-        return DataLoader(TensorDataset(data), batch_size=batch_size, shuffle=shuffle)
+        generator = _loader_generator() if shuffle else None
+        return DataLoader(TensorDataset(data), batch_size=batch_size, shuffle=shuffle, generator=generator)
     return data
 
 
