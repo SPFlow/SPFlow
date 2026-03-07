@@ -289,7 +289,7 @@ def learn_spn(
             if len(scope_inter) > 0:
                 leaf_layer = leaf_module.__class__(
                     scope=Scope(sorted(scope_inter)), out_channels=leaf_module.out_shape.channels
-                )
+                ).to(data.device)
                 # estimate leaves node parameters from data
                 leaf_layer.maximum_likelihood_estimation(data)
 

@@ -325,7 +325,7 @@ def _create_partitioned_mv_leaf(
 
         leaf = leaf_module.__class__(
             scope=Scope(sorted(intersection)), out_channels=leaf_module.out_shape.channels
-        )
+        ).to(data.device)
         leaf.maximum_likelihood_estimation(data)
         leaves.append(leaf)
 
