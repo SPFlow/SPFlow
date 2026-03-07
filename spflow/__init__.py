@@ -5,5 +5,5 @@ circuits with automatic differentiation, efficient inference, learning
 algorithms, and visualization tools.
 """
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __author__ = "The SPFlow Authors"
