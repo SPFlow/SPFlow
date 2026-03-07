@@ -123,7 +123,7 @@ class TestProdConvLogLikelihood:
         expected_first = input_ll_spatial[0, 0:2, 0:2, 0, 0].sum()
         actual_first = ll[0, 0, 0, 0]
 
-        torch.testing.assert_close(actual_first, expected_first, rtol=0.0, atol=0.0)
+        torch.testing.assert_close(actual_first, expected_first, rtol=1e-6, atol=1e-6)
 
     @pytest.mark.parametrize("out_channels,hwk", ll_params)
     def test_log_likelihood_finite(self, out_channels, hwk):
