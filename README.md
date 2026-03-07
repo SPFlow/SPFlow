@@ -41,16 +41,19 @@ from spflow.dsl import dsl
 from spflow.modules.leaves import Normal
 from spflow.utils.visualization import visualize
 
+# Define a tiny probabilistic circuit with two weighted Gaussian-product branches.
 with dsl():
     terms = 0.4 * Normal(0) * Normal(1) + 0.6 * Normal(0) * Normal(1)
 
+# Materialize the DSL expression into an executable circuit.
 pc = terms.build()
+
+# Score a batch of 8 synthetic 2D observations.
 ll = pc.log_likelihood(torch.randn(8, 2))
 print(ll.shape)
 
-# Optional visualization (requires Graphviz `dot`)
-if shutil.which("dot") is not None:
-    visualize(pc, output_path="/tmp/dsl-structure", format="svg")
+# Plot graph
+visualize(pc, output_path="dsl-structure", format="svg")
 ```
 
 <img src="res/dsl-structure.svg" height="400"/>
@@ -67,6 +70,7 @@ from spflow.modules.products import Product
 from spflow.modules.sums import Sum
 from spflow.utils.visualization import visualize
 
+# Fix the RNG seed so the example remains reproducible.
 torch.manual_seed(0)
 
 # Feature indices (X, Z1, Z2)
@@ -110,6 +114,8 @@ data_x = torch.randn(num_rows)
 data_z1 = torch.randint(low=0, high=3, size=(num_rows,), dtype=torch.int64).to(torch.float32)
 data_z2 = torch.randn(num_rows)
 data = torch.stack([data_x, data_z1, data_z2], dim=1)
+
+# Evaluate the circuit on the batch and then draw unconditional samples from it.
 ll = root.log_likelihood(data)
 
 # Unconditional sampling
@@ -120,9 +126,8 @@ print(f"data.shape={data.shape}")
 print(f"ll.shape={ll.shape}")
 print(f"samples.shape={samples.shape}")
 
-# Optional visualization (requires Graphviz `dot`)
-if shutil.which("dot") is not None:
-    visualize(root, output_path="/tmp/spflow-structure", show_scope=True, show_shape=True, format="svg")
+# Plot graph
+visualize(root, output_path="structure", format="svg")
 ```
 
 <img src="res/structure.svg" height="400"/>
