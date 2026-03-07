@@ -98,7 +98,7 @@ class WeightedSum(Module):
                 f"Weights for 'WeightedSum' must be 1D, 2D, 3D, or 4D tensor but was {weights.dim()}D."
             )
 
-        weights = weights.to(device=self.inputs.device)
+        weights = weights.to(device=_default_torch_device())
 
         if not torch.all(weights >= 0):
             raise InvalidWeightsError("Weights for 'WeightedSum' must be non-negative.")
@@ -127,9 +127,6 @@ class WeightedSum(Module):
 
         # ========== 6. WEIGHT REGISTRATION ==========
         self._weights = nn.Parameter(weights)
-        default_device = _default_torch_device()
-        if default_device.type != "meta":
-            self.to(device=default_device)
 
     @property
     def feature_to_scope(self) -> np.ndarray:
@@ -188,8 +185,8 @@ class WeightedSum(Module):
             Tensor: Log-likelihood of shape (batch_size, num_features, out_channels, repetitions).
         """
         # Get input log-likelihoods
-        data = data.to(device=self.device)
         ll = self.inputs.log_likelihood(data, cache=cache)
+        ll = ll.to(device=self._weights.device)
 
         ll = rearrange(ll, "b f ci r -> b f ci 1 r")
 
