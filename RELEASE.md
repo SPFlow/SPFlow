@@ -12,41 +12,11 @@ Maintainers should no longer upload releases from a local machine with `twine`.
 
 ## Table of Contents
 
-- [One-Time Setup](#one-time-setup)
 - [Pre-Release Checklist](#pre-release-checklist)
 - [Stable Release Flow](#stable-release-flow)
 - [TestPyPI Rehearsal](#testpypi-rehearsal)
 - [Post-Release Verification](#post-release-verification)
 - [Hotfix Releases](#hotfix-releases)
-
-## One-Time Setup
-
-Complete these steps once per repository/environment.
-
-### GitHub
-
-- Create protected environments named `pypi` and `testpypi`
-- Require manual approval for `pypi`
-- Restrict `pypi` deployments to the `main` branch and release tags
-- Ensure branch protection requires the CI workflow to pass before merging to `main`
-
-### PyPI
-
-Configure a Trusted Publisher for the production project:
-
-- Owner: `SPFlow`
-- Repository: `SPFlow`
-- Workflow file: `publish-to-pypi.yml`
-- Environment: `pypi`
-
-### TestPyPI
-
-Configure a Trusted Publisher for the TestPyPI project:
-
-- Owner: `SPFlow`
-- Repository: `SPFlow`
-- Workflow file: `publish-to-pypi.yml`
-- Environment: `testpypi`
 
 ## Pre-Release Checklist
 
