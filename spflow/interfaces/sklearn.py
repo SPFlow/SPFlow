@@ -68,6 +68,14 @@ def _torch_dtype_from_str(dtype: str | None) -> torch.dtype | None:
     raise InvalidParameterError(f"Unknown dtype '{dtype}'. Use 'float32', 'float64', or None.")
 
 
+def _default_torch_device() -> torch.device:
+    """Return the active default torch device, falling back to CPU when unavailable."""
+    get_default_device = getattr(torch, "get_default_device", None)
+    if get_default_device is None:
+        return torch.device("cpu")
+    return torch.device(get_default_device())
+
+
 def _reduce_log_likelihood(
     ll: torch.Tensor,
     *,
@@ -134,7 +142,8 @@ class SPFlowDensityEstimator(BaseEstimator, DensityMixin):
         leaf_out_channels: Output channels for the leaf module template (passed to `Normal`).
         min_instances_slice: Stopping criterion for structure learning (forwarded if not overridden).
         min_features_slice: Stopping criterion for structure learning (forwarded if not overridden).
-        device: Torch device string (e.g., "cpu", "cuda"). If None, uses model device or CPU.
+        device: Torch device string (e.g., "cpu", "cuda"). If None, uses model device or the
+            active PyTorch default device.
         dtype: Torch dtype string ("float32", "float64") for inputs.
         channel_agg: How to aggregate multiple output channels into a scalar log-likelihood.
         repetition_agg: How to aggregate multiple repetitions into a scalar log-likelihood.
@@ -177,7 +186,7 @@ class SPFlowDensityEstimator(BaseEstimator, DensityMixin):
             return self.model_.device
         if self.model is not None:
             return self.model.device
-        return torch.device("cpu")
+        return _default_torch_device()
 
     def _to_tensor(self, x: Any) -> torch.Tensor:
         arr = _as_2d_numpy(x)
@@ -187,7 +196,9 @@ class SPFlowDensityEstimator(BaseEstimator, DensityMixin):
     def _leaf_template(self, n_features: int) -> Any:
         if self.leaf != "normal":
             raise InvalidParameterError(f"Unknown leaf '{self.leaf}'.")
-        return Normal(scope=Scope(list(range(n_features))), out_channels=self.leaf_out_channels)
+        return Normal(scope=Scope(list(range(n_features))), out_channels=self.leaf_out_channels).to(
+            self._device()
+        )
 
     def _structure_spec(self) -> _StructureLearnerSpec:
         if self.structure_learner not in ("learn_spn", "prometheus"):
@@ -312,7 +323,7 @@ class SPFlowClassifier(BaseEstimator, ClassifierMixin):
             return torch.device(self.device)
         if hasattr(self.model, "device"):
             return torch.device(getattr(self.model, "device"))
-        return torch.device("cpu")
+        return _default_torch_device()
 
     def _to_tensor(self, x: Any) -> torch.Tensor:
         arr = _as_2d_numpy(x)

@@ -51,8 +51,8 @@ def log_likelihood_interval(
         >>> low = torch.tensor([[0.2]])
         >>> high = torch.tensor([[0.8]])
         >>> log_prob = log_likelihood_interval(leaf, low, high)
-        >>> torch.exp(log_prob)
-        tensor([[[[0.6000]]]])
+        >>> torch.exp(log_prob)  # doctest: +ELLIPSIS
+        tensor([[[[0.6000]]]]...)
     """
     evidence = IntervalEvidence(low=low, high=high)
     return model.log_likelihood(evidence, cache=cache)
