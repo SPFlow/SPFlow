@@ -4,12 +4,6 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-      testpypi_project_name:
-        description: "Distribution name to publish to TestPyPI for rehearsal runs"
-        default: "spflow"
-        required: true
-        type: string
 
 concurrency:
   group: publish-${{ github.event.release.tag_name || github.ref_name }}
@@ -21,8 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    env:
-      SPFLOW_DIST_NAME: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.testpypi_project_name || 'spflow' }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -38,21 +30,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install build twine
-
-      - name: Override distribution name for TestPyPI rehearsal
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.testpypi_project_name != 'spflow' }}
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          pyproject = Path("pyproject.toml")
-          old = 'name = "spflow"'
-          new = f'name = "{__import__("os").environ["SPFLOW_DIST_NAME"]}"'
-          content = pyproject.read_text()
-          if old not in content:
-              raise SystemExit(f"Expected to find {old!r} in pyproject.toml")
-          pyproject.write_text(content.replace(old, new, 1))
-          PY
 
       - name: Build distribution artifacts
         run: python -m build
@@ -89,10 +66,9 @@ jobs:
           python -m pip install --no-deps dist/*.whl
           python - <<'PY'
           import importlib.metadata
-          import os
           import spflow
 
-          version = importlib.metadata.version(os.environ["SPFLOW_DIST_NAME"])
+          version = importlib.metadata.version("spflow")
           assert version == spflow.__version__, (version, spflow.__version__)
           print(version)
           PY
@@ -113,7 +89,7 @@ jobs:
       id-token: write
     environment:
       name: testpypi
-      url: ${{ format('https://test.pypi.org/project/{0}/', github.event.inputs.testpypi_project_name || 'spflow') }}
+      url: https://test.pypi.org/project/spflow/
     steps:
       - name: Download distribution artifacts
         uses: actions/download-artifact@v4

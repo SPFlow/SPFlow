@@ -124,36 +124,8 @@ Use this before the first public 1.x release or whenever you want a dry run.
 
 1. Open the `Publish Python Package` workflow in GitHub Actions.
 2. Choose `Run workflow` on the branch or tag you want to test.
-3. Leave `testpypi_project_name=spflow` if you already have access to the real TestPyPI project.
-4. If you temporarily do not have access to TestPyPI project `spflow`, use a proxy project name such as `spflow-test`.
-5. The workflow will build and publish to TestPyPI through the `testpypi` environment.
-6. Verify the uploaded artifact before creating the production GitHub Release.
-
-### Temporary proxy project on TestPyPI
-
-If TestPyPI access to project `spflow` is temporarily blocked:
-
-- create or use a temporary TestPyPI project such as `spflow-test`
-- register a Trusted Publisher for that TestPyPI project with environment `testpypi`
-- run the manual workflow with `testpypi_project_name=spflow-test`
-
-The workflow will rewrite only the distribution name for that manual rehearsal run.
-It does not change the import path and it does not affect the production PyPI release flow.
-
-### What to change once access to TestPyPI `spflow` is available
-
-No repository revert is required.
-
-Once you have access to the real TestPyPI project:
-
-- register or update the Trusted Publisher for TestPyPI project `spflow`
-- run the manual workflow with `testpypi_project_name=spflow`
-- stop using `spflow-test` for rehearsals
-
-Optional cleanup:
-
-- remove the old Trusted Publisher for `spflow-test`
-- stop using or delete the temporary `spflow-test` project on TestPyPI if you no longer need it
+3. The workflow will build and publish to TestPyPI project `spflow` through the `testpypi` environment.
+4. Verify the uploaded artifact before creating the production GitHub Release.
 
 ## Post-Release Verification
 
