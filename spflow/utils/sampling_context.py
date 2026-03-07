@@ -982,12 +982,16 @@ def to_one_hot(
     if dim < -output_ndim or dim >= output_ndim:
         raise InvalidParameterError(f"dim must be in range [-{output_ndim}, {output_ndim - 1}], got {dim}.")
 
-    try:
-        one_hot = F.one_hot(index.to(dtype=torch.long), num_classes=dim_size)
-    except RuntimeError as err:
-        raise InvalidParameterError(
-            f"index values must lie in [0, {dim_size - 1}] for dim_size={dim_size}."
-        ) from err
+    index_long = index.to(dtype=torch.long)
+    if index_long.numel() > 0:
+        min_index = int(index_long.amin().item())
+        max_index = int(index_long.amax().item())
+        if min_index < 0 or max_index >= dim_size:
+            raise InvalidParameterError(
+                f"index values must lie in [0, {dim_size - 1}] for dim_size={dim_size}."
+            )
+
+    one_hot = F.one_hot(index_long, num_classes=dim_size)
 
     target_dim = dim % output_ndim
     if target_dim != output_ndim - 1:
