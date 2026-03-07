@@ -40,6 +40,15 @@ class _CircuitConfig:
     non_monotonic_inputs: bool
 
 
+def _default_generator(seed: int) -> torch.Generator:
+    get_default_device = getattr(torch, "get_default_device", None)
+    default_device = torch.device(get_default_device()) if callable(get_default_device) else torch.device("cpu")
+    generator_device = default_device.type if default_device.type != "meta" else "cpu"
+    generator = torch.Generator(device=generator_device)
+    generator.manual_seed(int(seed))
+    return generator
+
+
 def _validate_model_common(
     *,
     num_variables: int,
@@ -213,8 +222,7 @@ def _build_component(
     seed: int,
     force_root_sum: bool = False,
 ) -> Module:
-    gen = torch.Generator()
-    gen.manual_seed(int(seed))
+    gen = _default_generator(seed)
     root = _instantiate_tree(tree, cfg, generator=gen)
     return _finalize_scalar(root, cfg, generator=gen, force_root_sum=force_root_sum)
 
