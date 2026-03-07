@@ -4,296 +4,201 @@ This document describes the release process for SPFlow maintainers.
 
 SPFlow uses a two-branch model:
 - `develop`: integration branch for regular feature and bug-fix work
-- `main`: stable release branch and hotfix target
+- `main`: stable release branch and public release source
+
+The production PyPI publish flow is automated through
+`.github/workflows/publish-to-pypi.yml` using PyPI Trusted Publishing.
+Maintainers should no longer upload releases from a local machine with `twine`.
 
 ## Table of Contents
 
-- [Prerequisites](#prerequisites)
-- [Branch Model](#branch-model)
-- [Release Types](#release-types)
+- [One-Time Setup](#one-time-setup)
 - [Pre-Release Checklist](#pre-release-checklist)
-- [Release Steps](#release-steps)
-- [Post-Release Steps](#post-release-steps)
+- [Stable Release Flow](#stable-release-flow)
+- [TestPyPI Rehearsal](#testpypi-rehearsal)
+- [Post-Release Verification](#post-release-verification)
 - [Hotfix Releases](#hotfix-releases)
-- [Backport Releases](#backport-releases)
-- [Troubleshooting](#troubleshooting)
 
-## Prerequisites
+## One-Time Setup
 
-### Required Access
+Complete these steps once per repository/environment.
 
-- Write access to the SPFlow repository
-- PyPI maintainer access for the `spflow` package
+### GitHub
 
-### Required Tools
+- Create protected environments named `pypi` and `testpypi`
+- Require manual approval for `pypi`
+- Restrict `pypi` deployments to the `main` branch and release tags
+- Ensure branch protection requires the CI workflow to pass before merging to `main`
 
-```bash
-# Configure PyPI credentials (one-time setup)
-# Option 1: Use token (recommended)
-# Create token at https://pypi.org/manage/account/token/
-# Store in ~/.pypirc:
-cat > ~/.pypirc << EOF
-[pypi]
-username = __token__
-password = pypi-YOUR-TOKEN-HERE
-EOF
+### PyPI
 
-# Option 2: Use username/password
-# twine will prompt for credentials during upload
-```
+Configure a Trusted Publisher for the production project:
 
-### Development Environment
+- Owner: `SPFlow`
+- Repository: `SPFlow`
+- Workflow file: `publish-to-pypi.yml`
+- Environment: `pypi`
 
-```bash
-# Clone repository
-git clone git@github.com:SPFlow/SPFlow.git
-cd SPFlow
+### TestPyPI
 
-# Set up development environment
-uv sync --extra dev
-source .venv/bin/activate
-```
+Configure a Trusted Publisher for the TestPyPI project:
 
-## Branch Model
-
-This runbook assumes releases are prepared from `develop` and promoted to `main`.
-
-- Regular release flow: `develop` -> tag/release -> merge/promotion to `main`
-- Hotfix flow: start from `main` release tag, then merge the fix back into `develop`
-
-## Release Types
-
-### Stable Release (X.Y.Z)
-
-Full production-ready release:
-- All features complete and tested
-- Documentation updated
-- No known critical bugs
+- Owner: `SPFlow`
+- Repository: `SPFlow`
+- Workflow file: `publish-to-pypi.yml`
+- Environment: `testpypi`
 
 ## Pre-Release Checklist
 
-Before starting the release process, ensure:
+Before starting a release:
 
-### Code Quality
+- [ ] All CI jobs pass on the release commit
+- [ ] `CHANGELOG.md` is updated
+- [ ] `README.md` and docs reflect the release
+- [ ] `spflow/__init__.py` contains the release version
+- [ ] The release commit has been merged or promoted to `main`
 
-- [ ] All tests pass on main branch:
-  ```bash
-  uv run pytest -n 4
-  ```
+## Stable Release Flow
 
-- [ ] Code is properly formatted:
-  ```bash
-  uv run black spflow tests --check
-  ```
-
-### Documentation
-
-- [ ] CHANGELOG.md is updated with all changes since last release
-- [ ] README.md reflects current version and features
-- [ ] All new features are documented
-- [ ] Breaking changes are clearly documented
-- [ ] Migration guide exists (for MAJOR versions)
-
-### Dependencies
-
-- [ ] All dependencies are up to date and secure
-- [ ] Minimum versions are tested and documented
-- [ ] No security vulnerabilities in dependencies:
-  ```bash
-  pip-audit  # or safety check
-  ```
-
-### Version Number
-
-- [ ] Version follows semantic versioning rules (see [VERSIONING.md](VERSIONING.md))
-- [ ] Version number is appropriate for changes being released
-
-## Release Steps
-
-Before Step 1, determine whether the release is MAJOR/MINOR/PATCH using [VERSIONING.md](VERSIONING.md).
-
-### Step 1: Prepare Release Branch
+### Step 1: Prepare the release on `develop`
 
 ```bash
-# Ensure you're on the main development branch
 git checkout develop
 git pull origin develop
-
-# Create release branch (optional, for preparation)
-git checkout -b release/vX.Y.Z
 ```
 
-### Step 2: Update Version Number
+Update the release metadata:
 
-Edit `spflow/__init__.py`:
+- bump `spflow/__init__.py`
+- update `CHANGELOG.md`
+- commit the release prep changes
 
-```python
-__version__ = "X.Y.Z"  # or "X.Y.Z-alpha.1", etc.
-```
-
-### Step 3: Update CHANGELOG.md
-
-Move items from `[Unreleased]` to new version section:
-
-```markdown
-## [Unreleased]
-
-## [X.Y.Z] - YYYY-MM-DD
-
-### Added
-- New feature A
-- New feature B
-
-### Changed
-- Updated behavior of feature C
-
-### Fixed
-- Bug fix D
-
-### Breaking Changes
-- Breaking change E (if MAJOR version)
-```
-
-Add comparison link at bottom:
-
-```markdown
-[X.Y.Z]: https://github.com/SPFlow/SPFlow/compare/vX.Y.Z-1...vX.Y.Z
-```
-
-### Step 4: Commit Version Bump
+### Step 2: Promote the release commit to `main`
 
 ```bash
-git add spflow/__init__.py CHANGELOG.md
-git commit -m "chore: bump version to X.Y.Z"
+git checkout main
+git pull origin main
+git merge --ff-only develop
+git push origin main
 ```
 
-### Step 5: Run Final Tests
+If you use a release branch, merge that branch to `main` instead. The key rule is
+that the public release commit must already be on `main` before the tag/release is created.
+
+### Step 3: Confirm CI is green on `main`
+
+Wait for the CI workflow to pass on the exact release commit. This includes:
+
+- linting
+- formatting
+- package build validation
+- the test matrix
+
+### Step 4: Create the release tag
 
 ```bash
-# Run complete test suite
-uv run pytest -n 4 --cov=spflow
-
-# Test on clean install
-deactivate
-uv venv test_venv
-source test_venv/bin/activate
-pip install -e .
-uv run pytest -n 4
-deactivate
-rm -rf test_venv
-source .venv/bin/activate
-```
-
-### Step 6: Create Git Tag
-
-```bash
-# Create annotated tag
+git checkout main
+git pull origin main
 git tag -a vX.Y.Z -m "Release version X.Y.Z"
-
-# Verify tag
-git tag -l vX.Y.Z
-git show vX.Y.Z
-```
-
-### Step 7: Push Changes
-
-```bash
-# Push commit to remote
-git push origin develop
-
-# Push tag
-git push origin vX.Y.Z
-
-# If using release branch, merge to develop first
-git checkout develop
-git merge --no-ff release/vX.Y.Z
-git push origin develop
 git push origin vX.Y.Z
 ```
 
-### Step 8: Build Distribution
+### Step 5: Publish the GitHub Release
+
+Create a GitHub Release for `vX.Y.Z`.
+
+This triggers `.github/workflows/publish-to-pypi.yml`, which will:
+
+1. build the sdist and wheel
+2. run `twine check`
+3. verify the wheel contents
+4. smoke-install the built wheel
+5. wait for `pypi` environment approval
+6. publish the already-built artifact to PyPI
+
+Approve the `pypi` environment deployment when the workflow requests it.
+
+## TestPyPI Rehearsal
+
+Use this before the first public 1.x release or whenever you want a dry run.
+
+1. Open the `Publish Python Package` workflow in GitHub Actions.
+2. Choose `Run workflow` on the branch or tag you want to test.
+3. Leave `testpypi_project_name=spflow` if you already have access to the real TestPyPI project.
+4. If you temporarily do not have access to TestPyPI project `spflow`, use a proxy project name such as `spflow-test`.
+5. The workflow will build and publish to TestPyPI through the `testpypi` environment.
+6. Verify the uploaded artifact before creating the production GitHub Release.
+
+### Temporary proxy project on TestPyPI
+
+If TestPyPI access to project `spflow` is temporarily blocked:
+
+- create or use a temporary TestPyPI project such as `spflow-test`
+- register a Trusted Publisher for that TestPyPI project with environment `testpypi`
+- run the manual workflow with `testpypi_project_name=spflow-test`
+
+The workflow will rewrite only the distribution name for that manual rehearsal run.
+It does not change the import path and it does not affect the production PyPI release flow.
+
+### What to change once access to TestPyPI `spflow` is available
+
+No repository revert is required.
+
+Once you have access to the real TestPyPI project:
+
+- register or update the Trusted Publisher for TestPyPI project `spflow`
+- run the manual workflow with `testpypi_project_name=spflow`
+- stop using `spflow-test` for rehearsals
+
+Optional cleanup:
+
+- remove the old Trusted Publisher for `spflow-test`
+- stop using or delete the temporary `spflow-test` project on TestPyPI if you no longer need it
+
+## Post-Release Verification
+
+### Step 1: Confirm the GitHub workflow succeeded
+
+- `build-release-dists` passed
+- `publish-pypi` passed
+- The published version matches the GitHub tag
+
+### Step 2: Verify the package from PyPI
 
 ```bash
-# Clean previous builds
-rm -rf dist/ build/ *.egg-info
-
-# Build source distribution and wheel
-uv run build
-```
-
-### Step 9: Test Distribution
-
-```bash
-# Test installation from built wheel
-python -m venv test_dist
-source test_dist/bin/activate
-pip install dist/spflow-X.Y.Z-py3-none-any.whl
-python -c "import spflow; print(spflow.__version__)"
-uv run pytest tests/  # Run subset of tests
-deactivate
-rm -rf test_dist
-```
-
-### Step 10: Upload to PyPI
-
-```bash
-# Upload to production PyPI
-uv run twine upload dist/*
-
-# Verify upload
-# Visit: https://pypi.org/project/spflow/X.Y.Z/
-```
-
-## Post-Release Steps
-
-### Step 1: Verify Release
-
-```bash
-# Test installation from PyPI in fresh environment
 python -m venv verify_release
 source verify_release/bin/activate
-pip install spflow==X.Y.Z
-python -c "import spflow; print(spflow.__version__)"
-python -c "import spflow; import spflow.dsl; import spflow.modules; import spflow.learn; print('SPFlow imports OK')"
+python -m pip install --upgrade pip
+python -m pip install spflow==X.Y.Z
+python - <<'PY'
+import importlib.metadata
+import spflow
+
+version = importlib.metadata.version("spflow")
+assert version == spflow.__version__, (version, spflow.__version__)
+print(version)
+PY
 deactivate
 rm -rf verify_release
 ```
 
-### Step 2: Update Documentation
+### Step 3: Prepare the next development cycle
 
-- [ ] Update documentation site (if exists)
-- [ ] Update any version-specific links
-- [ ] Announce release in documentation
+If needed:
 
-### Step 3: Merge to Main (Stable Branch)
+- add a new `[Unreleased]` section to `CHANGELOG.md`
+- bump to the next development version
+- merge `main` back into `develop` if your release process created divergence
 
-```bash
-# Merge stable releases to main branch
-git checkout main
-git merge --no-ff vX.Y.Z
-git push origin main
-```
+## Hotfix Releases
 
-### Step 5: Prepare for Next Release
+For a hotfix release:
 
-```bash
-# Update version to next dev version (optional)
-# E.g., after 1.2.0 release, set to "1.3.0-dev"
-vim spflow/__init__.py
-
-# Add [Unreleased] section in CHANGELOG.md
-cat >> CHANGELOG.md << EOF
-## [Unreleased]
-
-### Added
-
-### Changed
-
-### Fixed
-
-EOF
-
-git add spflow/__init__.py CHANGELOG.md
-git commit -m "chore: prepare for next development cycle"
-git push origin develop
-```
+1. branch from `main` or the last release tag
+2. apply the minimal fix
+3. bump the patch version
+4. merge the fix to `main`
+5. wait for green CI
+6. tag `vX.Y.Z`
+7. publish a GitHub Release
+8. back-merge the hotfix to `develop`

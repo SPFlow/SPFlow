@@ -1,8 +1,6 @@
 name: Development Build & Test
 
 on:
-  release:
-    types: [ published ]
   pull_request:
   push:
 
@@ -25,7 +23,6 @@ jobs:
           pip install .[dev]
       - name: Lint
         run: ruff check spflow tests
-        continue-on-error: true
 
   "Check_Format":
     name: "Check Format"
@@ -43,9 +40,61 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install .[dev]
-      # - name: Checking formatting with black
-      #   run: black --check --diff spflow tests
-      #   continue-on-error: true
+      - name: Checking formatting with black
+        run: black --check --diff spflow tests
+
+  "Package":
+    name: "Package"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install packaging tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+      - name: Build distribution artifacts
+        run: python -m build
+      - name: Check distribution metadata
+        run: twine check dist/*
+      - name: Validate wheel contents
+        run: |
+          python - <<'PY'
+          import pathlib
+          import zipfile
+
+          wheel_path = next(pathlib.Path("dist").glob("*.whl"))
+          with zipfile.ZipFile(wheel_path) as wheel:
+              names = set(wheel.namelist())
+
+          expected = "spflow/py.typed"
+          if expected not in names:
+              raise SystemExit(f"Missing required typing marker: {expected}")
+
+          forbidden_prefixes = ("tests/", "docs/", "scripts/")
+          leaked = sorted(name for name in names if name.startswith(forbidden_prefixes))
+          if leaked:
+              leaked_preview = ", ".join(leaked[:10])
+              raise SystemExit(f"Unexpected files in wheel: {leaked_preview}")
+          PY
+      - name: Smoke install built wheel
+        run: |
+          python -m venv .pkg-smoke
+          . .pkg-smoke/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install --no-deps dist/*.whl
+          python - <<'PY'
+          import importlib.metadata
+          import spflow
+
+          version = importlib.metadata.version("spflow")
+          assert version == spflow.__version__, (version, spflow.__version__)
+          print(version)
+          PY
 
   # We do not want to waste too many resources on testing all combinations. Thus we test:
   # - on the oldest and the two most recent version of Python that we support (see README.md)
@@ -83,4 +132,3 @@ jobs:
         with:
           version-python: ${{ matrix.version-python }}
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
-
