@@ -1,9 +1,14 @@
 # SPFlow: An Easy and Extensible Library for Probabilistic Circuits
 
+[![PyPI version](https://img.shields.io/pypi/v/spflow)](https://pypi.org/project/spflow/)
 [![Python version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/github/license/SPFlow/SPFlow.svg)](https://github.com/SPFlow/SPFlow/blob/master/LICENSE)
-[![Code style: black & isort](https://img.shields.io/badge/code%20style-black%20%26%20isort-000000.svg)](https://black.readthedocs.io/en/stable/)
-[![codecov](https://codecov.io/gh/SPFlow/SPFlow/branch/develop/graph/badge.svg?token=4L7geh0Pxz)](https://codecov.io/gh/SPFlow/SPFlow)
+[![License](https://img.shields.io/github/license/SPFlow/SPFlow.svg)](https://github.com/SPFlow/SPFlow/blob/main/LICENSE)
+[![Tests](https://img.shields.io/github/actions/workflow/status/SPFlow/SPFlow/github-actions-build-python.yaml?branch=main&label=tests)](https://github.com/SPFlow/SPFlow/actions/workflows/github-actions-build-python.yaml)
+[![Package](https://img.shields.io/github/actions/workflow/status/SPFlow/SPFlow/publish-to-pypi.yml?label=package)](https://github.com/SPFlow/SPFlow/actions/workflows/publish-to-pypi.yml)
+[![Docs](https://img.shields.io/github/actions/workflow/status/SPFlow/SPFlow/docs.yaml?branch=main&label=docs)](https://github.com/SPFlow/SPFlow/actions/workflows/docs.yaml)
+[![PyPI - Wheel](https://img.shields.io/pypi/wheel/spflow)](https://pypi.org/project/spflow/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/spflow)](https://pypi.org/project/spflow/)
+[![codecov](https://codecov.io/gh/SPFlow/SPFlow/branch/main/graph/badge.svg?token=4L7geh0Pxz)](https://codecov.io/gh/SPFlow/SPFlow)
 [![Semantic Versioning](https://img.shields.io/badge/semver-2.0.0-blue)](https://semver.org/)
 
 **SPFlow** is a flexible, modular library for building and reasoning with **Sum-Product Networks (SPNs)** and **Probabilistic Circuits (PCs)**. These are deep generative and discriminative models that enable tractable (polynomial-time) probabilistic inference while maintaining expressive power. SPFlow is built on [PyTorch](https://pytorch.org/), providing GPU acceleration and seamless integration with modern deep learning workflows.
