@@ -350,7 +350,7 @@ class _MargNoneModule(Module):
         self.scope = scope
         self.in_shape = ModuleShape(features=len(scope.query), channels=1, repetitions=1)
         self.out_shape = ModuleShape(features=1, channels=out_channels, repetitions=1)
-        self._feature_to_scope = torch.tensor([[0]], dtype=torch.int64).numpy()
+        self._feature_to_scope = torch.tensor([[0]], dtype=torch.int64, device="cpu").numpy()
 
     @property
     def feature_to_scope(self):
