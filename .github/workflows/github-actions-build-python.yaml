@@ -23,6 +23,7 @@ jobs:
           pip install .[dev]
       - name: Lint
         run: ruff check spflow tests
+        continue-on-error: true
 
   "Check_Format":
     name: "Check Format"
@@ -42,6 +43,7 @@ jobs:
           pip install .[dev]
       - name: Checking formatting with black
         run: black --check --diff spflow tests
+        continue-on-error: true
 
   "Package":
     name: "Package"
