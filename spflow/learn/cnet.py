@@ -22,6 +22,13 @@ from spflow.modules.products import Product
 from spflow.modules.sums import Sum
 
 
+def _default_generator() -> torch.Generator:
+    """Create a generator on the active default device."""
+    get_default_device = getattr(torch, "get_default_device", None)
+    device = get_default_device() if get_default_device is not None else "cpu"
+    return torch.Generator(device=device)
+
+
 def _validate_discrete_data(data: Tensor, cardinalities: list[int], scope: Scope) -> None:
     """Validate that data contains valid discrete values."""
     if data.dim() != 2:
@@ -136,7 +143,7 @@ def learn_cnet(
     _validate_discrete_data(data, card_list, scope)
 
     # Set up RNG for random conditioning
-    rng = torch.Generator()
+    rng = _default_generator()
     if seed is not None:
         rng.manual_seed(seed)
     else:

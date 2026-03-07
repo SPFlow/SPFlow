@@ -17,6 +17,12 @@ from spflow.meta import Scope
 from spflow.modules.module import Module
 
 
+def _generator(seed: int) -> torch.Generator:
+    get_default_device = getattr(torch, "get_default_device", None)
+    device = get_default_device() if get_default_device is not None else "cpu"
+    return torch.Generator(device=device).manual_seed(seed)
+
+
 def _randn(*size: int) -> Tensor:
     return torch.randn(*size)
 
@@ -27,7 +33,7 @@ def _randint(low: int, high: int, size: tuple[int, ...]) -> Tensor:
 
 def make_binary_data(n_samples: int = 200, n_vars: int = 3, seed: int = 42) -> Tensor:
     """Generate random binary data for testing."""
-    rng = torch.Generator().manual_seed(seed)
+    rng = _generator(seed)
     return torch.randint(0, 2, (n_samples, n_vars), generator=rng).float()
 
 
@@ -35,7 +41,7 @@ def make_categorical_data(
     n_samples: int = 200, n_vars: int = 3, cardinalities: list[int] | None = None, seed: int = 42
 ) -> tuple[Tensor, list[int]]:
     """Generate random categorical data for testing."""
-    rng = torch.Generator().manual_seed(seed)
+    rng = _generator(seed)
     if cardinalities is None:
         cardinalities = [3] * n_vars
     cols = []
@@ -239,7 +245,7 @@ def test_internal_validation_entropy_and_variable_selection_branches():
     best = _select_conditioning_variable_naive_mle(d, scope, [2, 2])
     assert best in scope.query
 
-    rng = torch.Generator().manual_seed(0)
+    rng = _generator(0)
     r = _select_conditioning_variable_random(scope, rng)
     assert r in scope.query
 
