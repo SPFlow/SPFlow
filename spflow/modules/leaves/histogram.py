@@ -96,36 +96,36 @@ class HistogramDist:
         Values outside the support ``[bin_edges[0], bin_edges[-1])`` receive ``-inf``.
         """
         x = self._align_x(x)
-        n_samples, num_features, _, _ = x.shape
+        _, num_features, _, _ = x.shape
 
         if num_features != self._logits.shape[0]:
             raise InvalidParameterError(
                 f"Feature mismatch: x has {num_features} features but logits have {self._logits.shape[0]}."
             )
 
-        x_broadcast = torch.broadcast_to(
-            x, (n_samples, *self._logits.shape[:-1])
-        ).contiguous()  # (N, F, C, R)
+        target_shape = (x.shape[0], *self._logits.shape[:-1])
 
-        edges = self._bin_edges.to(device=x_broadcast.device, dtype=x_broadcast.dtype)
-        bin_idx = torch.bucketize(x_broadcast, edges, right=True) - 1  # (N, F, C, R)
+        edges = self._bin_edges.to(device=x.device, dtype=x.dtype)
+        bin_idx = torch.bucketize(x, edges, right=True) - 1
+        in_support = torch.isfinite(x) & (x >= edges[0]) & (x < edges[-1])
 
-        in_support = torch.isfinite(x_broadcast) & (x_broadcast >= edges[0]) & (x_broadcast < edges[-1])
+        bin_idx_safe = bin_idx.clamp(0, self.nbins - 1).expand(target_shape)
+        in_support = in_support.expand(target_shape)
 
-        bin_idx_safe = bin_idx.clamp(0, self.nbins - 1)
-        densities = self._bin_densities.to(device=x_broadcast.device, dtype=x_broadcast.dtype)  # (F,C,R,B)
-        densities = repeat(
-            rearrange(densities, "f c r b -> 1 f c r b"), "1 f c r b -> n f c r b", n=n_samples
+        logits = self._logits.to(device=x.device, dtype=x.dtype)
+        log_widths = self._bin_widths.to(device=x.device, dtype=x.dtype).log()
+        log_densities = torch.log_softmax(logits, dim=-1) - rearrange(log_widths, "b -> 1 1 1 b")
+        gathered_log = (
+            log_densities.unsqueeze(0)
+            .expand(target_shape[0], -1, -1, -1, -1)
+            .gather(-1, bin_idx_safe.unsqueeze(-1))
+            .squeeze(-1)
         )
-        gathered = rearrange(
-            densities.gather(-1, rearrange(bin_idx_safe, "n f c r -> n f c r 1")),
-            "n f c r 1 -> n f c r",
-        )
 
-        min_density = self._min_prob / self._bin_widths.max().to(device=gathered.device, dtype=gathered.dtype)
-        log_p = torch.log(gathered.clamp_min(min_density))
-        log_p = torch.where(in_support, log_p, x_broadcast.new_full((), float("-inf")))
-        return log_p
+        max_width = self._bin_widths.max().to(device=gathered_log.device, dtype=gathered_log.dtype)
+        min_log_density = torch.log(gathered_log.new_tensor(self._min_prob)) - torch.log(max_width)
+        gathered_log = gathered_log.clamp_min(min_log_density)
+        return torch.where(in_support, gathered_log, gathered_log.new_full((), float("-inf")))
 
     def sample(self, sample_shape: torch.Size | tuple[int, ...]) -> Tensor:
         """Sample values, uniformly within sampled bins."""

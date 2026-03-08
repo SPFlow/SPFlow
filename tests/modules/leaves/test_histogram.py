@@ -4,6 +4,7 @@ from itertools import product
 
 import pytest
 import torch
+from einops import rearrange, repeat
 
 from spflow.exceptions import InvalidParameterCombinationError, InvalidParameterError
 from spflow.meta import Scope
@@ -15,6 +16,28 @@ from spflow.utils.histogram import _get_outer_edges_torch, get_bin_edges_torch
 def _make_histogram(*, bin_edges: torch.Tensor, probs: torch.Tensor) -> Histogram:
     scope = Scope([0])
     return Histogram(scope=scope, bin_edges=bin_edges, probs=probs)
+
+
+def _reference_log_prob(dist: HistogramDist, x: torch.Tensor) -> torch.Tensor:
+    x = dist._align_x(x)
+    n_samples = x.shape[0]
+    target_shape = (n_samples, *dist._logits.shape[:-1])
+    x_broadcast = torch.broadcast_to(x, target_shape).contiguous()
+
+    edges = dist.bin_edges.to(device=x_broadcast.device, dtype=x_broadcast.dtype)
+    bin_idx = torch.bucketize(x_broadcast, edges, right=True) - 1
+    in_support = torch.isfinite(x_broadcast) & (x_broadcast >= edges[0]) & (x_broadcast < edges[-1])
+
+    densities = dist._bin_densities.to(device=x_broadcast.device, dtype=x_broadcast.dtype)
+    densities = repeat(rearrange(densities, "f c r b -> 1 f c r b"), "1 f c r b -> n f c r b", n=n_samples)
+    gathered = rearrange(
+        densities.gather(-1, rearrange(bin_idx.clamp(0, dist.nbins - 1), "n f c r -> n f c r 1")),
+        "n f c r 1 -> n f c r",
+    )
+
+    min_density = dist._min_prob / dist._bin_widths.max().to(device=gathered.device, dtype=gathered.dtype)
+    log_p = torch.log(gathered.clamp_min(min_density))
+    return torch.where(in_support, log_p, x_broadcast.new_full((), float("-inf")))
 
 
 def test_log_likelihood_matches_manual_bin_density():
@@ -197,6 +220,85 @@ def test_histogram_dist_align_x_and_log_prob_errors():
 
     with pytest.raises(InvalidParameterError):
         dist.log_prob(torch.zeros(4, 2))
+
+
+@pytest.mark.parametrize("layout", ["nf", "nfc", "nfcr"])
+def test_histogram_log_prob_matches_reference(layout: str):
+    torch.manual_seed(0)
+    bin_edges = torch.tensor([-1.5, -0.5, 0.25, 1.5, 3.0], dtype=torch.float32)
+    logits = torch.randn(2, 3, 2, 4, dtype=torch.float32)
+    dist = HistogramDist(bin_edges=bin_edges, logits=logits, min_prob=1e-12)
+
+    if layout == "nf":
+        x = torch.tensor(
+            [
+                [-1.75, 0.00],
+                [-0.25, 0.40],
+                [0.10, 2.50],
+                [float("nan"), 1.40],
+                [2.90, 3.10],
+            ],
+            dtype=torch.float32,
+        )
+    elif layout == "nfc":
+        x = torch.tensor(
+            [
+                [[-0.25, -0.10, 0.00], [0.40, 0.60, 0.80]],
+                [[0.20, 0.35, 0.50], [1.20, 1.80, 2.40]],
+                [[float("nan"), 0.10, 0.15], [2.75, 3.05, -2.00]],
+            ],
+            dtype=torch.float32,
+        )
+    else:
+        x = torch.tensor(
+            [
+                [
+                    [[-0.25, -0.10], [0.00, 0.15], [0.20, 0.35]],
+                    [[0.40, 0.60], [0.80, 1.00], [1.20, 1.40]],
+                ],
+                [
+                    [[2.20, 2.40], [2.60, 2.80], [3.10, -2.00]],
+                    [[float("nan"), 0.05], [0.10, 0.15], [0.20, 0.25]],
+                ],
+            ],
+            dtype=torch.float32,
+        )
+
+    actual = dist.log_prob(x)
+    expected = _reference_log_prob(dist, x)
+    torch.testing.assert_close(actual, expected, rtol=1e-6, atol=1e-6)
+
+
+def test_histogram_log_prob_matches_reference_gradients():
+    torch.manual_seed(1)
+    bin_edges = torch.tensor([-2.0, -0.5, 0.5, 1.5, 2.5], dtype=torch.float32)
+    base_logits = torch.randn(2, 2, 3, 4, dtype=torch.float32)
+    x = torch.tensor(
+        [
+            [-1.25, -0.25],
+            [0.00, 0.75],
+            [1.10, 1.90],
+            [2.20, -1.90],
+        ],
+        dtype=torch.float32,
+    )
+
+    actual_logits = base_logits.detach().clone().requires_grad_(True)
+    expected_logits = base_logits.detach().clone().requires_grad_(True)
+    actual_dist = HistogramDist(bin_edges=bin_edges, logits=actual_logits, min_prob=1e-12)
+    expected_dist = HistogramDist(bin_edges=bin_edges, logits=expected_logits, min_prob=1e-12)
+
+    actual_out = actual_dist.log_prob(x)
+    expected_out = _reference_log_prob(expected_dist, x)
+
+    torch.testing.assert_close(actual_out, expected_out, rtol=1e-6, atol=1e-6)
+
+    actual_out.sum().backward()
+    expected_out.sum().backward()
+
+    assert actual_logits.grad is not None
+    assert expected_logits.grad is not None
+    torch.testing.assert_close(actual_logits.grad, expected_logits.grad, rtol=1e-6, atol=1e-6)
 
 
 def test_histogram_dist_sample_with_torch_size_shape():
