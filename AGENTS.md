@@ -87,10 +87,13 @@ git commit -m "docs: update RAT-SPN examples in README"
 * Never implement silent fallbacks when adding new features; fail fast with explicit errors or warnings.
 
 ## Comment Best Practices
-* Use comments to explain intent, invariants, assumptions, and non-obvious tradeoffs.
-* Prefer self-explanatory names and clear code; do not restate what the code already says.
-* Keep comments concise, specific, and close to the code they describe.
-* Update or remove comments whenever code changes so comments never become stale.
+* Follow PEP 8 / PEP 257 style for comments and docstrings, while keeping docstrings in Google style for public APIs.
+* Use comments to explain intent, invariants, assumptions, side effects, and non-obvious tradeoffs; comment why this code exists, not what obvious syntax is doing.
+* Prefer self-explanatory names and clear code; if a comment only paraphrases the code, rewrite the code instead.
+* Use inline comments sparingly and only when the statement would otherwise be hard to understand; keep them separated from code and specific to the non-obvious detail.
+* Write docstrings for public modules, classes, functions, and methods. Use triple double quotes, start with a short summary line, and document behavior, arguments, return values, side effects, raised exceptions, and important usage constraints when they matter to callers.
+* Keep comments concise, specific, and close to the code they describe. Write them as clear English with correct capitalization and punctuation.
+* Update or remove comments in the same change as the code so documentation never goes stale.
 * Use `TODO(username): short reason` for actionable follow-ups; avoid vague TODOs.
 
 ## Tensor/Module Debug Tracing
