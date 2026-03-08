@@ -16,6 +16,7 @@
 - Exact probabilistic inference: marginals, conditionals, most probable explanations
 - Modular model construction: manual design or automatic structure learning
 - Learning algorithms: gradient descent, expectation-maximization, structure learning
+- Ready-made probabilistic circuit models in `spflow.zoo`, including Naive Bayes
 - Full support for missing data and various distribution types
 - GPU acceleration via PyTorch
 
@@ -148,10 +149,11 @@ More examples can be found in the [Guides](https://spflow.github.io/guides/index
 
 ## Development Status
 
-SPFlow 1.0.0 represents a complete rewrite of SPFlow with PyTorch as the primary backend. This version features:
+SPFlow 1.1.0 builds on the PyTorch-based rewrite introduced in 1.0.0. The current release features:
 
 - Modern PyTorch architecture for GPU acceleration
-- Significantly improved performance
+- A Naive Bayes model in `spflow.zoo` for density estimation and classification
+- Additional performance improvements across learning, leaf, einsum, and RAT modules
 - Enhanced modular design
 
 See the [CHANGELOG](CHANGELOG.md) for detailed version history and recent changes.
