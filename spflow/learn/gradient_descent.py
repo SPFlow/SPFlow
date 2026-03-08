@@ -8,6 +8,7 @@ from torch import Tensor
 from spflow.exceptions import InvalidTypeError
 from spflow.interfaces.classifier import Classifier
 from spflow.modules.module import Module
+from spflow.utils.cache import Cache
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +145,25 @@ def _classifier_log_probabilities(model: Module, data: Tensor) -> Tensor:
     return probs.clamp_min(tiny).log()
 
 
+def _classifier_log_probabilities_cached(model: Module, data: Tensor, cache: Cache) -> Tensor:
+    """Return classifier predictions in log-probability space using a shared traversal cache."""
+    log_posterior_fn = getattr(model, "log_posterior", None)
+    if callable(log_posterior_fn):
+        return log_posterior_fn(data, cache=cache)
+
+    probs = model.predict_proba(data)  # type: ignore[attr-defined]
+    tiny = torch.finfo(probs.dtype).tiny
+    return probs.clamp_min(tiny).log()
+
+
+def _classification_forward_outputs(model: Module, data: Tensor) -> tuple[Tensor, Tensor]:
+    """Return classification log-probabilities and generative log-likelihood for one batch."""
+    cache = Cache()
+    log_probs = _classifier_log_probabilities_cached(model, data, cache=cache)
+    log_likelihood = model.log_likelihood(data, cache=cache)
+    return log_probs, log_likelihood
+
+
 def _extract_batch_data(
     batch: tuple[Tensor, ...] | Tensor, is_classification: bool
 ) -> tuple[Tensor, Tensor | None]:
@@ -207,8 +227,8 @@ def _process_training_batch(
 
     # Compute loss based on task type (classification vs density estimation)
     if is_classification:
-        log_probs = _classifier_log_probabilities(model, data)
-        loss = loss_fn(log_probs, targets) + nll_weight * (-model.log_likelihood(data).mean())
+        log_probs, log_likelihood = _classification_forward_outputs(model, data)
+        loss = loss_fn(log_probs, targets) + nll_weight * (-log_likelihood.mean())
         predicted = torch.argmax(log_probs, dim=-1).squeeze()
         metrics.update_train_batch(loss, predicted, targets)
     else:
@@ -258,10 +278,8 @@ def _run_validation_epoch(
             data, targets = _extract_batch_data(batch, is_classification)
 
             if is_classification:
-                log_probs = _classifier_log_probabilities(model, data)
-                val_loss = loss_fn(log_probs, targets) + nll_weight * negative_log_likelihood_loss(
-                    model, data
-                )
+                log_probs, log_likelihood = _classification_forward_outputs(model, data)
+                val_loss = loss_fn(log_probs, targets) + nll_weight * (-log_likelihood.mean())
                 predicted = torch.argmax(log_probs, dim=-1).squeeze()
                 metrics.update_val_batch(val_loss, predicted, targets)
             else:
