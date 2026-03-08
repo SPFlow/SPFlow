@@ -10,6 +10,21 @@ from spflow.utils.cache import Cache
 logger = logging.getLogger(__name__)
 
 
+def _retain_cached_log_likelihood_grads(cache: Cache) -> None:
+    """Retain gradients for cached non-leaf likelihood tensors consumed by EM."""
+    for lls in cache["log_likelihood"].values():
+        if torch.is_tensor(lls) and lls.requires_grad:
+            lls.retain_grad()
+
+
+def _backward_accumulated_log_likelihood(acc_ll: Tensor) -> None:
+    """Backpropagate one EM step without retaining the graph."""
+    if not acc_ll.requires_grad:
+        return
+
+    acc_ll.backward()
+
+
 def expectation_maximization(
     module: Module,
     data: Tensor,
@@ -49,14 +64,8 @@ def expectation_maximization(
         if verbose:
             logger.info(f"Step {step}: Average log-likelihood: {avg_ll}")
 
-        # retain gradients for all module log-likelihoods
-        for lls in cache["log_likelihood"].values():
-            if torch.is_tensor(lls) and lls.requires_grad:
-                lls.retain_grad()
-
-        # compute gradients (if there are differentiable parameters to begin with)
-        if acc_ll.requires_grad:
-            acc_ll.backward(retain_graph=True)
+        _retain_cached_log_likelihood_grads(cache)
+        _backward_accumulated_log_likelihood(acc_ll)
 
         # recursively perform expectation maximization
         module._expectation_maximization_step(
@@ -114,12 +123,8 @@ def expectation_maximization_batched(
             epoch_ll = epoch_ll + acc_ll.detach()
             num_samples += batch_data.shape[0]
 
-            for lls in cache["log_likelihood"].values():
-                if torch.is_tensor(lls) and lls.requires_grad:
-                    lls.retain_grad()
-
-            if acc_ll.requires_grad:
-                acc_ll.backward(retain_graph=True)
+            _retain_cached_log_likelihood_grads(cache)
+            _backward_accumulated_log_likelihood(acc_ll)
 
             module._expectation_maximization_step(
                 data=batch_data,

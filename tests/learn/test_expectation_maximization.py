@@ -1,4 +1,4 @@
-"""Expectation maximization implementation-specific and branch tests."""
+"""Expectation maximization branch and regression tests."""
 
 from __future__ import annotations
 
@@ -8,7 +8,28 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from spflow.learn.expectation_maximization import expectation_maximization, expectation_maximization_batched
 from spflow.modules import leaves
+from tests.test_helpers.builders import make_einet
 from tests.utils.leaves import make_data, make_leaf
+
+
+def _make_em_regression_model():
+    torch.manual_seed(7)
+    return make_einet(
+        num_features=8,
+        num_classes=1,
+        num_sums=4,
+        num_leaves=3,
+        depth=3,
+        num_repetitions=2,
+        layer_type="einsum",
+        structure="top-down",
+    )
+
+
+def _make_em_regression_data(module: torch.nn.Module, num_samples: int = 64) -> torch.Tensor:
+    torch.manual_seed(11)
+    with torch.no_grad():
+        return module.sample(num_samples=num_samples)
 
 
 def test_em_convergence():
@@ -123,3 +144,24 @@ def test_batched_em_verbose(caplog):
 
     expectation_maximization_batched(module, dataloader, num_epochs=2, verbose=True)
     assert any("Epoch" in record.message for record in caplog.records)
+
+
+def test_full_batch_em_regression_on_representative_einet():
+    module = _make_em_regression_model()
+    data = _make_em_regression_data(module)
+
+    ll_history = expectation_maximization(module, data, max_steps=2)
+
+    assert ll_history.shape == (2,)
+    assert torch.isfinite(ll_history).all()
+
+
+def test_batched_em_regression_on_representative_einet():
+    module = _make_em_regression_model()
+    data = _make_em_regression_data(module, num_samples=96)
+    dataloader = DataLoader(TensorDataset(data), batch_size=24, shuffle=False)
+
+    ll_history = expectation_maximization_batched(module, dataloader, num_epochs=1)
+
+    assert ll_history.shape == (1,)
+    assert torch.isfinite(ll_history).all()
