@@ -1,12 +1,23 @@
 """EinsumLayer for efficient sum-product operations in probabilistic circuits.
 
-Implements the EinsumLayer as described in the Einet paper, combining product
-and sum operations into a single efficient einsum operation using the
-LogEinsumExp trick for numerical stability.
+This layer evaluates weighted sums over pairwise channel products in log space.
+The numerically stable outer structure still follows the LogEinsumExp trick,
+but the inner contraction is scheduled to limit memory traffic on large channel
+grids:
+
+- normalize routing weights over the flattened ``(left_channel, right_channel)``
+  axis
+- keep an eval/no-grad cache of those normalized weights so inference does not
+  pay for a repeated softmax when parameters are unchanged
+- use a factored two-stage contraction when the full ``left x right`` pair grid
+  is large enough that a single einsum becomes memory-bandwidth bound
+
+The factored contraction is mathematically equivalent to the dense einsum, but
+it maps better to the backends that power large CPU/GPU workloads and reduces
+allocator pressure in the wide-channel regimes where ``EinsumLayer`` is hottest.
 """
 
 from __future__ import annotations
-
 from typing import Optional
 
 import numpy as np
@@ -43,7 +54,9 @@ class EinsumLayer(Module):
     structure. Takes pairs of adjacent features as left/right children, computes
     their cross-product over channels, and sums with learned weights.
 
-    The LogEinsumExp trick is used for numerical stability in log-space.
+    The LogEinsumExp trick is used for numerical stability in log-space. For
+    large channel grids, the weighted channel contraction is factorized into two
+    smaller contractions to reduce bandwidth pressure without changing outputs.
 
     Attributes:
         logits (Parameter): Unnormalized log-weights for gradient optimization.
@@ -188,6 +201,7 @@ class EinsumLayer(Module):
 
         # Register logits parameter
         self.logits = nn.Parameter(torch.zeros(self.weights_shape))
+        self._eval_weight_cache: tuple[int, Tensor] | None = None
 
         # Set weights via property (converts to logits)
         self.weights = weights
@@ -224,27 +238,14 @@ class EinsumLayer(Module):
     @property
     def log_weights(self) -> Tensor:
         """Log-normalized weights (sum to 1 over input channel pairs)."""
-        # Flatten input-channel pair axes before normalization.
-        flat_logits = rearrange(self.logits, "f co r i j -> f co r (i j)")
+        flat_logits = self.logits.flatten(start_dim=-2)
         log_weights = torch.nn.functional.log_softmax(flat_logits, dim=-1)
-        return rearrange(
-            log_weights,
-            "f co r (i j) -> f co r i j",
-            i=self._left_channels,
-            j=self._right_channels,
-        )
+        return log_weights.unflatten(-1, (self._left_channels, self._right_channels))
 
     @property
     def weights(self) -> Tensor:
         """Normalized weights (sum to 1 over input channel pairs)."""
-        flat_logits = rearrange(self.logits, "f co r i j -> f co r (i j)")
-        weights = torch.nn.functional.softmax(flat_logits, dim=-1)
-        return rearrange(
-            weights,
-            "f co r (i j) -> f co r i j",
-            i=self._left_channels,
-            j=self._right_channels,
-        )
+        return self._normalized_weights()
 
     @weights.setter
     def weights(self, values: Tensor) -> None:
@@ -265,6 +266,7 @@ class EinsumLayer(Module):
             i=self._left_channels,
             j=self._right_channels,
         )
+        self._clear_eval_weight_cache()
 
     @log_weights.setter
     def log_weights(self, values: Tensor) -> None:
@@ -272,6 +274,7 @@ class EinsumLayer(Module):
         if values.shape != self.weights_shape:
             raise ShapeError(f"Log weight shape mismatch: expected {self.weights_shape}, got {values.shape}")
         self.logits.data = values
+        self._clear_eval_weight_cache()
 
     def extra_repr(self) -> str:
         return f"{super().extra_repr()}, weights={self.weights_shape}"
@@ -292,6 +295,90 @@ class EinsumLayer(Module):
             right_ll = lls[1]
         return left_ll, right_ll
 
+    def _clear_eval_weight_cache(self) -> None:
+        """Drop the eval/no-grad normalized-weight cache."""
+        self._eval_weight_cache = None
+
+    def _normalized_weights(self) -> Tensor:
+        """Return normalized routing weights with eval/no-grad caching.
+
+        Training and gradient-enabled execution always recompute weights so
+        autograd sees the live parameter graph. Eval/no-grad inference can
+        safely reuse the normalized tensor until ``self.logits`` changes.
+        """
+        if self.training or torch.is_grad_enabled():
+            flat_logits = self.logits.flatten(start_dim=-2)
+            weights = torch.nn.functional.softmax(flat_logits, dim=-1)
+            return weights.unflatten(-1, (self._left_channels, self._right_channels))
+
+        cache_entry = self._eval_weight_cache
+        current_version = self.logits._version
+        if cache_entry is not None:
+            cached_version, cached_weights = cache_entry
+            if (
+                cached_version == current_version
+                and cached_weights.device == self.logits.device
+                and cached_weights.dtype == self.logits.dtype
+            ):
+                return cached_weights
+
+        flat_logits = self.logits.flatten(start_dim=-2)
+        weights = torch.nn.functional.softmax(flat_logits, dim=-1)
+        normalized = weights.unflatten(-1, (self._left_channels, self._right_channels))
+        self._eval_weight_cache = (current_version, normalized)
+        return normalized
+
+    def _use_factored_probability_contraction(self, device: torch.device) -> bool:
+        """Choose the factored contraction only where it is empirically beneficial.
+
+        A single dense einsum is fine for small pair grids. Once the
+        ``left_channels * right_channels`` space gets large, the contraction
+        becomes dominated by memory movement rather than math. The factored path
+        helps most when the output channel count is small relative to the input
+        channel counts, especially on CUDA.
+        """
+        input_pair_count = self._left_channels * self._right_channels
+        if device.type == "cuda":
+            return input_pair_count >= 128
+        return input_pair_count >= 256 and self.out_shape.channels < min(
+            self._left_channels, self._right_channels
+        )
+
+    def _contract_probabilities(self, left_prob: Tensor, right_prob: Tensor, weights: Tensor) -> Tensor:
+        """Contract channel probabilities using the most appropriate schedule.
+
+        The factored two-stage contraction is equivalent to the dense
+        ``ndir,ndjr,dorij->ndor`` einsum, but it keeps the widest intermediates
+        out of the hottest execution path for large channel products.
+        """
+        if not self._use_factored_probability_contraction(left_prob.device):
+            return torch.einsum("ndir,ndjr,dorij->ndor", left_prob, right_prob, weights)
+
+        if self._left_channels >= self._right_channels:
+            tmp = torch.einsum("ndir,dorij->ndjor", left_prob, weights)
+            return torch.einsum("ndjr,ndjor->ndor", right_prob, tmp)
+
+        tmp = torch.einsum("ndjr,dorij->ndior", right_prob, weights)
+        return torch.einsum("ndir,ndior->ndor", left_prob, tmp)
+
+    def _log_likelihood_from_inputs(self, left_ll: Tensor, right_ll: Tensor) -> Tensor:
+        """Compute log-likelihoods from child log-likelihood tensors.
+
+        The computation stays numerically stable by subtracting per-input channel
+        maxima before exponentiation. The weighted contraction then operates on
+        positive-space probabilities using the bandwidth-aware schedule selected
+        above, and the removed maxima are added back after ``log``.
+        """
+        left_max = left_ll.amax(dim=2, keepdim=True)
+        left_prob = torch.exp(left_ll - left_max)
+
+        right_max = right_ll.amax(dim=2, keepdim=True)
+        right_prob = torch.exp(right_ll - right_max)
+
+        weights = self._normalized_weights()
+        prob = self._contract_probabilities(left_prob, right_prob, weights)
+        return torch.log(prob) + left_max + right_max
+
     @cached
     def log_likelihood(
         self,
@@ -310,28 +397,7 @@ class EinsumLayer(Module):
         # Get child log-likelihoods
         left_ll, right_ll = self._get_left_right_ll(data, cache)
 
-        # Dimensions: N=batch, D=features, C=channels, R=reps
-        N, D, C, R = left_ll.size()
-
-        # LogEinsumExp trick for numerical stability
-        # Compute max for normalization
-        left_max = torch.max(left_ll, dim=2, keepdim=True)[0]  # (N, D, 1, R)
-        left_prob = torch.exp(left_ll - left_max)  # (N, D, C, R)
-
-        right_max = torch.max(right_ll, dim=2, keepdim=True)[0]  # (N, D, 1, R)
-        right_prob = torch.exp(right_ll - right_max)  # (N, D, C, R)
-
-        # Get normalized weights
-        weights = self.weights  # (D, O, R, I, J)
-
-        # Einsum: product over channels, weighted sum
-        # n=batch, d=features, i=left_channels, j=right_channels, o=out_channels, r=reps
-        prob = torch.einsum("ndir,ndjr,dorij->ndor", left_prob, right_prob, weights)
-
-        # Re-add the log maxes
-        log_prob = torch.log(prob) + left_max + right_max
-
-        return log_prob
+        return self._log_likelihood_from_inputs(left_ll, right_ll)
 
     def _sample(
         self,
