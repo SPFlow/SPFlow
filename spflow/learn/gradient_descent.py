@@ -133,6 +133,17 @@ def classification_loss(ll: Tensor, target: Tensor) -> torch.Tensor:
     return nn.NLLLoss()(ll.squeeze(-1), target)
 
 
+def _classifier_log_probabilities(model: Module, data: Tensor) -> Tensor:
+    """Return classifier predictions in log-probability space."""
+    log_posterior_fn = getattr(model, "log_posterior", None)
+    if callable(log_posterior_fn):
+        return log_posterior_fn(data)
+
+    probs = model.predict_proba(data)  # type: ignore[attr-defined]
+    tiny = torch.finfo(probs.dtype).tiny
+    return probs.clamp_min(tiny).log()
+
+
 def _extract_batch_data(
     batch: tuple[Tensor, ...] | Tensor, is_classification: bool
 ) -> tuple[Tensor, Tensor | None]:
@@ -196,10 +207,9 @@ def _process_training_batch(
 
     # Compute loss based on task type (classification vs density estimation)
     if is_classification:
-        # log_likelihood = model.log_likelihood(data)
-        log_likelihood = model.predict_proba(data)
-        loss = loss_fn(log_likelihood, targets) + nll_weight * (-model.log_likelihood(data).mean())
-        predicted = torch.argmax(log_likelihood, dim=-1).squeeze()
+        log_probs = _classifier_log_probabilities(model, data)
+        loss = loss_fn(log_probs, targets) + nll_weight * (-model.log_likelihood(data).mean())
+        predicted = torch.argmax(log_probs, dim=-1).squeeze()
         metrics.update_train_batch(loss, predicted, targets)
     else:
         loss = loss_fn(model, data)
@@ -248,11 +258,11 @@ def _run_validation_epoch(
             data, targets = _extract_batch_data(batch, is_classification)
 
             if is_classification:
-                log_likelihood = model.log_likelihood(data)
-                val_loss = loss_fn(log_likelihood, targets) + nll_weight * negative_log_likelihood_loss(
+                log_probs = _classifier_log_probabilities(model, data)
+                val_loss = loss_fn(log_probs, targets) + nll_weight * negative_log_likelihood_loss(
                     model, data
                 )
-                predicted = torch.argmax(log_likelihood, dim=-1).squeeze()
+                predicted = torch.argmax(log_probs, dim=-1).squeeze()
                 metrics.update_val_batch(val_loss, predicted, targets)
             else:
                 val_loss = loss_fn(model, data)

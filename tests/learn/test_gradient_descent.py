@@ -145,6 +145,58 @@ class ClassificationModel(Module, Classifier):
         return self
 
 
+class PredictOnlyClassificationModel(Module, Classifier):
+    """Classifier exposing only probability-space predictions."""
+
+    def __init__(self, num_features: int = 2, num_classes: int = 3):
+        super().__init__()
+        self.linear = nn.Linear(num_features, num_classes)
+        self.predict_calls = 0
+        self.likelihood_calls = 0
+        self.scope = Scope(list(range(num_features)))
+
+    @property
+    def feature_to_scope(self) -> np.ndarray:
+        return np.array([Scope([idx]) for idx in range(self.linear.in_features)]).view(-1, 1)
+
+    def predict_proba(self, data: torch.Tensor) -> torch.Tensor:
+        self.predict_calls += 1
+        logits = self.linear(data)
+        return torch.softmax(logits, dim=1)
+
+    def log_likelihood(self, data: torch.Tensor, cache=None) -> torch.Tensor:
+        self.likelihood_calls += 1
+        logits = self.linear(data)
+        return torch.log_softmax(logits, dim=1)
+
+    def sample(
+        self,
+        num_samples: int | None = None,
+        data: torch.Tensor | None = None,
+        is_mpe: bool = False,
+        cache=None,
+        sampling_ctx=None,
+    ):
+        raise NotImplementedError
+
+    def _sample(self, data: torch.Tensor, sampling_ctx, cache):
+        raise NotImplementedError
+
+    def expectation_maximization(self, data: torch.Tensor, cache=None):
+        raise NotImplementedError
+
+    def maximum_likelihood_estimation(
+        self,
+        data: torch.Tensor,
+        weights: torch.Tensor | None = None,
+        cache=None,
+    ):
+        raise NotImplementedError
+
+    def marginalize(self, marg_rvs: list[int], prune: bool = True, cache=None):
+        return self
+
+
 @pytest.fixture
 def classification_model() -> ClassificationModel:
     return ClassificationModel()
@@ -302,8 +354,21 @@ def test_train_gradient_descent_classification_with_validation(classification_mo
 
     train_batches = len(train_loader)
     val_batches = len(val_loader)
-    assert classification_model.posterior_calls == train_batches
+    assert classification_model.posterior_calls == train_batches + val_batches
     assert classification_model.likelihood_calls == train_batches * 2 + val_batches * 2
+
+
+def test_train_gradient_descent_classification_falls_back_to_predict_proba():
+    model = PredictOnlyClassificationModel()
+    loader = DataLoader(
+        TensorDataset(torch.randn(12, 2), torch.randint(0, 3, (12,))),
+        batch_size=4,
+    )
+
+    train_gradient_descent(model, loader, epochs=1, is_classification=True, lr=0.05)
+
+    assert model.predict_calls == len(loader)
+    assert model.likelihood_calls == len(loader)
 
 
 @pytest.fixture
