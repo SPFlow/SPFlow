@@ -456,16 +456,23 @@ class SamplingContext:
         if repetition_index is not None and clone_repetition:
             repetition_index = repetition_index.clone()
 
-        return SamplingContext(
+        channel_index, mask, repetition_index = self._normalize_routing_state(
             channel_index=channel_index,
             mask=mask,
             repetition_index=repetition_index,
-            is_mpe=self.is_mpe,
-            is_differentiable=self.is_differentiable,
-            tau=self.tau,
-            return_leaf_params=self.return_leaf_params,
-            leaf_param_records=self._leaf_param_records,
         )
+
+        child = object.__new__(SamplingContext)
+        child.is_differentiable = self.is_differentiable
+        child.is_mpe = self.is_mpe
+        child.return_leaf_params = self.return_leaf_params
+        child._leaf_param_records = self._leaf_param_records
+        child.tau = self.tau
+        child.device = channel_index.device
+        child._channel_index = channel_index
+        child._mask = mask
+        child._repetition_index = repetition_index
+        return child
 
     def require_feature_width(self, expected_features: int) -> None:
         """Assert exact feature width on this sampling context.

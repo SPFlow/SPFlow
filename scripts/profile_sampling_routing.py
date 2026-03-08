@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import argparse
-import statistics
+import gc
+import threading
 import time
 from dataclasses import dataclass
 from typing import Callable
 
+import psutil
 import torch
-from torch.profiler import ProfilerActivity, profile
+import torch.utils.benchmark as torch_benchmark
+from torch.profiler import ProfilerActivity, profile, record_function
 
 from spflow.modules import leaves
 from spflow.modules.ops import SplitMode
@@ -19,7 +22,8 @@ from spflow.utils.sampling_context import SamplingContext, to_one_hot
 from tests.test_helpers.builders import make_rat_spn
 from tests.utils.leaves import make_normal_leaf
 
-PROFILE_MATCHES = ("clone", "repeat", "copy_", "_to_copy", "gather", "mul", "add")
+PROFILE_MATCHES = ("clone", "repeat", "copy_", "_to_copy", "gather", "mul", "add", "einsum")
+CPU_MEMORY_SCALE_MB = float(1024**2)
 
 
 @dataclass
@@ -27,7 +31,7 @@ class Workload:
     """Prepared workload with a deterministic sampling runner."""
 
     name: str
-    run: Callable[[int], torch.Tensor]
+    run: Callable[[int | None], torch.Tensor]
 
 
 @dataclass
@@ -36,9 +40,15 @@ class BenchmarkResult:
 
     mean_ms: float
     median_ms: float
-    stdev_ms: float
+    iqr_ms: float
+    cpu_peak_rss_mb: float
+    cpu_end_rss_mb: float
     peak_cuda_allocated_mb: float | None
     peak_cuda_reserved_mb: float | None
+
+
+def _default_device() -> torch.device:
+    return torch.empty(0).device
 
 
 def _cuda_available() -> bool:
@@ -65,31 +75,62 @@ def _cuda_peak_memory_mb() -> tuple[float | None, float | None]:
     )
 
 
+class _RssSampler:
+    """Sample process RSS from a background thread during memory measurements."""
+
+    def __init__(self, interval_s: float = 0.001) -> None:
+        self.interval_s = interval_s
+        self.process = psutil.Process()
+        self.max_rss = 0
+        self._thread: threading.Thread | None = None
+        self._stop = threading.Event()
+
+    def _run(self) -> None:
+        while not self._stop.is_set():
+            self.max_rss = max(self.max_rss, self.process.memory_info().rss)
+            time.sleep(self.interval_s)
+
+    def __enter__(self) -> _RssSampler:
+        self.max_rss = self.process.memory_info().rss
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join()
+        self.max_rss = max(self.max_rss, self.process.memory_info().rss)
+
+
 def _build_factorize_workload(args: argparse.Namespace, *, differentiable: bool) -> Workload:
     torch.manual_seed(args.seed)
+    device = _default_device()
     leaf = make_normal_leaf(
         out_features=args.num_features,
         out_channels=args.num_channels,
         num_repetitions=args.num_repetitions,
     )
     module = Factorize(inputs=[leaf], depth=args.depth, num_repetitions=args.num_repetitions)
-    data_template = torch.full((args.batch_size, args.num_features), torch.nan)
+    data_template = torch.full((args.batch_size, args.num_features), torch.nan, device=device)
     channel_ids = torch.randint(
         low=0,
         high=module.out_shape.channels,
         size=(args.batch_size, module.out_shape.features),
+        device=device,
     )
     repetition_ids = torch.randint(
         low=0,
         high=args.num_repetitions,
         size=(args.batch_size,),
+        device=device,
     )
-    mask = torch.ones((args.batch_size, module.out_shape.features), dtype=torch.bool)
+    mask = torch.ones((args.batch_size, module.out_shape.features), dtype=torch.bool, device=device)
 
-    def _run(seed: int) -> torch.Tensor:
-        torch.manual_seed(seed)
+    def _make_ctx() -> SamplingContext:
         if differentiable:
-            sampling_ctx = SamplingContext(
+            return SamplingContext(
                 channel_index=to_one_hot(
                     channel_ids,
                     dim=-1,
@@ -105,24 +146,24 @@ def _build_factorize_workload(args: argparse.Namespace, *, differentiable: bool)
                 ),
                 is_differentiable=True,
             )
-        else:
-            sampling_ctx = SamplingContext(
-                channel_index=channel_ids.clone(),
-                mask=mask.clone(),
-                repetition_index=repetition_ids.clone(),
-            )
+        return SamplingContext(
+            channel_index=channel_ids.clone(),
+            mask=mask.clone(),
+            repetition_index=repetition_ids.clone(),
+        )
+
+    def _run(seed: int | None = None) -> torch.Tensor:
+        if seed is not None:
+            torch.manual_seed(seed)
         with torch.no_grad():
-            return module._sample(
-                data=data_template.clone(),
-                sampling_ctx=sampling_ctx,
-                cache=Cache(),
-            )
+            return module._sample(data=data_template.clone(), sampling_ctx=_make_ctx(), cache=Cache())
 
     return Workload(name="factorize-diff" if differentiable else "factorize-int", run=_run)
 
 
 def _build_rat_workload(args: argparse.Namespace) -> Workload:
     torch.manual_seed(args.seed)
+    device = _default_device()
     split_mode = {
         "consecutive": SplitMode.consecutive(),
         "interleaved": SplitMode.interleaved(),
@@ -138,10 +179,11 @@ def _build_rat_workload(args: argparse.Namespace) -> Workload:
         outer_product=args.outer_product,
         split_mode=split_mode,
     )
-    data_template = torch.full((args.batch_size, args.num_features), torch.nan)
+    data_template = torch.full((args.batch_size, args.num_features), torch.nan, device=device)
 
-    def _run(seed: int) -> torch.Tensor:
-        torch.manual_seed(seed)
+    def _run(seed: int | None = None) -> torch.Tensor:
+        if seed is not None:
+            torch.manual_seed(seed)
         with torch.no_grad():
             return module.sample(data=data_template.clone())
 
@@ -158,81 +200,131 @@ def build_workload(args: argparse.Namespace) -> Workload:
     raise ValueError(f"Unsupported workload '{args.workload}'.")
 
 
-def _time_workload(workload: Workload, *, warmups: int, iterations: int, seed: int) -> list[float]:
-    for idx in range(warmups):
-        workload.run(seed + idx)
+def _warmup(workload: Workload, *, warmups: int) -> None:
+    for _ in range(warmups):
+        workload.run(None)
     _synchronize_if_needed()
+
+
+def _measure_memory(
+    workload: Workload, *, warmups: int, iterations: int
+) -> tuple[float, float, float | None, float | None]:
+    _warmup(workload, warmups=warmups)
+    gc.collect()
+    process = psutil.Process()
+    rss_before = process.memory_info().rss
     _reset_cuda_peak_memory_stats()
-    timings_ms: list[float] = []
-    for idx in range(iterations):
-        _synchronize_if_needed()
-        start = time.perf_counter()
-        workload.run(seed + 1_000 + idx)
-        _synchronize_if_needed()
-        timings_ms.append((time.perf_counter() - start) * 1_000.0)
-    return timings_ms
-
-
-def _summarize_timings(timings_ms: list[float]) -> tuple[float, float, float]:
-    mean_ms = statistics.mean(timings_ms)
-    median_ms = statistics.median(timings_ms)
-    stdev_ms = statistics.stdev(timings_ms) if len(timings_ms) > 1 else 0.0
-    return mean_ms, median_ms, stdev_ms
-
-
-def command_benchmark(args: argparse.Namespace) -> int:
-    workload = build_workload(args)
-
-    timings = _time_workload(
-        workload,
-        warmups=args.warmups,
-        iterations=args.iterations,
-        seed=args.seed,
-    )
-    mean_ms, median_ms, stdev_ms = _summarize_timings(timings)
+    with _RssSampler() as sampler:
+        for _ in range(iterations):
+            workload.run(None)
+    _synchronize_if_needed()
+    rss_after = process.memory_info().rss
+    peak_rss_mb = max(0.0, (sampler.max_rss - rss_before) / CPU_MEMORY_SCALE_MB)
+    end_rss_mb = max(0.0, (rss_after - rss_before) / CPU_MEMORY_SCALE_MB)
     peak_allocated_mb, peak_reserved_mb = _cuda_peak_memory_mb()
-    result = BenchmarkResult(
-        mean_ms=mean_ms,
-        median_ms=median_ms,
-        stdev_ms=stdev_ms,
+    return peak_rss_mb, end_rss_mb, peak_allocated_mb, peak_reserved_mb
+
+
+def _benchmark_workload(
+    workload: Workload,
+    *,
+    warmups: int,
+    min_run_time: float,
+    num_threads: int,
+    memory_iterations: int,
+) -> BenchmarkResult:
+    _warmup(workload, warmups=warmups)
+    timer = torch_benchmark.Timer(
+        stmt="run()",
+        globals={"run": workload.run},
+        num_threads=num_threads,
+        label=workload.name,
+    )
+    measurement = timer.blocked_autorange(min_run_time=min_run_time)
+
+    cpu_peak_rss_mb, cpu_end_rss_mb, peak_allocated_mb, peak_reserved_mb = _measure_memory(
+        workload,
+        warmups=1,
+        iterations=memory_iterations,
+    )
+    return BenchmarkResult(
+        mean_ms=measurement.mean * 1_000.0,
+        median_ms=measurement.median * 1_000.0,
+        iqr_ms=measurement.iqr * 1_000.0,
+        cpu_peak_rss_mb=cpu_peak_rss_mb,
+        cpu_end_rss_mb=cpu_end_rss_mb,
         peak_cuda_allocated_mb=peak_allocated_mb,
         peak_cuda_reserved_mb=peak_reserved_mb,
     )
 
+
+def command_benchmark(args: argparse.Namespace) -> int:
+    workload = build_workload(args)
+    result = _benchmark_workload(
+        workload,
+        warmups=args.warmups,
+        min_run_time=args.min_run_time,
+        num_threads=args.num_threads,
+        memory_iterations=args.memory_iterations,
+    )
+
     print(f"workload: {workload.name}")
+    print(f"device: {_default_device()}")
+    print(f"threads: {args.num_threads}")
     if _cuda_available():
-        print("impl       mean_ms   median_ms   stdev_ms   peak_alloc_mb   peak_resv_mb")
+        print(
+            "impl       mean_ms   median_ms   iqr_ms   cpu_peak_rss_mb   cpu_end_rss_mb   "
+            "peak_alloc_mb   peak_resv_mb"
+        )
         print(
             f"{'current':<10}"
             f"{result.mean_ms:8.3f}"
             f"{result.median_ms:12.3f}"
-            f"{result.stdev_ms:11.3f}"
+            f"{result.iqr_ms:10.3f}"
+            f"{result.cpu_peak_rss_mb:18.3f}"
+            f"{result.cpu_end_rss_mb:17.3f}"
             f"{(result.peak_cuda_allocated_mb or 0.0):16.3f}"
             f"{(result.peak_cuda_reserved_mb or 0.0):15.3f}"
         )
     else:
-        print("impl       mean_ms   median_ms   stdev_ms")
-        print(f"{'current':<10}{result.mean_ms:8.3f}{result.median_ms:12.3f}{result.stdev_ms:11.3f}")
+        print("impl       mean_ms   median_ms   iqr_ms   cpu_peak_rss_mb   cpu_end_rss_mb")
+        print(
+            f"{'current':<10}"
+            f"{result.mean_ms:8.3f}"
+            f"{result.median_ms:12.3f}"
+            f"{result.iqr_ms:10.3f}"
+            f"{result.cpu_peak_rss_mb:18.3f}"
+            f"{result.cpu_end_rss_mb:17.3f}"
+        )
     return 0
 
 
 def command_profile(args: argparse.Namespace) -> int:
     workload = build_workload(args)
+    activities = [ProfilerActivity.CPU]
+    if _cuda_available():
+        activities.append(ProfilerActivity.CUDA)
 
-    for idx in range(args.warmups):
-        workload.run(args.seed + idx)
-
+    _warmup(workload, warmups=args.warmups)
     with profile(
-        activities=[ProfilerActivity.CPU],
+        activities=activities,
         profile_memory=True,
         record_shapes=bool(args.record_shapes),
     ) as prof:
         for idx in range(args.iterations):
-            workload.run(args.seed + idx)
+            with record_function(f"sampling_routing:{workload.name}:current:{idx}"):
+                workload.run(None)
+    _synchronize_if_needed()
 
     print(f"workload: {workload.name}")
+    print(f"device: {_default_device()}")
     print("impl: current")
-    print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=args.row_limit))
+    print(
+        prof.key_averages().table(
+            sort_by=args.sort_by,
+            row_limit=args.row_limit,
+        )
+    )
     matched = sorted(
         {event.key for event in prof.key_averages() if any(token in event.key for token in PROFILE_MATCHES)}
     )
@@ -270,8 +362,10 @@ def build_parser() -> argparse.ArgumentParser:
         "benchmark", help="Benchmark the current sampling-routing implementation."
     )
     add_common_arguments(benchmark)
-    benchmark.add_argument("--warmups", type=int, default=3)
-    benchmark.add_argument("--iterations", type=int, default=10)
+    benchmark.add_argument("--warmups", type=int, default=2)
+    benchmark.add_argument("--min-run-time", type=float, default=0.5)
+    benchmark.add_argument("--memory-iterations", type=int, default=3)
+    benchmark.add_argument("--num-threads", type=int, default=1)
     benchmark.set_defaults(func=command_benchmark)
 
     profile_parser = subparsers.add_parser("profile", help="Profile one implementation with torch.profiler.")
@@ -279,6 +373,17 @@ def build_parser() -> argparse.ArgumentParser:
     profile_parser.add_argument("--warmups", type=int, default=2)
     profile_parser.add_argument("--iterations", type=int, default=1)
     profile_parser.add_argument("--row-limit", type=int, default=15)
+    profile_parser.add_argument(
+        "--sort-by",
+        choices=(
+            "self_cpu_memory_usage",
+            "cpu_memory_usage",
+            "self_cpu_time_total",
+            "cpu_time_total",
+            "cuda_time_total",
+        ),
+        default="self_cpu_memory_usage",
+    )
     profile_parser.add_argument("--record-shapes", action="store_true")
     profile_parser.set_defaults(func=command_profile)
 

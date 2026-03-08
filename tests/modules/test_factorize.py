@@ -100,6 +100,58 @@ def test_sample_differentiable():
     assert torch.isfinite(samples[:, factorization_layer.scope.query]).all()
 
 
+def test_sample_differentiable_gradients_flow():
+    torch.manual_seed(11)
+    n_samples = 24
+    out_features = 12
+    num_reps = 4
+    module = make_product(
+        in_channels=3,
+        out_features=out_features,
+        num_repetitions=num_reps,
+        depth=2,
+    )
+    channel_ids = torch.randint(
+        low=0,
+        high=module.out_shape.channels,
+        size=(n_samples, module.out_shape.features),
+    )
+    repetition_ids = torch.randint(low=0, high=num_reps, size=(n_samples,))
+    mask = torch.ones((n_samples, module.out_shape.features), dtype=torch.bool)
+    data = torch.full((n_samples, out_features), torch.nan)
+
+    channel_index = to_one_hot(
+        channel_ids,
+        dim=-1,
+        dim_size=module.out_shape.channels,
+        dtype=torch.get_default_dtype(),
+    ).requires_grad_()
+    repetition_index = to_one_hot(
+        repetition_ids,
+        dim=-1,
+        dim_size=num_reps,
+        dtype=torch.get_default_dtype(),
+    ).requires_grad_()
+    sampling_ctx = SamplingContext(
+        channel_index=channel_index,
+        mask=mask.clone(),
+        repetition_index=repetition_index,
+        is_differentiable=True,
+    )
+
+    torch.manual_seed(4321)
+    samples = module._sample(data=data.clone(), sampling_ctx=sampling_ctx, cache=Cache())
+    loss = torch.nan_to_num(samples).sum()
+    loss.backward()
+
+    assert channel_index.grad is not None
+    assert repetition_index.grad is not None
+    assert torch.isfinite(channel_index.grad).all()
+    assert torch.isfinite(repetition_index.grad).all()
+    assert channel_index.grad.abs().sum() > 0
+    assert repetition_index.grad.abs().sum() > 0
+
+
 def test_sample_differentiable_with_conditional_cache():
     n_samples = 10
     out_features = 8
