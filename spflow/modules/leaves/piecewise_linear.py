@@ -112,6 +112,148 @@ class PiecewiseLinearDist:
         self.num_leaves = len(xs[0])
         self.num_features = len(xs[0][0])
         self.num_channels = len(xs[0][0][0])
+        self._optimized_cache_ready = False
+        self._continuous_flat_indices: Tensor | None = None
+        self._flat_feature_indices: Tensor | None = None
+        self._flat_channel_indices: Tensor | None = None
+        self._flat_leaf_indices: Tensor | None = None
+        self._flat_repetition_indices: Tensor | None = None
+        self._xs_padded: Tensor | None = None
+        self._ys_padded: Tensor | None = None
+        self._lengths: Tensor | None = None
+        self._interp_slopes: Tensor | None = None
+        self._interp_offsets: Tensor | None = None
+        self._mode_values: Tensor | None = None
+        self._cdf_padded: Tensor | None = None
+        self._cdf_lengths: Tensor | None = None
+
+    @property
+    def _num_distributions(self) -> int:
+        return self.num_features * self.num_channels * self.num_repetitions * self.num_leaves
+
+    def _ensure_optimized_cache(self) -> None:
+        """Pack nested parameter lists into padded tensors for batched kernels."""
+        if self._optimized_cache_ready:
+            return
+
+        device = self.xs[0][0][0][0].device
+        dtype = self.xs[0][0][0][0].dtype
+
+        flat_xs: list[Tensor] = []
+        flat_ys: list[Tensor] = []
+        feature_indices: list[int] = []
+        channel_indices: list[int] = []
+        leaf_indices: list[int] = []
+        repetition_indices: list[int] = []
+        continuous_flat_indices: list[int] = []
+
+        flat_idx = 0
+        for i_feature in range(self.num_features):
+            for i_channel in range(self.num_channels):
+                for i_repetition in range(self.num_repetitions):
+                    for i_leaf in range(self.num_leaves):
+                        flat_xs.append(self.xs[i_repetition][i_leaf][i_feature][i_channel])
+                        flat_ys.append(self.ys[i_repetition][i_leaf][i_feature][i_channel])
+                        feature_indices.append(i_feature)
+                        channel_indices.append(i_channel)
+                        leaf_indices.append(i_leaf)
+                        repetition_indices.append(i_repetition)
+                        if self.domains[i_feature].data_type == DataType.CONTINUOUS:
+                            continuous_flat_indices.append(flat_idx)
+                        flat_idx += 1
+
+        max_points = max(int(x.shape[0]) for x in flat_xs)
+        xs_padded = torch.full((self._num_distributions, max_points), float("inf"), device=device, dtype=dtype)
+        ys_padded = torch.zeros((self._num_distributions, max_points), device=device, dtype=dtype)
+        lengths = torch.empty((self._num_distributions,), device=device, dtype=torch.long)
+
+        for idx, (xs_i, ys_i) in enumerate(zip(flat_xs, flat_ys)):
+            length = int(xs_i.shape[0])
+            xs_padded[idx, :length] = xs_i
+            ys_padded[idx, :length] = ys_i
+            lengths[idx] = length
+
+        interval_mask = torch.arange(max_points - 1, device=device).unsqueeze(0) < (lengths - 1).unsqueeze(1)
+        delta_x = torch.diff(xs_padded, dim=1)
+        delta_y = torch.diff(ys_padded, dim=1)
+        safe_delta_x = torch.where(interval_mask, delta_x, torch.ones_like(delta_x))
+        slopes = torch.where(interval_mask, delta_y / safe_delta_x, torch.zeros_like(delta_y))
+        offsets = torch.where(
+            interval_mask,
+            ys_padded[:, :-1] - slopes * xs_padded[:, :-1],
+            torch.zeros_like(delta_y),
+        )
+        zeros_edge = torch.zeros((self._num_distributions, 1), device=device, dtype=dtype)
+        last_indices = (lengths - 1).unsqueeze(1)
+        first_values = ys_padded[:, :1]
+        last_values = ys_padded.gather(dim=1, index=last_indices)
+        interp_slopes = torch.cat([zeros_edge, slopes, zeros_edge], dim=1)
+        interp_offsets = torch.cat([first_values, offsets, last_values], dim=1)
+
+        mode_scores = ys_padded.masked_fill(
+            torch.arange(max_points, device=device).unsqueeze(0) >= lengths.unsqueeze(1),
+            float("-inf"),
+        )
+        mode_indices = torch.argmax(mode_scores, dim=1, keepdim=True)
+        mode_values = xs_padded.gather(dim=1, index=mode_indices).squeeze(1)
+
+        continuous_index_tensor = torch.tensor(continuous_flat_indices, device=device, dtype=torch.long)
+        if continuous_index_tensor.numel() > 0:
+            cdf_padded = torch.full(
+                (continuous_index_tensor.numel(), max_points),
+                float("inf"),
+                device=device,
+                dtype=dtype,
+            )
+            cdf_lengths = lengths[continuous_index_tensor]
+            xs_cont = xs_padded[continuous_index_tensor]
+            ys_cont = ys_padded[continuous_index_tensor]
+            for idx in range(int(continuous_index_tensor.numel())):
+                length = int(cdf_lengths[idx])
+                intervals = xs_cont[idx, 1:length] - xs_cont[idx, : length - 1]
+                trapezoids = 0.5 * intervals * (ys_cont[idx, : length - 1] + ys_cont[idx, 1:length])
+                cdf = torch.cat(
+                    [
+                        torch.zeros((1,), device=device, dtype=dtype),
+                        torch.cumsum(trapezoids, dim=0),
+                    ]
+                )
+                cdf = cdf / (cdf[-1] + 1e-10)
+                cdf_padded[idx, :length] = cdf
+        else:
+            cdf_padded = torch.empty((0, max_points), device=device, dtype=dtype)
+            cdf_lengths = torch.empty((0,), device=device, dtype=torch.long)
+
+        self._flat_feature_indices = torch.tensor(feature_indices, device=device, dtype=torch.long)
+        self._flat_channel_indices = torch.tensor(channel_indices, device=device, dtype=torch.long)
+        self._flat_leaf_indices = torch.tensor(leaf_indices, device=device, dtype=torch.long)
+        self._flat_repetition_indices = torch.tensor(repetition_indices, device=device, dtype=torch.long)
+        self._continuous_flat_indices = continuous_index_tensor
+        self._xs_padded = xs_padded
+        self._ys_padded = ys_padded
+        self._lengths = lengths
+        self._interp_slopes = interp_slopes
+        self._interp_offsets = interp_offsets
+        self._mode_values = mode_values
+        self._cdf_padded = cdf_padded
+        self._cdf_lengths = cdf_lengths
+        self._optimized_cache_ready = True
+
+    def _reshape_flat(self, values: Tensor) -> Tensor:
+        """Reshape flat distribution order [F, C, R, L] into [C, F, L, R]."""
+        return values.view(self.num_features, self.num_channels, self.num_repetitions, self.num_leaves).permute(
+            1, 0, 3, 2
+        )
+
+    def _reshape_flat_with_batch(self, values: Tensor) -> Tensor:
+        """Reshape flat distribution order [N, F, C, R, L] into [N, C, F, L, R]."""
+        return values.view(
+            values.shape[0],
+            self.num_features,
+            self.num_channels,
+            self.num_repetitions,
+            self.num_leaves,
+        ).permute(0, 2, 1, 4, 3)
 
     def _compute_cdf(self, xs: Tensor, ys: Tensor) -> Tensor:
         """Compute the CDF for the given piecewise linear function.
@@ -144,57 +286,56 @@ class PiecewiseLinearDist:
         Returns:
             Samples tensor of shape (sample_shape[0], C, F, L, R).
         """
+        self._ensure_optimized_cache()
+        assert self._continuous_flat_indices is not None
+        assert self._cdf_lengths is not None
+        assert self._cdf_padded is not None
+        assert self._xs_padded is not None
+
         num_samples = sample_shape[0] if isinstance(sample_shape, torch.Size) else sample_shape[0]
-        samples = torch.empty(
-            (
-                num_samples,
-                self.num_channels,
-                self.num_features,
-                self.num_leaves,
-                self.num_repetitions,
-            ),
+        flat_samples = torch.empty(
+            (num_samples, self._num_distributions),
             device=self.xs[0][0][0][0].device,
+            dtype=self.xs[0][0][0][0].dtype,
         )
 
-        for i_feature in range(self.num_features):
-            for i_channel in range(self.num_channels):
-                for i_repetition in range(self.num_repetitions):
-                    for i_leaf in range(self.num_leaves):
-                        xs_i = self.xs[i_repetition][i_leaf][i_feature][i_channel]
-                        ys_i = self.ys[i_repetition][i_leaf][i_feature][i_channel]
+        if self._continuous_flat_indices.numel() > 0:
+            uniforms = torch.empty(
+                (self._continuous_flat_indices.numel(), num_samples),
+                device=flat_samples.device,
+                dtype=flat_samples.dtype,
+            )
+            for idx in range(int(self._continuous_flat_indices.numel())):
+                uniforms[idx] = torch.rand(num_samples, device=flat_samples.device, dtype=flat_samples.dtype)
+            indices = torch.searchsorted(self._cdf_padded, uniforms, right=True)
+            max_indices = (self._cdf_lengths - 1).unsqueeze(1)
+            indices = torch.minimum(indices, max_indices)
+            indices = torch.clamp(indices, min=1)
 
-                        if self.domains[i_feature].data_type == DataType.DISCRETE:
-                            # Sample from a categorical distribution
-                            ys_i_wo_tails = ys_i[1:-1]  # Cut off the tail breaks
-                            dist = torch.distributions.Categorical(probs=ys_i_wo_tails)
-                            samples[:, i_channel, i_feature, i_leaf, i_repetition] = dist.sample(sample_shape)
-                        elif self.domains[i_feature].data_type == DataType.CONTINUOUS:
-                            # Compute the CDF for this piecewise function
-                            cdf = self._compute_cdf(xs_i, ys_i)
+            xs_cont = self._xs_padded[self._continuous_flat_indices]
+            cdf0 = self._cdf_padded.gather(dim=1, index=indices - 1)
+            cdf1 = self._cdf_padded.gather(dim=1, index=indices)
+            x0 = xs_cont.gather(dim=1, index=indices - 1)
+            x1 = xs_cont.gather(dim=1, index=indices)
+            slope = (x1 - x0) / (cdf1 - cdf0 + 1e-8)
+            cont_samples = x0 + slope * (uniforms - cdf0)
+            flat_samples[:, self._continuous_flat_indices] = cont_samples.transpose(0, 1)
 
-                            # Sample from a uniform distribution
-                            u = torch.rand(num_samples, device=xs_i.device)
+        continuous_lookup = set(self._continuous_flat_indices.tolist())
+        for flat_idx in range(self._num_distributions):
+            if flat_idx in continuous_lookup:
+                continue
+            i_feature = int(self._flat_feature_indices[flat_idx])
+            i_channel = int(self._flat_channel_indices[flat_idx])
+            i_leaf = int(self._flat_leaf_indices[flat_idx])
+            i_repetition = int(self._flat_repetition_indices[flat_idx])
+            ys_i = self.ys[i_repetition][i_leaf][i_feature][i_channel]
+            if self.domains[i_feature].data_type != DataType.DISCRETE:
+                raise ValueError(f"Unknown data type: {self.domains[i_feature].data_type}")
+            dist = torch.distributions.Categorical(probs=ys_i[1:-1])
+            flat_samples[:, flat_idx] = dist.sample(sample_shape)
 
-                            # Find the corresponding segment using searchsorted
-                            # Ensure contiguous inputs
-                            cdf = cdf.contiguous()
-                            u = u.contiguous()
-                            indices = torch.searchsorted(cdf, u, right=True)
-
-                            # Clamp indices to be within valid range
-                            indices = torch.clamp(indices, 1, len(xs_i) - 1)
-
-                            # Perform linear interpolation to get the sample value
-                            x0, x1 = xs_i[indices - 1], xs_i[indices]
-                            cdf0, cdf1 = cdf[indices - 1], cdf[indices]
-                            slope = (x1 - x0) / (cdf1 - cdf0 + 1e-8)  # Avoid division by zero
-
-                            # Compute the sampled value
-                            samples[:, i_channel, i_feature, i_leaf, i_repetition] = x0 + slope * (u - cdf0)
-                        else:
-                            raise ValueError(f"Unknown data type: {self.domains[i_feature].data_type}")
-
-        return samples
+        return self._reshape_flat_with_batch(flat_samples)
 
     @property
     def mode(self) -> Tensor:
@@ -203,31 +344,9 @@ class PiecewiseLinearDist:
         Returns:
             Modes tensor of shape (C, F, L, R).
         """
-        modes = torch.empty(
-            (
-                self.num_channels,
-                self.num_features,
-                self.num_leaves,
-                self.num_repetitions,
-            ),
-            device=self.xs[0][0][0][0].device,
-        )
-
-        for i_feature in range(self.num_features):
-            for i_channel in range(self.num_channels):
-                for i_repetition in range(self.num_repetitions):
-                    for i_leaf in range(self.num_leaves):
-                        xs_i = self.xs[i_repetition][i_leaf][i_feature][i_channel]
-                        ys_i = self.ys[i_repetition][i_leaf][i_feature][i_channel]
-
-                        # Find the mode (the x value with the highest PDF value)
-                        max_idx = torch.argmax(ys_i)
-                        mode_value = xs_i[max_idx]
-
-                        # Store the mode value
-                        modes[i_channel, i_feature, i_leaf, i_repetition] = mode_value
-
-        return modes
+        self._ensure_optimized_cache()
+        assert self._mode_values is not None
+        return self._reshape_flat(self._mode_values)
 
     def log_prob(self, x: Tensor) -> Tensor:
         """Compute log probabilities for input data.
@@ -238,34 +357,26 @@ class PiecewiseLinearDist:
         Returns:
             Log probabilities of shape (N, C, F, L, R).
         """
-        # Handle input shapes
         if x.dim() == 5:
             x = rearrange(x, "n c f 1 1 -> n c f")
 
-        batch_size = x.shape[0]
-        probs = torch.zeros(
-            batch_size,
-            self.num_channels,
-            self.num_features,
-            self.num_leaves,
-            self.num_repetitions,
-            device=x.device,
+        self._ensure_optimized_cache()
+        assert self._flat_channel_indices is not None
+        assert self._flat_feature_indices is not None
+        assert self._xs_padded is not None
+        assert self._interp_slopes is not None
+        assert self._interp_offsets is not None
+
+        flat_queries = x[:, self._flat_channel_indices, self._flat_feature_indices]
+        query_matrix = flat_queries.transpose(0, 1).contiguous()
+        indices = torch.searchsorted(self._xs_padded, query_matrix, right=False)
+        probs_flat = self._interp_slopes.gather(dim=1, index=indices) * query_matrix + self._interp_offsets.gather(
+            dim=1, index=indices
         )
-
-        # Perform linear interpolation
-        for i_feature in range(self.num_features):
-            for i_channel in range(self.num_channels):
-                for i_repetition in range(self.num_repetitions):
-                    for i_leaf in range(self.num_leaves):
-                        xs_i = self.xs[i_repetition][i_leaf][i_feature][i_channel]
-                        ys_i = self.ys[i_repetition][i_leaf][i_feature][i_channel]
-                        ivalues = interp(x[:, i_channel, i_feature], xs_i, ys_i)
-                        probs[:, i_channel, i_feature, i_leaf, i_repetition] = ivalues
-
-        # Return the logarithm of probabilities
-        logprobs = torch.log(probs + 1e-10)
+        probs_flat = probs_flat.clamp(min=0.0).transpose(0, 1)
+        logprobs = torch.log(probs_flat + 1e-10)
         logprobs = torch.clamp(logprobs, min=-300.0)
-        return logprobs
+        return self._reshape_flat_with_batch(logprobs)
 
 
 class PiecewiseLinear(LeafModule):
@@ -315,6 +426,7 @@ class PiecewiseLinear(LeafModule):
         self.ys: Optional[List] = None
         self.domains: Optional[List[Domain]] = None
         self.is_initialized = False
+        self._distribution_cache: Optional[PiecewiseLinearDist] = None
 
         # Register a dummy parameter so device detection works
         self.register_buffer("_device_buffer", torch.zeros(1))
@@ -348,7 +460,9 @@ class PiecewiseLinear(LeafModule):
             raise ValueError(
                 "PiecewiseLinear leaf has not been initialized. " "Call initialize(data, domains) first."
             )
-        return PiecewiseLinearDist(self.xs, self.ys, self.domains)  # type: ignore[arg-type]
+        if self._distribution_cache is None:
+            self._distribution_cache = PiecewiseLinearDist(self.xs, self.ys, self.domains)  # type: ignore[arg-type]
+        return self._distribution_cache
 
     @property
     def mode(self) -> Tensor:
@@ -535,6 +649,7 @@ class PiecewiseLinear(LeafModule):
         self.xs = xs
         self.ys = ys
         self.is_initialized = True
+        self._distribution_cache = None
 
         logger.info("PiecewiseLinear initialization complete")
 
@@ -544,6 +659,7 @@ class PiecewiseLinear(LeafModule):
         self.xs = None
         self.ys = None
         self.domains = None
+        self._distribution_cache = None
 
     def log_likelihood(
         self,

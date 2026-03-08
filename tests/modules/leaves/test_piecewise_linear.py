@@ -9,7 +9,12 @@ import torch
 
 from spflow.exceptions import OptionalDependencyError, UnsupportedOperationError
 from spflow.meta.data import Scope
-from spflow.modules.leaves.piecewise_linear import PiecewiseLinear, PiecewiseLinearDist, interp, pairwise
+from spflow.modules.leaves.piecewise_linear import (
+    PiecewiseLinear,
+    PiecewiseLinearDist,
+    interp,
+    pairwise,
+)
 from spflow.utils.cache import Cache
 from spflow.utils.domain import DataType, Domain
 from spflow.utils.sampling_context import SamplingContext, to_one_hot
@@ -21,6 +26,57 @@ def _randn(*size: int) -> torch.Tensor:
 
 def _randint(low: int, high: int, size: tuple[int, ...]) -> torch.Tensor:
     return torch.randint(low=low, high=high, size=size)
+
+
+def _make_vectorization_leaf() -> PiecewiseLinear:
+    leaf = PiecewiseLinear(scope=Scope([0, 1]), out_channels=2, num_repetitions=2)
+    leaf.domains = [Domain.continuous_range(-2.0, 2.0), Domain.continuous_range(-3.0, 3.0)]
+    leaf.is_initialized = True
+    leaf.xs = [
+        [
+            [
+                [torch.tensor([-1.5, -0.5, 0.5, 1.5])],
+                [torch.tensor([-2.0, -1.0, 1.0, 2.0])],
+            ],
+            [
+                [torch.tensor([-1.75, -0.25, 0.75, 1.75])],
+                [torch.tensor([-2.5, -0.5, 0.5, 2.5])],
+            ],
+        ],
+        [
+            [
+                [torch.tensor([-1.25, -0.25, 0.75, 1.25])],
+                [torch.tensor([-2.25, -0.75, 0.75, 2.25])],
+            ],
+            [
+                [torch.tensor([-1.6, -0.2, 0.8, 1.6])],
+                [torch.tensor([-2.8, -0.8, 0.8, 2.8])],
+            ],
+        ],
+    ]
+    leaf.ys = [
+        [
+            [
+                [torch.tensor([0.0, 0.8, 0.4, 0.0])],
+                [torch.tensor([0.0, 0.3, 0.9, 0.0])],
+            ],
+            [
+                [torch.tensor([0.0, 0.5, 1.0, 0.0])],
+                [torch.tensor([0.0, 0.7, 0.6, 0.0])],
+            ],
+        ],
+        [
+            [
+                [torch.tensor([0.0, 0.6, 0.7, 0.0])],
+                [torch.tensor([0.0, 0.4, 0.8, 0.0])],
+            ],
+            [
+                [torch.tensor([0.0, 0.9, 0.3, 0.0])],
+                [torch.tensor([0.0, 0.5, 0.7, 0.0])],
+            ],
+        ],
+    ]
+    return leaf
 
 
 class TestPiecewiseLinearInitialization:
@@ -387,6 +443,35 @@ class TestPiecewiseLinearSampling:
 
         assert samples.shape == (5, 2)
         assert torch.isfinite(samples).all()
+
+
+class TestPiecewiseLinearVectorization:
+    """Check the vectorized path directly."""
+
+    def test_log_likelihood_is_stable_for_cached_distribution(self):
+        leaf = _make_vectorization_leaf()
+        data = torch.tensor([[0.1, -0.2], [float("nan"), 0.4], [1.1, float("nan")]])
+        first = leaf.log_likelihood(data)
+        second = leaf.log_likelihood(data)
+
+        torch.testing.assert_close(second, first, rtol=0.0, atol=0.0)
+
+    def test_mode_uses_vectorized_cache(self):
+        leaf = _make_vectorization_leaf()
+        mode = leaf.mode
+
+        assert mode.shape == (1, 2, 2, 2)
+        assert torch.isfinite(mode).all()
+
+    def test_continuous_sampling_is_seeded(self):
+        leaf = _make_vectorization_leaf()
+        dist = leaf.distribution()
+        torch.manual_seed(7)
+        first = dist.sample((64,))
+        torch.manual_seed(7)
+        second = dist.sample((64,))
+
+        torch.testing.assert_close(second, first, rtol=0.0, atol=0.0)
 
 
 class TestPiecewiseLinearParamsAndMode:
