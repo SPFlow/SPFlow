@@ -25,8 +25,8 @@ Key characteristics:
 Implementation
 --------------
 
-The :class:`spflow.zoo.conv.ConvPc` module automates the construction of these circuits for image modeling.
+The :class:`spflow.zoo.ConvPc` module automates the construction of these circuits for image modeling.
 
-.. autoclass:: spflow.zoo.conv.ConvPc
+.. autoclass:: spflow.zoo.ConvPc
    :members:
    :show-inheritance:

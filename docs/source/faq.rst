@@ -127,7 +127,7 @@ How do I use RAT-SPN?
 
 RAT-SPN (Randomized And Tensorized SPN) automatically builds a deep circuit from hyperparameters::
 
-    from spflow.zoo.rat import RatSPN
+    from spflow.zoo import RatSPN
     from spflow.modules.leaves import Normal
     from spflow.meta import Scope
 
@@ -152,7 +152,7 @@ Does SPFlow have image-specific modules?
 Yes! Use the ``ConvPc`` module for image data with spatial structure::
 
     import torch
-    from spflow.zoo.conv import ConvPc
+    from spflow.zoo import ConvPc
     from spflow.modules.leaves import Normal
     from spflow.meta import Scope
 

@@ -32,7 +32,7 @@ Configuration
 Model
 ~~~~~
 
-.. autoclass:: spflow.zoo.apc.model.AutoencodingPC
+.. autoclass:: spflow.zoo.AutoencodingPC
    :members:
 
 Decoders

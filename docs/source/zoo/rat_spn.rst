@@ -25,8 +25,8 @@ Key features:
 Implementation
 --------------
 
-The RAT-SPN implementation in SPFlow provides a high-level :class:`spflow.zoo.rat.RatSPN` module that automates the construction of the circuit based on architectural hyperparameters.
+The RAT-SPN implementation in SPFlow provides a high-level :class:`spflow.zoo.RatSPN` module that automates the construction of the circuit based on architectural hyperparameters.
 
-.. autoclass:: spflow.zoo.rat.RatSPN
+.. autoclass:: spflow.zoo.RatSPN
    :members:
    :show-inheritance:

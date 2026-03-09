@@ -30,7 +30,7 @@ and the normalized density:
 
    p(x) = \frac{c(x)}{Z}, \qquad Z = \int c(x) \, dx = \sum_{i=1}^r \int c_i(x)^2 \, dx.
 
-In SPFlow, SOCS is implemented as the wrapper module :class:`spflow.zoo.sos.SOCS`.
+In SPFlow, SOCS is implemented as the wrapper module :class:`spflow.zoo.SOCS`.
 
 Why "signed" components?
 ------------------------
@@ -162,7 +162,7 @@ API Reference
 -------------
 
 
-.. autoclass:: spflow.zoo.sos.SOCS
+.. autoclass:: spflow.zoo.SOCS
    :members:
    :show-inheritance:
 

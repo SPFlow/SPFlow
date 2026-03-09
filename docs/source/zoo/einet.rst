@@ -25,9 +25,9 @@ Key Characteristics:
 Implementation
 --------------
 
-The Einet implementation in SPFlow provides a high-level :class:`spflow.zoo.einet.Einet` module.
+The Einet implementation in SPFlow provides a high-level :class:`spflow.zoo.Einet` module.
 
-.. autoclass:: spflow.zoo.einet.Einet
+.. autoclass:: spflow.zoo.Einet
    :members:
    :show-inheritance:
 

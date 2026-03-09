@@ -21,10 +21,10 @@ def test_naive_bayes_is_exported_from_subpackage():
     assert module.NaiveBayes is NaiveBayes
 
 
-def test_root_zoo_package_does_not_export_naive_bayes():
+def test_root_zoo_package_exports_naive_bayes():
     module = importlib.import_module("spflow.zoo")
 
-    assert not hasattr(module, "NaiveBayes")
+    assert module.NaiveBayes is NaiveBayes
 
 
 def test_density_log_likelihood_matches_manual_product():
