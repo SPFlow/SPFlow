@@ -102,7 +102,9 @@ class NaiveBayes(Module, Classifier):
 
     def _build_prior_weights(self, class_prior: Tensor | list[float] | None) -> Tensor:
         if class_prior is None:
-            prior = torch.full((self.num_classes,), 1.0 / self.num_classes, dtype=torch.get_default_dtype())
+            prior = torch.full(
+                (self.num_classes,), 1.0 / self.num_classes, dtype=torch.get_default_dtype()
+            )
         else:
             prior = torch.as_tensor(class_prior, dtype=torch.get_default_dtype())
             if prior.ndim != 1 or prior.shape[0] != self.num_classes:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import importlib
+
 import pytest
 import torch
 
@@ -9,8 +11,20 @@ from spflow.learn.gradient_descent import train_gradient_descent
 from spflow.meta.data.scope import Scope
 from spflow.modules.leaves.bernoulli import Bernoulli
 from spflow.utils.cache import Cache
-from spflow.zoo import NaiveBayes
+from spflow.zoo.naive_bayes import NaiveBayes
 from tests.utils.leaves import make_leaf
+
+
+def test_naive_bayes_is_exported_from_subpackage():
+    module = importlib.import_module("spflow.zoo.naive_bayes")
+
+    assert module.NaiveBayes is NaiveBayes
+
+
+def test_root_zoo_package_does_not_export_naive_bayes():
+    module = importlib.import_module("spflow.zoo")
+
+    assert not hasattr(module, "NaiveBayes")
 
 
 def test_density_log_likelihood_matches_manual_product():
