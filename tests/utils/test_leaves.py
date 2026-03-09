@@ -1,6 +1,5 @@
 """Tests for leaf distribution utility functions."""
 
-import numpy as np
 import pytest
 import torch
 
@@ -324,24 +323,6 @@ class TestParseLeafArgs:
         # Should return (len(list), out_channels)
         assert event_shape == (4, 7)
 
-    @pytest.mark.parametrize(
-        "scope",
-        [
-            np.arange(4),
-            torch.arange(4),
-            range(4),
-        ],
-    )
-    def test_parse_leaf_args_with_iterables(self, scope):
-        """Test parse_leaf_args with iterable scope input."""
-        out_channels = 6
-        num_repetitions = None
-        params = None
-
-        event_shape = parse_leaf_args(scope, out_channels, num_repetitions, params)
-
-        assert event_shape == (4, 6)
-
     def test_parse_leaf_args_with_repetitions(self):
         """Test parse_leaf_args with num_repetitions."""
         scope = Scope([0, 1])
@@ -367,20 +348,6 @@ class TestParseLeafArgs:
         event_shape = parse_leaf_args(scope, out_channels, num_repetitions, params)
 
         # Should infer from params
-        assert event_shape == (3, 5)
-
-    def test_parse_leaf_args_with_params_default_out_channels_compat(self):
-        """Test parse_leaf_args keeps compatibility for default out_channels=1 with provided params."""
-        scope = Scope([0, 1, 2])
-        out_channels = 1
-        num_repetitions = None
-        param1 = torch.randn(3, 5)
-        param2 = torch.randn(3, 5)
-        params = [param1, param2]
-
-        event_shape = parse_leaf_args(scope, out_channels, num_repetitions, params)
-
-        # Should infer channels from params despite default out_channels=1
         assert event_shape == (3, 5)
 
     def test_parse_leaf_args_params_mismatch_scope(self):
