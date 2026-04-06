@@ -45,8 +45,7 @@ from spflow.modules.sums.sum import Sum
 class Buildable(Protocol):
     """Protocol for objects that can build a `Module`."""
 
-    def build(self) -> Module:
-        ...
+    def build(self) -> Module: ...
 
 
 def as_expr(value: Module | Buildable) -> Buildable:

@@ -163,7 +163,9 @@ class PiecewiseLinearDist:
                         flat_idx += 1
 
         max_points = max(int(x.shape[0]) for x in flat_xs)
-        xs_padded = torch.full((self._num_distributions, max_points), float("inf"), device=device, dtype=dtype)
+        xs_padded = torch.full(
+            (self._num_distributions, max_points), float("inf"), device=device, dtype=dtype
+        )
         ys_padded = torch.zeros((self._num_distributions, max_points), device=device, dtype=dtype)
         lengths = torch.empty((self._num_distributions,), device=device, dtype=torch.long)
 
@@ -241,9 +243,9 @@ class PiecewiseLinearDist:
 
     def _reshape_flat(self, values: Tensor) -> Tensor:
         """Reshape flat distribution order [F, C, R, L] into [C, F, L, R]."""
-        return values.view(self.num_features, self.num_channels, self.num_repetitions, self.num_leaves).permute(
-            1, 0, 3, 2
-        )
+        return values.view(
+            self.num_features, self.num_channels, self.num_repetitions, self.num_leaves
+        ).permute(1, 0, 3, 2)
 
     def _reshape_flat_with_batch(self, values: Tensor) -> Tensor:
         """Reshape flat distribution order [N, F, C, R, L] into [N, C, F, L, R]."""
@@ -370,9 +372,9 @@ class PiecewiseLinearDist:
         flat_queries = x[:, self._flat_channel_indices, self._flat_feature_indices]
         query_matrix = flat_queries.transpose(0, 1).contiguous()
         indices = torch.searchsorted(self._xs_padded, query_matrix, right=False)
-        probs_flat = self._interp_slopes.gather(dim=1, index=indices) * query_matrix + self._interp_offsets.gather(
+        probs_flat = self._interp_slopes.gather(
             dim=1, index=indices
-        )
+        ) * query_matrix + self._interp_offsets.gather(dim=1, index=indices)
         probs_flat = probs_flat.clamp(min=0.0).transpose(0, 1)
         logprobs = torch.log(probs_flat + 1e-10)
         logprobs = torch.clamp(logprobs, min=-300.0)

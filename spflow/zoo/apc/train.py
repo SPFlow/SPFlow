@@ -18,7 +18,9 @@ from spflow.zoo.apc.model import AutoencodingPC
 def _loader_generator() -> torch.Generator:
     """Create a shuffle generator compatible with the active torch default device."""
     get_default_device = getattr(torch, "get_default_device", None)
-    default_device = torch.device(get_default_device()) if callable(get_default_device) else torch.device("cpu")
+    default_device = (
+        torch.device(get_default_device()) if callable(get_default_device) else torch.device("cpu")
+    )
     generator_device = default_device.type if default_device.type != "meta" else "cpu"
     generator = torch.Generator(device=generator_device)
     generator.manual_seed(torch.initial_seed())

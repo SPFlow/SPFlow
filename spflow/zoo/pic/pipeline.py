@@ -638,7 +638,9 @@ def pic2qpc(
             if u.function is None:
                 raise StructureError("Integral unit missing weighting function.")
 
-            device = u.function.mlp.fourier.B.device if isinstance(u.function, FunctionGroup) else child.device
+            device = (
+                u.function.mlp.fourier.B.device if isinstance(u.function, FunctionGroup) else child.device
+            )
             dtype = quadrature_rule.points.dtype
             z_grid = grid_points(z_dim, device=device, dtype=dtype)
             y_grid = grid_points(y_dim, device=device, dtype=dtype)

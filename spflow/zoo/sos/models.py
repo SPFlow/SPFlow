@@ -42,7 +42,9 @@ class _CircuitConfig:
 
 def _default_generator(seed: int) -> torch.Generator:
     get_default_device = getattr(torch, "get_default_device", None)
-    default_device = torch.device(get_default_device()) if callable(get_default_device) else torch.device("cpu")
+    default_device = (
+        torch.device(get_default_device()) if callable(get_default_device) else torch.device("cpu")
+    )
     generator_device = default_device.type if default_device.type != "meta" else "cpu"
     generator = torch.Generator(device=generator_device)
     generator.manual_seed(int(seed))

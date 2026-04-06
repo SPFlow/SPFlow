@@ -1022,15 +1022,15 @@ def triple_product_tensor(
                     for ci in c.inputs:
                         ci_mod = cast(Module, ci)
                         c_ch = ci_mod.out_shape.channels
-                        out[
-                            :, a_off : a_off + a_ch, b_off : b_off + b_ch, c_off : c_off + c_ch, :
-                        ] = triple_product_tensor(
-                            ai_mod,
-                            bi_mod,
-                            ci_mod,
-                            cache=cache,
-                            signed_sum_types=signed_sum_types,
-                            memo_key=memo_key,
+                        out[:, a_off : a_off + a_ch, b_off : b_off + b_ch, c_off : c_off + c_ch, :] = (
+                            triple_product_tensor(
+                                ai_mod,
+                                bi_mod,
+                                ci_mod,
+                                cache=cache,
+                                signed_sum_types=signed_sum_types,
+                                memo_key=memo_key,
+                            )
                         )
                         c_off += c_ch
                     b_off += b_ch
