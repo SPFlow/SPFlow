@@ -423,6 +423,7 @@ class Sum(Module):
             input_lls = rearrange(input_lls, "b f ci r -> b f ci 1 r")
             module_lls = rearrange(module_lls, "b f co r -> b f 1 co r")
 
+            log_grads = torch.clamp(log_grads, min=torch.finfo(log_grads.dtype).min)
             log_expectations = log_weights + log_grads + input_lls - module_lls
             log_expectations = log_expectations.logsumexp(0)  # Sum over batch dimension
             log_expectations = log_expectations.log_softmax(self.sum_dim)  # Normalize
