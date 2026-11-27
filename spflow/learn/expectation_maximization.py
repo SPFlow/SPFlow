@@ -4,10 +4,32 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
+from spflow.exceptions import NumericalInstabilityError
 from spflow.modules.module import Module
 from spflow.utils.cache import Cache
 
 logger = logging.getLogger(__name__)
+
+
+def _check_finite_log_likelihood(log_likelihood: Tensor, context: str) -> None:
+    """Raise if an EM log-likelihood is NaN or infinite.
+
+    A NaN never satisfies the ``avg_ll <= prev_avg_ll`` convergence check, so without this guard EM would keep
+    iterating (forever with ``max_steps=-1``) on a model whose parameters are already destroyed.
+
+    Args:
+        log_likelihood: Scalar (average or accumulated) log-likelihood.
+        context: Location for the error message, e.g. ``"EM step 3"``.
+
+    Raises:
+        NumericalInstabilityError: If ``log_likelihood`` is not finite.
+    """
+    if not torch.isfinite(log_likelihood):
+        raise NumericalInstabilityError(
+            f"{context}: log-likelihood is {log_likelihood.item()}. Check leaf parameters for degenerate "
+            "values (e.g. probabilities of exactly 0 or 1, zero scales) and the data for values outside the "
+            "leaf support."
+        )
 
 
 def _retain_cached_log_likelihood_grads(cache: Cache) -> None:
@@ -43,6 +65,9 @@ def expectation_maximization(
 
     Returns:
         One-dimensional tensor containing the average log-likelihood for each iteration step.
+
+    Raises:
+        NumericalInstabilityError: If the log-likelihood becomes NaN or infinite.
     """
     prev_avg_ll = torch.tensor(-float("inf"))
     ll_history = []
@@ -63,6 +88,8 @@ def expectation_maximization(
 
         if verbose:
             logger.info(f"Step {step}: Average log-likelihood: {avg_ll}")
+
+        _check_finite_log_likelihood(avg_ll, f"EM step {step}")
 
         _retain_cached_log_likelihood_grads(cache)
         _backward_accumulated_log_likelihood(acc_ll)
@@ -103,6 +130,9 @@ def expectation_maximization_batched(
 
     Returns:
         One-dimensional tensor containing the average log-likelihood for each epoch.
+
+    Raises:
+        NumericalInstabilityError: If the log-likelihood of a batch becomes NaN or infinite.
     """
     ll_history = []
 
@@ -110,12 +140,13 @@ def expectation_maximization_batched(
         epoch_ll = None
         num_samples = 0
 
-        for batch in dataloader:
+        for batch_idx, batch in enumerate(dataloader):
             batch_data = batch[0] if isinstance(batch, (list, tuple)) else batch
             cache = Cache()
 
             module_lls = module.log_likelihood(batch_data, cache=cache)
             acc_ll = module_lls.sum()
+            _check_finite_log_likelihood(acc_ll.detach(), f"EM epoch {epoch}, batch {batch_idx}")
 
             if epoch_ll is None:
                 epoch_ll = torch.zeros((), device=module_lls.device, dtype=module_lls.dtype)

@@ -96,3 +96,9 @@ class InvalidParameterError(ValueError):
     """Raised when a parameter value is invalid (range/domain/format)."""
 
     pass
+
+
+class NumericalInstabilityError(ArithmeticError):
+    """Raised when a computation produces non-finite values (NaN/inf) that invalidate the result."""
+
+    pass
