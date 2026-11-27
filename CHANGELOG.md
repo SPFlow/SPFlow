@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed sum weights possibly becoming NaN during EM-based optimization
+- Fixed Bernoulli and Geometric MLE/EM updates letting the success probability reach exactly 1.0, which stored infinite logits and turned log-likelihoods and sum weights NaN during EM; the estimate now stays strictly below 1.
+- Fixed `expectation_maximization` iterating forever once the log-likelihood became NaN; both EM entry points now raise the new `spflow.exceptions.NumericalInstabilityError` on a NaN or infinite log-likelihood.
 
 ## [1.0.2] - 2026-03-07
 

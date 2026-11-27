@@ -121,8 +121,9 @@ class Bernoulli(LeafModule):
         n_success = (weights * data).sum(dim=0)
         p_est = n_success / n_total
 
-        # Handle edge cases (NaN, zero, or near-zero p) before broadcasting
-        p_est = _handle_mle_edge_cases(p_est, lb=0.0)
+        # Handle edge cases (NaN, p <= 0, p >= 1) before broadcasting. p must stay strictly below 1: p == 1 is
+        # stored as logits = +inf, which makes the log-likelihood of every x = 0 non-finite and poisons EM.
+        p_est = _handle_mle_edge_cases(p_est, lb=0.0, ub=1.0)
 
         return {"probs": p_est}
 

@@ -6,8 +6,11 @@ import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
+from spflow.exceptions import NumericalInstabilityError
 from spflow.learn.expectation_maximization import expectation_maximization, expectation_maximization_batched
+from spflow.meta import Scope
 from spflow.modules import leaves
+from spflow.zoo.rat import RatSPN
 from tests.test_helpers.builders import make_einet
 from tests.utils.leaves import make_data, make_leaf
 
@@ -165,3 +168,35 @@ def test_batched_em_regression_on_representative_einet():
 
     assert ll_history.shape == (1,)
     assert torch.isfinite(ll_history).all()
+
+
+def _make_poisoned_bernoulli_rat(kind: str) -> RatSPN:
+    torch.manual_seed(0)
+    leaf = leaves.Bernoulli(scope=Scope(list(range(4))), out_channels=2, num_repetitions=2)
+    model = RatSPN(leaf_modules=[leaf], n_root_nodes=1, n_region_nodes=2, num_repetitions=2, depth=1)
+    with torch.no_grad():
+        if kind == "nan_sum_weights":
+            model.root_node.logits.fill_(float("nan"))
+        else:  # "bernoulli_p_one": p == 1 exactly, so every x = 0 has zero likelihood
+            leaf.logits.fill_(float("inf"))
+    return model
+
+
+_BINARY_DATA = torch.tensor([[0.0, 1.0, 0.0, 1.0], [1.0, 0.0, 1.0, 0.0]]).repeat(16, 1)
+
+
+@pytest.mark.parametrize("kind", ["nan_sum_weights", "bernoulli_p_one"])
+def test_em_raises_on_non_finite_log_likelihood(kind):
+    """A NaN log-likelihood never satisfies the convergence check, so EM used to iterate until max_steps."""
+    model = _make_poisoned_bernoulli_rat(kind)
+    with pytest.raises(NumericalInstabilityError, match="EM step 0"):
+        expectation_maximization(model, _BINARY_DATA, max_steps=20)
+
+
+@pytest.mark.parametrize("kind", ["nan_sum_weights", "bernoulli_p_one"])
+def test_batched_em_raises_on_non_finite_log_likelihood(kind):
+    """Batched EM used to finish its epochs silently and return a NaN history."""
+    model = _make_poisoned_bernoulli_rat(kind)
+    loader = DataLoader(TensorDataset(_BINARY_DATA), batch_size=16)
+    with pytest.raises(NumericalInstabilityError, match="EM epoch 0, batch 0"):
+        expectation_maximization_batched(model, loader, num_epochs=2)

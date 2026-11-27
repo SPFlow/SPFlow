@@ -126,8 +126,11 @@ class Geometric(LeafModule):
         if bias_correction:
             p_est = p_est - (p_est * (1 - p_est) / n_total)
 
-        # Handle edge cases (NaN, zero, or near-zero p) before broadcasting
-        p_est = _handle_mle_edge_cases(p_est, lb=0.0)
+        # Handle edge cases (NaN, p <= 0, p near 1) before broadcasting. p must stay strictly below 1:
+        # p == 1 gives k * log(1 - p) = -inf for every k > 0. torch's Geometric.log_prob evaluates
+        # sigmoid(logits), which rounds back to exactly 1.0 for p within one ULP of 1, so keep at least
+        # machine-epsilon headroom.
+        p_est = _handle_mle_edge_cases(p_est, lb=0.0, ub=1.0 - torch.finfo(p_est.dtype).eps)
 
         return {"probs": p_est}
 
